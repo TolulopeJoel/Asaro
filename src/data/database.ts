@@ -34,13 +34,27 @@ export interface JournalEntryInput {
 }
 
 
-const db = SQLite.openDatabaseSync('bibleJournal.db');
+let db: SQLite.SQLiteDatabase | null = null;
+
+const initDb = (): SQLite.SQLiteDatabase => {
+    if (!db) {
+        db = SQLite.openDatabaseSync('bibleJournal.db');
+    }
+
+    if (!db) {
+        throw new Error('Failed to initialize database');
+    }
+
+    return db;
+};
 
 // Initialize database tables
 export const initializeDatabase = () => {
     try {
+        const database = initDb();
+
         // Create journal_entries table
-        db.execSync(`
+        database.execSync(`
       CREATE TABLE IF NOT EXISTS journal_entries (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         date_created TEXT NOT NULL,
@@ -61,23 +75,26 @@ export const initializeDatabase = () => {
     `);
 
         // Create index for faster searches
-        db.execSync(`
+        database.execSync(`
       CREATE INDEX IF NOT EXISTS idx_book_name ON journal_entries(book_name);
     `);
 
-        db.execSync(`
+        database.execSync(`
       CREATE INDEX IF NOT EXISTS idx_date_created ON journal_entries(date_created);
     `);
 
         console.log('Database initialized successfully');
+        return true;
     } catch (error) {
         console.error('Error initializing database:', error);
+        return false;
     }
 };
 
 // Create a new journal entry
 export const createJournalEntry = (entryData: JournalEntryInput): number => {
     try {
+        const database = initDb(); // Make sure this line is here
         const {
             dateCreated,
             bookName,
@@ -89,7 +106,7 @@ export const createJournalEntry = (entryData: JournalEntryInput): number => {
             notes
         } = entryData;
 
-        const result = db.runSync(`
+        const result = database.runSync(`
       INSERT INTO journal_entries (
         date_created, book_name, chapter_start, chapter_end,
         verse_start, verse_end, reflection_1, reflection_2,
@@ -120,7 +137,8 @@ export const createJournalEntry = (entryData: JournalEntryInput): number => {
 // Get all journal entries (with pagination)
 export const getJournalEntries = (limit = 50, offset = 0) => {
     try {
-        const entries = db.getAllSync(`
+        const database = initDb();
+        const entries = database.getAllSync(`
       SELECT * FROM journal_entries 
       ORDER BY created_at DESC 
       LIMIT ? OFFSET ?
@@ -136,7 +154,8 @@ export const getJournalEntries = (limit = 50, offset = 0) => {
 // Get entries by book name
 export const getEntriesByBook = (bookName: string): JournalEntry[] => {
     try {
-        const entries = db.getAllSync(`
+        const database = initDb();
+        const entries = database.getAllSync(`
       SELECT * FROM journal_entries 
       WHERE book_name = ? 
       ORDER BY chapter_start ASC, created_at DESC
@@ -152,7 +171,8 @@ export const getEntriesByBook = (bookName: string): JournalEntry[] => {
 // Get entries by date range
 export const getEntriesByDateRange = (startDate: string, endDate: string): JournalEntry[] => {
     try {
-        const entries = db.getAllSync(`
+        const database = initDb();
+        const entries = database.getAllSync(`
       SELECT * FROM journal_entries 
       WHERE date_created BETWEEN ? AND ? 
       ORDER BY date_created DESC
@@ -169,8 +189,9 @@ export const getEntriesByDateRange = (startDate: string, endDate: string): Journ
 // Search entries by text content
 export const searchEntries = (searchTerm: string): JournalEntry[] => {
     try {
+        const database = initDb();
         const searchPattern = `%${searchTerm}%`;
-        const entries = db.getAllSync(`
+        const entries = database.getAllSync(`
       SELECT * FROM journal_entries 
       WHERE reflection_1 LIKE ? 
          OR reflection_2 LIKE ? 
@@ -191,7 +212,8 @@ export const searchEntries = (searchTerm: string): JournalEntry[] => {
 // Get a single entry by ID
 export const getEntryById = (id: number): JournalEntry | null => {
     try {
-        const entry = db.getFirstSync(`
+        const database = initDb();
+        const entry = database.getFirstSync(`
       SELECT * FROM journal_entries WHERE id = ?
     `, [id]);
 
@@ -205,6 +227,7 @@ export const getEntryById = (id: number): JournalEntry | null => {
 // Update an existing entry
 export const updateJournalEntry = (id: number, entryData: JournalEntryInput): boolean => {
     try {
+        const database = initDb();
         const {
             dateCreated,
             bookName,
@@ -216,7 +239,7 @@ export const updateJournalEntry = (id: number, entryData: JournalEntryInput): bo
             notes
         } = entryData;
 
-        db.runSync(`
+        database.runSync(`
       UPDATE journal_entries SET
         date_created = ?,
         book_name = ?,
@@ -232,7 +255,7 @@ export const updateJournalEntry = (id: number, entryData: JournalEntryInput): bo
         notes = ?,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
-`, [
+    `, [
             dateCreated,
             bookName,
             chapterStart ?? null,
@@ -258,7 +281,8 @@ export const updateJournalEntry = (id: number, entryData: JournalEntryInput): bo
 // Delete an entry
 export const deleteJournalEntry = (id: number): boolean => {
     try {
-        db.runSync(`DELETE FROM journal_entries WHERE id = ?`, [id]);
+        const database = initDb();
+        database.runSync(`DELETE FROM journal_entries WHERE id = ?`, [id]);
         return true;
     } catch (error) {
         console.error('Error deleting journal entry:', error);
@@ -269,7 +293,8 @@ export const deleteJournalEntry = (id: number): boolean => {
 // Get entry count for a specific book
 export const getBookEntryCount = (bookName: string): number => {
     try {
-        const result = db.getFirstSync(`
+        const database = initDb();
+        const result = database.getFirstSync(`
       SELECT COUNT(*) as count FROM journal_entries WHERE book_name = ?
     `, [bookName]);
 
@@ -283,7 +308,8 @@ export const getBookEntryCount = (bookName: string): number => {
 // Get total entry count
 export const getTotalEntryCount = () => {
     try {
-        const result = db.getFirstSync(`SELECT COUNT(*) as count FROM journal_entries`);
+        const database = initDb();
+        const result = database.getFirstSync(`SELECT COUNT(*) as count FROM journal_entries`);
         return (result as { count: number }).count;
     } catch (error) {
         console.error('Error getting total entry count:', error);
