@@ -1,8 +1,9 @@
-// app/test.tsx
+import { createJournalEntry, JournalEntryInput } from '@/src/data/database';
 import React, { useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BookPicker } from '../src/components/BookPicker';
 import { ChapterPicker } from '../src/components/ChapterPicker';
+import { ReflectionAnswers, ReflectionForm } from '../src/components/ReflectionForm';
 import { BibleBook } from '../src/data/bibleBooks';
 
 interface ChapterRange {
@@ -13,6 +14,7 @@ interface ChapterRange {
 export default function TestScreen() {
     const [selectedBook, setSelectedBook] = useState<BibleBook>();
     const [selectedChapters, setSelectedChapters] = useState<ChapterRange>();
+    const [reflectionAnswers, setReflectionAnswers] = useState<ReflectionAnswers>();
 
     const handleBookSelect = (book: BibleBook) => {
         setSelectedBook(book);
@@ -22,6 +24,40 @@ export default function TestScreen() {
 
     const handleChapterSelect = (chapters: ChapterRange) => {
         setSelectedChapters(chapters);
+    };
+
+    const handleSaveReflection = async (answers: ReflectionAnswers) => {
+        if (!selectedBook || !selectedChapters || selectedChapters.start === 0) {
+            Alert.alert('Incomplete', 'Please select a book and chapter first.');
+            return;
+        }
+
+        try {
+            const entryData: JournalEntryInput = {
+                dateCreated: new Date().toISOString().split('T')[0], // Today's date in YYYY-MM-DD format
+                bookName: selectedBook.name,
+                chapterStart: selectedChapters.start,
+                chapterEnd: selectedChapters.end,
+                reflections: [
+                    answers.reflection1,
+                    answers.reflection2,
+                    answers.reflection3,
+                    answers.reflection4,
+                    answers.reflection5,
+                ],
+                notes: answers.notes,
+            };
+
+            const entryId = createJournalEntry(entryData);
+            Alert.alert(
+                'Success!',
+                `Your reflection has been saved! Entry ID: ${entryId}`,
+                [{ text: 'OK' }]
+            );
+        } catch (error) {
+            console.error('Error saving entry:', error);
+            Alert.alert('Error', 'Failed to save your reflection. Please try again.');
+        }
     };
 
     const getSelectionSummary = () => {
@@ -61,28 +97,35 @@ export default function TestScreen() {
                     />
                 </View>
 
-                <View style={styles.summarySection}>
-                    <Text style={styles.summaryTitle}>Current Selection:</Text>
-                    <Text style={styles.summaryText}>{getSelectionSummary()}</Text>
-
-                    {selectedBook && selectedChapters && (
-                        <View style={styles.detailsContainer}>
-                            <Text style={styles.detailsTitle}>Details:</Text>
-                            <Text style={styles.detailsText}>Book: {selectedBook.name}</Text>
-                            <Text style={styles.detailsText}>Testament: {selectedBook.testament}</Text>
-                            <Text style={styles.detailsText}>Total Chapters: {selectedBook.chapters}</Text>
-                            <Text style={styles.detailsText}>
-                                Selected: Chapter {selectedChapters.start}
-                                {selectedChapters.end && selectedChapters.end !== selectedChapters.start
-                                    ? ` to ${selectedChapters.end}`
-                                    : ''
-                                }
-                            </Text>
-                        </View>
-                    )}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>3. Reflection Questions</Text>
+                    <ReflectionForm
+                        onAnswersChange={setReflectionAnswers}
+                        onSave={handleSaveReflection}
+                        disabled={!selectedBook || !selectedChapters || selectedChapters.start === 0}
+                    />
                 </View>
+                <Text style={styles.summaryTitle}>Current Selection:</Text>
+                <Text style={styles.summaryText}>{getSelectionSummary()}</Text>
+
+                {selectedBook && selectedChapters && (
+                    <View style={styles.detailsContainer}>
+                        <Text style={styles.detailsTitle}>Details:</Text>
+                        <Text style={styles.detailsText}>Book: {selectedBook.name}</Text>
+                        <Text style={styles.detailsText}>Testament: {selectedBook.testament}</Text>
+                        <Text style={styles.detailsText}>Total Chapters: {selectedBook.chapters}</Text>
+                        <Text style={styles.detailsText}>
+                            Selected: Chapter {selectedChapters.start}
+                            {selectedChapters.end && selectedChapters.end !== selectedChapters.start
+                                ? ` to ${selectedChapters.end}`
+                                : ''
+                            }
+                        </Text>
+                    </View>
+                )}
+                {/* </View> */}
             </ScrollView>
-        </SafeAreaView>
+        </SafeAreaView >
     );
 }
 
