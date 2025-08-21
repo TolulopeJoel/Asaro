@@ -13,6 +13,13 @@ export default function Index() {
           <Text style={styles.buttonText}>Test Components</Text>
         </TouchableOpacity>
       </Link>
+
+      <Link href="/browse" asChild>
+        <TouchableOpacity style={styles.button}>
+          <Text style={styles.buttonText}>Browse Components</Text>
+        </TouchableOpacity>
+      </Link>
+
     </View>
   );
 }

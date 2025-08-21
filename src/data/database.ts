@@ -135,7 +135,7 @@ export const createJournalEntry = (entryData: JournalEntryInput): number => {
 };
 
 // Get all journal entries (with pagination)
-export const getJournalEntries = (limit = 50, offset = 0) => {
+export const getJournalEntries = (limit = 50, offset = 0): JournalEntry[] => {
     try {
         const database = initDb();
         const entries = database.getAllSync(`
@@ -144,7 +144,7 @@ export const getJournalEntries = (limit = 50, offset = 0) => {
       LIMIT ? OFFSET ?
     `, [limit, offset]);
 
-        return entries;
+        return entries as JournalEntry[];
     } catch (error) {
         console.error('Error fetching journal entries:', error);
         return [];
