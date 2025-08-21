@@ -1,15 +1,15 @@
 // src/components/ReflectionForm.tsx
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 export interface ReflectionAnswers {
@@ -38,28 +38,28 @@ interface ReflectionQuestion {
 const REFLECTION_QUESTIONS: ReflectionQuestion[] = [
   {
     id: 'reflection1',
-    question: 'What did this passage teach me about God?',
-    placeholder: 'Reflect on God\'s character, attributes, or actions...',
+    question: 'What does this tell me about Jehovah God?',
+    placeholder: 'Reflect on Jehovah\'s character, attributes, or actions...',
   },
   {
     id: 'reflection2',
-    question: 'What did this passage teach me about myself or humanity?',
-    placeholder: 'Consider human nature, your own heart, or relationships...',
+    question: 'How does this section of the Scriptures contribute to the Bible\'s message?',
+    placeholder: '',
   },
   {
     id: 'reflection3',
-    question: 'How can I apply this to my life today?',
+    question: 'How can I apply this in my life?',
     placeholder: 'Think of specific, practical applications...',
   },
   {
     id: 'reflection4',
-    question: 'What is one thing I want to remember from this study?',
-    placeholder: 'Key verse, insight, or lesson to carry forward...',
+    question: 'How can I use these verses to help others?',
+    placeholder: '',
   },
   {
     id: 'reflection5',
-    question: 'How does this passage connect to other parts of Scripture?',
-    placeholder: 'Cross-references, themes, or biblical connections...',
+    question: 'What is one thing I want to remember from this study?',
+    placeholder: '',
   },
 ];
 
@@ -85,7 +85,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
     if (onAnswersChange) {
       onAnswersChange(answers);
     }
-    
+
     // Check if there are any answers to mark as unsaved changes
     const hasContent = Object.values(answers).some(answer => answer.trim().length > 0);
     setHasUnsavedChanges(hasContent);
@@ -170,7 +170,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
           <Text style={styles.questionText}>{question}</Text>
           {isAnswered && <Text style={styles.answeredIndicator}>✓</Text>}
         </View>
-        
+
         <TextInput
           style={[
             styles.answerInput,
@@ -191,11 +191,11 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container} 
+    <KeyboardAvoidingView
+      style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -208,11 +208,11 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
               {getAnswerCount()} of {REFLECTION_QUESTIONS.length} questions answered
             </Text>
             <View style={styles.progressBar}>
-              <View 
+              <View
                 style={[
-                  styles.progressFill, 
+                  styles.progressFill,
                   { width: `${(getAnswerCount() / REFLECTION_QUESTIONS.length) * 100}%` }
-                ]} 
+                ]}
               />
             </View>
           </View>
@@ -250,10 +250,10 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
             >
               <Text style={styles.clearButtonText}>Clear All</Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               style={[
-                styles.actionButton, 
+                styles.actionButton,
                 styles.saveButton,
                 !hasUnsavedChanges && styles.saveButtonDisabled,
               ]}
