@@ -1,12 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
     ScrollView,
     StyleSheet,
     Text,
-    TextInput,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import { BibleBook, getChapterNumbers } from '../data/bibleBooks';
 
@@ -28,230 +26,166 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = ({
     onChapterSelect,
     allowRange = true,
 }) => {
-    const [selectionMode, setSelectionMode] = useState<'single' | 'range'>('single');
-    const [customStart, setCustomStart] = useState('');
-    const [customEnd, setCustomEnd] = useState('');
-    const [showCustomInput, setShowCustomInput] = useState(false);
+    const [dragStart, setDragStart] = useState<number | null>(null);
+    const [dragCurrent, setDragCurrent] = useState<number | null>(null);
 
     useEffect(() => {
-        // Reset selection when book changes
+        // Reset drag state when book changes
         if (selectedBook) {
-            setCustomStart('');
-            setCustomEnd('');
-            setShowCustomInput(false);
+            setDragStart(null);
+            setDragCurrent(null);
         }
     }, [selectedBook]);
 
     if (!selectedBook) {
         return (
-            <View style={styles.disabledContainer}>
-                <Text style={styles.disabledText}>Select a book first</Text>
+            <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>Select a book to view chapters</Text>
             </View>
         );
     }
 
     const chapters = getChapterNumbers(selectedBook.name);
-    const totalChapters = chapters.length;
 
     const handleChapterPress = (chapter: number) => {
-        if (selectionMode === 'single') {
+        if (!allowRange) {
             onChapterSelect({ start: chapter });
+            return;
+        }
+
+        // If no current selection, select single chapter
+        if (!selectedChapters || selectedChapters.start === 0) {
+            onChapterSelect({ start: chapter });
+            return;
+        }
+
+        // If tapping the same single chapter, clear selection
+        if (selectedChapters.start === chapter && !selectedChapters.end) {
+            onChapterSelect({ start: 0 });
+            return;
+        }
+
+        // If tapping within existing range, clear and select single
+        if (isChapterInSelection(chapter)) {
+            onChapterSelect({ start: chapter });
+            return;
+        }
+
+        // If tapping outside range, extend range or create new range
+        const currentStart = selectedChapters.start;
+        const currentEnd = selectedChapters.end || currentStart;
+
+        if (chapter < currentStart) {
+            onChapterSelect({ start: chapter, end: currentEnd });
+        } else if (chapter > currentEnd) {
+            onChapterSelect({ start: currentStart, end: chapter });
         } else {
-            // Range mode - if no start selected, set start; if start exists, set end
-            if (!selectedChapters?.start) {
-                onChapterSelect({ start: chapter });
-            } else if (!selectedChapters?.end) {
-                if (chapter >= selectedChapters.start) {
-                    onChapterSelect({ start: selectedChapters.start, end: chapter });
-                } else {
-                    onChapterSelect({ start: chapter, end: selectedChapters.start });
-                }
-            } else {
-                // Reset and start new selection
-                onChapterSelect({ start: chapter });
-            }
+            onChapterSelect({ start: chapter });
         }
     };
 
-    const handleCustomRange = () => {
-        const start = parseInt(customStart);
-        const end = parseInt(customEnd);
+    const handleChapterLongPress = (chapter: number) => {
+        if (!allowRange) return;
 
-        if (!customStart || isNaN(start) || start < 1 || start > totalChapters) {
-            Alert.alert('Invalid Input', `Start chapter must be between 1 and ${totalChapters}`);
-            return;
-        }
-
-        if (customEnd && (isNaN(end) || end < start || end > totalChapters)) {
-            Alert.alert('Invalid Input', `End chapter must be between ${start} and ${totalChapters}`);
-            return;
-        }
-
-        onChapterSelect({
-            start,
-            end: customEnd ? end : undefined
-        });
-
-        setShowCustomInput(false);
+        // Long press starts range selection
+        setDragStart(chapter);
+        setDragCurrent(chapter);
     };
 
-    const isChapterSelected = (chapter: number): boolean => {
-        if (!selectedChapters) return false;
+    const isChapterInSelection = (chapter: number): boolean => {
+        if (!selectedChapters || selectedChapters.start === 0) return false;
 
-        if (!selectedChapters.end) {
-            return chapter === selectedChapters.start;
-        }
+        const start = selectedChapters.start;
+        const end = selectedChapters.end || start;
 
-        return chapter >= selectedChapters.start && chapter <= selectedChapters.end;
+        return chapter >= start && chapter <= end;
     };
 
-    const renderSelectionModeToggle = () => {
-        if (!allowRange) return null;
+    const isChapterInDragSelection = (chapter: number): boolean => {
+        if (dragStart === null || dragCurrent === null) return false;
 
-        return (
-            <View style={styles.modeToggle}>
-                <TouchableOpacity
-                    style={[
-                        styles.modeButton,
-                        selectionMode === 'single' && styles.modeButtonActive
-                    ]}
-                    onPress={() => setSelectionMode('single')}
-                >
-                    <Text style={[
-                        styles.modeButtonText,
-                        selectionMode === 'single' && styles.modeButtonTextActive
-                    ]}>
-                        Single Chapter
-                    </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[
-                        styles.modeButton,
-                        selectionMode === 'range' && styles.modeButtonActive
-                    ]}
-                    onPress={() => setSelectionMode('range')}
-                >
-                    <Text style={[
-                        styles.modeButtonText,
-                        selectionMode === 'range' && styles.modeButtonTextActive
-                    ]}>
-                        Chapter Range
-                    </Text>
-                </TouchableOpacity>
-            </View>
-        );
+        const start = Math.min(dragStart, dragCurrent);
+        const end = Math.max(dragStart, dragCurrent);
+
+        return chapter >= start && chapter <= end;
     };
 
-    const renderSelectionSummary = () => {
-        if (!selectedChapters) return null;
+    const getSelectionText = (): string => {
+        if (!selectedChapters || selectedChapters.start === 0) return '';
 
         const { start, end } = selectedChapters;
-        let text = `${selectedBook.name} ${start}`;
-        if (end && end !== start) {
-            text += `-${end}`;
+        if (!end || end === start) {
+            return `Chapter ${start}`;
         }
-
-        return (
-            <View style={styles.summaryContainer}>
-                <Text style={styles.summaryText}>Selected: {text}</Text>
-                <TouchableOpacity
-                    style={styles.clearButton}
-                    onPress={() => onChapterSelect({ start: 0 })}
-                >
-                    <Text style={styles.clearButtonText}>Clear</Text>
-                </TouchableOpacity>
-            </View>
-        );
+        return `Chapters ${start}–${end}`;
     };
 
-    const renderCustomInput = () => {
-        if (!showCustomInput) {
-            return (
-                <TouchableOpacity
-                    style={styles.customInputToggle}
-                    onPress={() => setShowCustomInput(true)}
-                >
-                    <Text style={styles.customInputToggleText}>Enter custom range</Text>
-                </TouchableOpacity>
-            );
-        }
+    const renderChapterButton = (chapter: number) => {
+        const isSelected = isChapterInSelection(chapter);
+        const isInDrag = isChapterInDragSelection(chapter);
+        const isFirst = selectedChapters?.start === chapter && !selectedChapters?.end;
+        const isRangeStart = selectedChapters?.start === chapter && selectedChapters?.end;
+        const isRangeEnd = selectedChapters?.end === chapter;
 
         return (
-            <View style={styles.customInputContainer}>
-                <View style={styles.customInputRow}>
-                    <TextInput
-                        style={styles.customInput}
-                        placeholder="Start"
-                        value={customStart}
-                        onChangeText={setCustomStart}
-                        keyboardType="numeric"
-                        maxLength={3}
-                    />
-                    {allowRange && (
-                        <>
-                            <Text style={styles.customInputSeparator}>to</Text>
-                            <TextInput
-                                style={styles.customInput}
-                                placeholder="End (optional)"
-                                value={customEnd}
-                                onChangeText={setCustomEnd}
-                                keyboardType="numeric"
-                                maxLength={3}
-                            />
-                        </>
-                    )}
-                </View>
-                <View style={styles.customInputActions}>
-                    <TouchableOpacity
-                        style={[styles.customActionButton, styles.customCancelButton]}
-                        onPress={() => {
-                            setShowCustomInput(false);
-                            setCustomStart('');
-                            setCustomEnd('');
-                        }}
-                    >
-                        <Text style={styles.customCancelButtonText}>Cancel</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.customActionButton, styles.customApplyButton]}
-                        onPress={handleCustomRange}
-                    >
-                        <Text style={styles.customApplyButtonText}>Apply</Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
+            <TouchableOpacity
+                key={chapter}
+                style={[
+                    styles.chapterButton,
+                    (isSelected || isInDrag) && styles.chapterButtonSelected,
+                    isFirst && styles.chapterButtonSingle,
+                    isRangeStart && styles.chapterButtonRangeStart,
+                    isRangeEnd && styles.chapterButtonRangeEnd,
+                ]}
+                onPress={() => handleChapterPress(chapter)}
+                onLongPress={() => handleChapterLongPress(chapter)}
+                activeOpacity={0.7}
+            >
+                <Text style={[
+                    styles.chapterButtonText,
+                    (isSelected || isInDrag) && styles.chapterButtonTextSelected
+                ]}>
+                    {chapter}
+                </Text>
+            </TouchableOpacity>
         );
     };
 
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>
-                Select Chapter{allowRange ? '(s)' : ''} - {selectedBook.name}
+            <View style={styles.header}>
+                <Text style={styles.bookTitle}>{selectedBook.name}</Text>
+                <Text style={styles.chapterCount}>
+                    {chapters.length} {chapters.length === 1 ? 'chapter' : 'chapters'}
+                </Text>
+            </View>
+
+            {selectedChapters && selectedChapters.start > 0 && (
+                <View style={styles.selectionContainer}>
+                    <Text style={styles.selectionText}>{getSelectionText()}</Text>
+                    <TouchableOpacity
+                        style={styles.clearButton}
+                        onPress={() => onChapterSelect({ start: 0 })}
+                    >
+                        <Text style={styles.clearButtonText}>Clear</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
+
+            <Text style={styles.instructionText}>
+                {allowRange
+                    ? 'Tap for single chapter, tap again to extend range'
+                    : 'Select a chapter'
+                }
             </Text>
 
-            {renderSelectionModeToggle()}
-            {renderSelectionSummary()}
-            {renderCustomInput()}
-
-            <ScrollView style={styles.chaptersContainer} showsVerticalScrollIndicator={false}>
+            <ScrollView
+                style={styles.scrollView}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+            >
                 <View style={styles.chaptersGrid}>
-                    {chapters.map((chapter) => (
-                        <TouchableOpacity
-                            key={chapter}
-                            style={[
-                                styles.chapterButton,
-                                isChapterSelected(chapter) && styles.chapterButtonSelected
-                            ]}
-                            onPress={() => handleChapterPress(chapter)}
-                        >
-                            <Text style={[
-                                styles.chapterButtonText,
-                                isChapterSelected(chapter) && styles.chapterButtonTextSelected
-                            ]}>
-                                {chapter}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
+                    {chapters.map(renderChapterButton)}
                 </View>
             </ScrollView>
         </View>
@@ -260,170 +194,129 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = ({
 
 const styles = StyleSheet.create({
     container: {
-        marginVertical: 16,
-    },
-    disabledContainer: {
-        paddingVertical: 32,
-        alignItems: 'center',
-    },
-    disabledText: {
-        fontSize: 16,
-        color: '#6c757d',
-    },
-    title: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#212529',
-        marginBottom: 16,
-    },
-    modeToggle: {
-        flexDirection: 'row',
-        marginBottom: 16,
-        backgroundColor: '#f8f9fa',
-        borderRadius: 8,
-        padding: 4,
-    },
-    modeButton: {
         flex: 1,
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 6,
+        minHeight: 250,
+    },
+    emptyContainer: {
+        paddingVertical: 40,
         alignItems: 'center',
     },
-    modeButtonActive: {
-        backgroundColor: '#ffffff',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
+    emptyText: {
+        fontSize: 15,
+        color: '#a39b90',
+        fontWeight: '400',
+        letterSpacing: 0.3,
     },
-    modeButtonText: {
-        fontSize: 14,
-        color: '#6c757d',
-        fontWeight: '500',
+    header: {
+        marginBottom: 20,
     },
-    modeButtonTextActive: {
-        color: '#007bff',
+    bookTitle: {
+        fontSize: 18,
+        fontWeight: '400',
+        color: '#3d3528',
+        marginBottom: 4,
+        letterSpacing: 0.2,
     },
-    summaryContainer: {
+    chapterCount: {
+        fontSize: 13,
+        color: '#a39b90',
+        fontWeight: '300',
+        letterSpacing: 0.5,
+        textTransform: 'uppercase',
+    },
+    selectionContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        backgroundColor: '#faf9f7',
         padding: 12,
-        backgroundColor: '#e7f3ff',
-        borderRadius: 8,
         marginBottom: 16,
+        borderRadius: 2,
+        borderWidth: 1,
+        borderColor: '#f0ede8',
     },
-    summaryText: {
-        fontSize: 16,
+    selectionText: {
+        fontSize: 14,
+        color: '#6b5b47',
         fontWeight: '500',
-        color: '#0056b3',
+        letterSpacing: 0.2,
     },
     clearButton: {
         paddingHorizontal: 12,
-        paddingVertical: 6,
-        backgroundColor: '#ffffff',
-        borderRadius: 4,
+        paddingVertical: 4,
+        backgroundColor: '#fefefe',
+        borderRadius: 2,
+        borderWidth: 1,
+        borderColor: '#e8e3dd',
     },
     clearButtonText: {
-        fontSize: 14,
-        color: '#0056b3',
-        fontWeight: '500',
+        fontSize: 12,
+        color: '#8b7355',
+        fontWeight: '400',
+        letterSpacing: 0.3,
     },
-    customInputToggle: {
-        alignItems: 'center',
-        paddingVertical: 12,
-        marginBottom: 16,
+    instructionText: {
+        fontSize: 12,
+        color: '#a39b90',
+        marginBottom: 20,
+        fontWeight: '300',
+        letterSpacing: 0.4,
+        lineHeight: 16,
     },
-    customInputToggleText: {
-        fontSize: 14,
-        color: '#007bff',
-        textDecorationLine: 'underline',
-    },
-    customInputContainer: {
-        backgroundColor: '#f8f9fa',
-        borderRadius: 8,
-        padding: 16,
-        marginBottom: 16,
-    },
-    customInputRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    customInput: {
+    scrollView: {
         flex: 1,
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        backgroundColor: '#ffffff',
-        borderRadius: 6,
-        borderWidth: 1,
-        borderColor: '#dee2e6',
-        fontSize: 16,
-        textAlign: 'center',
     },
-    customInputSeparator: {
-        paddingHorizontal: 12,
-        fontSize: 16,
-        color: '#6c757d',
-    },
-    customInputActions: {
-        flexDirection: 'row',
-        gap: 8,
-    },
-    customActionButton: {
-        flex: 1,
-        paddingVertical: 10,
-        borderRadius: 6,
-        alignItems: 'center',
-    },
-    customCancelButton: {
-        backgroundColor: '#ffffff',
-        borderWidth: 1,
-        borderColor: '#dee2e6',
-    },
-    customCancelButtonText: {
-        fontSize: 14,
-        color: '#6c757d',
-        fontWeight: '500',
-    },
-    customApplyButton: {
-        backgroundColor: '#007bff',
-    },
-    customApplyButtonText: {
-        fontSize: 14,
-        color: '#ffffff',
-        fontWeight: '500',
-    },
-    chaptersContainer: {
-        maxHeight: 300,
+    scrollContent: {
+        paddingBottom: 20,
     },
     chaptersGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 8,
+        // justifyContent: 'space-between',
     },
     chapterButton: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        backgroundColor: '#f8f9fa',
+        width: '16.66%', // ~8-9 columns
+        aspectRatio: 1,
+        backgroundColor: '#fefefe',
+        borderRadius: 2,
         borderWidth: 1,
-        borderColor: '#dee2e6',
+        borderColor: '#f0ede8',
+        marginBottom: 8,
         justifyContent: 'center',
         alignItems: 'center',
     },
     chapterButtonSelected: {
-        backgroundColor: '#007bff',
-        borderColor: '#007bff',
+        backgroundColor: '#8b7355',
+        borderColor: '#6b5b47',
+    },
+    chapterButtonSingle: {
+        backgroundColor: '#6b5b47',
+        borderColor: '#5a4a37',
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 1,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 2,
+    },
+    chapterButtonRangeStart: {
+        backgroundColor: '#6b5b47',
+        borderColor: '#5a4a37',
+    },
+    chapterButtonRangeEnd: {
+        backgroundColor: '#6b5b47',
+        borderColor: '#5a4a37',
     },
     chapterButtonText: {
-        fontSize: 16,
+        fontSize: 12,
         fontWeight: '500',
-        color: '#6c757d',
+        color: '#3d3528',
+        letterSpacing: 0.2,
     },
     chapterButtonTextSelected: {
-        color: '#ffffff',
+        color: '#fefefe',
+        fontWeight: '600',
     },
 });
