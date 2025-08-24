@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
-    FlatList,
-    Modal,
+    ScrollView,
     StyleSheet,
     Text,
     TextInput,
@@ -16,260 +15,339 @@ interface BookPickerProps {
     placeholder?: string;
 }
 
-type TestamentFilter = 'All' | 'Old' | 'New';
-
 export const BookPicker: React.FC<BookPickerProps> = ({
     selectedBook,
     onBookSelect,
-    placeholder = 'Select a book...'
+    placeholder = 'Choose a book to begin...'
 }) => {
-    const [isModalVisible, setIsModalVisible] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    const [testamentFilter, setTestamentFilter] = useState<TestamentFilter>('All');
 
-    const getFilteredBooks = (): BibleBook[] => {
-        let books: BibleBook[] = [];
-
-        switch (testamentFilter) {
-            case 'Old':
-                books = OLD_TESTAMENT_BOOKS;
-                break;
-            case 'New':
-                books = NEW_TESTAMENT_BOOKS;
-                break;
-            default:
-                books = ALL_BIBLE_BOOKS;
-        }
-
+    const getFilteredBooks = (books: BibleBook[]): BibleBook[] => {
         if (searchQuery.trim()) {
             return books.filter(book =>
-                book.name.toLowerCase().includes(searchQuery.toLowerCase())
+                book.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                book.abbrv.toLowerCase().includes(searchQuery.toLowerCase())
             );
         }
-
         return books;
     };
 
-    const handleBookSelect = (book: BibleBook) => {
-        onBookSelect(book);
-        setIsModalVisible(false);
-        setSearchQuery('');
-    };
-
-    const renderTestamentFilter = () => (
-        <View style={styles.filterContainer}>
-            {(['All', 'Old', 'New'] as TestamentFilter[]).map((filter) => (
-                <TouchableOpacity
-                    key={filter}
-                    style={[
-                        styles.filterButton,
-                        testamentFilter === filter && styles.filterButtonActive
-                    ]}
-                    onPress={() => setTestamentFilter(filter)}
-                >
-                    <Text style={[
-                        styles.filterButtonText,
-                        testamentFilter === filter && styles.filterButtonTextActive
-                    ]}>
-                        {filter === 'All' ? 'All Books' : `${filter} Testament`}
-                    </Text>
-                </TouchableOpacity>
-            ))}
+    const renderSectionHeader = (title: string, subtitle: string) => (
+        <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>{title}</Text>
+            <Text style={styles.sectionSubtitle}>{subtitle}</Text>
+            <View style={styles.sectionLine} />
         </View>
     );
 
-    const renderBookItem = ({ item }: { item: BibleBook }) => (
-        <TouchableOpacity
-            style={styles.bookItem}
-            onPress={() => handleBookSelect(item)}
-        >
-            <View style={styles.bookItemContent}>
-                <Text style={styles.bookName}>{item.name}</Text>
-                <Text style={styles.chapterCount}>{item.chapters} chapters</Text>
+    const renderBookGrid = (books: BibleBook[], isNewTestament = false) => {
+        return (
+            <View style={[
+                styles.booksGrid,
+                isNewTestament && styles.newTestamentGrid
+            ]}>
+                {books.map(book => {
+                    const isSelected = selectedBook?.name === book.name;
+
+                    return (
+                        <TouchableOpacity
+                            key={book.name}
+                            style={[
+                                styles.bookCard,
+                                isSelected && styles.bookCardSelected,
+                            ]}
+                            onPress={() => onBookSelect(book)}
+                            activeOpacity={0.7}
+                        >
+                            <Text style={[
+                                styles.bookAbbreviation,
+                                isSelected && styles.bookAbbreviationSelected
+                            ]}>
+                                {book.abbrv}
+                            </Text>
+                            <Text style={[
+                                styles.chapterCount,
+                                isSelected && styles.chapterCountSelected
+                            ]}>
+                                {book.chapters}
+                            </Text>
+                            {isSelected && <View style={styles.selectedDot} />}
+                        </TouchableOpacity>
+                    );
+                })}
             </View>
-            <Text style={styles.testament}>{item.testament}</Text>
-        </TouchableOpacity>
-    );
+        );
+    };
+
+    const renderSearchResults = () => {
+        const filteredBooks = getFilteredBooks(ALL_BIBLE_BOOKS);
+
+        if (filteredBooks.length === 0) {
+            return (
+                <View style={styles.emptyState}>
+                    <Text style={styles.emptyStateText}>No books found</Text>
+                    <Text style={styles.emptyStateSubtext}>
+                        Try a different search term
+                    </Text>
+                </View>
+            );
+        }
+
+        return (
+            <View style={styles.searchResults}>
+                <View style={styles.searchResultsGrid}>
+                    {filteredBooks.map(book => {
+                        const isSelected = selectedBook?.name === book.name;
+
+                        return (
+                            <TouchableOpacity
+                                key={book.name}
+                                style={[
+                                    styles.bookCard,
+                                    styles.searchResultCard,
+                                    isSelected && styles.bookCardSelected,
+                                ]}
+                                onPress={() => onBookSelect(book)}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={[
+                                    styles.bookAbbreviation,
+                                    isSelected && styles.bookAbbreviationSelected
+                                ]}>
+                                    {book.abbrv}
+                                </Text>
+                                <Text style={[
+                                    styles.chapterCount,
+                                    isSelected && styles.chapterCountSelected
+                                ]}>
+                                    {book.chapters}
+                                </Text>
+                                <Text style={styles.testamentBadge}>
+                                    {book.testament === 'Old' ? 'HA' : 'GK'}
+                                </Text>
+                                {isSelected && <View style={styles.selectedDot} />}
+                            </TouchableOpacity>
+                        );
+                    })}
+                </View>
+            </View>
+        );
+    };
+
+    const renderContent = () => {
+        if (searchQuery.trim()) {
+            return renderSearchResults();
+        }
+
+        const filteredOT = getFilteredBooks(OLD_TESTAMENT_BOOKS);
+        const filteredNT = getFilteredBooks(NEW_TESTAMENT_BOOKS);
+
+        return (
+            <View style={styles.booksContainer}>
+                {/* Old Testament Section */}
+                {renderSectionHeader('Hebrew-Aramic Scriptures', '39 books')}
+                {renderBookGrid(filteredOT, false)}
+
+                {/* New Testament Section */}
+                {renderSectionHeader('Christian Greek Scriptures', '27 books')}
+                {renderBookGrid(filteredNT, true)}
+            </View>
+        );
+    };
 
     return (
         <View style={styles.container}>
-            <TouchableOpacity
-                style={styles.selector}
-                onPress={() => setIsModalVisible(true)}
+            {!selectedBook && (
+                <Text style={styles.placeholder}>{placeholder}</Text>
+            )}
+
+            <TextInput
+                style={styles.searchInput}
+                placeholder="Search books..."
+                placeholderTextColor="#a39b90"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                autoCapitalize="none"
+                autoCorrect={false}
+            />
+
+            <ScrollView
+                style={styles.scrollView}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
             >
-                <Text style={[
-                    styles.selectorText,
-                    !selectedBook && styles.placeholderText
-                ]}>
-                    {selectedBook ? selectedBook.name : placeholder}
-                </Text>
-                <Text style={styles.arrow}>▼</Text>
-            </TouchableOpacity>
-
-            <Modal
-                visible={isModalVisible}
-                animationType="slide"
-                presentationStyle="pageSheet"
-                onRequestClose={() => setIsModalVisible(false)}
-            >
-                <View style={styles.modalContainer}>
-                    <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>Select Bible Book</Text>
-                        <TouchableOpacity
-                            style={styles.closeButton}
-                            onPress={() => setIsModalVisible(false)}
-                        >
-                            <Text style={styles.closeButtonText}>✕</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    <TextInput
-                        style={styles.searchInput}
-                        placeholder="Search books..."
-                        value={searchQuery}
-                        onChangeText={setSearchQuery}
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                    />
-
-                    {renderTestamentFilter()}
-
-                    <FlatList
-                        data={getFilteredBooks()}
-                        renderItem={renderBookItem}
-                        keyExtractor={(item) => item.name}
-                        style={styles.booksList}
-                        showsVerticalScrollIndicator={false}
-                    />
-                </View>
-            </Modal>
+                {renderContent()}
+            </ScrollView>
         </View>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
-        marginVertical: 8,
-    },
-    selector: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        backgroundColor: '#f8f9fa',
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: '#e9ecef',
-    },
-    selectorText: {
-        fontSize: 16,
-        color: '#212529',
-    },
-    placeholderText: {
-        color: '#6c757d',
-    },
-    arrow: {
-        fontSize: 12,
-        color: '#6c757d',
-    },
-    modalContainer: {
         flex: 1,
-        backgroundColor: '#ffffff',
+        minHeight: 400,
     },
-    modalHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingVertical: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#e9ecef',
-    },
-    modalTitle: {
-        fontSize: 20,
-        fontWeight: '600',
-        color: '#212529',
-    },
-    closeButton: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: '#f8f9fa',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    closeButtonText: {
-        fontSize: 16,
-        color: '#6c757d',
+    placeholder: {
+        fontSize: 15,
+        color: '#a39b90',
+        textAlign: 'center',
+        marginBottom: 20,
+        fontWeight: '400',
+        letterSpacing: 0.3,
     },
     searchInput: {
-        margin: 16,
+        backgroundColor: '#fefefe',
+        borderWidth: 1,
+        borderColor: '#f0ede8',
+        borderRadius: 2,
         paddingVertical: 12,
         paddingHorizontal: 16,
-        backgroundColor: '#f8f9fa',
-        borderRadius: 8,
-        fontSize: 16,
-        borderWidth: 1,
-        borderColor: '#e9ecef',
+        fontSize: 15,
+        color: '#3d3528',
+        marginBottom: 24,
+        fontWeight: '400',
+        letterSpacing: 0.2,
     },
-    filterContainer: {
-        flexDirection: 'row',
-        paddingHorizontal: 16,
+    scrollView: {
+        flex: 1,
+    },
+    scrollContent: {
+        paddingBottom: 20,
+    },
+    booksContainer: {
+        flex: 1,
+    },
+    sectionHeader: {
+        marginBottom: 16,
+        marginTop: 8,
+    },
+    sectionTitle: {
+        fontSize: 16,
+        fontWeight: '400',
+        color: '#6b5b47',
+        marginBottom: 4,
+        letterSpacing: 0.5,
+    },
+    sectionSubtitle: {
+        fontSize: 12,
+        color: '#a39b90',
+        fontWeight: '300',
+        letterSpacing: 0.8,
+        textTransform: 'uppercase',
         marginBottom: 8,
-        gap: 8,
     },
-    filterButton: {
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        borderRadius: 20,
-        backgroundColor: '#f8f9fa',
-        borderWidth: 1,
-        borderColor: '#e9ecef',
+    sectionLine: {
+        height: 1,
+        backgroundColor: '#f0ede8',
+        width: 40,
     },
-    filterButtonActive: {
-        backgroundColor: '#007bff',
-        borderColor: '#007bff',
-    },
-    filterButtonText: {
-        fontSize: 14,
-        color: '#6c757d',
-        fontWeight: '500',
-    },
-    filterButtonTextActive: {
-        color: '#ffffff',
-    },
-    booksList: {
-        flex: 1,
-    },
-    bookItem: {
+    booksGrid: {
         flexDirection: 'row',
+        flexWrap: 'wrap',
         justifyContent: 'space-between',
+        marginBottom: 12,
+    },
+    newTestamentGrid: {
+        paddingTop: 12,
+    },
+    bookCard: {
+        width: '31%',
+        aspectRatio: 1.2,
+        backgroundColor: '#fefefe',
+        borderRadius: 2,
+        borderWidth: 1,
+        borderColor: '#f0ede8',
+        marginBottom: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 8,
         alignItems: 'center',
-        paddingVertical: 16,
-        paddingHorizontal: 20,
-        borderBottomWidth: 1,
-        borderBottomColor: '#f8f9fa',
+        justifyContent: 'center',
+        position: 'relative',
     },
-    bookItemContent: {
-        flex: 1,
+    bookCardSelected: {
+        backgroundColor: '#f5f2ed',
+        borderRadius: 7,
+        borderColor: '#d6d3ce',
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 1,
+        },
+        shadowOpacity: 0.08,
+        shadowRadius: 2,
+        elevation: 2,
     },
-    bookName: {
-        fontSize: 16,
+    searchResultCard: {
+        paddingTop: 8,
+    },
+    bookAbbreviation: {
+        fontSize: 13,
         fontWeight: '500',
-        color: '#212529',
-        marginBottom: 2,
+        color: '#3d3528',
+        textAlign: 'center',
+        marginBottom: 4,
+        letterSpacing: 0.2,
+    },
+    bookAbbreviationSelected: {
+        color: '#6b5b47',
+        fontWeight: '600',
     },
     chapterCount: {
-        fontSize: 14,
-        color: '#6c757d',
+        fontSize: 11,
+        color: '#a39b90',
+        fontWeight: '300',
+        letterSpacing: 0.3,
     },
-    testament: {
-        fontSize: 12,
-        color: '#6c757d',
-        backgroundColor: '#f8f9fa',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 4,
+    chapterCountSelected: {
+        color: '#8b7355',
+        fontWeight: '400',
+    },
+    selectedDot: {
+        position: 'absolute',
+        top: 6,
+        right: 6,
+        width: 5,
+        height: 5,
+        borderRadius: 2.5,
+        backgroundColor: '#8b7355',
+    },
+    testamentBadge: {
+        position: 'absolute',
+        top: 4,
+        left: 4,
+        fontSize: 8,
+        color: '#8b8075',
+        backgroundColor: '#f0ede8',
+        paddingHorizontal: 4,
+        paddingVertical: 2,
+        borderRadius: 2,
+        fontWeight: '600',
+        letterSpacing: 0.5,
+        textTransform: 'uppercase',
+    },
+    searchResults: {
+        flex: 1,
+    },
+    searchResultsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+    },
+    emptyState: {
+        alignItems: 'center',
+        paddingVertical: 40,
+    },
+    emptyStateText: {
+        fontSize: 16,
+        color: '#756b5e',
+        fontWeight: '400',
+        marginBottom: 4,
+        letterSpacing: 0.2,
+    },
+    emptyStateSubtext: {
+        fontSize: 13,
+        color: '#a39b90',
+        fontWeight: '300',
+        letterSpacing: 0.3,
     },
 });
