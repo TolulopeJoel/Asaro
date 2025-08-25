@@ -64,12 +64,6 @@ export default function TestScreen() {
             const entryId = createJournalEntry(entryData);
             setReflectionAnswers(answers);
             setCurrentStep('summary');
-            
-            Alert.alert(
-                'Success!',
-                `Your reflection has been saved! Entry ID: ${entryId}`,
-                [{ text: 'OK' }]
-            );
         } catch (error) {
             console.error('Error saving entry:', error);
             Alert.alert('Error', 'Failed to save your reflection. Please try again.');
@@ -136,20 +130,15 @@ export default function TestScreen() {
             case 'book':
                 return (
                     <View style={styles.stepContent}>
-                        <View style={styles.titleContainer}>
-                            <Text style={styles.stepTitle}>Choose a Book</Text>
-                            <View style={styles.titleUnderline} />
-                        </View>
-                        
-                        <Text style={styles.stepDescription}>
-                            Select which book of the Bible you would like to study.
+
+                        <Text style={styles.stepQuestion}>
+                            What book?
                         </Text>
-                        
+
                         <View style={styles.contentArea}>
                             <BookPicker
                                 selectedBook={selectedBook}
                                 onBookSelect={handleBookSelect}
-                                placeholder="Choose a Bible book..."
                             />
                         </View>
                     </View>
@@ -158,20 +147,10 @@ export default function TestScreen() {
             case 'chapter':
                 return (
                     <View style={styles.stepContent}>
-                        <View style={styles.titleContainer}>
-                            <Text style={styles.stepTitle}>Select Chapter</Text>
-                            <View style={styles.titleUnderline} />
-                        </View>
-                        
-                        <Text style={styles.stepDescription}>
-                            Choose the chapter from {selectedBook?.name} for today's reflection.
+
+                        <Text style={styles.stepQuestion}>
+                            What part did you read?
                         </Text>
-                        
-                        <View style={styles.subtleCard}>
-                            <Text style={styles.cardLabel}>Selected</Text>
-                            <Text style={styles.cardValue}>{selectedBook?.name}</Text>
-                            <Text style={styles.cardMeta}>{selectedBook?.chapters} chapters available</Text>
-                        </View>
 
                         <View style={styles.contentArea}>
                             <ChapterPicker
@@ -183,18 +162,18 @@ export default function TestScreen() {
                         </View>
 
                         <View style={styles.navigationContainer}>
-                            <TouchableOpacity 
-                                style={styles.backButton} 
+                            <TouchableOpacity
+                                style={styles.backButton}
                                 onPress={() => setCurrentStep('book')}
                             >
-                                <Text style={styles.backButtonText}>← Back</Text>
+                                <Text style={styles.backButtonText}>Back</Text>
                             </TouchableOpacity>
-                            
-                            <TouchableOpacity 
+
+                            <TouchableOpacity
                                 style={[
                                     styles.continueButton,
                                     (!selectedChapters || selectedChapters.start === 0) && styles.continueButtonDisabled
-                                ]} 
+                                ]}
                                 onPress={handleContinueToReflection}
                                 disabled={!selectedChapters || selectedChapters.start === 0}
                             >
@@ -207,11 +186,6 @@ export default function TestScreen() {
             case 'reflection':
                 return (
                     <View style={styles.stepContent}>
-                        <View style={styles.titleContainer}>
-                            <Text style={styles.stepTitle}>Reflection</Text>
-                            <View style={styles.titleUnderline} />
-                        </View>
-                        
                         <Text style={styles.stepDescription}>
                             Take time for quiet contemplation of today's reading.
                         </Text>
@@ -229,8 +203,8 @@ export default function TestScreen() {
                             />
                         </View>
 
-                        <TouchableOpacity 
-                            style={styles.subtleBackButton} 
+                        <TouchableOpacity
+                            style={styles.subtleBackButton}
                             onPress={() => setCurrentStep('chapter')}
                         >
                             <Text style={styles.subtleBackButtonText}>← Return to chapter selection</Text>
@@ -245,7 +219,7 @@ export default function TestScreen() {
                             <Text style={styles.stepTitle}>Complete</Text>
                             <View style={styles.titleUnderline} />
                         </View>
-                        
+
                         <Text style={styles.stepDescription}>
                             Your reflection has been preserved.
                         </Text>
@@ -257,11 +231,11 @@ export default function TestScreen() {
                             </View>
                             <View style={styles.completionDetails}>
                                 <Text style={styles.completionText}>{getSelectionSummary()}</Text>
-                                <Text style={styles.completionDate}>{new Date().toLocaleDateString('en-US', { 
-                                    weekday: 'long', 
-                                    year: 'numeric', 
-                                    month: 'long', 
-                                    day: 'numeric' 
+                                <Text style={styles.completionDate}>{new Date().toLocaleDateString('en-US', {
+                                    weekday: 'long',
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric'
                                 })}</Text>
                             </View>
                         </View>
@@ -281,9 +255,9 @@ export default function TestScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            {renderStepIndicator()}
-            <ScrollView 
-                style={styles.scrollView} 
+            {/* {renderStepIndicator()} */}
+            <ScrollView
+                style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
@@ -384,52 +358,25 @@ const styles = StyleSheet.create({
         backgroundColor: '#c4b8a8',
     },
     stepDescription: {
-        fontSize: 15,
+        fontSize: 17,
         fontWeight: '400',
         textAlign: 'center',
-        marginBottom: 40,
+        marginBottom: 8,
         color: '#756b5e',
         lineHeight: 22,
         letterSpacing: 0.2,
     },
+    stepQuestion: {
+        fontSize: 22,
+        fontWeight: '600',
+        marginBottom: 30,
+        color: '#756b5e',
+        lineHeight: 24,
+        letterSpacing: 0.1,
+    },
     contentArea: {
         flex: 1,
         minHeight: 200,
-    },
-    subtleCard: {
-        backgroundColor: '#fefefe',
-        padding: 20,
-        marginBottom: 32,
-        borderRadius: 2,
-        borderLeftWidth: 2,
-        borderLeftColor: '#e8e3dd',
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 1,
-        },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 1,
-    },
-    cardLabel: {
-        fontSize: 11,
-        fontWeight: '500',
-        color: '#a39b90',
-        letterSpacing: 0.8,
-        textTransform: 'uppercase',
-        marginBottom: 4,
-    },
-    cardValue: {
-        fontSize: 18,
-        fontWeight: '400',
-        color: '#3d3528',
-        marginBottom: 2,
-    },
-    cardMeta: {
-        fontSize: 13,
-        color: '#8b8075',
-        fontWeight: '300',
     },
     readingCard: {
         backgroundColor: '#faf9f7',
