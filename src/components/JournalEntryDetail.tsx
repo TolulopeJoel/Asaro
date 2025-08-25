@@ -120,7 +120,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                 content += `📝 Additional Notes:\n${entry.notes.trim()}\n\n`;
             }
 
-            content += `✨ Created with Meditation Reminder`;
+            content += `✨ Created with Meditation Journal`;
 
             await Share.share({
                 message: content,

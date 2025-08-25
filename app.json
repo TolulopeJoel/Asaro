@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "MeditationReminder",
-    "slug": "MeditationReminder",
+    "name": "I have no logo; who go help abeg? \n\n                  Could be you 🥹",
+    "slug": "MeditationJournal",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "meditationreminder",
+    "icon": "./assets/images/meditationIcon.jpeg",
+    "scheme": "meditationjournal://",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
