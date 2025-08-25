@@ -12,13 +12,11 @@ import { ALL_BIBLE_BOOKS, BibleBook, NEW_TESTAMENT_BOOKS, OLD_TESTAMENT_BOOKS } 
 interface BookPickerProps {
     selectedBook?: BibleBook;
     onBookSelect: (book: BibleBook) => void;
-    placeholder?: string;
 }
 
 export const BookPicker: React.FC<BookPickerProps> = ({
     selectedBook,
     onBookSelect,
-    placeholder = 'Choose a book to begin...'
 }) => {
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -85,9 +83,9 @@ export const BookPicker: React.FC<BookPickerProps> = ({
         if (filteredBooks.length === 0) {
             return (
                 <View style={styles.emptyState}>
-                    <Text style={styles.emptyStateText}>No books found</Text>
+                    <Text style={styles.emptyStateText}>This Book no dey Bible o 👀😂</Text>
                     <Text style={styles.emptyStateSubtext}>
-                        Try a different search term
+                        Check your spelling or try a different search term
                     </Text>
                 </View>
             );
@@ -157,13 +155,9 @@ export const BookPicker: React.FC<BookPickerProps> = ({
 
     return (
         <View style={styles.container}>
-            {!selectedBook && (
-                <Text style={styles.placeholder}>{placeholder}</Text>
-            )}
-
             <TextInput
                 style={styles.searchInput}
-                placeholder="Search books..."
+                placeholder="Search..."
                 placeholderTextColor="#a39b90"
                 value={searchQuery}
                 onChangeText={setSearchQuery}
@@ -186,14 +180,6 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         minHeight: 400,
-    },
-    placeholder: {
-        fontSize: 15,
-        color: '#a39b90',
-        textAlign: 'center',
-        marginBottom: 20,
-        fontWeight: '400',
-        letterSpacing: 0.3,
     },
     searchInput: {
         backgroundColor: '#fefefe',
