@@ -1,12 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
-  KeyboardAvoidingView,
-  Platform, ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { TextArea } from './TextArea';
 
@@ -93,9 +91,9 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
 
     if (!hasContent) {
       Alert.alert(
-        'Empty Reflection',
-        'Please write something before saving.',
-        [{ text: 'Continue Writing' }]
+        'Nothing yet?',
+        'Jot down even a quick thought before saving.',
+        [{ text: 'Keep Writing' }]
       );
       return;
     }
@@ -111,12 +109,12 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
     if (!hasContent) return;
 
     Alert.alert(
-      'Clear Reflection',
-      'This will remove all your writing. Are you sure?',
+      'Re-write',
+      'This will clear everything you\'ve written. Are you sure? 👀',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'Keep It', style: 'cancel' },
         {
-          text: 'Clear',
+          text: 'Clear All',
           style: 'destructive',
           onPress: () => {
             const emptyAnswers = {
@@ -160,99 +158,55 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.header}>
-          <Text style={styles.title}>Reflection</Text>
-          <Text style={styles.subtitle}>
-            Take time to contemplate what you've read
-          </Text>
-        </View>
-
-        <View style={styles.questionsContainer}>
-          {REFLECTION_QUESTIONS.map((question, index) =>
-            renderQuestion(question, index)
-          )}
-
-          <View style={styles.notesContainer}>
-            <View style={styles.notesHeader}>
-              <Text style={styles.notesTitle}>Additional Thoughts</Text>
-              <Text style={styles.notesSubtitle}>Optional</Text>
-            </View>
-            <TextArea
-              label=""
-              value={answers.notes}
-              placeholder="Any other insights, questions, or reflections..."
-              onChange={(text) => updateAnswer('notes', text)}
-              disabled={disabled}
-              isAnswered={answers.notes.trim().length > 0}
-            />
-          </View>
-        </View>
-
-        {!disabled && (
-          <View style={styles.actionsContainer}>
-            <TouchableOpacity
-              style={styles.clearButton}
-              onPress={handleClear}
-            >
-              <Text style={styles.clearButtonText}>Clear All</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.saveButton}
-              onPress={handleSave}
-            >
-              <Text style={styles.saveButtonText}>Save Reflection</Text>
-            </TouchableOpacity>
-          </View>
+    <View style={styles.container}>
+      <View style={styles.questionsContainer}>
+        {REFLECTION_QUESTIONS.map((question, index) =>
+          renderQuestion(question, index)
         )}
-      </ScrollView>
-    </KeyboardAvoidingView>
+
+        <View style={styles.notesContainer}>
+          <View style={styles.notesHeader}>
+            <Text style={styles.notesTitle}>Additional Thoughts</Text>
+            <Text style={styles.notesSubtitle}>Optional</Text>
+          </View>
+          <TextArea
+            label=""
+            value={answers.notes}
+            placeholder="Any other insights, questions, or reflections..."
+            onChange={(text) => updateAnswer('notes', text)}
+            disabled={disabled}
+            isAnswered={answers.notes.trim().length > 0}
+          />
+        </View>
+      </View>
+
+      {!disabled && (
+        <View style={styles.actionsContainer}>
+          <TouchableOpacity
+            style={styles.clearButton}
+            onPress={handleClear}
+          >
+            <Text style={styles.clearButtonText}>Start Over</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.saveButton}
+            onPress={handleSave}
+          >
+            <Text style={styles.saveButtonText}>Save It</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f7f6f3',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 40,
-  },
-  header: {
-    paddingHorizontal: 24,
-    paddingVertical: 32,
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '300',
-    color: '#3d3528',
-    letterSpacing: -0.2,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#8b8075',
-    fontWeight: '300',
-    letterSpacing: 0.3,
-    textAlign: 'center',
-    lineHeight: 20,
   },
   questionsContainer: {
-    paddingHorizontal: 24,
+    // Removed paddingHorizontal since parent handles it
   },
   questionContainer: {
     marginBottom: 40,
@@ -309,7 +263,6 @@ const styles = StyleSheet.create({
   },
   actionsContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 24,
     paddingVertical: 32,
     gap: 16,
   },
