@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "I have no logo; who go help abeg? \n\n                  Could be you 🥹",
+    "name": "           NO LOGO 🙂‍↔️  \n\n      Who go help, abeg?",
     "slug": "MeditationJournal",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/meditationIcon.jpeg",
+    "icon": "./assets/images/meditationIcon.webp",
     "scheme": "meditationjournal://",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
