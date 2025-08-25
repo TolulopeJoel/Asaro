@@ -1,6 +1,6 @@
 import { createJournalEntry, JournalEntryInput } from '@/src/data/database';
 import React, { useState } from 'react';
-import { Alert, Dimensions, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BookPicker } from '../src/components/BookPicker';
 import { ChapterPicker } from '../src/components/ChapterPicker';
 import { ReflectionAnswers, ReflectionForm } from '../src/components/ReflectionForm';
@@ -13,13 +13,11 @@ interface ChapterRange {
 
 type Step = 'book' | 'chapter' | 'reflection' | 'summary';
 
-const { height: screenHeight } = Dimensions.get('window');
-
 export default function TestScreen() {
     const [currentStep, setCurrentStep] = useState<Step>('book');
     const [selectedBook, setSelectedBook] = useState<BibleBook>();
     const [selectedChapters, setSelectedChapters] = useState<ChapterRange>();
-    const [reflectionAnswers, setReflectionAnswers] = useState<ReflectionAnswers>();
+    const [_, setReflectionAnswers] = useState<ReflectionAnswers>();
 
     const handleBookSelect = (book: BibleBook) => {
         setSelectedBook(book);
@@ -89,41 +87,6 @@ export default function TestScreen() {
         return summary;
     };
 
-    const renderStepIndicator = () => {
-        const steps = [
-            { key: 'book', label: 'Book', completed: !!selectedBook },
-            { key: 'chapter', label: 'Chapter', completed: !!selectedChapters },
-            { key: 'reflection', label: 'Reflect', completed: !!reflectionAnswers },
-            { key: 'summary', label: 'Complete', completed: currentStep === 'summary' }
-        ];
-
-        return (
-            <View style={styles.stepIndicator}>
-                {steps.map((step, index) => (
-                    <View key={step.key} style={styles.stepContainer}>
-                        <View style={[
-                            styles.stepDot,
-                            currentStep === step.key && styles.stepDotActive,
-                            step.completed && styles.stepDotCompleted
-                        ]} />
-                        <Text style={[
-                            styles.stepLabel,
-                            currentStep === step.key && styles.stepLabelActive,
-                            step.completed && styles.stepLabelCompleted
-                        ]}>
-                            {step.label}
-                        </Text>
-                        {index < steps.length - 1 && (
-                            <View style={[
-                                styles.stepLine,
-                                step.completed && styles.stepLineCompleted
-                            ]} />
-                        )}
-                    </View>
-                ))}
-            </View>
-        );
-    };
 
     const renderCurrentStep = () => {
         switch (currentStep) {

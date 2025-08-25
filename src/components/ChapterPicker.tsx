@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import {
-    ScrollView,
+    StyleProp,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View
+    View,
+    ViewStyle
 } from 'react-native';
 import { BibleBook, getChapterNumbers } from '../data/bibleBooks';
 
@@ -37,15 +38,7 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = ({
         }
     }, [selectedBook]);
 
-    if (!selectedBook) {
-        return (
-            <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>Select a book to view chapters</Text>
-            </View>
-        );
-    }
-
-    const chapters = getChapterNumbers(selectedBook.name);
+    const chapters = getChapterNumbers(selectedBook?.name || "Philippians");
 
     const handleChapterPress = (chapter: number) => {
         if (!allowRange) {
@@ -128,7 +121,7 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = ({
                     isFirst && styles.chapterButtonSingle,
                     isRangeStart && styles.chapterButtonRangeStart,
                     isRangeEnd && styles.chapterButtonRangeEnd,
-                ]}
+                ] as StyleProp<ViewStyle>}
                 onPress={() => handleChapterPress(chapter)}
                 activeOpacity={0.7}
             >
@@ -145,7 +138,7 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = ({
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.bookTitle}>{selectedBook.name}</Text>
+                <Text style={styles.bookTitle}>{selectedBook?.name}</Text>
                 <Text style={styles.chapterCount}>
                     {chapters.length} {chapters.length === 1 ? 'chapter' : 'chapters'}
                 </Text>
@@ -170,15 +163,9 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = ({
                 }
             </Text>
 
-            <ScrollView
-                style={styles.scrollView}
-                contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
-            >
-                <View style={styles.chaptersGrid}>
-                    {chapters.map(renderChapterButton)}
-                </View>
-            </ScrollView>
+            <View style={styles.chaptersGrid}>
+                {chapters.map(renderChapterButton)}
+            </View>
         </View>
     );
 };
@@ -254,19 +241,13 @@ const styles = StyleSheet.create({
         letterSpacing: 0.4,
         lineHeight: 16,
     },
-    scrollView: {
-        flex: 1,
-    },
-    scrollContent: {
-        paddingBottom: 20,
-    },
     chaptersGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        // justifyContent: 'space-between',
+        gap: 1.37,
     },
     chapterButton: {
-        width: '16.66%', // ~8-9 columns
+        width: '16.3%',
         aspectRatio: 1,
         backgroundColor: '#fefefe',
         borderRadius: 2,
