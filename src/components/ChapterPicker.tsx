@@ -84,14 +84,6 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = ({
         }
     };
 
-    const handleChapterLongPress = (chapter: number) => {
-        if (!allowRange) return;
-
-        // Long press starts range selection
-        setDragStart(chapter);
-        setDragCurrent(chapter);
-    };
-
     const isChapterInSelection = (chapter: number): boolean => {
         if (!selectedChapters || selectedChapters.start === 0) return false;
 
@@ -138,7 +130,6 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = ({
                     isRangeEnd && styles.chapterButtonRangeEnd,
                 ]}
                 onPress={() => handleChapterPress(chapter)}
-                onLongPress={() => handleChapterLongPress(chapter)}
                 activeOpacity={0.7}
             >
                 <Text style={[
