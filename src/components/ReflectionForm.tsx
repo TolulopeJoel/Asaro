@@ -1,16 +1,14 @@
-// src/components/ReflectionForm.tsx
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
-  Platform,
-  ScrollView,
+  Platform, ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { TextArea } from './TextArea';
 
 export interface ReflectionAnswers {
   reflection1: string;
@@ -28,7 +26,6 @@ interface ReflectionFormProps {
   disabled?: boolean;
 }
 
-// Fixed reflection questions - customize these as needed
 interface ReflectionQuestion {
   id: keyof ReflectionAnswers;
   question: string;
@@ -39,7 +36,7 @@ const REFLECTION_QUESTIONS: ReflectionQuestion[] = [
   {
     id: 'reflection1',
     question: 'What does this tell me about Jehovah God?',
-    placeholder: 'Reflect on Jehovah\'s character, attributes, or actions...',
+    placeholder: '',
   },
   {
     id: 'reflection2',
@@ -58,7 +55,7 @@ const REFLECTION_QUESTIONS: ReflectionQuestion[] = [
   },
   {
     id: 'reflection5',
-    question: 'What is one thing I want to remember from this study?',
+    question: 'What do I want to remember?',
     placeholder: '',
   },
 ];
@@ -78,17 +75,10 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
     notes: initialAnswers?.notes || '',
   });
 
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-
-  // Track when answers change
   useEffect(() => {
     if (onAnswersChange) {
       onAnswersChange(answers);
     }
-
-    // Check if there are any answers to mark as unsaved changes
-    const hasContent = Object.values(answers).some(answer => answer.trim().length > 0);
-    setHasUnsavedChanges(hasContent);
   }, [answers, onAnswersChange]);
 
   const updateAnswer = (questionId: keyof ReflectionAnswers, value: string) => {
@@ -99,34 +89,30 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
   };
 
   const handleSave = () => {
-    // Check if at least one reflection question is answered
-    const hasReflections = [
-      answers.reflection1,
-      answers.reflection2,
-      answers.reflection3,
-      answers.reflection4,
-      answers.reflection5,
-    ].some(answer => answer.trim().length > 0);
+    const hasContent = Object.values(answers).some(answer => answer.trim().length > 0);
 
-    if (!hasReflections) {
+    if (!hasContent) {
       Alert.alert(
-        'Incomplete Reflection',
-        'Please answer at least one reflection question before saving.',
-        [{ text: 'OK' }]
+        'Empty Reflection',
+        'Please write something before saving.',
+        [{ text: 'Continue Writing' }]
       );
       return;
     }
 
     if (onSave) {
       onSave(answers);
-      setHasUnsavedChanges(false);
     }
   };
 
-  const clearForm = () => {
+  const handleClear = () => {
+    const hasContent = Object.values(answers).some(answer => answer.trim().length > 0);
+
+    if (!hasContent) return;
+
     Alert.alert(
-      'Clear Form',
-      'Are you sure you want to clear all your answers?',
+      'Clear Reflection',
+      'This will remove all your writing. Are you sure?',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -142,49 +128,32 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
               notes: '',
             };
             setAnswers(emptyAnswers);
-            setHasUnsavedChanges(false);
           },
         },
       ]
     );
   };
 
-  const getAnswerCount = (): number => {
-    return [
-      answers.reflection1,
-      answers.reflection2,
-      answers.reflection3,
-      answers.reflection4,
-      answers.reflection5,
-    ].filter(answer => answer.trim().length > 0).length;
-  };
-
-  const renderQuestion = (questionData: ReflectionQuestion) => {
+  const renderQuestion = (questionData: ReflectionQuestion, index: number) => {
     const { id, question, placeholder } = questionData;
-    const value = answers[id as keyof ReflectionAnswers];
-    const isAnswered = value.trim().length > 0;
+    const value = answers[id];
 
     return (
       <View key={id} style={styles.questionContainer}>
         <View style={styles.questionHeader}>
-          <Text style={styles.questionText}>{question}</Text>
-          {isAnswered && <Text style={styles.answeredIndicator}>✓</Text>}
+          <Text style={styles.questionNumber}>{index + 1}</Text>
+          <View style={styles.questionTitleContainer}>
+            <Text style={styles.questionTitle}>{question}</Text>
+          </View>
         </View>
 
-        <TextInput
-          style={[
-            styles.answerInput,
-            isAnswered && styles.answerInputAnswered,
-            disabled && styles.disabledInput,
-          ]}
-          placeholder={placeholder}
-          placeholderTextColor="#9ca3af"
+        <TextArea
+          label=""
           value={value}
-          onChangeText={(text) => updateAnswer(id as keyof ReflectionAnswers, text)}
-          multiline
-          numberOfLines={4}
-          textAlignVertical="top"
-          editable={!disabled}
+          placeholder={placeholder}
+          onChange={(text) => updateAnswer(id, text)}
+          disabled={disabled}
+          isAnswered={value.trim().length > 0}
         />
       </View>
     );
@@ -202,42 +171,29 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
-          <Text style={styles.title}>Bible Study Reflection</Text>
-          <View style={styles.progressContainer}>
-            <Text style={styles.progressText}>
-              {getAnswerCount()} of {REFLECTION_QUESTIONS.length} questions answered
-            </Text>
-            <View style={styles.progressBar}>
-              <View
-                style={[
-                  styles.progressFill,
-                  { width: `${(getAnswerCount() / REFLECTION_QUESTIONS.length) * 100}%` }
-                ]}
-              />
-            </View>
-          </View>
+          <Text style={styles.title}>Reflection</Text>
+          <Text style={styles.subtitle}>
+            Take time to contemplate what you've read
+          </Text>
         </View>
 
         <View style={styles.questionsContainer}>
-          {REFLECTION_QUESTIONS.map(renderQuestion)}
+          {REFLECTION_QUESTIONS.map((question, index) =>
+            renderQuestion(question, index)
+          )}
 
-          {/* Additional notes section */}
-          <View style={styles.questionContainer}>
-            <Text style={styles.questionText}>Additional Notes (Optional)</Text>
-            <TextInput
-              style={[
-                styles.answerInput,
-                styles.notesInput,
-                disabled && styles.disabledInput,
-              ]}
-              placeholder="Any additional thoughts, insights, or personal notes..."
-              placeholderTextColor="#9ca3af"
+          <View style={styles.notesContainer}>
+            <View style={styles.notesHeader}>
+              <Text style={styles.notesTitle}>Additional Thoughts</Text>
+              <Text style={styles.notesSubtitle}>Optional</Text>
+            </View>
+            <TextArea
+              label=""
               value={answers.notes}
-              onChangeText={(text) => updateAnswer('notes', text)}
-              multiline
-              numberOfLines={6}
-              textAlignVertical="top"
-              editable={!disabled}
+              placeholder="Any other insights, questions, or reflections..."
+              onChange={(text) => updateAnswer('notes', text)}
+              disabled={disabled}
+              isAnswered={answers.notes.trim().length > 0}
             />
           </View>
         </View>
@@ -245,35 +201,18 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
         {!disabled && (
           <View style={styles.actionsContainer}>
             <TouchableOpacity
-              style={[styles.actionButton, styles.clearButton]}
-              onPress={clearForm}
+              style={styles.clearButton}
+              onPress={handleClear}
             >
               <Text style={styles.clearButtonText}>Clear All</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[
-                styles.actionButton,
-                styles.saveButton,
-                !hasUnsavedChanges && styles.saveButtonDisabled,
-              ]}
+              style={styles.saveButton}
               onPress={handleSave}
-              disabled={!hasUnsavedChanges}
             >
-              <Text style={[
-                styles.saveButtonText,
-                !hasUnsavedChanges && styles.saveButtonTextDisabled,
-              ]}>
-                Save Reflection
-              </Text>
+              <Text style={styles.saveButtonText}>Save Reflection</Text>
             </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Unsaved changes indicator */}
-        {hasUnsavedChanges && !disabled && (
-          <View style={styles.unsavedIndicator}>
-            <Text style={styles.unsavedText}>• You have unsaved changes</Text>
           </View>
         )}
       </ScrollView>
@@ -284,7 +223,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f7f6f3',
   },
   scrollView: {
     flex: 1,
@@ -293,123 +232,121 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   header: {
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
+    paddingHorizontal: 24,
+    paddingVertical: 32,
+    alignItems: 'center',
   },
   title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1f2937',
-    marginBottom: 16,
-  },
-  progressContainer: {
-    marginBottom: 4,
-  },
-  progressText: {
-    fontSize: 14,
-    color: '#6b7280',
+    fontSize: 20,
+    fontWeight: '300',
+    color: '#3d3528',
+    letterSpacing: -0.2,
     marginBottom: 8,
   },
-  progressBar: {
-    height: 4,
-    backgroundColor: '#f1f5f9',
-    borderRadius: 2,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#10b981',
-    borderRadius: 2,
+  subtitle: {
+    fontSize: 14,
+    color: '#8b8075',
+    fontWeight: '300',
+    letterSpacing: 0.3,
+    textAlign: 'center',
+    lineHeight: 20,
   },
   questionsContainer: {
-    padding: 20,
+    paddingHorizontal: 24,
   },
   questionContainer: {
-    marginBottom: 32,
+    marginBottom: 40,
   },
   questionHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: 16,
   },
-  questionText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
-    flex: 1,
-    lineHeight: 24,
-  },
-  answeredIndicator: {
-    fontSize: 16,
-    color: '#10b981',
-    marginLeft: 8,
-  },
-  answerInput: {
-    borderWidth: 1,
-    borderColor: '#d1d5db',
+  questionNumber: {
+    width: 24,
+    height: 24,
     borderRadius: 12,
-    padding: 16,
+    backgroundColor: '#e8e3dd',
+    color: '#8b7355',
+    fontSize: 12,
+    fontWeight: '500',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginRight: 16,
+    marginTop: 2,
+  },
+  questionTitleContainer: {
+    flex: 1,
+  },
+  questionTitle: {
     fontSize: 16,
-    color: '#1f2937',
-    backgroundColor: '#ffffff',
-    minHeight: 100,
+    fontWeight: '400',
+    color: '#3d3528',
+    lineHeight: 24,
+    letterSpacing: 0.1,
   },
-  answerInputAnswered: {
-    borderColor: '#10b981',
-    backgroundColor: '#f0fdf4',
+  notesContainer: {
+    marginTop: 20,
   },
-  notesInput: {
-    minHeight: 120,
-    backgroundColor: '#f9fafb',
+  notesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
   },
-  disabledInput: {
-    backgroundColor: '#f3f4f6',
-    color: '#6b7280',
+  notesTitle: {
+    fontSize: 16,
+    fontWeight: '400',
+    color: '#6b5b47',
+    letterSpacing: 0.2,
+    marginRight: 8,
+  },
+  notesSubtitle: {
+    fontSize: 12,
+    color: '#a39b90',
+    fontWeight: '300',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   actionsContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    gap: 12,
-  },
-  actionButton: {
-    flex: 1,
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 32,
+    gap: 16,
   },
   clearButton: {
-    backgroundColor: '#f9fafb',
+    flex: 1,
+    paddingVertical: 16,
+    backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: '#d6d3ce',
+    borderRadius: 2,
+    alignItems: 'center',
   },
   clearButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#6b7280',
+    fontSize: 15,
+    fontWeight: '400',
+    color: '#8b8075',
+    letterSpacing: 0.3,
   },
   saveButton: {
-    backgroundColor: '#3b82f6',
-  },
-  saveButtonDisabled: {
-    backgroundColor: '#e5e7eb',
+    flex: 1,
+    paddingVertical: 16,
+    backgroundColor: '#6b5b47',
+    borderRadius: 2,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   saveButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#ffffff',
-  },
-  saveButtonTextDisabled: {
-    color: '#9ca3af',
-  },
-  unsavedIndicator: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-  },
-  unsavedText: {
-    fontSize: 14,
-    color: '#f59e0b',
-    fontStyle: 'italic',
+    fontSize: 15,
+    fontWeight: '400',
+    color: '#fefefe',
+    letterSpacing: 0.3,
   },
 });
