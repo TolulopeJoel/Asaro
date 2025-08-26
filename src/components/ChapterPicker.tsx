@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
     chaptersGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 1.37,
+        gap: 1.372,
     },
     chapterButton: {
         width: '16.3%',
@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
         borderRadius: 2,
         borderWidth: 1,
         borderColor: '#f0ede8',
-        marginBottom: 2,
+        marginBottom: 5,
         justifyContent: 'center',
         alignItems: 'center',
     },

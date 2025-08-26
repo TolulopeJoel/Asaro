@@ -97,7 +97,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
             const reference = `${entry.book_name} ${formatChapterRange()}${getVerseRange()}`;
             const studyDate = formatDate(entry.date_created);
 
-            let content = `Bible Reading (${reference}) for`;
+            let content = `Bible Reading (${reference}) for `;
             content += `${studyDate}\n\n`;
 
             const reflections = [
