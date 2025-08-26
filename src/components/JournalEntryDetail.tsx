@@ -97,9 +97,8 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
             const reference = `${entry.book_name} ${formatChapterRange()}${getVerseRange()}`;
             const studyDate = formatDate(entry.date_created);
 
-            let content = `📖 Bible Study Reflection\n\n`;
-            content += `📍 ${reference}\n`;
-            content += `📅 ${studyDate}\n\n`;
+            let content = `Bible Reading (${reference}) for`;
+            content += `${studyDate}\n\n`;
 
             const reflections = [
                 entry.reflection_1,
@@ -111,24 +110,25 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
 
             reflections.forEach((reflection, index) => {
                 if (reflection && reflection.trim()) {
-                    content += `❓ ${REFLECTION_QUESTIONS[index]}\n`;
-                    content += `💭 ${reflection.trim()}\n\n`;
+                    content += `Q${index + 1}. ${REFLECTION_QUESTIONS[index]}\n\n`;
+                    content += `× ${reflection.trim()}\n\n`;
                 }
             });
 
             if (entry.notes && entry.notes.trim()) {
-                content += `📝 Additional Notes:\n${entry.notes.trim()}\n\n`;
+                content += `Additional Thoughts\n`;
+                content += `× ${entry.notes.trim()}\n\n`;
             }
 
-            content += `✨ Created with Meditation Journal`;
+            content += `🫶 Created with Àṣàrò`;
 
             await Share.share({
                 message: content,
                 title: `Bible Study - ${reference}`,
             });
         } catch (error) {
-            console.error('Error sharing entry:', error);
-            Alert.alert('Error', 'Failed to share this entry.');
+            console.error("Error sharing entry:", error);
+            Alert.alert("Error", "Failed to share this entry.");
         }
     };
 
