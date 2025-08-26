@@ -5,7 +5,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 export default function Index() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Meditation Journal</Text>
+      <Text style={styles.title}>Àṣàrò</Text>
       <Text style={styles.subtitle}>Track your Bible study reflections</Text>
 
       <Link href="/test" asChild>

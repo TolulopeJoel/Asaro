@@ -1,22 +1,24 @@
 {
   "expo": {
-    "name": "           NO LOGO 🙂‍↔️  \n\n      Who go help, abeg?",
-    "slug": "MeditationJournal",
+    "name": "Àṣàrò",
+    "slug": "asaro",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/meditationIcon.webp",
-    "scheme": "meditationjournal://",
+    "icon": "./assets/images/icon.png",
+    "scheme": "asaro",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.asaro.meditation"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.asaro.meditation"
     },
     "web": {
       "bundler": "metro",
@@ -38,6 +40,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "0d7d276e-7ae8-4f10-b527-4ab80be3ccc8"
+      }
     }
   }
 }
