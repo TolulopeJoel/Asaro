@@ -2,52 +2,6 @@
 import React from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 
-interface TextAreaProps {
-    value: string;
-    onChange: (text: string) => void;
-    placeholder?: string;
-    disabled?: boolean;
-}
-
-// export const TextArea: React.FC<TextAreaProps> = ({
-//     value,
-//     onChange,
-//     placeholder,
-//     disabled = false,
-// }) => {
-//     const [isFocused, setIsFocused] = useState(false);
-//     const hasContent = value.trim().length > 0;
-
-//     return (
-//         <View style={styles.container}>
-//             <TextInput
-//                 style={[
-//                     styles.input,
-//                     isFocused && styles.inputFocused,
-//                     hasContent && styles.inputWithContent,
-//                     disabled && styles.disabledInput,
-//                 ]}
-//                 placeholder={placeholder}
-//                 placeholderTextColor="#a39081"
-//                 value={value}
-//                 onChangeText={onChange}
-//                 multiline
-//                 textAlignVertical="top"
-//                 editable={!disabled}
-//                 onFocus={() => setIsFocused(true)}
-//                 onBlur={() => setIsFocused(false)}
-//                 scrollEnabled={false} // Let the parent ScrollView handle scrolling
-//             />
-
-//             {/* Subtle content indicator - just a gentle visual cue */}
-//             {hasContent && !isFocused && (
-//                 <View style={styles.contentIndicator} />
-//             )}
-//         </View>
-//     );
-// };
-
-
 const TextArea: React.FC<{
     label: string;
     value: string;
