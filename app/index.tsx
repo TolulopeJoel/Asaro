@@ -1,25 +1,33 @@
-// app/index.tsx
 import { Link } from 'expo-router';
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function Index() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Àṣàrò</Text>
-      <Text style={styles.subtitle}>Track your Bible study reflections</Text>
+      <View style={styles.titleContainer}>
+        <Text style={styles.title}>Àṣàrò</Text>
+        <View style={styles.titleUnderline} />
+      </View>
 
-      <Link href="/test" asChild>
-        <TouchableOpacity style={styles.button}>
-          <Text style={styles.buttonText}>Test Components</Text>
-        </TouchableOpacity>
-      </Link>
+      <Text style={styles.subtitle}>
+        track your bible study reading + meditation
+      </Text>
 
-      <Link href="/browse" asChild>
-        <TouchableOpacity style={styles.button}>
-          <Text style={styles.buttonText}>Browse Components</Text>
-        </TouchableOpacity>
-      </Link>
+      <View style={styles.buttonContainer}>
+        <Link href="/test" asChild>
+          <TouchableOpacity style={styles.primaryButton}>
+            <Text style={styles.primaryButtonText}>add entry 🧘</Text>
+          </TouchableOpacity>
+        </Link>
 
+        <Link href="/browse" asChild>
+          <TouchableOpacity style={styles.secondaryButton}>
+            <Text style={styles.secondaryButtonText}>past entries</Text>
+          </TouchableOpacity>
+        </Link>
+      </View>
+
+      <View style={styles.ornament} />
     </View>
   );
 }
@@ -29,36 +37,82 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
-    backgroundColor: "#ffffff",
+    padding: 32,
+    backgroundColor: "#f7f6f3", // warm off-white, like aged paper
+  },
+  titleContainer: {
+    alignItems: "center",
+    marginBottom: 16,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#212529",
-    marginBottom: 8,
+    fontSize: 32,
+    fontWeight: "300", // lighter weight for subtlety
+    color: "#2d2520", // deep warm brown
+    letterSpacing: 2,
     textAlign: "center",
+  },
+  titleUnderline: {
+    width: 60,
+    height: 1,
+    backgroundColor: "#8b7355", // muted brown
+    marginTop: 8,
+    opacity: 0.6,
   },
   subtitle: {
-    fontSize: 16,
-    color: "#6c757d",
-    marginBottom: 40,
+    fontSize: 14,
+    fontWeight: "300",
+    color: "#6b5d52", // warm gray-brown
+    marginBottom: 48,
     textAlign: "center",
+    letterSpacing: 0.5,
+    lineHeight: 20,
   },
-  button: {
-    backgroundColor: "#007bff",
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
+  buttonContainer: {
+    gap: 16,
+    alignItems: "center",
+  },
+  primaryButton: {
+    backgroundColor: "#4a4037", // deep warm brown
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 2, // minimal rounding
+    minWidth: 160,
+    alignItems: "center",
+    // subtle shadow
+    shadowColor: "#2d2520",
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 2,
+    elevation: 1,
   },
-  buttonText: {
-    color: "#ffffff",
-    fontSize: 16,
-    fontWeight: "600",
+  primaryButtonText: {
+    color: "#f8f6f0",
+    fontSize: 14,
+    fontWeight: "300",
+    letterSpacing: 1,
+  },
+  secondaryButton: {
+    backgroundColor: "transparent",
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: "#8b7355",
+    borderRadius: 2,
+    minWidth: 160,
+    alignItems: "center",
+  },
+  secondaryButtonText: {
+    color: "#4a4037",
+    fontSize: 14,
+    fontWeight: "300",
+    letterSpacing: 1,
+  },
+  ornament: {
+    position: "absolute",
+    bottom: 48,
+    width: 1,
+    height: 24,
+    backgroundColor: "#8b7355",
+    opacity: 0.3,
   },
 });
