@@ -1,6 +1,19 @@
-// src/components/TextArea.tsx
-import React from 'react';
-import { StyleSheet, TextInput, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+    Dimensions,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    SafeAreaView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from 'react-native';
+
+const { height: screenHeight } = Dimensions.get('window');
 
 const TextArea: React.FC<{
     label: string;
@@ -11,79 +24,153 @@ const TextArea: React.FC<{
     disabled?: boolean;
     isAnswered?: boolean;
 }> = ({
+    label,
     value,
     onChange,
     placeholder,
     disabled = false,
     isAnswered = false,
 }) => {
+        const [isExpanded, setIsExpanded] = useState(false);
+        const [tempValue, setTempValue] = useState('');
+        const regularTextInputRef = useRef<TextInput>(null);
+        const expandedTextInputRef = useRef<TextInput>(null);
+
+        // Sync temp value with actual value when modal opens
+        useEffect(() => {
+            if (isExpanded) {
+                setTempValue(value);
+            }
+        }, [isExpanded, value]);
+
+        const handleExpand = () => {
+            if (!disabled) {
+                setTempValue(value);
+                setIsExpanded(true);
+            }
+        };
+
+        const handleSave = () => {
+            onChange(tempValue);
+            setIsExpanded(false);
+
+            // Return focus to original TextArea after a brief delay
+            setTimeout(() => {
+                regularTextInputRef.current?.focus();
+            }, 300);
+        };
+
+        const handleCancel = () => {
+            setIsExpanded(false);
+            // Return focus to original TextArea after a brief delay
+            setTimeout(() => {
+                regularTextInputRef.current?.focus();
+            }, 300);
+        };
+
+        const handleTempChange = (text: string) => {
+            setTempValue(text);
+        };
+
         return (
-            <View style={textAreaStyles.container}>
-                <View style={[
-                    textAreaStyles.inputContainer,
-                    isAnswered && textAreaStyles.inputContainerAnswered,
-                    disabled && textAreaStyles.inputContainerDisabled,
-                ]}>
-                    <TextInput
-                        style={[
-                            textAreaStyles.input,
-                            disabled && textAreaStyles.inputDisabled,
-                        ]}
-                        placeholder={placeholder}
-                        placeholderTextColor="#a39b90"
-                        value={value}
-                        onChangeText={onChange}
-                        multiline={true}
-                        numberOfLines={5}
-                        textAlignVertical="top"
-                        editable={!disabled}
-                    />
-                    {isAnswered && <View style={textAreaStyles.answeredIndicator} />}
+            <>
+                {/* Regular TextArea */}
+                <View style={textAreaStyles.container}>
+                    <View style={[
+                        textAreaStyles.inputContainer,
+                        isAnswered && textAreaStyles.inputContainerAnswered,
+                        disabled && textAreaStyles.inputContainerDisabled,
+                    ]}>
+                        <TextInput
+                            ref={regularTextInputRef}
+                            style={[
+                                textAreaStyles.input,
+                                disabled && textAreaStyles.inputDisabled,
+                            ]}
+                            placeholder={placeholder}
+                            placeholderTextColor="#a39b90"
+                            value={value}
+                            onChangeText={onChange}
+                            multiline={true}
+                            numberOfLines={5}
+                            textAlignVertical="top"
+                            editable={!disabled}
+                        />
+                        {isAnswered && <View style={textAreaStyles.answeredIndicator} />}
+
+                        {/* Expand button */}
+                        {!disabled && (
+                            <TouchableOpacity
+                                style={textAreaStyles.expandButton}
+                                onPress={handleExpand}
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            >
+                                <View style={textAreaStyles.expandIcon} />
+                            </TouchableOpacity>
+                        )}
+                    </View>
                 </View>
-            </View>
+
+                {/* Full-screen Modal */}
+                <Modal
+                    visible={isExpanded}
+                    animationType="slide"
+                    presentationStyle="fullScreen"
+                    statusBarTranslucent={true}
+                >
+                    <StatusBar backgroundColor="#fefbf7" barStyle="dark-content" />
+                    <SafeAreaView style={fullScreenStyles.container}>
+                        <KeyboardAvoidingView
+                            style={fullScreenStyles.keyboardView}
+                            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                            keyboardVerticalOffset={0}
+                        >
+                            <View style={fullScreenStyles.content}>
+                                <TouchableOpacity
+                                    style={fullScreenStyles.saveButton}
+                                    onPress={handleSave}
+                                    hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                                >
+                                    <View style={fullScreenStyles.tickIcon}>
+                                        <View style={fullScreenStyles.tickLine1} />
+                                        <View style={fullScreenStyles.tickLine2} />
+                                    </View>
+                                </TouchableOpacity>
+
+                                {label && (
+                                    <View style={fullScreenStyles.labelContainer}>
+                                        <Text style={fullScreenStyles.label}>{label}</Text>
+                                    </View>
+                                )}
+
+                                <TextInput
+                                    ref={expandedTextInputRef}
+                                    style={fullScreenStyles.textInput}
+                                    placeholder={placeholder || "Begin writing..."}
+                                    placeholderTextColor="#a39b90"
+                                    value={tempValue}
+                                    onChangeText={handleTempChange}
+                                    multiline={true}
+                                    textAlignVertical="top"
+                                    autoFocus={true}
+                                    blurOnSubmit={false}
+                                    returnKeyType="default"
+                                />
+
+                                <TouchableOpacity
+                                    style={fullScreenStyles.cancelButton}
+                                    onPress={handleCancel}
+                                    hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                                >
+                                    <Text style={fullScreenStyles.cancelText}>Cancel</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </KeyboardAvoidingView>
+                    </SafeAreaView>
+                </Modal>
+            </>
         );
     };
-const styles = StyleSheet.create({
-    container: {
-        position: 'relative',
-    },
-    input: {
-        borderWidth: 1,
-        borderColor: '#e8e0d8', // subtle earth tone border
-        borderRadius: 2, // minimal rounded corners
-        padding: 20,
-        fontSize: 16,
-        color: '#3c3530', // warm dark text
-        backgroundColor: '#fefbf7', // warm off-white background
-        minHeight: 120, // generous space for reflection
-        lineHeight: 24, // comfortable reading
-        fontWeight: '400',
-        // Remove default TextInput styling
-        includeFontPadding: false,
-        textAlignVertical: 'top',
-    },
-    inputFocused: {
-        borderColor: '#8b7355', // gentle focus color
-        backgroundColor: '#ffffff', // slightly brighter when active
-    },
-    inputWithContent: {
-        backgroundColor: '#fcf9f4', // very subtle tint when content exists
-    },
-    disabledInput: {
-        backgroundColor: '#f5f1eb',
-        color: '#a39081',
-        borderColor: '#e8e0d8',
-    },
-    contentIndicator: {
-        position: 'absolute',
-        top: 8,
-        right: 8,
-        width: 4,
-        height: 4,
-        borderRadius: 2,
-        backgroundColor: '#c4b5a0', // very subtle indicator
-    },
-});
 
 const textAreaStyles = StyleSheet.create({
     container: {
@@ -105,6 +192,7 @@ const textAreaStyles = StyleSheet.create({
     },
     input: {
         padding: 20,
+        paddingRight: 50, // Make room for expand button
         fontSize: 15,
         color: '#3d3528',
         fontWeight: '400',
@@ -118,11 +206,114 @@ const textAreaStyles = StyleSheet.create({
     answeredIndicator: {
         position: 'absolute',
         top: 12,
-        right: 12,
+        right: 40, // Adjust position to not overlap with expand button
         width: 6,
         height: 6,
         borderRadius: 3,
         backgroundColor: '#8b7355',
+    },
+    expandButton: {
+        position: 'absolute',
+        top: 12,
+        right: 12,
+        width: 24,
+        height: 24,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    expandIcon: {
+        width: 12,
+        height: 12,
+        borderWidth: 1.5,
+        borderColor: '#8b7355',
+        borderRadius: 1,
+        backgroundColor: 'transparent',
+    },
+});
+
+const fullScreenStyles = StyleSheet.create({
+    container: {
+        flex: 1,
+        paddingTop: (StatusBar.currentHeight || 2),
+        backgroundColor: '#fefbf7', // Same warm off-white as regular input
+    },
+    keyboardView: {
+        flex: 1,
+    },
+    header: {
+        paddingHorizontal: 20,
+        paddingVertical: 15,
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        borderBottomWidth: 1,
+        borderBottomColor: '#f0ede8',
+    },
+    saveButton: {
+        width: 32,
+        height: 32,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    tickIcon: {
+        width: 20,
+        height: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        position: 'relative',
+    },
+    tickLine1: {
+        position: 'absolute',
+        width: 8,
+        height: 2,
+        backgroundColor: '#8b7355',
+        transform: [{ rotate: '45deg' }],
+        left: 2,
+        top: 10,
+    },
+    tickLine2: {
+        position: 'absolute',
+        width: 14,
+        height: 2,
+        backgroundColor: '#8b7355',
+        transform: [{ rotate: '-45deg' }],
+        left: 4,
+        top: 8,
+    },
+    labelContainer: {
+        paddingTop: 20,
+        paddingBottom: 16,
+        paddingHorizontal: 4,
+    },
+    label: {
+        fontSize: 14,
+        color: '#8b8075', // Muted color from your palette
+        fontWeight: '400',
+        lineHeight: 20,
+        letterSpacing: 0.1,
+    },
+    cancelButton: {
+        alignSelf: 'flex-end',
+        paddingHorizontal: 20,
+    },
+    cancelText: {
+        fontSize: 14,
+        color: '#a39b90',
+        fontWeight: '400',
+        letterSpacing: 0.1,
+    },
+    content: {
+        flex: 1,
+        padding: 24,
+    },
+    textInput: {
+        flex: 1,
+        fontSize: 15,
+        color: '#3d3528',
+        fontWeight: '400',
+        lineHeight: 26,
+        letterSpacing: 0.1,
+        backgroundColor: 'transparent',
+        textAlignVertical: 'top',
     },
 });
 

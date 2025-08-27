@@ -146,7 +146,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
         </View>
 
         <TextArea
-          label=""
+          label={question}
           value={value}
           placeholder={placeholder}
           onChange={(text) => updateAnswer(id, text)}
