@@ -1,4 +1,3 @@
-// app/browse.tsx
 import { JournalEntry } from '@/src/data/database';
 import React, { useState } from 'react';
 import { Modal, SafeAreaView, StyleSheet } from 'react-native';
@@ -39,6 +38,7 @@ export default function BrowseScreen() {
             <Modal
                 visible={isDetailModalVisible}
                 animationType="slide"
+                statusBarTranslucent={true}
                 presentationStyle="pageSheet"
                 onRequestClose={handleCloseDetail}
             >

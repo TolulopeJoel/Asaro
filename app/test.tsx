@@ -64,7 +64,7 @@ export default function TestScreen() {
             setCurrentStep('summary');
         } catch (error) {
             console.error('Error saving entry:', error);
-            Alert.alert('Error', 'Failed to save your reflection. Please try again.');
+            Alert.alert('Error', 'Failed to save your entry. Please try again.');
         }
     };
 
@@ -184,7 +184,7 @@ export default function TestScreen() {
                         </View>
 
                         <Text style={styles.stepDescription}>
-                            Your reflection has been preserved.
+                            Your session has been preserved.
                         </Text>
 
                         <View style={styles.completionCard}>
