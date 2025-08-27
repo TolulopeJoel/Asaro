@@ -12,11 +12,13 @@ import { ALL_BIBLE_BOOKS, BibleBook, NEW_TESTAMENT_BOOKS, OLD_TESTAMENT_BOOKS } 
 interface BookPickerProps {
     selectedBook?: BibleBook;
     onBookSelect: (book: BibleBook) => void;
+    availableBooks?: BibleBook[];
 }
 
 export const BookPicker: React.FC<BookPickerProps> = ({
     selectedBook,
     onBookSelect,
+    availableBooks
 }) => {
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -137,6 +139,14 @@ export const BookPicker: React.FC<BookPickerProps> = ({
             return renderSearchResults();
         }
 
+        if (availableBooks && availableBooks.length > 0) {
+            return (
+                <View style={styles.booksContainer}>
+                    {renderBookGrid(availableBooks)}
+                </View>
+            )
+        }
+
         const filteredOT = getFilteredBooks(OLD_TESTAMENT_BOOKS);
         const filteredNT = getFilteredBooks(NEW_TESTAMENT_BOOKS);
 
@@ -230,7 +240,7 @@ const styles = StyleSheet.create({
     booksGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        justifyContent: 'space-between',
+        justifyContent: 'space-around',
         marginBottom: 12,
     },
     newTestamentGrid: {
