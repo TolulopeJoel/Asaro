@@ -127,14 +127,11 @@ const TextArea: React.FC<{
                         >
                             <View style={fullScreenStyles.content}>
                                 <TouchableOpacity
-                                    style={fullScreenStyles.saveButton}
-                                    onPress={handleSave}
+                                    style={fullScreenStyles.cancelButton}
+                                    onPress={handleCancel}
                                     hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                                 >
-                                    <View style={fullScreenStyles.tickIcon}>
-                                        <View style={fullScreenStyles.tickLine1} />
-                                        <View style={fullScreenStyles.tickLine2} />
-                                    </View>
+                                    <Text style={fullScreenStyles.cancelText}>× Cancel</Text>
                                 </TouchableOpacity>
 
                                 {label && (
@@ -158,11 +155,11 @@ const TextArea: React.FC<{
                                 />
 
                                 <TouchableOpacity
-                                    style={fullScreenStyles.cancelButton}
-                                    onPress={handleCancel}
+                                    style={fullScreenStyles.saveButton}
+                                    onPress={handleSave}
                                     hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                                 >
-                                    <Text style={fullScreenStyles.cancelText}>Cancel</Text>
+                                    <Text style={fullScreenStyles.saveText}>Save</Text>
                                 </TouchableOpacity>
                             </View>
                         </KeyboardAvoidingView>
@@ -240,61 +237,18 @@ const fullScreenStyles = StyleSheet.create({
     keyboardView: {
         flex: 1,
     },
-    header: {
-        paddingHorizontal: 20,
-        paddingVertical: 15,
-        flexDirection: 'row',
-        justifyContent: 'flex-end',
-        borderBottomWidth: 1,
-        borderBottomColor: '#f0ede8',
-    },
-    saveButton: {
-        width: 32,
-        height: 32,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    tickIcon: {
-        width: 20,
-        height: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
-        position: 'relative',
-    },
-    tickLine1: {
-        position: 'absolute',
-        width: 8,
-        height: 2,
-        backgroundColor: '#8b7355',
-        transform: [{ rotate: '45deg' }],
-        left: 2,
-        top: 10,
-    },
-    tickLine2: {
-        position: 'absolute',
-        width: 14,
-        height: 2,
-        backgroundColor: '#8b7355',
-        transform: [{ rotate: '-45deg' }],
-        left: 4,
-        top: 8,
-    },
     labelContainer: {
         paddingTop: 20,
-        paddingBottom: 16,
-        paddingHorizontal: 4,
+        paddingBottom: 8,
     },
     label: {
         fontSize: 14,
-        color: '#8b8075', // Muted color from your palette
+        color: '#8b8075',
         fontWeight: '400',
         lineHeight: 20,
         letterSpacing: 0.1,
     },
-    cancelButton: {
-        alignSelf: 'flex-end',
-        paddingHorizontal: 20,
-    },
+    cancelButton: {},
     cancelText: {
         fontSize: 14,
         color: '#a39b90',
@@ -304,6 +258,16 @@ const fullScreenStyles = StyleSheet.create({
     content: {
         flex: 1,
         padding: 24,
+    },
+    saveButton: {
+        alignSelf: 'flex-end',
+        paddingHorizontal: 20,
+    },
+    saveText: {
+        fontSize: 14,
+        color: '#8b8075',
+        fontWeight: '500',
+        letterSpacing: 0.1,
     },
     textInput: {
         flex: 1,
