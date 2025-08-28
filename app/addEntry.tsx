@@ -13,7 +13,7 @@ interface ChapterRange {
 
 type Step = 'book' | 'chapter' | 'reflection' | 'summary';
 
-export default function TestScreen() {
+export default function MeditationSessionScreen() {
     const [currentStep, setCurrentStep] = useState<Step>('book');
     const [selectedBook, setSelectedBook] = useState<BibleBook>();
     const [selectedChapters, setSelectedChapters] = useState<ChapterRange>();

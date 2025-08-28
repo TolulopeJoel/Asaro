@@ -14,7 +14,7 @@ export default function Index() {
       </Text>
 
       <View style={styles.buttonContainer}>
-        <Link href="/test" asChild>
+        <Link href="/addEntry" asChild>
           <TouchableOpacity style={styles.primaryButton}>
             <Text style={styles.primaryButtonText}>add entry 🧘</Text>
           </TouchableOpacity>
