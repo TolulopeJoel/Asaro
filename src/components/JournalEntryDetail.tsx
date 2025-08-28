@@ -32,31 +32,41 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
     onClose,
 }) => {
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isSharing, setIsSharing] = useState(false);
 
     const formatDate = (dateString: string): string => {
         const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
+        const now = new Date();
+        const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 0) return 'today';
+        if (diffDays === 1) return 'yesterday';
+        if (diffDays === 1) return 'the day before yesterday';
+        if (diffDays < 7) return `${diffDays} days ago`;
+
+        const day = date.getDate();
+        const suffix = day === 1 || day === 21 || day === 31 ? 'st' :
+            day === 2 || day === 22 ? 'nd' :
+                day === 3 || day === 23 ? 'rd' : 'th';
+
+        return ` ${day}${suffix}, ` + date.toLocaleDateString('en-US', {
             month: 'long',
-            day: 'numeric',
+            year: 'numeric',
         });
     };
 
     const formatChapterRange = (): string => {
         if (!entry.chapter_start) return '';
-
         if (entry.chapter_end && entry.chapter_end !== entry.chapter_start) {
-            return `${entry.chapter_start}-${entry.chapter_end}`;
+            return `${entry.chapter_start}—${entry.chapter_end}`;
         }
         return entry.chapter_start.toString();
     };
 
     const getVerseRange = (): string => {
         if (!entry.verse_start) return '';
-
         if (entry.verse_end && entry.verse_end !== entry.verse_start) {
-            return `:${entry.verse_start}-${entry.verse_end}`;
+            return `:${entry.verse_start}—${entry.verse_end}`;
         }
         return entry.verse_start ? `:${entry.verse_start}` : '';
     };
@@ -64,9 +74,9 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
     const handleDelete = () => {
         Alert.alert(
             'Delete Entry',
-            'Are you sure you want to delete this journal entry? This action cannot be undone.',
+            'Are you sure you want to delete this entry? This action cannot be undone.',
             [
-                { text: 'Cancel', style: 'cancel' },
+                { text: 'Keep', style: 'cancel' },
                 {
                     text: 'Delete',
                     style: 'destructive',
@@ -75,15 +85,11 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                         try {
                             const success = deleteJournalEntry(entry.id!);
                             if (success) {
-                                Alert.alert('Deleted', 'Your journal entry has been deleted.', [
-                                    { text: 'OK', onPress: onDelete }
-                                ]);
+                                onDelete?.();
                             } else {
                                 throw new Error('Failed to delete entry');
                             }
                         } catch (error) {
-                            console.error('Error deleting entry:', error);
-                            Alert.alert('Error', 'Failed to delete the entry. Please try again.');
                             setIsDeleting(false);
                         }
                     },
@@ -93,6 +99,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
     };
 
     const handleShare = async () => {
+        setIsSharing(true);
         try {
             const reference = `${entry.book_name} ${formatChapterRange()}${getVerseRange()}`;
             const studyDate = formatDate(entry.date_created);
@@ -119,295 +126,326 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                 content += `Additional Thoughts\n`;
                 content += `× ${entry.notes.trim()}\n\n`;
             }
-
             content += `🫶 Created with Àṣàrò`;
 
             await Share.share({
                 message: content,
-                title: `Bible Study - ${reference}`,
+                title: reference,
             });
         } catch (error) {
             console.error("Error sharing entry:", error);
-            Alert.alert("Error", "Failed to share this entry.");
+        } finally {
+            setIsSharing(false);
         }
     };
 
     const renderReflection = (reflection: string | undefined, questionIndex: number) => {
         if (!reflection || !reflection.trim()) return null;
 
+        const paragraphs = reflection.trim().split('\n\n').filter(p => p.trim());
+
         return (
             <View key={questionIndex} style={styles.reflectionContainer}>
-                <Text style={styles.questionText}>{REFLECTION_QUESTIONS[questionIndex]}</Text>
-                <Text style={styles.answerText}>{reflection.trim()}</Text>
+                <View style={styles.questionContainer}>
+                    <View style={styles.questionMark} />
+                    <Text style={styles.questionText}>{REFLECTION_QUESTIONS[questionIndex]}</Text>
+                </View>
+                <View style={styles.answerContainer}>
+                    {paragraphs.map((paragraph, pIndex) => (
+                        <Text key={pIndex} style={[
+                            styles.answerText,
+                            pIndex > 0 && styles.answerParagraph
+                        ]}>
+                            {paragraph.trim()}
+                        </Text>
+                    ))}
+                </View>
             </View>
         );
     };
 
-    const getAnsweredCount = (): number => {
-        return [
-            entry.reflection_1,
-            entry.reflection_2,
-            entry.reflection_3,
-            entry.reflection_4,
-            entry.reflection_5,
-        ].filter(r => r && r.trim().length > 0).length;
-    };
+    const getAnsweredReflections = () => [
+        entry.reflection_1,
+        entry.reflection_2,
+        entry.reflection_3,
+        entry.reflection_4,
+        entry.reflection_5,
+    ].filter(r => r && r.trim().length > 0);
+
+    const hasReflections = getAnsweredReflections().length > 0;
 
     return (
-        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-            {/* Header */}
+        <View style={styles.container}>
+            {/* Header with share button */}
             <View style={styles.header}>
                 <View style={styles.headerContent}>
-                    <Text style={styles.title}>
+                    <View style={styles.headerOrnament} />
+                    <Text style={styles.reference}>
                         {entry.book_name} {formatChapterRange()}{getVerseRange()}
                     </Text>
                     <Text style={styles.studyDate}>{formatDate(entry.date_created)}</Text>
-                    <View style={styles.metaContainer}>
-                        <Text style={styles.metaText}>
-                            {getAnsweredCount()}/5 questions answered
-                        </Text>
-                        {entry.created_at !== entry.updated_at && (
-                            <Text style={styles.metaText}>
-                                • Last updated {formatDate(entry.updated_at || entry.created_at!)}
-                            </Text>
-                        )}
-                    </View>
                 </View>
-            </View>
 
-            {/* Action Buttons */}
-            <View style={styles.actionsContainer}>
                 <TouchableOpacity
-                    style={[styles.actionButton, styles.shareButton]}
+                    style={styles.shareButton}
                     onPress={handleShare}
+                    disabled={isSharing}
                 >
-                    <Text style={styles.shareButtonText}>Share</Text>
-                </TouchableOpacity>
-
-                {onEdit && (
-                    <TouchableOpacity
-                        style={[styles.actionButton, styles.editButton]}
-                        onPress={() => onEdit(entry)}
-                    >
-                        <Text style={styles.editButtonText}>Edit</Text>
-                    </TouchableOpacity>
-                )}
-
-                <TouchableOpacity
-                    style={[styles.actionButton, styles.deleteButton]}
-                    onPress={handleDelete}
-                    disabled={isDeleting}
-                >
-                    <Text style={styles.deleteButtonText}>
-                        {isDeleting ? 'Deleting...' : 'Delete'}
+                    <Text style={styles.shareButtonText}>
+                        {isSharing ? 'sharing' : 'share'}
                     </Text>
+                    <View style={styles.shareButtonUnderline} />
                 </TouchableOpacity>
             </View>
 
-            {/* Reflections */}
-            <View style={styles.content}>
-                <Text style={styles.sectionTitle}>Reflections</Text>
-
-                {[
-                    entry.reflection_1,
-                    entry.reflection_2,
-                    entry.reflection_3,
-                    entry.reflection_4,
-                    entry.reflection_5,
-                ].map((reflection, index) => renderReflection(reflection, index))}
-
-                {getAnsweredCount() === 0 && (
-                    <View style={styles.noReflectionsContainer}>
-                        <Text style={styles.noReflectionsText}>
-                            No reflection questions were answered for this entry.
-                        </Text>
+            {/* Sacred reading space */}
+            <ScrollView
+                style={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.contentContainer}
+            >
+                {hasReflections ? (
+                    [
+                        entry.reflection_1,
+                        entry.reflection_2,
+                        entry.reflection_3,
+                        entry.reflection_4,
+                        entry.reflection_5,
+                    ].map((reflection, index) => renderReflection(reflection, index))
+                ) : (
+                    <View style={styles.emptyState}>
+                        <View style={styles.emptyOrnament} />
+                        <Text style={styles.emptyText}>awaiting contemplation</Text>
+                        <View style={styles.emptyOrnament} />
                     </View>
                 )}
 
-                {/* Additional Notes */}
+                {/* Personal notes */}
                 {entry.notes && entry.notes.trim() && (
-                    <View style={styles.notesContainer}>
-                        <Text style={styles.sectionTitle}>Additional Notes</Text>
+                    <View>
+                        <View style={styles.questionContainer}>
+                            <View style={styles.questionMark} />
+                            <Text style={styles.questionText}>Additional thoughts</Text>
+                        </View>
                         <Text style={styles.notesText}>{entry.notes.trim()}</Text>
                     </View>
                 )}
 
-                {/* Entry Metadata */}
-                <View style={styles.metadataContainer}>
-                    <Text style={styles.metadataTitle}>Entry Information</Text>
-                    <Text style={styles.metadataText}>Entry ID: {entry.id}</Text>
-                    <Text style={styles.metadataText}>
-                        Created: {formatDate(entry.created_at || entry.date_created)}
-                    </Text>
-                    {entry.updated_at && entry.created_at !== entry.updated_at && (
-                        <Text style={styles.metadataText}>
-                            Last Modified: {formatDate(entry.updated_at)}
-                        </Text>
+                {/* Bottom actions */}
+                <View style={styles.bottomActions}>
+                    {onEdit && (
+                        <TouchableOpacity
+                            style={styles.bottomActionButton}
+                            onPress={() => onEdit(entry)}
+                        >
+                            <Text style={styles.bottomActionText}>EDIT</Text>
+                            <View style={styles.bottomActionUnderline} />
+                        </TouchableOpacity>
                     )}
-                </View>
-            </View>
 
-            {/* Close button if in modal */}
+                    <TouchableOpacity
+                        style={styles.bottomActionButton}
+                        onPress={handleDelete}
+                        disabled={isDeleting}
+                    >
+                        <Text style={[styles.bottomActionText, styles.deleteText]}>
+                            {isDeleting ? 'removing' : 'DELETE'}
+                        </Text>
+                        <View style={[styles.bottomActionUnderline, styles.deleteUnderline]} />
+                    </TouchableOpacity>
+                </View>
+
+                <View style={styles.contentSpacer} />
+            </ScrollView>
+
+            {/* Whisper close */}
             {onClose && (
                 <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-                    <Text style={styles.closeButtonText}>Close</Text>
+                    <Text style={styles.closeText}>×</Text>
                 </TouchableOpacity>
             )}
-        </ScrollView>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#ffffff',
+        backgroundColor: '#e7dfd2',
     },
     header: {
-        backgroundColor: '#f8f9fa',
-        paddingVertical: 24,
-        paddingHorizontal: 20,
-        borderBottomWidth: 1,
-        borderBottomColor: '#e9ecef',
+        paddingHorizontal: 16,
+        paddingTop: 56,
+        backgroundColor: '#d4a5a5',
+        position: 'relative',
     },
     headerContent: {
         alignItems: 'center',
     },
-    title: {
+    headerOrnament: {
+        width: 3,
+        height: 3,
+        backgroundColor: '#8b6b6b',
+        borderRadius: 1.5,
+        marginBottom: 20,
+        opacity: 0.8,
+     },
+    reference: {
         fontSize: 24,
-        fontWeight: '700',
-        color: '#1f2937',
+        fontWeight: '300',
+        color: '#3d2828',
         textAlign: 'center',
-        marginBottom: 8,
-    },
-    studyDate: {
-        fontSize: 16,
-        color: '#6b7280',
+        letterSpacing: -0.3,
         marginBottom: 12,
-    },
-    metaContainer: {
-        alignItems: 'center',
-    },
-    metaText: {
-        fontSize: 14,
-        color: '#9ca3af',
-    },
-    actionsContainer: {
-        flexDirection: 'row',
-        paddingHorizontal: 20,
-        paddingVertical: 16,
-        gap: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: '#f1f5f9',
-    },
-    actionButton: {
-        flex: 1,
-        paddingVertical: 12,
-        borderRadius: 8,
-        alignItems: 'center',
-    },
+        lineHeight: 32,
+     },
+     studyDate: {
+        fontSize: 12,
+        color: '#6b4a4a',
+        textAlign: 'center',
+        fontWeight: '300',
+        letterSpacing: 1.2,
+        marginBottom: 32,
+     },
     shareButton: {
-        backgroundColor: '#10b981',
+        position: 'absolute',
+        top: 56,
+        right: 16,
+        alignItems: 'center',
+        paddingVertical: 8,
     },
     shareButtonText: {
-        color: '#ffffff',
-        fontWeight: '600',
-        fontSize: 14,
+        fontSize: 11,
+        color: '#6b4a4a',
+        fontWeight: '300',
+        letterSpacing: 1.2,
+        marginBottom: 6,
+     },
+    shareButtonUnderline: {
+        width: 20,
+        height: 1,
+        backgroundColor: '#8b6b6b',
+        opacity: 0.6,
+     },
+    scrollContent: {
+        flex: 1,
     },
-    editButton: {
-        backgroundColor: '#3b82f6',
-    },
-    editButtonText: {
-        color: '#ffffff',
-        fontWeight: '600',
-        fontSize: 14,
-    },
-    deleteButton: {
-        backgroundColor: '#ef4444',
-    },
-    deleteButtonText: {
-        color: '#ffffff',
-        fontWeight: '600',
-        fontSize: 14,
-    },
-    content: {
-        padding: 20,
-    },
-    sectionTitle: {
-        fontSize: 20,
-        fontWeight: '600',
-        color: '#1f2937',
-        marginBottom: 16,
+    contentContainer: {
+        paddingHorizontal: 16,
+        paddingTop: 24,
     },
     reflectionContainer: {
-        marginBottom: 24,
-        backgroundColor: '#f8f9fa',
-        padding: 16,
-        borderRadius: 12,
-        borderLeftWidth: 4,
-        borderLeftColor: '#3b82f6',
+        marginBottom: 40,
+    },
+    questionContainer: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        marginBottom: 20,
+    },
+    questionMark: {
+        width: 3,
+        height: 3,
+        backgroundColor: '#b8a896',
+        borderRadius: 1.5,
+        marginTop: 8,
+        marginRight: 16,
+        opacity: 0.8,
     },
     questionText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#374151',
-        marginBottom: 8,
-        lineHeight: 24,
+        fontSize: 14,
+        fontWeight: '300',
+        color: '#756b5e',
+        lineHeight: 22,
+        letterSpacing: 0.2,
+        flex: 1,
+    },
+    answerContainer: {
+        marginLeft: 6,
     },
     answerText: {
-        fontSize: 16,
-        color: '#4b5563',
-        lineHeight: 24,
+        fontSize: 15,
+        color: '#2a241f',
+        lineHeight: 26,
+        fontWeight: '300',
+        letterSpacing: 0.1,
     },
-    noReflectionsContainer: {
-        padding: 20,
+    answerParagraph: {
+        marginTop: 16,
+    },
+    emptyState: {
+        paddingVertical: 120,
         alignItems: 'center',
     },
-    noReflectionsText: {
-        fontSize: 16,
-        color: '#9ca3af',
-        textAlign: 'center',
-        fontStyle: 'italic',
+    emptyOrnament: {
+        width: 1,
+        height: 8,
+        backgroundColor: '#c4b8a8',
+        opacity: 0.3,
+        marginVertical: 16,
     },
-    notesContainer: {
-        marginTop: 32,
-        padding: 16,
-        backgroundColor: '#fff7ed',
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#fed7aa',
+    emptyText: {
+        fontSize: 14,
+        color: '#a89c8f',
+        fontWeight: '300',
+        letterSpacing: 0.8,
+        fontStyle: 'italic',
     },
     notesText: {
         fontSize: 16,
-        color: '#4b5563',
-        lineHeight: 24,
+        color: '#2a241f',
+        lineHeight: 26,
+        fontWeight: '300',
+        letterSpacing: 0.1,
+        marginLeft: 19,
     },
-    metadataContainer: {
-        marginTop: 32,
-        padding: 16,
-        backgroundColor: '#f1f5f9',
-        borderRadius: 8,
+    bottomActions: {
+        marginTop: 20,
+        paddingTop: 32,
+        paddingLeft: 16,
+        flexDirection: 'row',
+        borderTopWidth: 1,
+        borderTopColor: '#e8e3dd',
+        gap: 32,
     },
-    metadataTitle: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#6b7280',
+    bottomActionButton: {
+        paddingVertical: 8,
+    },
+    bottomActionText: {
+        fontSize: 12,
+        color: '#8a7f73',
+        fontWeight: '300',
+        letterSpacing: 1,
         marginBottom: 8,
     },
-    metadataText: {
-        fontSize: 12,
-        color: '#9ca3af',
-        marginBottom: 4,
+    bottomActionUnderline: {
+        width: 32,
+        height: 1,
+        backgroundColor: '#c4b8a8',
+        opacity: 0.3,
+    },
+    deleteText: {
+        color: '#a08b7d',
+    },
+    deleteUnderline: {
+        backgroundColor: '#b59d8f',
+        opacity: 0.4,
+    },
+    contentSpacer: {
+        height: 48,
     },
     closeButton: {
-        margin: 20,
-        paddingVertical: 16,
-        backgroundColor: '#6b7280',
-        borderRadius: 12,
+        position: 'absolute',
+        top: 56,
+        left: 16,
+        width: 32,
+        height: 32,
+        justifyContent: 'center',
         alignItems: 'center',
     },
-    closeButtonText: {
-        color: '#ffffff',
-        fontSize: 16,
-        fontWeight: '600',
+    closeText: {
+        fontSize: 18,
+        color: '#6b4a4a',
+        fontWeight: '100',
+        opacity: 0.8,
     },
 });
