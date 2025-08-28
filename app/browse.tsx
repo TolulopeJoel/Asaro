@@ -4,7 +4,7 @@ import { Modal, SafeAreaView, StyleSheet } from 'react-native';
 import { JournalEntryDetail } from '../src/components/JournalEntryDetail';
 import { JournalEntryList } from '../src/components/JournalEntryList';
 
-export default function BrowseScreen() {
+export default function PastEntriesScreen() {
     const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
     const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
 

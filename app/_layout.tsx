@@ -35,7 +35,8 @@ export default function RootLayout() {
   return (
     <Stack>
       <Stack.Screen name="index" options={{ title: 'Àṣàrò' }} />
-      <Stack.Screen name="test" options={{ title: 'Component Test' }} />
+      <Stack.Screen name="addEntry" options={{ title: 'Ṣe àṣàrò' }} />
+      <Stack.Screen name="browse" options={{ title: 'Past Entries' }} />
     </Stack>
   );
 }
