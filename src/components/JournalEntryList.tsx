@@ -1,3 +1,4 @@
+import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
     Animated,
@@ -213,21 +214,17 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         return entry.chapterStart.toString();
     };
 
-    const getRelativeDate = (dateString: string): string => {
+    const getAnswerCount = (entry: JournalEntry): number => {
+        return entry.reflections.filter(answer => (answer ?? '').trim().length > 0).length;
+    };
+
+
+    const formatDate = (dateString: string): string => {
         const date = new Date(dateString);
-        const today = new Date();
-        const diffTime = today.getTime() - date.getTime();
-        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-        if (diffDays === 0) return 'Today';
-        if (diffDays === 1) return 'Yesterday';
-        if (diffDays < 7) return `${diffDays} days ago`;
-        if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-
         return date.toLocaleDateString('en-US', {
             month: 'short',
             day: 'numeric',
-            year: date.getFullYear() !== today.getFullYear() ? 'numeric' : undefined
+            year: 'numeric',
         });
     };
 
@@ -255,13 +252,8 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         const today = new Date();
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
-
         const thisWeek = new Date(today);
         thisWeek.setDate(thisWeek.getDate() - 7);
-
-        const lastWeek = new Date(today);
-        lastWeek.setDate(lastWeek.getDate() - 14);
-
         const thisMonth = new Date(today);
         thisMonth.setDate(thisMonth.getDate() - 30);
 
@@ -269,7 +261,6 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
             today: [] as JournalEntry[],
             yesterday: [] as JournalEntry[],
             thisWeek: [] as JournalEntry[],
-            lastWeek: [] as JournalEntry[],
             thisMonth: [] as JournalEntry[],
             older: [] as JournalEntry[]
         };
@@ -282,8 +273,6 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                 groups.yesterday.push(entry);
             } else if (entryDate >= thisWeek) {
                 groups.thisWeek.push(entry);
-            } else if (entryDate >= lastWeek) {
-                groups.lastWeek.push(entry);
             } else if (entryDate >= thisMonth) {
                 groups.thisMonth.push(entry);
             } else {
@@ -302,21 +291,28 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
             onPress={() => handleEntryPress(entry)}
         >
             <View style={styles.entryHeader}>
-                {showDate && (
-                    <Text style={styles.entryDate}>{getRelativeDate(entry.dateCreated)}</Text>
+                <Text style={styles.entryDate}>{formatDate(entry.dateCreated)}</Text>
+                {entry.bookName && (
+                    <Text style={styles.entryScripture}>{entry.bookName} {getChapterText(entry)}</Text>
                 )}
-                <View style={styles.entryReference}>
-                    <Text style={styles.bookName}>{entry.bookName}</Text>
-                    <Text style={styles.chapterText}>{getChapterText(entry)}</Text>
-                </View>
-                <Text style={styles.testamentBadge}>
-                    {entry.testament === 'Old' ? 'OT' : 'NT'}
-                </Text>
             </View>
-
             <Text style={styles.entryPreview}>
                 {getPreviewText(entry)}
             </Text>
+
+            <View style={styles.entryFooter}>
+                <View style={styles.reflectionIndicator}>
+                    {Array.from({ length: 5 }).map((_, index) => (
+                        <View
+                            key={index}
+                            style={[
+                                styles.reflectionDot,
+                                index < getAnswerCount(entry) && styles.reflectionDotActive
+                            ]}
+                        />
+                    ))}
+                </View>
+            </View>
         </TouchableOpacity>
     );
 
@@ -354,14 +350,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                     >
                         <View style={styles.bookCardHeader}>
                             <Text style={styles.bookCardName}>{book.name}</Text>
-                            <Text style={styles.bookCardTestament}>
-                                {book.testament === 'Old' ? 'OT' : 'NT'}
-                            </Text>
                         </View>
-                        <Text style={styles.bookCardCount}>
-                            236 entries
-                        </Text>
-                        <Text style={styles.bookCardChevron}>→</Text>
                     </TouchableOpacity>
                 ))}
             </View>
@@ -435,7 +424,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                         {renderDateGroup('Today', groupedEntries.today)}
                         {renderDateGroup('Yesterday', groupedEntries.yesterday)}
                         {renderDateGroup('This Week', groupedEntries.thisWeek)}
-                        {renderDateGroup('Last Week', groupedEntries.lastWeek)}
+                        {renderDateGroup('This Month', groupedEntries.thisMonth)}
                         {renderDateGroup('Older', groupedEntries.older)}
                     </View>
                 );
@@ -486,8 +475,9 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
 
     return (
         <View style={styles.container}>
+            <StatusBar hidden={true} />
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>Study Journal</Text>
+                <Text style={styles.headerTitle}>Past Entries</Text>
 
                 {/* Tab Navigation */}
                 <View style={styles.tabContainer}>
@@ -572,198 +562,220 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f8f7f4',
+        backgroundColor: '#f7f6f3', // Warm off-white, like handmade paper
     },
     header: {
-        backgroundColor: '#ffffff',
-        paddingHorizontal: 20,
-        paddingTop: 16,
-        paddingBottom: 0,
-        borderBottomWidth: 1,
-        borderBottomColor: '#e8e5e0',
+        backgroundColor: '#fefdfb', // Pure but warm white
+        paddingHorizontal: 24,
+        paddingTop: 20,
+        paddingBottom: 4,
+        borderBottomWidth: 0.5,
+        borderBottomColor: '#e6e2db', // Subtle stone
     },
     headerTitle: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: '#2c2a26',
-        marginBottom: 16,
+        fontSize: 22,
+        fontWeight: '400', // Lighter weight for elegance
+        color: '#3d3a33', // Deep warm charcoal
+        marginBottom: 20,
+        letterSpacing: 0.3,
     },
     tabContainer: {
-        marginBottom: 16,
+        marginBottom: 20,
     },
     tabBackground: {
         flexDirection: 'row',
-        backgroundColor: '#f1efeb',
-        borderRadius: 12,
-        padding: 2,
+        backgroundColor: 'transparent',
+        padding: 0,
         position: 'relative',
     },
     tabIndicator: {
         position: 'absolute',
-        top: 2,
-        width: '46%',
-        height: '90%',
-        backgroundColor: '#ffffff',
-        borderRadius: 10,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
+        bottom: 0,
+        width: '50%',
+        height: 1.5,
+        backgroundColor: '#4a453c', // Subtle underline
+        shadowColor: 'transparent',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0,
+        shadowRadius: 0,
+        elevation: 0,
     },
     tab: {
         flex: 1,
-        paddingVertical: 12,
+        paddingVertical: 14,
         alignItems: 'center',
         zIndex: 1,
     },
     tabText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#6b6b6b',
+        fontSize: 15,
+        fontWeight: '400',
+        color: '#8a8074', // Muted taupe
+        letterSpacing: 0.2,
     },
     tabTextActive: {
-        color: '#2c2a26',
+        color: '#4a453c', // Deep warm tone
+        fontWeight: '500',
     },
     breadcrumbsContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingVertical: 12,
-        backgroundColor: '#ffffff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#e8e5e0',
+        paddingHorizontal: 24,
+        paddingVertical: 16,
+        backgroundColor: '#fefdfb',
+        borderBottomWidth: 0.5,
+        borderBottomColor: '#e6e2db',
     },
     breadcrumbText: {
-        fontSize: 14,
-        color: '#8b4513',
-        fontWeight: '500',
+        fontSize: 13,
+        color: '#7a6f5f', // Muted earth tone
+        fontWeight: '400',
+        letterSpacing: 0.1,
     },
     breadcrumbTextCurrent: {
-        color: '#2c2a26',
-        fontWeight: '600',
+        color: '#4a453c',
+        fontWeight: '500',
     },
     breadcrumbSeparator: {
-        fontSize: 14,
-        color: '#a39b90',
-        marginHorizontal: 4,
+        fontSize: 13,
+        color: '#b8aea0', // Soft stone
+        marginHorizontal: 6,
+        fontWeight: '300',
     },
     searchContainer: {
-        paddingHorizontal: 20,
-        paddingVertical: 12,
-        backgroundColor: '#ffffff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#e8e5e0',
+        paddingHorizontal: 24,
+        paddingVertical: 16,
+        backgroundColor: '#fefdfb',
+        borderBottomWidth: 0.5,
+        borderBottomColor: '#e6e2db',
         flexDirection: 'row',
         alignItems: 'center',
     },
     searchInput: {
         flex: 1,
-        height: 40,
-        backgroundColor: '#f1efeb',
-        borderRadius: 20,
+        height: 44,
+        backgroundColor: '#f2f0ed', // Subtle warm grey
+        borderRadius: 6, // More refined corners
         paddingHorizontal: 16,
-        fontSize: 16,
-        color: '#2c2a26',
+        fontSize: 15,
+        color: '#4a453c',
+        borderWidth: 0.5,
+        borderColor: 'transparent',
     },
     clearSearch: {
-        marginLeft: 8,
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: '#e8e5e0',
+        marginLeft: 12,
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: 'transparent',
         alignItems: 'center',
         justifyContent: 'center',
     },
     clearSearchText: {
-        fontSize: 18,
-        color: '#6b6b6b',
+        fontSize: 16,
+        color: '#8a8074',
         fontWeight: '300',
     },
     scrollView: {
         flex: 1,
     },
     scrollContent: {
-        paddingBottom: 24,
+        paddingBottom: 32,
     },
     entriesList: {
         paddingHorizontal: 20,
-        paddingTop: 16,
+        paddingTop: 20,
     },
     dateGroup: {
-        marginBottom: 24,
+        marginBottom: 32,
     },
     dateGroupTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#2c2a26',
-        marginBottom: 12,
+        fontSize: 16,
+        fontWeight: '500',
+        color: '#4a453c',
+        marginBottom: 16,
+        letterSpacing: 0.2,
+        textTransform: 'capitalize',
     },
     entryCard: {
-        backgroundColor: '#ffffff',
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 12,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 3,
-        elevation: 2,
+        backgroundColor: '#fefdfb',
+        borderRadius: 4,
+        // paddingVertical: 24,
+        // paddingHorizontal: 8,
+        padding: 20,
+        marginBottom: 1,
+        borderWidth: 0.5,
+        borderColor: '#ede8e0', // Very subtle border
+
+        shadowColor: 'transparent',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0,
+        shadowRadius: 0,
     },
     entryHeader: {
         flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 8,
+        justifyContent: 'space-between',
+        alignItems: 'baseline',
+        marginBottom: 16,
     },
     entryDate: {
         fontSize: 12,
-        color: '#a39b90',
-        marginRight: 8,
-        minWidth: 60,
-    },
-    entryReference: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    bookName: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#8b4513',
-        marginRight: 4,
-    },
-    chapterText: {
-        fontSize: 14,
-        color: '#6b6b6b',
-    },
-    testamentBadge: {
-        fontSize: 10,
-        fontWeight: '700',
-        color: '#8b4513',
-        backgroundColor: '#f1efeb',
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 4,
+        color: '#9b9185', // Muted stone
+        // marginRight: 12,
+        minWidth: 70,
+        lineHeight: 16,
+        fontWeight: '400',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
     entryPreview: {
-        fontSize: 14,
-        color: '#2c2a26',
-        lineHeight: 20,
+        fontSize: 15,
+        color: '#4a453c',
+        lineHeight: 24,
+        fontWeight: '300',
+        marginBottom: 16,
     },
+    entryFooter: {
+        alignItems: 'flex-start',
+    },
+    reflectionIndicator: {
+        flexDirection: 'row',
+        gap: 6,
+    },
+    entryScripture: {
+        fontSize: 14,
+        color: '#8a8074',
+        fontWeight: '500',
+        letterSpacing: 0.1,
+    },
+    reflectionDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: '#e8e8e8',
+    },
+    reflectionDotActive: {
+        backgroundColor: '#2c2c2c',
+    },
+
+
+
+
     booksGrid: {
-        paddingHorizontal: 20,
-        paddingTop: 16,
+        paddingHorizontal: 24,
+        paddingTop: 20,
     },
     bookCard: {
-        backgroundColor: '#ffffff',
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 12,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 3,
-        elevation: 2,
+        backgroundColor: '#fefdfb',
+        borderRadius: 8,
+        padding: 20,
+        marginBottom: 16,
+        shadowColor: 'transparent',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0,
+        shadowRadius: 0,
+        elevation: 0,
+        borderWidth: 0.5,
+        borderColor: '#ede8e0',
         flexDirection: 'row',
         alignItems: 'center',
     },
@@ -771,62 +783,51 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     bookCardName: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#2c2a26',
-        marginBottom: 2,
-    },
-    bookCardTestament: {
-        fontSize: 10,
-        fontWeight: '700',
-        color: '#8b4513',
-        backgroundColor: '#f1efeb',
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 4,
-        alignSelf: 'flex-start',
-        marginBottom: 4,
-    },
-    bookCardCount: {
-        fontSize: 14,
-        color: '#6b6b6b',
-        marginRight: 12,
-    },
-    bookCardChevron: {
-        fontSize: 16,
-        color: '#a39b90',
+        fontSize: 15,
+        fontWeight: '500',
+        color: '#4a453c',
+        marginBottom: 6,
+        letterSpacing: 0.1,
     },
     bookDetailHeader: {
-        marginBottom: 20,
+        marginBottom: 24,
+        paddingBottom: 16,
+        borderBottomWidth: 0.5,
+        borderBottomColor: '#ede8e0',
     },
     bookDetailTitle: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: '#2c2a26',
-        marginBottom: 4,
+        fontSize: 20,
+        fontWeight: '500',
+        color: '#4a453c',
+        marginBottom: 6,
+        letterSpacing: 0.2,
     },
     bookDetailSubtitle: {
-        fontSize: 14,
-        color: '#6b6b6b',
+        fontSize: 12,
+        color: '#8a8074',
+        fontWeight: '400',
+        textTransform: 'lowercase',
     },
     emptyState: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: 40,
-        paddingVertical: 60,
+        paddingHorizontal: 48,
+        paddingVertical: 80,
     },
     emptyStateText: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#2c2a26',
+        fontSize: 16,
+        fontWeight: '400',
+        color: '#4a453c',
         textAlign: 'center',
-        marginBottom: 8,
+        marginBottom: 12,
+        letterSpacing: 0.1,
     },
     emptyStateSubtext: {
-        fontSize: 14,
-        color: '#6b6b6b',
+        fontSize: 13,
+        color: '#8a8074',
         textAlign: 'center',
         lineHeight: 20,
+        fontWeight: '400',
     },
 });
