@@ -103,9 +103,12 @@ const TextArea: React.FC<{
                             <TouchableOpacity
                                 style={textAreaStyles.expandButton}
                                 onPress={handleExpand}
-                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                                activeOpacity={0.7}
                             >
-                                <View style={textAreaStyles.expandIcon} />
+                                <View style={textAreaStyles.expandIcon}>
+                                    <View style={textAreaStyles.expandIconInner} />
+                                </View>
                             </TouchableOpacity>
                         )}
                     </View>
@@ -131,7 +134,7 @@ const TextArea: React.FC<{
                                     onPress={handleCancel}
                                     hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                                 >
-                                    <Text style={fullScreenStyles.cancelText}>× Cancel</Text>
+                                    <Text style={fullScreenStyles.cancelText}>Don't Save</Text>
                                 </TouchableOpacity>
 
                                 {label && (
@@ -175,7 +178,7 @@ const textAreaStyles = StyleSheet.create({
     },
     inputContainer: {
         backgroundColor: '#fefefe',
-        borderRadius: 2,
+        borderRadius: 7,
         borderWidth: 1,
         borderColor: '#f0ede8',
         position: 'relative',
@@ -189,13 +192,13 @@ const textAreaStyles = StyleSheet.create({
     },
     input: {
         padding: 20,
-        paddingRight: 50, // Make room for expand button
+        paddingRight: 20, // Make room for expand button
         fontSize: 15,
         color: '#3d3528',
         fontWeight: '400',
         lineHeight: 22,
         letterSpacing: 0.1,
-        minHeight: 120,
+        minHeight: 150,
     },
     inputDisabled: {
         color: '#8b8075',
@@ -213,17 +216,27 @@ const textAreaStyles = StyleSheet.create({
         position: 'absolute',
         top: 12,
         right: 12,
-        width: 24,
-        height: 24,
+        width: 28,
+        height: 28,
         justifyContent: 'center',
         alignItems: 'center',
+        backgroundColor: '#f8f7f5',
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: '#f0efec',
     },
     expandIcon: {
         width: 12,
         height: 12,
-        borderWidth: 1.5,
-        borderColor: '#8b7355',
-        borderRadius: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    expandIconInner: {
+        width: 8,
+        height: 8,
+        borderWidth: 1,
+        borderColor: '#7a6f63',
+        borderRadius: 2,
         backgroundColor: 'transparent',
     },
 });
