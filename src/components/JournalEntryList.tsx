@@ -24,7 +24,6 @@ interface JournalEntry {
     chapterEnd?: number;
     reflections: string[];
     notes: string;
-    testament: 'Old' | 'New';
 }
 
 type ViewMode = 'recent' | 'books' | 'bookDetail';
@@ -91,7 +90,6 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                 dbEntry.reflection_5 || '',
             ],
             notes: dbEntry.notes || '',
-            testament: book?.testament || 'New'
         };
     };
 

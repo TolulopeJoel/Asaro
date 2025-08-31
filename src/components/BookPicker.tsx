@@ -7,7 +7,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { ALL_BIBLE_BOOKS, BibleBook, NEW_TESTAMENT_BOOKS, OLD_TESTAMENT_BOOKS } from '../data/bibleBooks';
+import { ALL_BIBLE_BOOKS, BibleBook, GREEK_BOOKS, HEBREW_BOOKS } from '../data/bibleBooks';
 
 interface BookPickerProps {
     selectedBook?: BibleBook;
@@ -40,11 +40,11 @@ export const BookPicker: React.FC<BookPickerProps> = ({
         </View>
     );
 
-    const renderBookGrid = (books: BibleBook[], isNewTestament = false) => {
+    const renderBookGrid = (books: BibleBook[], isGreekBooks = false) => {
         return (
             <View style={[
                 styles.booksGrid,
-                isNewTestament && styles.newTestamentGrid
+                isGreekBooks && styles.GreekBooksGrid
             ]}>
                 {books.map(book => {
                     const isSelected = selectedBook?.name === book.name;
@@ -122,9 +122,6 @@ export const BookPicker: React.FC<BookPickerProps> = ({
                                 ]}>
                                     {book.chapters}
                                 </Text>
-                                <Text style={styles.testamentBadge}>
-                                    {book.testament === 'Old' ? 'HA' : 'GK'}
-                                </Text>
                                 {isSelected && <View style={styles.selectedDot} />}
                             </TouchableOpacity>
                         );
@@ -147,18 +144,18 @@ export const BookPicker: React.FC<BookPickerProps> = ({
             )
         }
 
-        const filteredOT = getFilteredBooks(OLD_TESTAMENT_BOOKS);
-        const filteredNT = getFilteredBooks(NEW_TESTAMENT_BOOKS);
+        const filteredHB = getFilteredBooks(HEBREW_BOOKS);
+        const filteredGK = getFilteredBooks(GREEK_BOOKS);
 
         return (
             <View style={styles.booksContainer}>
-                {/* Old Testament Section */}
+                {/* Hebrew-Aramic Section */}
                 {renderSectionHeader('Hebrew-Aramic Scriptures', '39 books')}
-                {renderBookGrid(filteredOT, false)}
+                {renderBookGrid(filteredHB, false)}
 
-                {/* New Testament Section */}
+                {/* Greek Section */}
                 {renderSectionHeader('Christian Greek Scriptures', '27 books')}
-                {renderBookGrid(filteredNT, true)}
+                {renderBookGrid(filteredGK, true)}
             </View>
         );
     };
@@ -243,7 +240,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-around',
         marginBottom: 12,
     },
-    newTestamentGrid: {
+    GreekBooksGrid: {
         paddingTop: 12,
     },
     bookCard: {
@@ -306,20 +303,6 @@ const styles = StyleSheet.create({
         height: 5,
         borderRadius: 2.5,
         backgroundColor: '#8b7355',
-    },
-    testamentBadge: {
-        position: 'absolute',
-        top: 4,
-        left: 4,
-        fontSize: 8,
-        color: '#8b8075',
-        backgroundColor: '#f0ede8',
-        paddingHorizontal: 4,
-        paddingVertical: 2,
-        borderRadius: 2,
-        fontWeight: '600',
-        letterSpacing: 0.5,
-        textTransform: 'uppercase',
     },
     searchResults: {
         flex: 1,
