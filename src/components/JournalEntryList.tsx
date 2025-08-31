@@ -1,4 +1,3 @@
-import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
     Animated,
@@ -475,7 +474,6 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
 
     return (
         <View style={styles.container}>
-            <StatusBar hidden={true} />
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>Past Entries</Text>
 

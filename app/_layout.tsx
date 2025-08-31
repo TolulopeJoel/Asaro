@@ -1,6 +1,7 @@
 // app/_layout.tsx
 import { initializeDatabase } from '@/src/data/database';
 import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 
@@ -33,10 +34,13 @@ export default function RootLayout() {
   }
 
   return (
-    <Stack>
-      <Stack.Screen name="index" options={{ title: 'Àṣàrò' }} />
-      <Stack.Screen name="addEntry" options={{ title: 'Ṣe àṣàrò' }} />
-      <Stack.Screen name="browse" options={{ title: 'Past Entries' }} />
-    </Stack>
+    <>
+      <Stack>
+        <Stack.Screen name="index" options={{ title: 'Àṣàrò' }} />
+        <Stack.Screen name="addEntry" options={{ title: 'Kọ silẹ' }} />
+        <Stack.Screen name="browse" options={{ title: 'Wo lẹẹkansi' }} />
+      </Stack>
+      <StatusBar hidden={true} />
+    </>
   );
 }

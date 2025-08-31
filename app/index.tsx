@@ -1,4 +1,5 @@
 import { Link } from 'expo-router';
+import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function Index() {
@@ -10,7 +11,7 @@ export default function Index() {
       </View>
 
       <Text style={styles.subtitle}>
-        track your bible study reading + meditation
+        track your bible reading & meditation
       </Text>
 
       <View style={styles.buttonContainer}>
