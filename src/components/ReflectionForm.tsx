@@ -32,17 +32,17 @@ interface ReflectionQuestion {
 const REFLECTION_QUESTIONS: ReflectionQuestion[] = [
   {
     id: 'reflection1',
-    question: 'What does this tell me about Jehovah God?',
+    question: 'What does this tell me about Jehovah?',
     placeholder: '',
   },
   {
     id: 'reflection2',
-    question: 'How does this section of the Scriptures contribute to the Bible\'s message?',
+    question: 'How does this section of the Scriptures contribute to the Bible’s message?',
     placeholder: '',
   },
   {
     id: 'reflection3',
-    question: 'How can I apply this in my life?',
+    question: 'How can I realistically apply this in my life?',
     placeholder: 'Think of specific, practical applications...',
   },
   {
@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   questionTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '400',
     color: '#3d3528',
     lineHeight: 24,

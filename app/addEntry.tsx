@@ -54,12 +54,10 @@ export default function MeditationSessionScreen() {
                     answers.reflection2,
                     answers.reflection3,
                     answers.reflection4,
-                    answers.reflection5,
                 ],
                 notes: answers.notes,
             };
-
-            const entryId = createJournalEntry(entryData);
+            createJournalEntry(entryData);
             setReflectionAnswers(answers);
             setCurrentStep('summary');
         } catch (error) {
@@ -76,7 +74,9 @@ export default function MeditationSessionScreen() {
     };
 
     const getSelectionSummary = () => {
-        if (!selectedBook) return 'No selection yet';
+        if (!selectedBook) {
+            return 'No selection yet';
+        }
         let summary = selectedBook.name;
         if (selectedChapters && selectedChapters.start > 0) {
             summary += ` ${selectedChapters.start}`;
@@ -86,7 +86,6 @@ export default function MeditationSessionScreen() {
         }
         return summary;
     };
-
 
     const renderCurrentStep = () => {
         switch (currentStep) {
@@ -150,7 +149,7 @@ export default function MeditationSessionScreen() {
                 return (
                     <View style={styles.stepContent}>
                         <Text style={styles.stepDescription}>
-                            Take time for quiet contemplation of today's reading.
+                            A good way to get the most out of your Bible reading is to consider one or more of the following questions as you read:
                         </Text>
 
                         <View style={styles.readingCard}>
