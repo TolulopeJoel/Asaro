@@ -4,16 +4,18 @@ export interface JournalEntry {
     id?: number;
     date_created: string;
     book_name: string;
+
     chapter_start?: number;
     chapter_end?: number;
     verse_start?: string;
     verse_end?: string;
+
     reflection_1?: string;
     reflection_2?: string;
     reflection_3?: string;
     reflection_4?: string;
-    reflection_5?: string;
     notes?: string;
+
     created_at?: string;
     updated_at?: string;
 }
@@ -53,7 +55,7 @@ const fetchOne = (sql: string, params: any[] = []): JournalEntry | null =>
     (initDb().getFirstSync(sql, params) as JournalEntry) ?? null;
 
 const mapReflections = (reflections: string[]): string[] =>
-    Array.from({ length: 5 }, (_, i) => reflections[i] || '');
+    Array.from({ length: 4 }, (_, i) => reflections[i] || '');
 
 // --- Database Setup ---
 export const initializeDatabase = () => {
@@ -99,8 +101,8 @@ export const createJournalEntry = (entryData: JournalEntryInput): number => {
     INSERT INTO journal_entries (
       date_created, book_name, chapter_start, chapter_end,
       verse_start, verse_end, reflection_1, reflection_2,
-      reflection_3, reflection_4, reflection_5, notes
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      reflection_3, reflection_4, notes
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
         dateCreated, bookName, chapterStart ?? null, chapterEnd ?? null,
         verseStart ?? null, verseEnd ?? null, ...mappedReflections, notes || ''

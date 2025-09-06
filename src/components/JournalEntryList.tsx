@@ -87,7 +87,6 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                 dbEntry.reflection_2 || '',
                 dbEntry.reflection_3 || '',
                 dbEntry.reflection_4 || '',
-                dbEntry.reflection_5 || '',
             ],
             notes: dbEntry.notes || '',
         };
@@ -198,7 +197,6 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
             reflection_2: entry.reflections[1],
             reflection_3: entry.reflections[2],
             reflection_4: entry.reflections[3],
-            reflection_5: entry.reflections[4],
             notes: entry.notes,
         };
         onEntryPress(dbEntry);

@@ -13,7 +13,6 @@ export interface ReflectionAnswers {
   reflection2: string;
   reflection3: string;
   reflection4: string;
-  reflection5: string;
   notes: string;
 }
 
@@ -51,11 +50,6 @@ const REFLECTION_QUESTIONS: ReflectionQuestion[] = [
     question: 'How can I use these verses to help others?',
     placeholder: '',
   },
-  {
-    id: 'reflection5',
-    question: 'What do I want to remember?',
-    placeholder: '',
-  },
 ];
 
 export const ReflectionForm: React.FC<ReflectionFormProps> = ({
@@ -69,7 +63,6 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
     reflection2: initialAnswers?.reflection2 || '',
     reflection3: initialAnswers?.reflection3 || '',
     reflection4: initialAnswers?.reflection4 || '',
-    reflection5: initialAnswers?.reflection5 || '',
     notes: initialAnswers?.notes || '',
   });
 
@@ -122,7 +115,6 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
               reflection2: '',
               reflection3: '',
               reflection4: '',
-              reflection5: '',
               notes: '',
             };
             setAnswers(emptyAnswers);

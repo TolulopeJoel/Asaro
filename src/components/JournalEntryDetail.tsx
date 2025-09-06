@@ -112,7 +112,6 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                 entry.reflection_2,
                 entry.reflection_3,
                 entry.reflection_4,
-                entry.reflection_5,
             ];
 
             reflections.forEach((reflection, index) => {
@@ -169,7 +168,6 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
         entry.reflection_2,
         entry.reflection_3,
         entry.reflection_4,
-        entry.reflection_5,
     ].filter(r => r && r.trim().length > 0);
 
     const hasReflections = getAnsweredReflections().length > 0;
@@ -210,7 +208,6 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                         entry.reflection_2,
                         entry.reflection_3,
                         entry.reflection_4,
-                        entry.reflection_5,
                     ].map((reflection, index) => renderReflection(reflection, index))
                 ) : (
                     <View style={styles.emptyState}>
