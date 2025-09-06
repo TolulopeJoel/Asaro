@@ -37,7 +37,7 @@ export default function Index() {
                 </Text>
 
                 <Text style={styles.updatesContent}>
-                    • Sat, Sept 6, 2025 @ 8:57 AM
+                    • Sept 6, 2025 @ 8:57 AM
                     {"\n"}Meditation question no. 5 (what do I want to remember?) has been removed.
                     {"\n"}{"\n"}The goal of this field was to help you remember topics from your Bible reading you want to research more on, but a simple text field won't actually help you remember.
                     {"\n"}{"\n"}So, there will be an upcoming feature that will help you set dates and reminders for topics you want to research further.
@@ -57,10 +57,11 @@ export default function Index() {
                     </TouchableOpacity>
                 </Link>
 
-                <Link href="/features" asChild>
+                {/* <Link href="/features" asChild>
                     <Text style={styles.featureLink}>what's next with Àṣàrò?</Text>
-                </Link>
+                </Link> */}
             </View>
+            <View style={styles.ornament}></View>
 
             {(ENABLE_DRAFTS && draftExists) && (
                 <View style={styles.draftBar}>
