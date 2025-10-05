@@ -1,23 +1,161 @@
-import { createJournalEntry, JournalEntryInput } from '@/src/data/database';
-import React, { useState } from 'react';
+import { createJournalEntry, getEntryById, JournalEntryInput, updateJournalEntry } from '@/src/data/database';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BookPicker } from '../src/components/BookPicker';
 import { ChapterPicker } from '../src/components/ChapterPicker';
 import { ReflectionAnswers, ReflectionForm } from '../src/components/ReflectionForm';
-import { BibleBook } from '../src/data/bibleBooks';
+import { BibleBook, getBookByName } from '../src/data/bibleBooks';
 
 interface ChapterRange {
     start: number;
     end?: number;
 }
 
+interface DraftData {
+    selectedBook?: BibleBook;
+    selectedChapters?: ChapterRange;
+    reflectionAnswers?: ReflectionAnswers;
+}
+
 type Step = 'book' | 'chapter' | 'reflection' | 'summary';
 
+export function useAutoSave(reflectionAnswers: any, selectedBook: any, selectedChapters: any, currentStep: Step, isEditMode: boolean) {
+    const lastSaveTime = useRef<number>(0);
+    const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    useEffect(() => {
+        if (isEditMode || currentStep !== 'reflection') {
+            return;
+        }
+
+        const saveDraft = async () => {
+            try {
+                const draftData: DraftData = {
+                    selectedBook,
+                    selectedChapters,
+                    reflectionAnswers,
+                };
+                await AsyncStorage.setItem(
+                    "reflection_draft",
+                    JSON.stringify(draftData)
+                );
+                lastSaveTime.current = Date.now();
+            } catch (e) {
+                console.error("Failed to save draft:", e);
+            }
+        };
+
+        // Only save if there's meaningful data
+        if (!selectedBook && !reflectionAnswers) {
+            return;
+        }
+
+        // save draft every 20 seconds
+        const now = Date.now();
+        const timeSinceLastSave = now - lastSaveTime.current;
+        if (timeSinceLastSave >= 20000) {
+            saveDraft();
+            return;
+        }
+
+        // save as draft if user stop typing after 0.8 seconds
+        if (debounceTimer.current) {
+            clearTimeout(debounceTimer.current);
+        }
+        debounceTimer.current = setTimeout(() => {
+            saveDraft();
+        }, 800); // 0.8s debounce
+
+        // ---- CLEANUP ----
+        return () => {
+            if (debounceTimer.current) {
+                clearTimeout(debounceTimer.current);
+            }
+        };
+    }, [reflectionAnswers]);
+}
+
 export default function MeditationSessionScreen() {
+    const router = useRouter();
+    const params = useLocalSearchParams();
+
+    // Check if we're in edit mode (editing existing saved entry)
+    const isEditMode = !!params.entryId;
+    const entryId = params.entryId ? Number(params.entryId) : undefined;
+
     const [currentStep, setCurrentStep] = useState<Step>('book');
     const [selectedBook, setSelectedBook] = useState<BibleBook>();
     const [selectedChapters, setSelectedChapters] = useState<ChapterRange>();
-    const [_, setReflectionAnswers] = useState<ReflectionAnswers>();
+    const [reflectionAnswers, setReflectionAnswers] = useState<ReflectionAnswers>();
+    const [isLoading, setIsLoading] = useState(true);
+
+    // Load existing entry data OR draft on mount
+    useEffect(() => {
+        const loadData = async () => {
+            if (isEditMode && entryId) {
+                // Load existing saved entry for editing
+                try {
+                    const entry = await getEntryById(entryId);
+
+                    if (!entry) {
+                        Alert.alert('Error', 'Entry not found');
+                        router.back();
+                        return;
+                    }
+                    // For now, showing structure:
+                    const book = getBookByName(entry.book_name);
+                    setSelectedBook(book);
+                    setSelectedChapters({
+                        start: entry.chapter_start,
+                        end: entry.chapter_end
+                    });
+                    setReflectionAnswers({
+                        reflection1: entry.reflection_1 || "",
+                        reflection2: entry.reflection_2 || "",
+                        reflection3: entry.reflection_3 || "",
+                        reflection4: entry.reflection_4 || "",
+                        notes: entry.notes || ""
+                    });
+                    setCurrentStep('reflection');
+
+                    setIsLoading(false);
+                } catch (error) {
+                    console.error('Error loading entry:', error);
+                    Alert.alert('Error', 'Failed to load entry');
+                    router.back();
+                }
+            } else {
+                // Check for draft (continuing unfinished entry)
+                try {
+                    const draftJson = await AsyncStorage.getItem("reflection_draft");
+                    if (draftJson) {
+                        const draft: DraftData = JSON.parse(draftJson);
+                        // Restore draft state
+                        if (draft.selectedBook) {
+                            setSelectedBook(draft.selectedBook);
+                        }
+                        if (draft.selectedChapters) {
+                            setSelectedChapters(draft.selectedChapters);
+                        }
+                        if (draft.reflectionAnswers) {
+                            setReflectionAnswers(draft.reflectionAnswers);
+                        }
+                        setCurrentStep('reflection');
+                    }
+                } catch (error) {
+                    console.error('Error loading draft:', error);
+                }
+                setIsLoading(false);
+            }
+        };
+
+        loadData();
+    }, [isEditMode, entryId]);
+
+    // Auto-save drafts (disabled in edit mode and summary screen)
+    useAutoSave(reflectionAnswers, selectedBook, selectedChapters, currentStep, isEditMode);
 
     const handleBookSelect = (book: BibleBook) => {
         setSelectedBook(book);
@@ -57,20 +195,55 @@ export default function MeditationSessionScreen() {
                 ],
                 notes: answers.notes,
             };
-            createJournalEntry(entryData);
-            setReflectionAnswers(answers);
-            setCurrentStep('summary');
+
+            if (isEditMode && entryId) {
+                // Update existing saved entry
+                await updateJournalEntry(entryId, entryData);
+                Alert.alert('Success', 'Entry updated successfully');
+                router.back(); // Go back to previous screen
+            } else {
+                await createJournalEntry(entryData);
+                await AsyncStorage.removeItem("reflection_draft");
+                setReflectionAnswers(answers);
+                setCurrentStep('summary');
+            }
         } catch (error) {
             console.error('Error saving entry:', error);
-            Alert.alert('Error', 'Failed to save your entry. Please try again.');
+            Alert.alert('Error', `Failed to ${isEditMode ? 'update' : 'save'} your entry. Please try again.`);
         }
     };
 
-    const handleStartOver = () => {
-        setSelectedBook(undefined);
-        setSelectedChapters(undefined);
-        setReflectionAnswers(undefined);
-        setCurrentStep('book');
+    const handleStartOver = async () => {
+        if (isEditMode) {
+            router.back();
+        } else {
+            await AsyncStorage.removeItem("reflection_draft");
+            setSelectedBook(undefined);
+            setSelectedChapters(undefined);
+            setReflectionAnswers(undefined);
+            setCurrentStep('book');
+        }
+    };
+
+    const handleDiscardDraft = async () => {
+        Alert.alert(
+            'Discard Draft?',
+            'Are you sure you want to discard your draft and start fresh?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Discard',
+                    style: 'destructive',
+                    onPress: async () => {
+                        await AsyncStorage.removeItem("reflection_draft");
+                        setSelectedBook(undefined);
+                        setSelectedChapters(undefined);
+                        setReflectionAnswers(undefined);
+                        setCurrentStep('book');
+                    },
+                },
+            ]
+        );
     };
 
     const getSelectionSummary = () => {
@@ -87,12 +260,21 @@ export default function MeditationSessionScreen() {
         return summary;
     };
 
+    if (isLoading) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <View style={styles.loadingContainer}>
+                    <Text style={styles.loadingText}>Loading...</Text>
+                </View>
+            </SafeAreaView>
+        );
+    }
+
     const renderCurrentStep = () => {
         switch (currentStep) {
             case 'book':
                 return (
                     <View style={styles.stepContent}>
-
                         <Text style={styles.stepQuestion}>
                             What book?
                         </Text>
@@ -103,13 +285,22 @@ export default function MeditationSessionScreen() {
                                 onBookSelect={handleBookSelect}
                             />
                         </View>
+
+                        {/* Show discard draft option if we have draft data */}
+                        {!isEditMode && (selectedBook || reflectionAnswers) && (
+                            <TouchableOpacity
+                                style={styles.discardButton}
+                                onPress={handleDiscardDraft}
+                            >
+                                <Text style={styles.discardButtonText}>Discard draft & start fresh</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
                 );
 
             case 'chapter':
                 return (
                     <View style={styles.stepContent}>
-
                         <Text style={styles.stepQuestion}>
                             What part did you read?
                         </Text>
@@ -149,28 +340,46 @@ export default function MeditationSessionScreen() {
                 return (
                     <View style={styles.stepContent}>
                         <Text style={styles.stepDescription}>
-                            A good way to get the most out of your Bible reading is to consider one or more of the following questions as you read:
+                            {isEditMode
+                                ? 'Edit your reflection below:'
+                                : 'A good way to get the most out of your Bible reading is to consider one or more of the following questions as you read:'
+                            }
                         </Text>
 
                         <View style={styles.readingCard}>
-                            <Text style={styles.readingLabel}>Today's Reading</Text>
+                            <Text style={styles.readingLabel}>
+                                {isEditMode ? 'Editing Entry' : 'Today\'s Reading'}
+                            </Text>
                             <Text style={styles.readingText}>{getSelectionSummary()}</Text>
                         </View>
 
                         <View style={styles.contentArea}>
                             <ReflectionForm
+                                initialAnswers={reflectionAnswers}
                                 onAnswersChange={setReflectionAnswers}
                                 onSave={handleSaveReflection}
                                 disabled={false}
+                                saveButtonText={isEditMode ? 'Update Entry' : 'Save Entry'}
                             />
                         </View>
 
-                        <TouchableOpacity
-                            style={styles.subtleBackButton}
-                            onPress={() => setCurrentStep('chapter')}
-                        >
-                            <Text style={styles.subtleBackButtonText}>← Return to chapter selection</Text>
-                        </TouchableOpacity>
+                        {!isEditMode && (
+                            <TouchableOpacity
+                                style={styles.subtleBackButton}
+                                onPress={() => setCurrentStep('chapter')}
+                            >
+                                <Text style={styles.subtleBackButtonText}>← Return to chapter selection</Text>
+                            </TouchableOpacity>
+                        )}
+
+                        {isEditMode && (
+                            <TouchableOpacity
+                                style={styles.subtleBackButton}
+                                onPress={() => router.back()}
+                            >
+                                <Text style={styles.subtleBackButtonText}>← Cancel editing</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
                 );
 
@@ -221,7 +430,6 @@ export default function MeditationSessionScreen() {
                 style={{ flex: 1 }}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             >
-                {/* {renderStepIndicator()} */}
                 <ScrollView
                     style={styles.scrollView}
                     contentContainerStyle={styles.scrollContent}
@@ -240,6 +448,15 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#f7f6f3',
     },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    loadingText: {
+        fontSize: 16,
+        color: '#756b5e',
+    },
     scrollView: {
         flex: 1,
     },
@@ -247,63 +464,6 @@ const styles = StyleSheet.create({
         flexGrow: 1,
         paddingHorizontal: 24,
         paddingBottom: 48,
-    },
-    stepIndicator: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingVertical: 32,
-        paddingHorizontal: 24,
-        backgroundColor: '#fefefe',
-        borderBottomWidth: 1,
-        borderBottomColor: '#f0ede8',
-    },
-    stepContainer: {
-        alignItems: 'center',
-        flex: 1,
-        position: 'relative',
-    },
-    stepDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: '#d6d3ce',
-        marginBottom: 12,
-    },
-    stepDotActive: {
-        backgroundColor: '#8b7355',
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-    },
-    stepDotCompleted: {
-        backgroundColor: '#6b5b47',
-    },
-    stepLabel: {
-        fontSize: 12,
-        fontWeight: '400',
-        color: '#a39b90',
-        letterSpacing: 0.5,
-        textTransform: 'uppercase',
-    },
-    stepLabelActive: {
-        color: '#8b7355',
-        fontWeight: '500',
-    },
-    stepLabelCompleted: {
-        color: '#6b5b47',
-    },
-    stepLine: {
-        position: 'absolute',
-        top: 4,
-        left: '50%',
-        right: '-50%',
-        height: 1,
-        backgroundColor: '#e8e3dd',
-        zIndex: -1,
-    },
-    stepLineCompleted: {
-        backgroundColor: '#c4b8a8',
     },
     stepContent: {
         flex: 1,
@@ -417,6 +577,17 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '400',
         letterSpacing: 0.5,
+    },
+    discardButton: {
+        alignItems: 'center',
+        paddingVertical: 12,
+        marginTop: 24,
+    },
+    discardButtonText: {
+        color: '#d4876f',
+        fontSize: 13,
+        fontWeight: '500',
+        letterSpacing: 0.3,
     },
     completionCard: {
         backgroundColor: '#fefefe',
