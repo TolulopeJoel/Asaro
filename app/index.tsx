@@ -1,6 +1,7 @@
+import { getTotalEntryCount } from "@/src/data/database";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Link } from 'expo-router';
+import { Link, useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
@@ -19,7 +20,7 @@ const StatCard = React.memo(({ icon, value, label }) => (
 const QuickStats = React.memo(() => (
     <View style={styles.statsContainer}>
         <StatCard icon="flame-outline" value="0" label="Days" />
-        <StatCard icon="book-outline" value="0" label="Entries" />
+        <StatCard icon="book-outline" value={getTotalEntryCount()} label="Entries" />
     </View>
 ));
 
@@ -173,16 +174,17 @@ export default function Index() {
         }
     }, []);
 
-    useEffect(() => {
-        if (ENABLE_DRAFTS) {
-            checkDraft();
-        }
-    }, [checkDraft]);
+    useFocusEffect(
+        useCallback(() => {
+            if (ENABLE_DRAFTS) {
+                checkDraft();
+            }
+        }, [checkDraft])
+    );
 
     return (
         <View style={styles.container}>
             <View style={styles.contentWrapper}>
-                {/* <TitleSection /> */}
                 <QuickStats />
                 <UpdateCard />
                 <NavigationButtons />
