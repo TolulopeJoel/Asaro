@@ -18,9 +18,9 @@ interface JournalEntryDetailProps {
 }
 
 const REFLECTION_QUESTIONS = [
-    'What does this tell me about Jehovah God?',
-    'How does this section of the Scriptures contribute to the Bible\'s message?',
-    'How can I apply this in my life?',
+    'What does this tell me about Jehovah?',
+    'How does this section of the Scriptures contribute to the Bible’s message?',
+    'How can I realistically apply this in my life?',
     'How can I use these verses to help others?',
     'What is one thing I want to remember from this study?',
 ];
