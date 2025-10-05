@@ -5,7 +5,7 @@ export interface JournalEntry {
     date_created: string;
     book_name: string;
 
-    chapter_start?: number;
+    chapter_start: number;
     chapter_end?: number;
     verse_start?: string;
     verse_end?: string;
