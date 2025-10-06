@@ -158,3 +158,58 @@ export const getBookEntryCount = (bookName: string) =>
 
 export const getTotalEntryCount = () =>
     (fetchOne(`SELECT COUNT(*) as count FROM journal_entries`) as any)?.count || 0;
+
+export const getMissedDaysCount = () => {
+    const result = fetchOne(`
+      SELECT COUNT(DISTINCT DATE(created_at)) as active_days FROM journal_entries
+    `) as any;
+    const activeDays = result?.active_days || 0;
+
+    const startDateResult = fetchOne(`
+      SELECT DATE(MIN(created_at)) as start_date FROM journal_entries
+    `) as any;
+
+    const startDate = startDateResult?.start_date;
+    if (!startDate) {
+        return 0;
+    }
+
+    const start = new Date(startDate);
+    const today = new Date();
+
+    // Reset time components to compare dates only
+    start.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+
+
+    const diffTime = today.getTime() - start.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    return diffDays - activeDays;
+}
+
+export const getComebackDaysCount = () => {
+    const result = fetchOne(`
+      WITH dated_entries AS (
+        SELECT DISTINCT DATE(created_at) as entry_date
+        FROM journal_entries
+        ORDER BY entry_date
+      ),
+      with_gaps AS (
+        SELECT 
+          entry_date,
+          LAG(entry_date, 1) OVER (ORDER BY entry_date) as prev_date_1,
+          LAG(entry_date, 2) OVER (ORDER BY entry_date) as prev_date_2
+        FROM dated_entries
+      )
+      SELECT COUNT(*) as comeback_days
+      FROM with_gaps
+      WHERE 
+        -- Current day and previous day are consecutive (2 days in a row)
+        julianday(entry_date) - julianday(prev_date_1) = 1
+        -- But there was a 2+ day gap before those 2 consecutive days
+        AND julianday(prev_date_1) - julianday(prev_date_2) >= 2
+    `) as any;
+  
+    return result?.comeback_days || 0;
+  }
