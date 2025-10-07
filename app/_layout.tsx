@@ -1,5 +1,5 @@
-// app/_layout.tsx
 import { initializeDatabase } from '@/src/data/database';
+import { requestNotificationPermissions } from '@/src/utils/notifications';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
@@ -9,20 +9,23 @@ export default function RootLayout() {
   const [dbInitialized, setDbInitialized] = useState(false);
 
   useEffect(() => {
-    const initDb = async () => {
+    const init = async () => {
       try {
-        const success = initializeDatabase();
+        // initialise database
+        const success = await initializeDatabase();
         setDbInitialized(success);
         if (!success) {
           console.error('Failed to initialize database');
         }
+        // request notification permission
+        await requestNotificationPermissions();
       } catch (error) {
-        console.error('Database initialization error:', error);
+        console.error('Initialization error:', error);
         setDbInitialized(false);
       }
     };
 
-    initDb();
+    init();
   }, []);
 
   if (!dbInitialized) {
