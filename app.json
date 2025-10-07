@@ -2,7 +2,7 @@
   "expo": {
     "name": "Àṣàrò",
     "slug": "asaro",
-    "version": "1.0.2",
+    "version": "2025.OCTOBER.07",
     "orientation": "portrait",
     "icon": "./assets/images/àṣàròLogo.png",
     "scheme": "asaro",
@@ -36,7 +36,8 @@
         }
       ],
       "expo-router",
-      "expo-sqlite"
+      "expo-sqlite",
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true

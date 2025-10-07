@@ -5,3 +5,5 @@
 - Add navbar (past entries, profile), then round button to add entry on home page
 - Feature for users to add verses, not just chapters
 - Streak days view (colored jooor)
+!- Resarcher (set date + time reminder)
+- editing of past entries 
