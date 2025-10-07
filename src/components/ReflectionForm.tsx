@@ -21,42 +21,15 @@ interface ReflectionFormProps {
   onAnswersChange?: (answers: ReflectionAnswers) => void;
   onSave?: (answers: ReflectionAnswers) => void;
   disabled?: boolean;
+  saveButtonText?: string;
 }
-
-interface ReflectionQuestion {
-  id: keyof ReflectionAnswers;
-  question: string;
-  placeholder: string;
-}
-
-const REFLECTION_QUESTIONS: ReflectionQuestion[] = [
-  {
-    id: 'reflection1',
-    question: 'What does this tell me about Jehovah?',
-    placeholder: '',
-  },
-  {
-    id: 'reflection2',
-    question: 'How does this section of the Scriptures contribute to the Bible’s message?',
-    placeholder: '',
-  },
-  {
-    id: 'reflection3',
-    question: 'How can I realistically apply this in my life?',
-    placeholder: 'Think of specific, practical applications...',
-  },
-  {
-    id: 'reflection4',
-    question: 'How can I use these verses to help others?',
-    placeholder: '',
-  },
-];
 
 export const ReflectionForm: React.FC<ReflectionFormProps> = ({
   initialAnswers,
   onAnswersChange,
   onSave,
   disabled = false,
+  saveButtonText = 'Save It',
 }) => {
   const [answers, setAnswers] = useState<ReflectionAnswers>({
     reflection1: initialAnswers?.reflection1 || '',
@@ -185,13 +158,42 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
             style={styles.saveButton}
             onPress={handleSave}
           >
-            <Text style={styles.saveButtonText}>Save It</Text>
+            <Text style={styles.saveButtonText}>{saveButtonText}</Text>
           </TouchableOpacity>
         </View>
       )}
     </View>
   );
 };
+
+interface ReflectionQuestion {
+  id: keyof ReflectionAnswers;
+  question: string;
+  placeholder: string;
+}
+
+const REFLECTION_QUESTIONS: ReflectionQuestion[] = [
+  {
+    id: 'reflection1',
+    question: 'What does this tell me about Jehovah?',
+    placeholder: '',
+  },
+  {
+    id: 'reflection2',
+    question: 'How does this section of the Scriptures contribute to the Bible’s message?',
+    placeholder: '',
+  },
+  {
+    id: 'reflection3',
+    question: 'How can I realistically apply this in my life?',
+    placeholder: 'Think of specific, practical applications...',
+  },
+  {
+    id: 'reflection4',
+    question: 'How can I use these verses to help others?',
+    placeholder: '',
+  },
+];
 
 const styles = StyleSheet.create({
   container: {

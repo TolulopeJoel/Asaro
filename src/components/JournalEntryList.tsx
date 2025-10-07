@@ -8,23 +8,13 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { ALL_BIBLE_BOOKS, BibleBook, getBookByName } from '../data/bibleBooks';
+import { ALL_BIBLE_BOOKS, BibleBook } from '../data/bibleBooks';
 import {
     JournalEntry as DBJournalEntry,
     getEntriesByBook,
     getJournalEntries,
     searchEntries
 } from '../data/database';
-
-interface JournalEntry {
-    id: string;
-    dateCreated: string;
-    bookName: string;
-    chapterStart: number;
-    chapterEnd?: number;
-    reflections: string[];
-    notes: string;
-}
 
 type ViewMode = 'recent' | 'books' | 'bookDetail';
 
@@ -38,12 +28,12 @@ interface JournalEntryListProps {
 }
 
 export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress }) => {
-    const [entries, setEntries] = useState<JournalEntry[]>([]);
+    const [entries, setEntries] = useState<DBJournalEntry[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [viewMode, setViewMode] = useState<ViewMode>('recent');
     const [selectedBook, setSelectedBook] = useState<BibleBook>();
-    const [bookEntries, setBookEntries] = useState<JournalEntry[]>([]);
-    const [filteredEntries, setFilteredEntries] = useState<JournalEntry[]>([]);
+    const [bookEntries, setBookEntries] = useState<DBJournalEntry[]>([]);
+    const [filteredEntries, setFilteredEntries] = useState<DBJournalEntry[]>([]);
     const [availableBooks, setAvailableBooks] = useState<BibleBook[]>([]);
     const [tabAnimation] = useState(new Animated.Value(0));
 
@@ -63,7 +53,6 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         }
     }, [selectedBook, searchQuery]);
 
-    // Animate tab indicator
     useEffect(() => {
         const toValue = viewMode === 'recent' ? 0 : 1;
         Animated.spring(tabAnimation, {
@@ -74,29 +63,10 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         }).start();
     }, [viewMode]);
 
-    const transformDbEntry = (dbEntry: DBJournalEntry): JournalEntry => {
-        const book = getBookByName(dbEntry.book_name);
-        return {
-            id: dbEntry.id?.toString() || '',
-            dateCreated: dbEntry.date_created,
-            bookName: dbEntry.book_name,
-            chapterStart: dbEntry.chapter_start || 1,
-            chapterEnd: dbEntry.chapter_end,
-            reflections: [
-                dbEntry.reflection_1 || '',
-                dbEntry.reflection_2 || '',
-                dbEntry.reflection_3 || '',
-                dbEntry.reflection_4 || '',
-            ],
-            notes: dbEntry.notes || '',
-        };
-    };
-
     const loadEntries = async () => {
         try {
-            const dbEntries = getJournalEntries(100, 0);
-            const transformedEntries = dbEntries.map(transformDbEntry);
-            setEntries(transformedEntries);
+            const dbEntries = await getJournalEntries(100, 0);
+            setEntries(dbEntries);
 
             // Get available books with entry counts
             const bookCounts = new Map<string, number>();
@@ -122,14 +92,13 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
             let dbEntries: DBJournalEntry[] = [];
 
             if (searchQuery.trim()) {
-                const allSearchResults = searchEntries(searchQuery);
+                const allSearchResults = await searchEntries(searchQuery);
                 dbEntries = allSearchResults.filter(entry => entry.book_name === selectedBook.name);
             } else {
-                dbEntries = getEntriesByBook(selectedBook.name);
+                dbEntries = await getEntriesByBook(selectedBook.name);
             }
 
-            const transformedEntries = dbEntries.map(transformDbEntry);
-            setBookEntries(transformedEntries);
+            setBookEntries(dbEntries);
         } catch (error) {
             console.error('Error loading book entries:', error);
         }
@@ -142,9 +111,8 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         }
 
         try {
-            const searchResults = searchEntries(searchQuery);
-            const transformedResults = searchResults.map(transformDbEntry);
-            setFilteredEntries(transformedResults);
+            const searchResults = await searchEntries(searchQuery);
+            setFilteredEntries(searchResults);
         } catch (error) {
             console.error('Error filtering entries:', error);
             setFilteredEntries([]);
@@ -179,42 +147,27 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
             });
             breadcrumbs.push({
                 label: selectedBook.name,
-                onPress: () => { } // Current page, no action needed
+                onPress: () => { }
             });
         }
 
         return breadcrumbs;
     };
 
-    const handleEntryPress = (entry: JournalEntry) => {
-        const dbEntry: DBJournalEntry = {
-            id: parseInt(entry.id),
-            date_created: entry.dateCreated,
-            book_name: entry.bookName,
-            chapter_start: entry.chapterStart,
-            chapter_end: entry.chapterEnd,
-            reflection_1: entry.reflections[0],
-            reflection_2: entry.reflections[1],
-            reflection_3: entry.reflections[2],
-            reflection_4: entry.reflections[3],
-            notes: entry.notes,
-        };
-        onEntryPress(dbEntry);
-    };
-
-    const getChapterText = (entry: JournalEntry): string => {
-        if (entry.chapterEnd && entry.chapterEnd !== entry.chapterStart) {
-            return `${entry.chapterStart}–${entry.chapterEnd}`;
+    const getChapterText = (entry: DBJournalEntry): string => {
+        if (entry.chapter_end && entry.chapter_end !== entry.chapter_start) {
+            return `${entry.chapter_start}–${entry.chapter_end}`;
         }
-        return entry.chapterStart.toString();
+        return entry.chapter_start?.toString() || '';
     };
 
-    const getAnswerCount = (entry: JournalEntry): number => {
-        return entry.reflections.filter(answer => (answer ?? '').trim().length > 0).length;
+    const getAnswerCount = (entry: DBJournalEntry): number => {
+        return [entry.reflection_1, entry.reflection_2, entry.reflection_3, entry.reflection_4]
+            .filter(r => (r ?? '').trim().length > 0).length;
     };
 
-
-    const formatDate = (dateString: string): string => {
+    const formatDate = (dateString?: string): string => {
+        if (!dateString) return '';
         const date = new Date(dateString);
         return date.toLocaleDateString('en-US', {
             month: 'short',
@@ -223,10 +176,11 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         });
     };
 
-    const getPreviewText = (entry: JournalEntry): string => {
-        const substantialReflection = entry.reflections
-            .filter(r => r.trim().length > 0)
-            .sort((a, b) => b.length - a.length)[0];
+    const getPreviewText = (entry: DBJournalEntry): string => {
+        const reflections = [entry.reflection_1, entry.reflection_2, entry.reflection_3, entry.reflection_4]
+            .filter(r => r && r.trim().length > 0);
+
+        const substantialReflection = reflections.sort((a, b) => (b?.length || 0) - (a?.length || 0))[0];
 
         if (substantialReflection) {
             return substantialReflection.length > 80
@@ -234,7 +188,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                 : substantialReflection;
         }
 
-        if (entry.notes.trim()) {
+        if (entry.notes?.trim()) {
             return entry.notes.length > 80
                 ? entry.notes.substring(0, 80) + '...'
                 : entry.notes;
@@ -243,7 +197,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         return 'No reflection recorded';
     };
 
-    const groupEntriesByDate = (entries: JournalEntry[]) => {
+    const groupEntriesByDate = (entries: DBJournalEntry[]) => {
         const today = new Date();
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
@@ -253,15 +207,15 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         thisMonth.setDate(thisMonth.getDate() - 30);
 
         const groups = {
-            today: [] as JournalEntry[],
-            yesterday: [] as JournalEntry[],
-            thisWeek: [] as JournalEntry[],
-            thisMonth: [] as JournalEntry[],
-            older: [] as JournalEntry[]
+            today: [] as DBJournalEntry[],
+            yesterday: [] as DBJournalEntry[],
+            thisWeek: [] as DBJournalEntry[],
+            thisMonth: [] as DBJournalEntry[],
+            older: [] as DBJournalEntry[]
         };
 
         entries.forEach(entry => {
-            const entryDate = new Date(entry.dateCreated);
+            const entryDate = new Date(entry.created_at || '');
             if (entryDate.toDateString() === today.toDateString()) {
                 groups.today.push(entry);
             } else if (entryDate.toDateString() === yesterday.toDateString()) {
@@ -278,17 +232,17 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         return groups;
     };
 
-    const renderEntryCard = (entry: JournalEntry, showDate: boolean = true) => (
+    const renderEntryCard = (entry: DBJournalEntry) => (
         <TouchableOpacity
             key={entry.id}
             style={styles.entryCard}
             activeOpacity={0.7}
-            onPress={() => handleEntryPress(entry)}
+            onPress={() => onEntryPress(entry)}
         >
             <View style={styles.entryHeader}>
-                <Text style={styles.entryDate}>{formatDate(entry.dateCreated)}</Text>
-                {entry.bookName && (
-                    <Text style={styles.entryScripture}>{entry.bookName} {getChapterText(entry)}</Text>
+                <Text style={styles.entryDate}>{formatDate(entry.created_at)}</Text>
+                {entry.book_name && (
+                    <Text style={styles.entryScripture}>{entry.book_name} {getChapterText(entry)}</Text>
                 )}
             </View>
             <Text style={styles.entryPreview}>
@@ -297,7 +251,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
 
             <View style={styles.entryFooter}>
                 <View style={styles.reflectionIndicator}>
-                    {Array.from({ length: 5 }).map((_, index) => (
+                    {Array.from({ length: 4 }).map((_, index) => (
                         <View
                             key={index}
                             style={[
@@ -311,13 +265,13 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         </TouchableOpacity>
     );
 
-    const renderDateGroup = (title: string, entries: JournalEntry[]) => {
+    const renderDateGroup = (title: string, entries: DBJournalEntry[]) => {
         if (entries.length === 0) return null;
 
         return (
             <View key={title} style={styles.dateGroup}>
                 <Text style={styles.dateGroupTitle}>{title}</Text>
-                {entries.map(entry => renderEntryCard(entry, false))}
+                {entries.map(entry => renderEntryCard(entry))}
             </View>
         );
     };
@@ -402,15 +356,15 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                     return (
                         <View style={styles.entriesList}>
                             {filteredEntries
-                                .sort((a, b) => new Date(b.dateCreated).getTime() - new Date(a.dateCreated).getTime())
-                                .map(entry => renderEntryCard(entry, true))}
+                                .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())
+                                .map(entry => renderEntryCard(entry))}
                         </View>
                     );
                 }
 
                 // Show grouped entries
                 const sortedEntries = filteredEntries.sort(
-                    (a, b) => new Date(b.dateCreated).getTime() - new Date(a.dateCreated).getTime()
+                    (a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime()
                 );
                 const groupedEntries = groupEntriesByDate(sortedEntries);
 
@@ -454,12 +408,12 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                         </View>
                         {bookEntries
                             .sort((a, b) => {
-                                if (a.chapterStart !== b.chapterStart) {
-                                    return a.chapterStart - b.chapterStart;
+                                if (a.chapter_start !== b.chapter_start) {
+                                    return (a.chapter_start || 0) - (b.chapter_start || 0);
                                 }
-                                return new Date(b.dateCreated).getTime() - new Date(a.dateCreated).getTime();
+                                return new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime();
                             })
-                            .map(entry => renderEntryCard(entry, true))}
+                            .map(entry => renderEntryCard(entry))}
                     </View>
                 );
 
@@ -512,7 +466,6 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                 </View>
             </View>
 
-            {/* Breadcrumbs */}
             {renderBreadcrumbs()}
 
             {/* Search */}
@@ -556,20 +509,20 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f7f6f3', // Warm off-white, like handmade paper
+        backgroundColor: '#f7f6f3',
     },
     header: {
-        backgroundColor: '#fefdfb', // Pure but warm white
+        backgroundColor: '#fefdfb',
         paddingHorizontal: 24,
         paddingTop: 20,
         paddingBottom: 4,
         borderBottomWidth: 0.5,
-        borderBottomColor: '#e6e2db', // Subtle stone
+        borderBottomColor: '#e6e2db',
     },
     headerTitle: {
         fontSize: 22,
-        fontWeight: '400', // Lighter weight for elegance
-        color: '#3d3a33', // Deep warm charcoal
+        fontWeight: '400',
+        color: '#3d3a33',
         marginBottom: 20,
         letterSpacing: 0.3,
     },
@@ -587,12 +540,7 @@ const styles = StyleSheet.create({
         bottom: 0,
         width: '50%',
         height: 1.5,
-        backgroundColor: '#4a453c', // Subtle underline
-        shadowColor: 'transparent',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0,
-        shadowRadius: 0,
-        elevation: 0,
+        backgroundColor: '#4a453c',
     },
     tab: {
         flex: 1,
@@ -603,11 +551,11 @@ const styles = StyleSheet.create({
     tabText: {
         fontSize: 15,
         fontWeight: '400',
-        color: '#8a8074', // Muted taupe
+        color: '#8a8074',
         letterSpacing: 0.2,
     },
     tabTextActive: {
-        color: '#4a453c', // Deep warm tone
+        color: '#4a453c',
         fontWeight: '500',
     },
     breadcrumbsContainer: {
@@ -621,7 +569,7 @@ const styles = StyleSheet.create({
     },
     breadcrumbText: {
         fontSize: 13,
-        color: '#7a6f5f', // Muted earth tone
+        color: '#7a6f5f',
         fontWeight: '400',
         letterSpacing: 0.1,
     },
@@ -631,7 +579,7 @@ const styles = StyleSheet.create({
     },
     breadcrumbSeparator: {
         fontSize: 13,
-        color: '#b8aea0', // Soft stone
+        color: '#b8aea0',
         marginHorizontal: 6,
         fontWeight: '300',
     },
@@ -647,8 +595,8 @@ const styles = StyleSheet.create({
     searchInput: {
         flex: 1,
         height: 44,
-        backgroundColor: '#f2f0ed', // Subtle warm grey
-        borderRadius: 6, // More refined corners
+        backgroundColor: '#f2f0ed',
+        borderRadius: 6,
         paddingHorizontal: 16,
         fontSize: 15,
         color: '#4a453c',
@@ -693,17 +641,10 @@ const styles = StyleSheet.create({
     entryCard: {
         backgroundColor: '#fefdfb',
         borderRadius: 4,
-        // paddingVertical: 24,
-        // paddingHorizontal: 8,
         padding: 20,
         marginBottom: 1,
         borderWidth: 0.5,
-        borderColor: '#ede8e0', // Very subtle border
-
-        shadowColor: 'transparent',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0,
-        shadowRadius: 0,
+        borderColor: '#ede8e0',
     },
     entryHeader: {
         flexDirection: 'row',
@@ -713,8 +654,7 @@ const styles = StyleSheet.create({
     },
     entryDate: {
         fontSize: 12,
-        color: '#9b9185', // Muted stone
-        // marginRight: 12,
+        color: '#9b9185',
         minWidth: 70,
         lineHeight: 16,
         fontWeight: '400',
@@ -750,10 +690,6 @@ const styles = StyleSheet.create({
     reflectionDotActive: {
         backgroundColor: '#2c2c2c',
     },
-
-
-
-
     booksGrid: {
         paddingHorizontal: 24,
         paddingTop: 20,
@@ -763,11 +699,6 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         padding: 20,
         marginBottom: 16,
-        shadowColor: 'transparent',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0,
-        shadowRadius: 0,
-        elevation: 0,
         borderWidth: 0.5,
         borderColor: '#ede8e0',
         flexDirection: 'row',

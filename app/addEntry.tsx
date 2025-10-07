@@ -180,7 +180,6 @@ export default function MeditationSessionScreen() {
 
         try {
             const entryData: JournalEntryInput = {
-                dateCreated: new Date().toISOString().split('T')[0],
                 bookName: selectedBook.name,
                 chapterStart: selectedChapters.start,
                 chapterEnd: selectedChapters.end,
