@@ -5,11 +5,11 @@ import { Link, useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-const ENABLE_DRAFTS = true;
 const DRAFT_KEY = "reflection_draft";
+type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
 interface StatCardProps {
-    icon: string;
+    icon: IoniconName;
     value: number;
     label: string;
 }
@@ -222,9 +222,7 @@ export default function Index() {
 
     useFocusEffect(
         useCallback(() => {
-            if (ENABLE_DRAFTS) {
-                checkDraft();
-            }
+            checkDraft();
         }, [checkDraft])
     );
 
@@ -236,7 +234,7 @@ export default function Index() {
                 <NavigationButtons />
             </View>
 
-            {ENABLE_DRAFTS && draftExists && <DraftBar />}
+            {draftExists && <DraftBar />}
         </View>
     );
 }
