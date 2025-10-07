@@ -1,7 +1,7 @@
 import { createJournalEntry, getEntryById, JournalEntryInput, updateJournalEntry } from '@/src/data/database';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BookPicker } from '../src/components/BookPicker';
 import { ChapterPicker } from '../src/components/ChapterPicker';
@@ -24,6 +24,14 @@ type Step = 'book' | 'chapter' | 'reflection' | 'summary';
 export function useAutoSave(reflectionAnswers: any, selectedBook: any, selectedChapters: any, currentStep: Step, isEditMode: boolean) {
     const lastSaveTime = useRef<number>(0);
     const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const isMountedRef = useRef(true);
+
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
 
     useEffect(() => {
         if (isEditMode || currentStep !== 'reflection') {
@@ -31,6 +39,10 @@ export function useAutoSave(reflectionAnswers: any, selectedBook: any, selectedC
         }
 
         const saveDraft = async () => {
+            if (!isMountedRef.current) {
+                return;
+            }
+
             try {
                 const draftData: DraftData = {
                     selectedBook,
@@ -47,7 +59,6 @@ export function useAutoSave(reflectionAnswers: any, selectedBook: any, selectedC
             }
         };
 
-        // Only save if there's meaningful data
         if (!selectedBook && !reflectionAnswers) {
             return;
         }
@@ -66,9 +77,8 @@ export function useAutoSave(reflectionAnswers: any, selectedBook: any, selectedC
         }
         debounceTimer.current = setTimeout(() => {
             saveDraft();
-        }, 800); // 0.8s debounce
+        }, 800);
 
-        // ---- CLEANUP ----
         return () => {
             if (debounceTimer.current) {
                 clearTimeout(debounceTimer.current);
@@ -81,7 +91,6 @@ export default function MeditationSessionScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
 
-    // Check if we're in edit mode (editing existing saved entry)
     const isEditMode = !!params.entryId;
     const entryId = params.entryId ? Number(params.entryId) : undefined;
 
@@ -91,20 +100,18 @@ export default function MeditationSessionScreen() {
     const [reflectionAnswers, setReflectionAnswers] = useState<ReflectionAnswers>();
     const [isLoading, setIsLoading] = useState(true);
 
-    // Load existing entry data OR draft on mount
+    // Load data immediately without waiting
     useEffect(() => {
         const loadData = async () => {
-            if (isEditMode && entryId) {
-                // Load existing saved entry for editing
-                try {
+            try {
+                if (isEditMode && entryId) {
                     const entry = await getEntryById(entryId);
-
                     if (!entry) {
                         Alert.alert('Error', 'Entry not found');
                         router.back();
                         return;
                     }
-                    // For now, showing structure:
+
                     const book = getBookByName(entry.book_name);
                     setSelectedBook(book);
                     setSelectedChapters({
@@ -119,20 +126,10 @@ export default function MeditationSessionScreen() {
                         notes: entry.notes || ""
                     });
                     setCurrentStep('reflection');
-
-                    setIsLoading(false);
-                } catch (error) {
-                    console.error('Error loading entry:', error);
-                    Alert.alert('Error', 'Failed to load entry');
-                    router.back();
-                }
-            } else {
-                // Check for draft (continuing unfinished entry)
-                try {
+                } else {
                     const draftJson = await AsyncStorage.getItem("reflection_draft");
                     if (draftJson) {
                         const draft: DraftData = JSON.parse(draftJson);
-                        // Restore draft state
                         if (draft.selectedBook) {
                             setSelectedBook(draft.selectedBook);
                         }
@@ -144,38 +141,38 @@ export default function MeditationSessionScreen() {
                         }
                         setCurrentStep('reflection');
                     }
-                } catch (error) {
-                    console.error('Error loading draft:', error);
                 }
+            } catch (error) {
+                console.error('Error loading draft:', error);
+            } finally {
                 setIsLoading(false);
             }
         };
 
         loadData();
-    }, [isEditMode, entryId]);
+    }, []);
 
-    // Auto-save drafts (disabled in edit mode and summary screen)
     useAutoSave(reflectionAnswers, selectedBook, selectedChapters, currentStep, isEditMode);
 
-    const handleBookSelect = (book: BibleBook) => {
+    const handleBookSelect = useCallback((book: BibleBook) => {
         setSelectedBook(book);
         setSelectedChapters(undefined);
         setCurrentStep('chapter');
-    };
+    }, []);
 
-    const handleChapterSelect = (chapters: ChapterRange) => {
+    const handleChapterSelect = useCallback((chapters: ChapterRange) => {
         setSelectedChapters(chapters);
-    };
+    }, []);
 
-    const handleContinueToReflection = () => {
+    const handleContinueToReflection = useCallback(() => {
         if (!selectedChapters || selectedChapters.start === 0) {
             Alert.alert('Please select a chapter', 'You need to select at least one chapter to continue.');
             return;
         }
         setCurrentStep('reflection');
-    };
+    }, [selectedChapters]);
 
-    const handleSaveReflection = async (answers: ReflectionAnswers) => {
+    const handleSaveReflection = useCallback(async (answers: ReflectionAnswers) => {
         if (!selectedBook || !selectedChapters || selectedChapters.start === 0) {
             Alert.alert('Incomplete', 'Please select a book and chapter first.');
             return;
@@ -197,10 +194,9 @@ export default function MeditationSessionScreen() {
             };
 
             if (isEditMode && entryId) {
-                // Update existing saved entry
                 await updateJournalEntry(entryId, entryData);
                 Alert.alert('Success', 'Entry updated successfully');
-                router.back(); // Go back to previous screen
+                router.back();
             } else {
                 await createJournalEntry(entryData);
                 await AsyncStorage.removeItem("reflection_draft");
@@ -211,9 +207,9 @@ export default function MeditationSessionScreen() {
             console.error('Error saving entry:', error);
             Alert.alert('Error', `Failed to ${isEditMode ? 'update' : 'save'} your entry. Please try again.`);
         }
-    };
+    }, [selectedBook, selectedChapters, isEditMode, entryId, router]);
 
-    const handleStartOver = async () => {
+    const handleStartOver = useCallback(async () => {
         if (isEditMode) {
             router.back();
         } else {
@@ -223,9 +219,9 @@ export default function MeditationSessionScreen() {
             setReflectionAnswers(undefined);
             setCurrentStep('book');
         }
-    };
+    }, [isEditMode, router]);
 
-    const handleDiscardDraft = async () => {
+    const handleDiscardDraft = useCallback(() => {
         Alert.alert(
             'Discard Draft?',
             'Are you sure you want to discard your draft and start fresh?',
@@ -244,12 +240,13 @@ export default function MeditationSessionScreen() {
                 },
             ]
         );
-    };
+    }, []);
 
-    const getSelectionSummary = () => {
+    const selectionSummary = useMemo(() => {
         if (!selectedBook) {
             return 'No selection yet';
         }
+
         let summary = selectedBook.name;
         if (selectedChapters && selectedChapters.start > 0) {
             summary += ` ${selectedChapters.start}`;
@@ -258,9 +255,9 @@ export default function MeditationSessionScreen() {
             }
         }
         return summary;
-    };
+    }, [selectedBook, selectedChapters]);
 
-    if (isLoading) {
+    if (isLoading && isEditMode) {
         return (
             <SafeAreaView style={styles.container}>
                 <View style={styles.loadingContainer}>
@@ -286,7 +283,6 @@ export default function MeditationSessionScreen() {
                             />
                         </View>
 
-                        {/* Show discard draft option if we have draft data */}
                         {!isEditMode && (selectedBook || reflectionAnswers) && (
                             <TouchableOpacity
                                 style={styles.discardButton}
@@ -350,7 +346,7 @@ export default function MeditationSessionScreen() {
                             <Text style={styles.readingLabel}>
                                 {isEditMode ? 'Editing Entry' : 'Today\'s Reading'}
                             </Text>
-                            <Text style={styles.readingText}>{getSelectionSummary()}</Text>
+                            <Text style={styles.readingText}>{selectionSummary}</Text>
                         </View>
 
                         <View style={styles.contentArea}>
@@ -359,7 +355,7 @@ export default function MeditationSessionScreen() {
                                 onAnswersChange={setReflectionAnswers}
                                 onSave={handleSaveReflection}
                                 disabled={false}
-                                saveButtonText={isEditMode ? 'Update Entry' : 'Save Entry'}
+                                saveButtonText={isEditMode ? 'Update It' : 'Save It'}
                             />
                         </View>
 
@@ -401,7 +397,7 @@ export default function MeditationSessionScreen() {
                                 <Text style={styles.completionTitle}>Study Record</Text>
                             </View>
                             <View style={styles.completionDetails}>
-                                <Text style={styles.completionText}>{getSelectionSummary()}</Text>
+                                <Text style={styles.completionText}>{selectionSummary}</Text>
                                 <Text style={styles.completionDate}>{new Date().toLocaleDateString('en-US', {
                                     weekday: 'long',
                                     year: 'numeric',
