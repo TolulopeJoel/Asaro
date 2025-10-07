@@ -1,10 +1,11 @@
 import { JournalEntry } from '@/src/data/database';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Modal, SafeAreaView, StyleSheet } from 'react-native';
 import { JournalEntryDetail } from '../src/components/JournalEntryDetail';
 import { JournalEntryList } from '../src/components/JournalEntryList';
-
 export default function PastEntriesScreen() {
+    const router = useRouter();
     const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
     const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
 
@@ -25,9 +26,10 @@ export default function PastEntriesScreen() {
     };
 
     const handleEditEntry = (entry: JournalEntry) => {
-        // TODO: Navigate to edit screen when we build it
-        console.log('Edit entry:', entry.id);
-        handleCloseDetail();
+        router.push({
+            pathname: '/addEntry',
+            params: { entryId: entry.id!.toString() }
+        });
     };
 
     return (
