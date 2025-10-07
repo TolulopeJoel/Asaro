@@ -1,15 +1,20 @@
-import { getTotalEntryCount } from "@/src/data/database";
+import { getComebackDaysCount, getMissedDaysCount, getTotalEntryCount } from "@/src/data/database";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Link, useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Dimensions, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Animated, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 const ENABLE_DRAFTS = true;
 const DRAFT_KEY = "reflection_draft";
-const { width } = Dimensions.get('window');
 
-const StatCard = React.memo(({ icon, value, label }) => (
+interface StatCardProps {
+    icon: string;
+    value: number;
+    label: string;
+}
+
+const StatCard = React.memo(({ icon, value, label }: StatCardProps) => (
     <View style={styles.statCard}>
         <Ionicons name={icon} size={20} color="#8b7355" />
         <Text style={styles.statValue}>{value}</Text>
@@ -17,12 +22,53 @@ const StatCard = React.memo(({ icon, value, label }) => (
     </View>
 ));
 
-const QuickStats = React.memo(() => (
-    <View style={styles.statsContainer}>
-        <StatCard icon="flame-outline" value="0" label="Days" />
-        <StatCard icon="book-outline" value={getTotalEntryCount()} label="Entries" />
-    </View>
-));
+const QuickStats = React.memo(() => {
+    const [stats, setStats] = useState({
+        totalEntries: 0,
+        missedDays: 0,
+        comebackDays: 0,
+    });
+
+    useEffect(() => {
+        const loadStats = async () => {
+            try {
+                const [totalEntries, missedDays, comebackDays] = await Promise.all([
+                    getTotalEntryCount(),
+                    getMissedDaysCount(),
+                    getComebackDaysCount(),
+                ]);
+
+                setStats({ totalEntries, missedDays, comebackDays });
+            } catch (error) {
+                console.error('Failed to load stats:', error);
+            }
+        };
+
+        loadStats();
+    }, []);
+
+    const { totalEntries, missedDays, comebackDays } = stats;
+
+    return (
+        <View style={styles.statsContainer}>
+            <StatCard
+                icon="flame-outline"
+                value={totalEntries}
+                label={`${totalEntries === 1 ? 'Entry' : 'Entries'}`}
+            />
+            <StatCard
+                icon="rainy-outline"
+                value={missedDays}
+                label={`${missedDays === 1 ? 'Missed Day' : 'Missed Days'}`}
+            />
+            <StatCard
+                icon="trophy-outline"
+                value={comebackDays}
+                label={`${comebackDays === 1 ? 'Comeback' : 'Comebacks'}`}
+            />
+        </View>
+    );
+});
 
 const UpdateCard = React.memo(() => {
     const scaleAnim = useRef(new Animated.Value(0.9)).current;
@@ -202,33 +248,9 @@ const styles = StyleSheet.create({
     },
     contentWrapper: {
         flex: 1,
-        // justifyContent: "center",
         alignItems: "center",
         padding: 24,
         paddingBottom: 120,
-    },
-    titleContainer: {
-        alignItems: "center",
-        marginBottom: 40,
-    },
-    title: {
-        fontSize: 44,
-        fontWeight: "200",
-        color: "#1a1a1a",
-        letterSpacing: 6,
-        textAlign: "center",
-    },
-    titleDivider: {
-        width: 40,
-        height: 1,
-        backgroundColor: "#8b7355",
-        marginVertical: 14,
-    },
-    subtitle: {
-        fontSize: 12,
-        fontWeight: "400",
-        color: "#666666",
-        letterSpacing: 1.5,
     },
     statsContainer: {
         flexDirection: "row",
