@@ -41,7 +41,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
 
         if (diffDays === 0) return 'today';
         if (diffDays === 1) return 'yesterday';
-        if (diffDays === 1) return 'the day before yesterday';
+        if (diffDays === 2) return 'the day before yesterday';
         if (diffDays < 7) return `${diffDays} days ago`;
 
         const day = date.getDate();
@@ -49,7 +49,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
             day === 2 || day === 22 ? 'nd' :
                 day === 3 || day === 23 ? 'rd' : 'th';
 
-        return ` ${day}${suffix}, ` + date.toLocaleDateString('en-US', {
+        return `${day}${suffix}, ` + date.toLocaleDateString('en-US', {
             month: 'long',
             year: 'numeric',
         });
@@ -102,7 +102,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
         setIsSharing(true);
         try {
             const reference = `${entry.book_name} ${formatChapterRange()}${getVerseRange()}`;
-            const studyDate = formatDate(entry.date_created);
+            const studyDate = formatDate(entry.created_at);
 
             let content = `Bible Reading (${reference}) for `;
             content += `${studyDate}\n\n`;
@@ -117,15 +117,15 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
             reflections.forEach((reflection, index) => {
                 if (reflection && reflection.trim()) {
                     content += `Q${index + 1}. ${REFLECTION_QUESTIONS[index]}\n\n`;
-                    content += `× ${reflection.trim()}\n\n`;
+                    content += `${reflection.trim()}\n\n`;
                 }
             });
 
             if (entry.notes && entry.notes.trim()) {
                 content += `Additional Thoughts\n`;
-                content += `× ${entry.notes.trim()}\n\n`;
+                content += `${entry.notes.trim()}\n\n`;
             }
-            content += `🫶 Created with Àṣàrò`;
+            content += `🫶 Created with Àṣàrò`;
 
             await Share.share({
                 message: content,
@@ -144,11 +144,8 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
         const paragraphs = reflection.trim().split('\n\n').filter(p => p.trim());
 
         return (
-            <View key={questionIndex} style={styles.reflectionContainer}>
-                <View style={styles.questionContainer}>
-                    <View style={styles.questionMark} />
-                    <Text style={styles.questionText}>{REFLECTION_QUESTIONS[questionIndex]}</Text>
-                </View>
+            <View key={questionIndex} style={styles.reflectionCard}>
+                <Text style={styles.questionText}>{REFLECTION_QUESTIONS[questionIndex]}</Text>
                 <View style={styles.answerContainer}>
                     {paragraphs.map((paragraph, pIndex) => (
                         <Text key={pIndex} style={[
@@ -174,93 +171,99 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
 
     return (
         <View style={styles.container}>
-            {/* Header with share button */}
-            <View style={styles.header}>
-                <View style={styles.headerContent}>
-                    <View style={styles.headerOrnament} />
+            <ScrollView
+                style={styles.scrollView}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.scrollContent}
+            >
+                {/* Hero Header */}
+                <View style={styles.heroHeader}>
+                    {onClose && (
+                        <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+                            <View style={styles.closeIconContainer}>
+                                <View style={styles.closeIcon} />
+                                <View style={[styles.closeIcon, styles.closeIconCross]} />
+                            </View>
+                        </TouchableOpacity>
+                    )}
+                    
+                    <View style={styles.dateChip}>
+                        <Text style={styles.dateText}>{formatDate(entry.created_at)}</Text>
+                    </View>
+                    
                     <Text style={styles.reference}>
-                        {entry.book_name} {formatChapterRange()}{getVerseRange()}
+                        {entry.book_name}
                     </Text>
-                    <Text style={styles.studyDate}>{formatDate(entry.date_created)}</Text>
+                    <Text style={styles.verseReference}>
+                        {formatChapterRange()}{getVerseRange()}
+                    </Text>
                 </View>
 
-                <TouchableOpacity
-                    style={styles.shareButton}
-                    onPress={handleShare}
-                    disabled={isSharing}
-                >
-                    <Text style={styles.shareButtonText}>
-                        {isSharing ? 'sharing' : 'share'}
-                    </Text>
-                    <View style={styles.shareButtonUnderline} />
-                </TouchableOpacity>
-            </View>
-
-            {/* Sacred reading space */}
-            <ScrollView
-                style={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.contentContainer}
-            >
-                {hasReflections ? (
-                    [
-                        entry.reflection_1,
-                        entry.reflection_2,
-                        entry.reflection_3,
-                        entry.reflection_4,
-                    ].map((reflection, index) => renderReflection(reflection, index))
-                ) : (
-                    <View style={styles.emptyState}>
-                        <View style={styles.emptyOrnament} />
-                        <Text style={styles.emptyText}>awaiting contemplation</Text>
-                        <View style={styles.emptyOrnament} />
-                    </View>
-                )}
-
-                {/* Personal notes */}
-                {entry.notes && entry.notes.trim() && (
-                    <View>
-                        <View style={styles.questionContainer}>
-                            <View style={styles.questionMark} />
-                            <Text style={styles.questionText}>Additional thoughts</Text>
+                {/* Content */}
+                <View style={styles.contentSection}>
+                    {hasReflections ? (
+                        <View style={styles.reflectionsContainer}>
+                            {[
+                                entry.reflection_1,
+                                entry.reflection_2,
+                                entry.reflection_3,
+                                entry.reflection_4,
+                            ].map((reflection, index) => renderReflection(reflection, index))}
                         </View>
-                        <Text style={styles.notesText}>{entry.notes.trim()}</Text>
-                    </View>
-                )}
+                    ) : (
+                        <View style={styles.emptyState}>
+                            <Text style={styles.emptyText}>awaiting your reflection</Text>
+                        </View>
+                    )}
 
-                {/* Bottom actions */}
-                <View style={styles.bottomActions}>
+                    {/* Notes with unique design */}
+                    {entry.notes && entry.notes.trim() && (
+                        <View style={styles.notesSection}>
+                            <Text style={styles.notesTitle}>Additional Thoughts</Text>
+                            <Text style={styles.notesText}>{entry.notes.trim()}</Text>
+                        </View>
+                    )}
+                </View>
+
+                {/* Floating Action Bar */}
+                <View style={styles.floatingActions}>
+                    <TouchableOpacity
+                        style={styles.shareFloatingButton}
+                        onPress={handleShare}
+                        disabled={isSharing}
+                        activeOpacity={0.8}
+                    >
+                        <Text style={styles.shareFloatingText}>
+                            {isSharing ? '↗ sharing' : '↗ share'}
+                        </Text>
+                    </TouchableOpacity>
+
+                    <View style={styles.actionDivider} />
+
                     {onEdit && (
                         <TouchableOpacity
-                            style={styles.bottomActionButton}
+                            style={styles.iconButton}
                             onPress={() => onEdit(entry)}
+                            activeOpacity={0.8}
                         >
-                            <Text style={styles.bottomActionText}>EDIT</Text>
-                            <View style={styles.bottomActionUnderline} />
+                            <Text style={styles.iconButtonText}>edit</Text>
                         </TouchableOpacity>
                     )}
 
                     <TouchableOpacity
-                        style={styles.bottomActionButton}
+                        style={styles.iconButton}
                         onPress={handleDelete}
                         disabled={isDeleting}
+                        activeOpacity={0.8}
                     >
-                        <Text style={[styles.bottomActionText, styles.deleteText]}>
-                            {isDeleting ? 'removing' : 'DELETE'}
+                        <Text style={[styles.iconButtonText, styles.deleteIconText]}>
+                            {isDeleting ? 'deleting' : 'delete'}
                         </Text>
-                        <View style={[styles.bottomActionUnderline, styles.deleteUnderline]} />
                     </TouchableOpacity>
                 </View>
 
-                <View style={styles.contentSpacer} />
+                <View style={styles.bottomSpacer} />
             </ScrollView>
-
-            {/* Whisper close */}
-            {onClose && (
-                <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-                    <Text style={styles.closeText}>×</Text>
-                </TouchableOpacity>
-            )}
         </View>
     );
 };
@@ -268,181 +271,299 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#e7dfd2',
+        backgroundColor: '#fff9f5',
     },
-    header: {
-        paddingHorizontal: 16,
-        paddingTop: 56,
-        backgroundColor: '#d4a5a5',
-        position: 'relative',
+    scrollView: {
+        flex: 1,
     },
-    headerContent: {
-        alignItems: 'center',
-    },
-    headerOrnament: {
-        width: 3,
-        height: 3,
-        backgroundColor: '#8b6b6b',
-        borderRadius: 1.5,
-        marginBottom: 20,
-        opacity: 0.8,
-     },
-    reference: {
-        fontSize: 24,
-        fontWeight: '300',
-        color: '#3d2828',
-        textAlign: 'center',
-        letterSpacing: -0.3,
-        marginBottom: 12,
-        lineHeight: 32,
-     },
-     studyDate: {
-        fontSize: 12,
-        color: '#6b4a4a',
-        textAlign: 'center',
-        fontWeight: '300',
-        letterSpacing: 1.2,
-        marginBottom: 32,
-     },
-    shareButton: {
-        position: 'absolute',
-        top: 56,
-        right: 16,
-        alignItems: 'center',
-        paddingVertical: 8,
-    },
-    shareButtonText: {
-        fontSize: 11,
-        color: '#6b4a4a',
-        fontWeight: '300',
-        letterSpacing: 1.2,
-        marginBottom: 6,
-     },
-    shareButtonUnderline: {
-        width: 20,
-        height: 1,
-        backgroundColor: '#8b6b6b',
-        opacity: 0.6,
-     },
     scrollContent: {
-        flex: 1,
+        paddingBottom: 50,
     },
-    contentContainer: {
-        paddingHorizontal: 16,
-        paddingTop: 24,
-    },
-    reflectionContainer: {
-        marginBottom: 40,
-    },
-    questionContainer: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        marginBottom: 20,
-    },
-    questionMark: {
-        width: 3,
-        height: 3,
-        backgroundColor: '#b8a896',
-        borderRadius: 1.5,
-        marginTop: 8,
-        marginRight: 16,
-        opacity: 0.8,
-    },
-    questionText: {
-        fontSize: 14,
-        fontWeight: '300',
-        color: '#756b5e',
-        lineHeight: 22,
-        letterSpacing: 0.2,
-        flex: 1,
-    },
-    answerContainer: {
-        marginLeft: 6,
-    },
-    answerText: {
-        fontSize: 15,
-        color: '#2a241f',
-        lineHeight: 26,
-        fontWeight: '300',
-        letterSpacing: 0.1,
-    },
-    answerParagraph: {
-        marginTop: 16,
-    },
-    emptyState: {
-        paddingVertical: 120,
-        alignItems: 'center',
-    },
-    emptyOrnament: {
-        width: 1,
-        height: 8,
-        backgroundColor: '#c4b8a8',
-        opacity: 0.3,
-        marginVertical: 16,
-    },
-    emptyText: {
-        fontSize: 14,
-        color: '#a89c8f',
-        fontWeight: '300',
-        letterSpacing: 0.8,
-        fontStyle: 'italic',
-    },
-    notesText: {
-        fontSize: 16,
-        color: '#2a241f',
-        lineHeight: 26,
-        fontWeight: '300',
-        letterSpacing: 0.1,
-        marginLeft: 19,
-    },
-    bottomActions: {
-        marginTop: 20,
-        paddingTop: 32,
-        paddingLeft: 16,
-        flexDirection: 'row',
-        borderTopWidth: 1,
-        borderTopColor: '#e8e3dd',
-        gap: 32,
-    },
-    bottomActionButton: {
-        paddingVertical: 8,
-    },
-    bottomActionText: {
-        fontSize: 12,
-        color: '#8a7f73',
-        fontWeight: '300',
-        letterSpacing: 1,
-        marginBottom: 8,
-    },
-    bottomActionUnderline: {
-        width: 32,
-        height: 1,
-        backgroundColor: '#c4b8a8',
-        opacity: 0.3,
-    },
-    deleteText: {
-        color: '#a08b7d',
-    },
-    deleteUnderline: {
-        backgroundColor: '#b59d8f',
-        opacity: 0.4,
-    },
-    contentSpacer: {
-        height: 48,
+    heroHeader: {
+        paddingTop: 70,
+        paddingBottom: 0,
+        paddingHorizontal: 24,
+        backgroundColor: '#fff9f5',
+        position: 'relative',
     },
     closeButton: {
         position: 'absolute',
         top: 56,
-        left: 16,
-        width: 32,
-        height: 32,
+        right: 24,
+        width: 36,
+        height: 36,
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 10,
+        backgroundColor: '#fff',
+        borderRadius: 18,
+        borderWidth: 1.5,
+        borderColor: '#e8ddd5',
+    },
+    closeIcon: {
+        width: 2,
+        height: 16,
+        backgroundColor: '#8b7355',
+    },
+    closeIconContainer: {
+        width: 16,
+        height: 16,
         justifyContent: 'center',
         alignItems: 'center',
     },
-    closeText: {
-        fontSize: 18,
-        color: '#6b4a4a',
-        fontWeight: '100',
-        opacity: 0.8,
+    closeIconCross: {
+        position: 'absolute',
+        transform: [{ rotate: '90deg' }],
+    },
+    headerOrnamentTop: {
+        width: 40,
+        height: 2,
+        backgroundColor: '#8b6b6b',
+        marginBottom: 24,
+        opacity: 0.3,
+        borderRadius: 1,
+    },
+    dateChip: {
+        alignSelf: 'flex-start',
+        backgroundColor: '#f0e8e0',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 6,
+        marginBottom: 20,
+        borderWidth: 1,
+        borderColor: '#e8ddd5',
+    },
+    dateText: {
+        fontSize: 11,
+        color: '#8b7355',
+        fontWeight: '600',
+        letterSpacing: 0.8,
+        textTransform: 'uppercase',
+    },
+    reference: {
+        fontSize: 32,
+        fontWeight: '600',
+        color: '#2d1a1a',
+        letterSpacing: -0.8,
+        lineHeight: 38,
+        marginBottom: 8,
+    },
+    verseReference: {
+        fontSize: 20,
+        fontWeight: '500',
+        color: '#c68a7c',
+        marginBottom: 32,
+        letterSpacing: 0.2,
+    },
+    headerOrnamentBottom: {
+        width: 60,
+        height: 1,
+        backgroundColor: '#8b6b6b',
+        marginTop: 24,
+        opacity: 0.25,
+    },
+    contentSection: {
+        paddingHorizontal: 20,
+        paddingTop: 28,
+    },
+    reflectionsContainer: {
+        gap: 28,
+    },
+    reflectionCard: {
+        paddingLeft: 16,
+        borderLeftWidth: 3,
+        borderLeftColor: '#d48b7d',
+        paddingBottom: 8,
+    },
+    questionSidebar: {
+        alignItems: 'center',
+        paddingTop: 4,
+    },
+    questionNumberCircle: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#e8e3dd',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#d6d3ce',
+    },
+    questionNumberText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#8b7355',
+    },
+    questionLine: {
+        width: 2,
+        flex: 1,
+        backgroundColor: '#f0ede8',
+        marginTop: 12,
+        minHeight: 20,
+    },
+    reflectionContent: {
+        flex: 1,
+        backgroundColor: '#ffffff',
+        borderRadius: 16,
+        padding: 20,
+        borderWidth: 1,
+        borderColor: '#f0ede8',
+        shadowColor: '#8b7355',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+        elevation: 2,
+    },
+    questionText: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: '#8b7355',
+        lineHeight: 20,
+        letterSpacing: 0.3,
+        marginBottom: 12,
+    },
+    answerContainer: {
+        gap: 14,
+    },
+    answerText: {
+        fontSize: 15,
+        color: '#3d3528',
+        lineHeight: 24,
+        fontWeight: '400',
+        letterSpacing: 0.2,
+    },
+    answerParagraph: {
+        marginTop: 0,
+    },
+    emptyState: {
+        paddingVertical: 80,
+        paddingLeft: 16,
+        borderLeftWidth: 3,
+        borderLeftColor: '#e8e3dd',
+    },
+    emptyCircle: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        borderWidth: 2,
+        borderColor: '#e8e3dd',
+        borderStyle: 'dashed',
+        marginBottom: 20,
+    },
+    emptyText: {
+        fontSize: 14,
+        color: '#a39b90',
+        fontWeight: '400',
+        letterSpacing: 0.8,
+        fontStyle: 'italic',
+    },
+    notesSection: {
+        marginTop: 40,
+        paddingLeft: 16,
+        borderLeftWidth: 3,
+        borderLeftColor: '#d4a5a5',
+    },
+    notesBorder: {
+        position: 'absolute',
+        left: 0,
+        top: 0,
+        bottom: 0,
+        width: 3,
+        backgroundColor: '#d4a5a5',
+        borderRadius: 2,
+        opacity: 0.6,
+    },
+    notesContent: {
+        marginLeft: 20,
+        backgroundColor: '#faf9f7',
+        borderRadius: 12,
+        padding: 20,
+        borderWidth: 1,
+        borderColor: '#f0ede8',
+    },
+    notesHeaderRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12,
+        gap: 10,
+    },
+    notesDotPattern: {
+        flexDirection: 'row',
+        gap: 3,
+    },
+    notesDot: {
+        width: 4,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: '#d4a5a5',
+        opacity: 0.5,
+    },
+    notesTitle: {
+        fontSize: 13,
+        fontWeight: '500',
+        color: '#8b7355',
+        letterSpacing: 0.3,
+        marginBottom: 12,
+    },
+    notesText: {
+        fontSize: 15,
+        color: '#3d3528',
+        lineHeight: 24,
+        fontWeight: '400',
+        letterSpacing: 0.2,
+    },
+    floatingActions: {
+        marginHorizontal: 20,
+        marginTop: 40,
+        backgroundColor: '#faf9f7',
+        borderRadius: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 4,
+        paddingHorizontal: 6,
+        borderWidth: 1,
+        borderColor: '#e8e3dd',
+        shadowColor: '#8b7355',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    shareFloatingButton: {
+        flex: 1,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        backgroundColor: '#f0ede8',
+        borderRadius: 12,
+        alignItems: 'center',
+    },
+    shareFloatingText: {
+        fontSize: 13,
+        fontWeight: '500',
+        color: '#6b5b47',
+        letterSpacing: 0.3,
+    },
+    actionDivider: {
+        width: 1,
+        height: 20,
+        backgroundColor: '#e8e3dd',
+        marginHorizontal: 8,
+    },
+    iconButton: {
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        alignItems: 'center',
+    },
+    iconButtonText: {
+        fontSize: 13,
+        fontWeight: '400',
+        color: '#8b8075',
+        letterSpacing: 0.3,
+    },
+    deleteIconText: {
+        color: '#a08b7d',
+    },
+    bottomSpacer: {
+        height: 40,
     },
 });
