@@ -29,23 +29,27 @@ const QuickStats = React.memo(() => {
         comebackDays: 0,
     });
 
-    useEffect(() => {
-        const loadStats = async () => {
-            try {
-                const [totalEntries, missedDays, comebackDays] = await Promise.all([
-                    getTotalEntryCount(),
-                    getMissedDaysCount(),
-                    getComebackDaysCount(),
-                ]);
+    const loadStats = useCallback(async () => {
+        const [totalEntries, missedDays, comebackDays] = await Promise.all([
+            getTotalEntryCount(),
+            getMissedDaysCount(),
+            getComebackDaysCount(),
+        ]);
 
-                setStats({ totalEntries, missedDays, comebackDays });
-            } catch (error) {
-                console.error('Failed to load stats:', error);
-            }
-        };
-
-        loadStats();
+        setStats({ totalEntries, missedDays, comebackDays });
     }, []);
+
+    // Load stats on mount
+    useEffect(() => {
+        loadStats();
+    }, [loadStats]);
+
+    // Reload stats when screen comes into focus
+    useFocusEffect(
+        useCallback(() => {
+            loadStats();
+        }, [loadStats])
+    );
 
     const { totalEntries, missedDays, comebackDays } = stats;
 
@@ -211,13 +215,8 @@ export default function Index() {
     const [draftExists, setDraftExists] = useState(false);
 
     const checkDraft = useCallback(async () => {
-        try {
-            const draft = await AsyncStorage.getItem(DRAFT_KEY);
-            setDraftExists(Boolean(draft && draft.trim()));
-        } catch (e) {
-            console.error("Failed to check draft:", e);
-            setDraftExists(false);
-        }
+        const draft = await AsyncStorage.getItem(DRAFT_KEY);
+        setDraftExists(Boolean(draft && draft.trim()));
     }, []);
 
     useFocusEffect(
@@ -232,6 +231,12 @@ export default function Index() {
                 <QuickStats />
                 <UpdateCard />
                 <NavigationButtons />
+
+                {/* Test notification button */}
+                {/* <Button
+                    title="Test Notification (5s)"
+                    onPress={scheduleTestNotification}
+                /> */}
             </View>
 
             {draftExists && <DraftBar />}
