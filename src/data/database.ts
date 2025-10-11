@@ -206,30 +206,22 @@ export const getMissedDaysCount = async (): Promise<number> => {
     const database = await getDb();
 
     const result = await database.getFirstAsync(`
-        SELECT COUNT(DISTINCT DATE(created_at)) as active_days FROM journal_entries
+        SELECT 
+            -- Total days from first entry to today (exclusive - today not counted)
+            julianday(DATE('now', 'localtime')) - julianday(DATE(MIN(created_at), 'localtime')) as total_days,
+            -- Number of unique days with entries
+            COUNT(DISTINCT DATE(created_at, 'localtime')) as active_days
+        FROM journal_entries
     `) as any;
-    const activeDays = result?.active_days || 0;
 
-    const startDateResult = await database.getFirstAsync(`
-        SELECT DATE(MIN(created_at)) as start_date FROM journal_entries
-    `) as any;
-
-    const startDate = startDateResult?.start_date;
-    if (!startDate) {
+    if (!result || result.total_days === null) {
         return 0;
     }
 
-    const start = new Date(startDate);
-    const today = new Date();
+    const totalDays = Math.floor(result.total_days);
+    const activeDays = result.active_days || 0;
 
-    // Reset time components to compare dates only
-    start.setHours(0, 0, 0, 0);
-    today.setHours(0, 0, 0, 0);
-
-    const diffTime = today.getTime() - start.getTime();
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-    return diffDays - activeDays;
+    return Math.max(0, totalDays - activeDays);
 };
 
 export const getComebackDaysCount = async (): Promise<number> => {
@@ -237,7 +229,7 @@ export const getComebackDaysCount = async (): Promise<number> => {
 
     const result = await database.getFirstAsync(`
         WITH dated_entries AS (
-            SELECT DISTINCT DATE(created_at) as entry_date
+            SELECT DISTINCT DATE(created_at, 'localtime') as entry_date
             FROM journal_entries
             ORDER BY entry_date
         ),
