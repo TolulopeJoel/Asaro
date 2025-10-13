@@ -231,12 +231,6 @@ export default function Index() {
                 <QuickStats />
                 <UpdateCard />
                 <NavigationButtons />
-
-                {/* Test notification button */}
-                {/* <Button
-                    title="Test Notification (5s)"
-                    onPress={scheduleTestNotification}
-                /> */}
             </View>
 
             {draftExists && <DraftBar />}
