@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { ALL_BIBLE_BOOKS, BibleBook } from '../data/bibleBooks';
 import {
-    JournalEntry as DBJournalEntry,
+    JournalEntry,
     getEntriesByBook,
     getJournalEntries,
     searchEntries
@@ -24,16 +24,16 @@ interface NavigationBreadcrumb {
 }
 
 interface JournalEntryListProps {
-    onEntryPress: (entry: DBJournalEntry) => void;
+    onEntryPress: (entry: JournalEntry) => void;
 }
 
 export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress }) => {
-    const [entries, setEntries] = useState<DBJournalEntry[]>([]);
+    const [entries, setEntries] = useState<JournalEntry[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [viewMode, setViewMode] = useState<ViewMode>('recent');
     const [selectedBook, setSelectedBook] = useState<BibleBook>();
-    const [bookEntries, setBookEntries] = useState<DBJournalEntry[]>([]);
-    const [filteredEntries, setFilteredEntries] = useState<DBJournalEntry[]>([]);
+    const [bookEntries, setBookEntries] = useState<JournalEntry[]>([]);
+    const [filteredEntries, setFilteredEntries] = useState<JournalEntry[]>([]);
     const [availableBooks, setAvailableBooks] = useState<BibleBook[]>([]);
     const [tabAnimation] = useState(new Animated.Value(0));
 
@@ -89,7 +89,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         if (!selectedBook) return;
 
         try {
-            let dbEntries: DBJournalEntry[] = [];
+            let dbEntries: JournalEntry[] = [];
 
             if (searchQuery.trim()) {
                 const allSearchResults = await searchEntries(searchQuery);
@@ -154,14 +154,14 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         return breadcrumbs;
     };
 
-    const getChapterText = (entry: DBJournalEntry): string => {
+    const getChapterText = (entry: JournalEntry): string => {
         if (entry.chapter_end && entry.chapter_end !== entry.chapter_start) {
             return `${entry.chapter_start}–${entry.chapter_end}`;
         }
         return entry.chapter_start?.toString() || '';
     };
 
-    const getAnswerCount = (entry: DBJournalEntry): number => {
+    const getAnswerCount = (entry: JournalEntry): number => {
         return [entry.reflection_1, entry.reflection_2, entry.reflection_3, entry.reflection_4]
             .filter(r => (r ?? '').trim().length > 0).length;
     };
@@ -176,7 +176,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         });
     };
 
-    const getPreviewText = (entry: DBJournalEntry): string => {
+    const getPreviewText = (entry: JournalEntry): string => {
         const reflections = [entry.reflection_1, entry.reflection_2, entry.reflection_3, entry.reflection_4]
             .filter(r => r && r.trim().length > 0);
 
@@ -197,7 +197,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         return 'No reflection recorded';
     };
 
-    const groupEntriesByDate = (entries: DBJournalEntry[]) => {
+    const groupEntriesByDate = (entries: JournalEntry[]) => {
         const today = new Date();
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
@@ -207,11 +207,11 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         thisMonth.setDate(thisMonth.getDate() - 30);
 
         const groups = {
-            today: [] as DBJournalEntry[],
-            yesterday: [] as DBJournalEntry[],
-            thisWeek: [] as DBJournalEntry[],
-            thisMonth: [] as DBJournalEntry[],
-            older: [] as DBJournalEntry[]
+            today: [] as JournalEntry[],
+            yesterday: [] as JournalEntry[],
+            thisWeek: [] as JournalEntry[],
+            thisMonth: [] as JournalEntry[],
+            older: [] as JournalEntry[]
         };
 
         entries.forEach(entry => {
@@ -232,7 +232,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         return groups;
     };
 
-    const renderEntryCard = (entry: DBJournalEntry) => (
+    const renderEntryCard = (entry: JournalEntry) => (
         <TouchableOpacity
             key={entry.id}
             style={styles.entryCard}
@@ -265,7 +265,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         </TouchableOpacity>
     );
 
-    const renderDateGroup = (title: string, entries: DBJournalEntry[]) => {
+    const renderDateGroup = (title: string, entries: JournalEntry[]) => {
         if (entries.length === 0) return null;
 
         return (

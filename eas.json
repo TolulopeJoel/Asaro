@@ -9,7 +9,7 @@
       "distribution": "internal",
       "channel": "development"
     },
-    "preview": {
+    "friends": {
       "distribution": "internal",
       "android": {
         "buildType": "apk"

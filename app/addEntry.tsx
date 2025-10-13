@@ -234,7 +234,7 @@ export default function MeditationSessionScreen() {
                         setSelectedBook(undefined);
                         setSelectedChapters(undefined);
                         setReflectionAnswers(undefined);
-                        setCurrentStep('book');
+                        router.push({pathname: '/'})
                     },
                 },
             ]
@@ -281,15 +281,6 @@ export default function MeditationSessionScreen() {
                                 onBookSelect={handleBookSelect}
                             />
                         </View>
-
-                        {!isEditMode && (selectedBook || reflectionAnswers) && (
-                            <TouchableOpacity
-                                style={styles.discardButton}
-                                onPress={handleDiscardDraft}
-                            >
-                                <Text style={styles.discardButtonText}>Discard draft & start fresh</Text>
-                            </TouchableOpacity>
-                        )}
                     </View>
                 );
 
@@ -358,23 +349,22 @@ export default function MeditationSessionScreen() {
                             />
                         </View>
 
-                        {!isEditMode && (
+                        <TouchableOpacity
+                            style={styles.subtleBackButton}
+                            onPress={() => setCurrentStep('chapter')}
+                        >
+                            <Text style={styles.subtleBackButtonText}>← Return to chapter selection</Text>
+                        </TouchableOpacity>
+
+                        {!isEditMode && (reflectionAnswers) && (
                             <TouchableOpacity
-                                style={styles.subtleBackButton}
-                                onPress={() => setCurrentStep('chapter')}
+                                style={styles.discardButton}
+                                onPress={handleDiscardDraft}
                             >
-                                <Text style={styles.subtleBackButtonText}>← Return to chapter selection</Text>
+                                <Text style={styles.discardButtonText}>Discard draft 🚮</Text>
                             </TouchableOpacity>
                         )}
 
-                        {isEditMode && (
-                            <TouchableOpacity
-                                style={styles.subtleBackButton}
-                                onPress={() => router.back()}
-                            >
-                                <Text style={styles.subtleBackButtonText}>← Cancel editing</Text>
-                            </TouchableOpacity>
-                        )}
                     </View>
                 );
 

@@ -159,7 +159,15 @@ export const updateJournalEntry = async (id: number, data: JournalEntryInput) =>
 
 export const getJournalEntries = async (limit = 50, offset = 0): Promise<JournalEntry[]> => {
     const database = await getDb();
-    return await database.getAllAsync(`SELECT * FROM journal_entries ORDER BY created_at DESC LIMIT ? OFFSET ?`, [limit, offset]);
+    return await database.getAllAsync(`
+        SELECT 
+            *,
+            datetime(created_at, 'localtime') as created_at,
+            datetime(updated_at, 'localtime') as updated_at
+        FROM journal_entries 
+        ORDER BY created_at DESC 
+        LIMIT ? OFFSET ?
+    `, [limit, offset]);
 };
 
 export const getEntriesByBook = async (bookName: string): Promise<JournalEntry[]> => {
