@@ -1,5 +1,5 @@
 import { initializeDatabase } from '@/src/data/database';
-import { requestNotificationPermissions } from '@/src/utils/notifications';
+import { requestNotificationPermissions, setupDailyNotifications } from '@/src/utils/notifications';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
@@ -17,8 +17,8 @@ export default function RootLayout() {
         if (!success) {
           console.error('Failed to initialize database');
         }
-        // request notification permission
         await requestNotificationPermissions();
+        await setupDailyNotifications();
       } catch (error) {
         console.error('Initialization error:', error);
         setDbInitialized(false);

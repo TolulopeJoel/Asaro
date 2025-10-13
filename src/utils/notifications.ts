@@ -1,5 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { Alert, Linking, Platform } from 'react-native';
+import { hasEntryToday } from '../data/database';
 
 // Configure how notifications should be handled when app is in foreground
 Notifications.setNotificationHandler({
@@ -70,54 +71,69 @@ export async function scheduleReminderNotification(
 
   return await Notifications.scheduleNotificationAsync({
     content: createNotificationContent(title, body),
-    trigger: { date: time },
-  });
-}
-
-export async function scheduleDailyReminder(
-  hour: number,
-  minute: number,
-  title: string = '📖 Time to Read',
-  body: string = 'Ready to reflect on today\'s scripture?'
-): Promise<string | null> {
-  if (!await requestNotificationPermissions()) {
-    return null;
-  }
-
-  // Cancel existing reminders first
-  await cancelAllScheduledNotifications();
-
-  // Schedule daily repeating notification
-  return await Notifications.scheduleNotificationAsync({
-    content: createNotificationContent(title, body),
     trigger: {
-      hour,
-      minute,
-      repeats: true,
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: time,
     },
   });
 }
 
-export async function scheduleTestNotification(): Promise<string | null> {
+// FIXED: Use DAILY trigger for Android compatibility
+async function scheduleSingleDailyReminder(
+  hour: number,
+  minute: number,
+  title: string,
+  body: string
+): Promise<string | null> {
+  return await Notifications.scheduleNotificationAsync({
+    content: createNotificationContent(title, body),
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DAILY,
+      hour,
+      minute,
+    },
+  });
+}
+
+export async function setupDailyNotifications() {
   if (!await requestNotificationPermissions()) {
-    return null;
+    return;
   }
 
-  const notificationId = await Notifications.scheduleNotificationAsync({
-    content: createNotificationContent(
-      "📖 Test Reminder",
-      "This is what your daily Bible reading reminder will look like!"
-    ),
-    trigger: { seconds: 5 },
-  });
+  // Cancel all existing notifications first
+  await cancelAllScheduledNotifications();
 
-  Alert.alert(
-    'Notification Scheduled! ✅',
-    'Watch for it in 5 seconds...',
-    [{ text: 'OK' }]
+  await scheduleSingleDailyReminder(
+    5,
+    20,
+    "Good morning! ☀️",
+    "Start your day with Jehovah's words. You would love it 😌"
   );
 
-  return notificationId;
+  const todayEntry = hasEntryToday()
+
+  if (!todayEntry) {
+    await scheduleSingleDailyReminder(
+      20,
+      15,
+      "Evening check-in",
+      "Still no reading today? I'm not judging... but I'm watching 😌"
+    );
+
+    await scheduleSingleDailyReminder(
+      22,
+      23,
+      "I am back for you sir",
+      "Your Bible is still waiting o. Small small disturbance, remember? 🙄"
+    );
+
+    await scheduleSingleDailyReminder(
+      23,
+      0,
+      "Last chance",
+      "I won't let you sleep peacefully without your reading. You know this 😒"
+    );
+  }
 }
 
 export async function cancelScheduledNotification(notificationId: string): Promise<void> {

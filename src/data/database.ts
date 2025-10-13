@@ -209,6 +209,17 @@ export const getBookEntryCount = async (bookName: string): Promise<number> => {
     return result?.count ?? 0;
 };
 
+export const hasEntryToday = async (): Promise<boolean> => {
+    const database = await getDb();
+    const result = await database.getFirstAsync(`
+        SELECT EXISTS(
+            SELECT 1 FROM journal_entries 
+            WHERE DATE(created_at, 'localtime') = DATE('now', 'localtime')
+        ) as has_entry
+    `) as any;
+    return result?.has_entry === 1;
+}
+
 
 export const getMissedDaysCount = async (): Promise<number> => {
     const database = await getDb();
