@@ -222,12 +222,20 @@ export const getMissedDaysCount = async (): Promise<number> => {
         FROM journal_entries
     `) as any;
 
+    const todayEntryResult = await database.getFirstAsync(`
+        SELECT EXISTS(
+            SELECT 1 FROM journal_entries 
+            WHERE DATE(created_at, 'localtime') = DATE('now', 'localtime')
+        ) as has_entry
+    `) as any;
+    const todayEntryCount = todayEntryResult?.has_entry; // retruns 1 if there's an entry today, else 0
+
     if (!result || result.total_days === null) {
         return 0;
     }
 
     const totalDays = Math.floor(result.total_days);
-    const activeDays = result.active_days || 0;
+    const activeDays = (result.active_days - todayEntryCount) || 0;
 
     return Math.max(0, totalDays - activeDays);
 };
