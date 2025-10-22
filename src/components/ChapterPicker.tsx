@@ -3,6 +3,7 @@ import {
     StyleProp,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
     View,
     ViewStyle
@@ -14,11 +15,17 @@ interface ChapterRange {
     end?: number;
 }
 
+interface VerseRange {
+    start: string;
+    end: string;
+}
+
 interface ChapterPickerProps {
     selectedBook?: BibleBook;
     selectedChapters?: ChapterRange;
     onChapterSelect: (chapters: ChapterRange) => void;
     allowRange?: boolean;
+    onVerseRangeChange?: (verses: VerseRange | null) => void;
 }
 
 export const ChapterPicker: React.FC<ChapterPickerProps> = ({
@@ -26,9 +33,13 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = ({
     selectedChapters,
     onChapterSelect,
     allowRange = true,
+    onVerseRangeChange,
 }) => {
     const [dragStart, setDragStart] = useState<number | null>(null);
     const [dragCurrent, setDragCurrent] = useState<number | null>(null);
+    const [readVerses, setReadVerses] = useState(false);
+    const [startVerse, setStartVerse] = useState('1');
+    const [endVerse, setEndVerse] = useState('');
 
     useEffect(() => {
         // Reset drag state when book changes
@@ -37,6 +48,31 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = ({
             setDragCurrent(null);
         }
     }, [selectedBook]);
+
+    useEffect(() => {
+        // Reset verse state when chapters change
+        setStartVerse('1');
+        setEndVerse('');
+    }, [selectedChapters]);
+
+    useEffect(() => {
+        // Notify parent of verse range changes
+        if (onVerseRangeChange) {
+            if (readVerses) {
+                onVerseRangeChange({ start: startVerse, end: endVerse });
+            } else {
+                onVerseRangeChange(null);
+            }
+        }
+    }, [readVerses, startVerse, endVerse]);
+
+    const handleReadVersesToggle = () => {
+        setReadVerses(!readVerses);
+        if (!readVerses) {
+            setStartVerse('1');
+            setEndVerse('');
+        }
+    };
 
     const chapters = getChapterNumbers(selectedBook?.name || "Philippians");
 
@@ -99,9 +135,27 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = ({
         if (!selectedChapters || selectedChapters.start === 0) return '';
 
         const { start, end } = selectedChapters;
-        if (!end || end === start) {
-            return `Chapter ${start}`;
+
+        // Build verse suffix if verses are being tracked
+        let verseSuffix = '';
+        if (readVerses && startVerse) {
+            verseSuffix = `:${startVerse}`;
+            if (endVerse) {
+                verseSuffix += `-${endVerse}`;
+            }
         }
+
+        if (!end || end === start) {
+            return `Chapter ${start}${verseSuffix}`;
+        }
+
+        // For ranges, show verses on both ends if applicable
+        if (readVerses) {
+            const startVerseText = startVerse ? `:${startVerse}` : '';
+            const endVerseText = endVerse ? `:${endVerse}` : '';
+            return `Chapters ${start}${startVerseText}–${end}${endVerseText}`;
+        }
+
         return `Chapters ${start}–${end}`;
     };
 
@@ -111,27 +165,83 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = ({
         const isFirst = selectedChapters?.start === chapter && !selectedChapters?.end;
         const isRangeStart = selectedChapters?.start === chapter && selectedChapters?.end;
         const isRangeEnd = selectedChapters?.end === chapter;
+        const isSingleChapterSelected = isFirst && readVerses;
+        const showVerseInputsForRange = readVerses && (isRangeStart || isRangeEnd);
 
         return (
-            <TouchableOpacity
-                key={chapter}
-                style={[
-                    styles.chapterButton,
-                    (isSelected || isInDrag) && styles.chapterButtonSelected,
-                    isFirst && styles.chapterButtonSingle,
-                    isRangeStart && styles.chapterButtonRangeStart,
-                    isRangeEnd && styles.chapterButtonRangeEnd,
-                ] as StyleProp<ViewStyle>}
-                onPress={() => handleChapterPress(chapter)}
-                activeOpacity={0.7}
-            >
-                <Text style={[
-                    styles.chapterButtonText,
-                    (isSelected || isInDrag) && styles.chapterButtonTextSelected
-                ]}>
-                    {chapter}
-                </Text>
-            </TouchableOpacity>
+            <View key={chapter} style={styles.chapterButtonWrapper}>
+                <TouchableOpacity
+                    style={[
+                        styles.chapterButton,
+                        (isSelected || isInDrag) && styles.chapterButtonSelected,
+                        isFirst && styles.chapterButtonSingle,
+                        isRangeStart && styles.chapterButtonRangeStart,
+                        isRangeEnd && styles.chapterButtonRangeEnd,
+                    ] as StyleProp<ViewStyle>}
+                    onPress={() => handleChapterPress(chapter)}
+                    activeOpacity={0.7}
+                >
+                    <Text style={[
+                        styles.chapterButtonText,
+                        (isSelected || isInDrag) && styles.chapterButtonTextSelected
+                    ]}>
+                        {chapter}
+                    </Text>
+                </TouchableOpacity>
+
+                {/* Single chapter verse inputs */}
+                {isSingleChapterSelected && (
+                    <View style={styles.verseInputContainer}>
+                        <TextInput
+                            style={styles.verseInput}
+                            value={startVerse}
+                            onChangeText={setStartVerse}
+                            keyboardType="numeric"
+                            placeholder="1"
+                            placeholderTextColor="#c5bfb5"
+                        />
+                        <Text style={styles.verseColon}>:</Text>
+                        <TextInput
+                            style={styles.verseInput}
+                            value={endVerse}
+                            onChangeText={setEndVerse}
+                            keyboardType="numeric"
+                            placeholder="—"
+                            placeholderTextColor="#c5bfb5"
+                        />
+                    </View>
+                )}
+
+                {/* Range start verse input */}
+                {isRangeStart && showVerseInputsForRange && (
+                    <>
+                        <Text style={styles.verseColon}>:</Text>
+                        <TextInput
+                            style={[styles.verseInput, styles.verseInputRange]}
+                            value={startVerse}
+                            onChangeText={setStartVerse}
+                            keyboardType="numeric"
+                            placeholder="1"
+                            placeholderTextColor="#c5bfb5"
+                        />
+                    </>
+                )}
+
+                {/* Range end verse input */}
+                {isRangeEnd && showVerseInputsForRange && (
+                    <>
+                        <Text style={styles.verseColon}>:</Text>
+                        <TextInput
+                            style={[styles.verseInput, styles.verseInputRange]}
+                            value={endVerse}
+                            onChangeText={setEndVerse}
+                            keyboardType="numeric"
+                            placeholder="—"
+                            placeholderTextColor="#c5bfb5"
+                        />
+                    </>
+                )}
+            </View>
         );
     };
 
@@ -166,6 +276,21 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = ({
             <View style={styles.chaptersGrid}>
                 {chapters.map(renderChapterButton)}
             </View>
+            <TouchableOpacity
+                style={styles.checkboxContainer}
+                onPress={handleReadVersesToggle}
+                activeOpacity={0.7}
+            >
+                <View style={[
+                    styles.checkbox,
+                    readVerses && styles.checkboxChecked
+                ]}>
+                    {readVerses && (
+                        <Text style={styles.checkmark}>✓</Text>
+                    )}
+                </View>
+                <Text style={styles.checkboxLabel}>I read verses</Text>
+            </TouchableOpacity>
         </View>
     );
 };
@@ -219,6 +344,38 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         letterSpacing: 0.2,
     },
+    // Checkbox for verses styles
+    checkboxContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginTop: 20,
+    },
+    checkbox: {
+        width: 18,
+        height: 18,
+        borderRadius: 2,
+        borderWidth: 1.5,
+        borderColor: '#d4cec4',
+        backgroundColor: '#fefefe',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    checkboxChecked: {
+        backgroundColor: '#6b5b47',
+        borderColor: '#5a4a37',
+    },
+    checkmark: {
+        color: '#fefefe',
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    checkboxLabel: {
+        fontSize: 13,
+        color: '#6b5b47',
+        fontWeight: '400',
+        letterSpacing: 0.2,
+    },
     clearButton: {
         paddingHorizontal: 12,
         paddingVertical: 4,
@@ -241,19 +398,24 @@ const styles = StyleSheet.create({
         letterSpacing: 0.4,
         lineHeight: 16,
     },
+    // Chapter grid and buttion styles
     chaptersGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         gap: 1.372,
     },
+    chapterButtonWrapper: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 5,
+    },
     chapterButton: {
-        width: '16.3%',
+        width: 50,
         height: 42,
         backgroundColor: '#fefefe',
         borderRadius: 2,
         borderWidth: 1,
         borderColor: '#f0ede8',
-        marginBottom: 5,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -290,5 +452,36 @@ const styles = StyleSheet.create({
     chapterButtonTextSelected: {
         color: '#fefefe',
         fontWeight: '600',
+    },
+    // Verse input styles
+    verseInputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginLeft: 6,
+        gap: 4,
+    },
+    verseInput: {
+        width: 42,
+        height: 40,
+        backgroundColor: '#f5f2ed',
+        borderRadius: 3,
+        borderWidth: 1.5,
+        borderColor: '#d4cec4',
+        paddingHorizontal: 8,
+        fontSize: 12,
+        color: '#5a4a37',
+        fontWeight: '600',
+        textAlign: 'center',
+        letterSpacing: 0.2,
+    },
+    verseInputRange: {
+        marginLeft: 4,
+        marginRight: 4,
+    },
+    verseColon: {
+        fontSize: 14,
+        color: '#a39b90',
+        fontWeight: '900',
+        marginLeft: 3,
     },
 });
