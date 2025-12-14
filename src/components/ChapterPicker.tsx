@@ -464,11 +464,10 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     verseInput: {
-        width: 48,
-        height: 44,
-        borderRadius: 12, // Softened
+        width: 52,
+        height: 52,
         borderWidth: 1,
-        // borderRadius: 8,
+        borderRadius: 8,
         paddingHorizontal: 4,
         fontSize: 14,
         fontWeight: '600',
