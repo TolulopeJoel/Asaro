@@ -4,7 +4,7 @@ import { getComebackDaysCount, getMissedDaysCount, getTotalEntryCount } from "@/
 import { useTheme } from "@/src/theme/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Link, useFocusEffect } from 'expo-router';
+import { Link, useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -115,28 +115,23 @@ const UpdateCard = React.memo(() => {
     );
 });
 
-const NavigationButtons = React.memo(() => {
+const FloatingActionButton = React.memo(() => {
     const { colors } = useTheme();
+    const router = useRouter();
 
     return (
-        <View style={styles.buttonContainer}>
-            <Link href="/addEntry" asChild>
-                <TouchableOpacity
-                    style={[
-                        styles.primaryButton,
-                        {
-                            backgroundColor: '#FF6B6B', // Bright red for visibility
-                            borderWidth: 3,
-                            borderColor: '#000000', // Black border
-                        }
-                    ]}
-                    activeOpacity={0.9}
-                >
-                    <Ionicons name="add-circle-outline" size={24} color="#FFFFFF" />
-                    <Text style={[styles.primaryButtonText, { color: '#FFFFFF' }]}>Add Entry</Text>
-                </TouchableOpacity>
-            </Link>
-        </View>
+        <TouchableOpacity
+            style={[
+                styles.fab,
+                {
+                    backgroundColor: colors.textPrimary,
+                }
+            ]}
+            activeOpacity={0.8}
+            onPress={() => router.push("/addEntry")}
+        >
+            <Ionicons name="add" size={32} color="#FFFFFF" />
+        </TouchableOpacity>
     );
 });
 
@@ -225,9 +220,9 @@ export default function Index() {
                 <UpdateCard />
                 <WeeklyStreak />
                 <WeeklyStreakMock />
-                <NavigationButtons />
             </ScrollView>
 
+            {!draftExists && <FloatingActionButton />}
             {draftExists && <DraftBar />}
         </SafeAreaView>
     );
@@ -376,5 +371,16 @@ const styles = StyleSheet.create({
         backgroundColor: "#f0ebe3",
         justifyContent: "center",
         alignItems: "center",
+    },
+    fab: {
+        position: 'absolute',
+        bottom: 32,
+        right: 24,
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 100,
     },
 });
