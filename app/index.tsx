@@ -1,5 +1,4 @@
 import { getComebackDaysCount, getMissedDaysCount, getTotalEntryCount } from "@/src/data/database";
-import { sendTestNotification } from "@/src/utils/notifications";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Link, useFocusEffect } from 'expo-router';
@@ -137,9 +136,6 @@ const NavigationButtons = React.memo(() => {
         ]).start();
     }, []);
 
-    const handleTestNotification = async () => {
-        await sendTestNotification();
-    };
 
     return (
         <View style={styles.buttonContainer}>
@@ -168,14 +164,15 @@ const NavigationButtons = React.memo(() => {
             </Animated.View>
 
             <Animated.View style={{ opacity: button3Anim, transform: [{ scale: button3Anim }], width: '100%' }}>
-                <TouchableOpacity
-                    style={styles.testButton}
-                    activeOpacity={0.9}
-                    onPress={handleTestNotification}
-                >
-                    <Ionicons name="notifications-outline" size={14} color="#8b7355" />
-                    <Text style={styles.testButtonText}>Test Notification</Text>
-                </TouchableOpacity>
+                <Link href="/settings" asChild>
+                    <TouchableOpacity
+                        style={styles.testButton}
+                        activeOpacity={0.9}
+                    >
+                        <Ionicons name="settings-outline" size={14} color="#8b7355" />
+                        <Text style={styles.testButtonText}>Settings</Text>
+                    </TouchableOpacity>
+                </Link>
             </Animated.View>
         </View>
     );
