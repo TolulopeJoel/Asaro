@@ -1,5 +1,5 @@
 import { useTheme } from '@/src/theme/ThemeContext';
-import { formatDateToLocalString, getLocalMidnight, isSameDay } from '@/src/utils/dateUtils';
+import { getLocalMidnight, isSameDay } from '@/src/utils/dateUtils';
 import React, { useEffect, useState } from 'react';
 import {
     Animated,
@@ -223,7 +223,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         entries.forEach(entry => {
             const entryDate = new Date(entry.created_at || '');
             const entryDateLocal = getLocalMidnight(entryDate);
-            
+
             if (isSameDay(entryDateLocal, today)) {
                 groups.today.push(entry);
             } else if (isSameDay(entryDateLocal, yesterday)) {
@@ -534,7 +534,6 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         marginBottom: 20,
         letterSpacing: 0.5,
-        textTransform: 'uppercase', // Shibui style
     },
     tabContainer: {
         marginBottom: 20,
@@ -595,9 +594,9 @@ const styles = StyleSheet.create({
     },
     searchInput: {
         flex: 1,
-        height: 48, // Taller
-        borderRadius: 24, // Pill shape
-        paddingHorizontal: 20,
+        height: 48,
+        borderRadius: 6,
+        paddingHorizontal: 16,
         fontSize: 16,
         borderWidth: 1,
     },
@@ -617,7 +616,7 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     scrollContent: {
-        paddingBottom: 100, // Extra padding for FAB
+        paddingBottom: 100,
     },
     entriesList: {
         paddingHorizontal: 20,
@@ -635,14 +634,10 @@ const styles = StyleSheet.create({
         opacity: 0.7,
     },
     entryCard: {
-        borderRadius: 24, // Softened from 4
+        borderRadius: 8, // Softened from 4
         padding: 24,
-        marginBottom: 16,
+        marginBottom: 12,
         borderWidth: 1,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 12,
-        elevation: 2,
     },
     entryHeader: {
         flexDirection: 'row',
@@ -686,20 +681,16 @@ const styles = StyleSheet.create({
     booksGrid: {
         paddingHorizontal: 24,
         paddingTop: 24,
-        flexDirection: 'row',
-        flexWrap: 'wrap',
         justifyContent: 'space-between',
         gap: 12,
     },
     bookCard: {
-        width: '48%', // 2 columns
-        borderRadius: 20, // Softened
+        borderRadius: 8, // Softened
         padding: 20,
         marginBottom: 0, // Handled by gap
         borderWidth: 1,
+        flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        aspectRatio: 1.4,
     },
     bookCardHeader: {
         flex: 1,
