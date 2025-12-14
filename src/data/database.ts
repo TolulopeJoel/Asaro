@@ -376,3 +376,25 @@ export const importEntries = async (
 
     return importedCount;
 };
+
+/**
+ * Get entry counts for a date range
+ * Returns a map of date string (YYYY-MM-DD) -> count
+ */
+export const getDailyEntryCounts = async (startDate: string, endDate: string): Promise<Record<string, number>> => {
+    const database = await getDb();
+    const result = await database.getAllAsync<{ day: string; count: number }>(
+        `SELECT date(created_at) as day, COUNT(*) as count 
+         FROM journal_entries 
+         WHERE date(created_at) BETWEEN date(?) AND date(?) 
+         GROUP BY day`,
+        [startDate, endDate]
+    );
+
+    const counts: Record<string, number> = {};
+    result.forEach(row => {
+        counts[row.day] = row.count;
+    });
+
+    return counts;
+};

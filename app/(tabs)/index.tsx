@@ -1,3 +1,5 @@
+import { WeeklyStreak } from '@/src/components/WeeklyStreak';
+import { WeeklyStreakMock } from '@/src/components/WeeklyStreakMock';
 import { getComebackDaysCount, getMissedDaysCount, getTotalEntryCount } from "@/src/data/database";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
@@ -221,6 +223,8 @@ export default function Index() {
             >
                 <QuickStats />
                 <UpdateCard />
+                <WeeklyStreak />
+                <WeeklyStreakMock />
                 <NavigationButtons />
             </ScrollView>
 
@@ -237,7 +241,6 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     scrollContent: {
-        alignItems: "center",
         padding: 24,
         paddingBottom: 120,
     },
