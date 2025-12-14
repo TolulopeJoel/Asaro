@@ -278,3 +278,101 @@ export const getComebackDaysCount = async (): Promise<number> => {
 
     return result?.comeback_days || 0;
 };
+
+/**
+ * Get all entries for backup (no pagination)
+ */
+export const getAllEntriesForBackup = async (): Promise<JournalEntry[]> => {
+    const database = await getDb();
+    return await database.getAllAsync(`
+        SELECT * FROM journal_entries 
+        ORDER BY created_at DESC
+    `);
+};
+
+/**
+ * Clear all entries (for replace mode in restore)
+ */
+export const clearAllEntries = async (): Promise<void> => {
+    const database = await getDb();
+    await database.runAsync(`DELETE FROM journal_entries`);
+};
+
+/**
+ * Find duplicate entry based on key fields
+ */
+const findDuplicateEntry = async (
+    database: SQLite.SQLiteDatabase,
+    entry: JournalEntry
+): Promise<boolean> => {
+    const result = await database.getFirstAsync(
+        `SELECT id FROM journal_entries 
+         WHERE book_name = ? 
+         AND chapter_start = ? 
+         AND COALESCE(chapter_end, 0) = COALESCE(?, 0)
+         AND datetime(created_at) BETWEEN datetime(?, '-1 minute') AND datetime(?, '+1 minute')
+         LIMIT 1`,
+        [
+            entry.book_name,
+            entry.chapter_start,
+            entry.chapter_end || null,
+            entry.created_at,
+            entry.created_at,
+        ]
+    );
+    return result !== null;
+};
+
+/**
+ * Import entries from backup
+ * @param entries - Array of journal entries to import
+ * @param mode - 'merge' to skip duplicates, 'replace' to import all
+ * @returns Number of entries imported
+ */
+export const importEntries = async (
+    entries: JournalEntry[],
+    mode: 'merge' | 'replace'
+): Promise<number> => {
+    const database = await getDb();
+    let importedCount = 0;
+
+    for (const entry of entries) {
+        try {
+            // In merge mode, check for duplicates
+            if (mode === 'merge') {
+                const isDuplicate = await findDuplicateEntry(database, entry);
+                if (isDuplicate) {
+                    continue; // Skip duplicate
+                }
+            }
+
+            // Import entry (without id to let autoincrement handle it)
+            await database.runAsync(
+                `INSERT INTO journal_entries 
+                 (book_name, chapter_start, chapter_end, verse_start, verse_end, 
+                  reflection_1, reflection_2, reflection_3, reflection_4, notes, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [
+                    entry.book_name,
+                    entry.chapter_start || null,
+                    entry.chapter_end || null,
+                    entry.verse_start || null,
+                    entry.verse_end || null,
+                    entry.reflection_1 || null,
+                    entry.reflection_2 || null,
+                    entry.reflection_3 || null,
+                    entry.reflection_4 || null,
+                    entry.notes || null,
+                    entry.created_at,
+                    entry.updated_at || entry.created_at,
+                ]
+            );
+            importedCount++;
+        } catch (error) {
+            console.error('Error importing entry:', error);
+            // Continue with next entry
+        }
+    }
+
+    return importedCount;
+};
