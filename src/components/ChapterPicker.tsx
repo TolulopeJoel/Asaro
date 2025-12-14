@@ -116,7 +116,7 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = ({
     const isChapterInSelection = (chapter: number): boolean => {
         if (!selectedChapters || selectedChapters.start === 0) return false;
 
-        const start = selectedChapters.start;
+        const {start} = selectedChapters;
         const end = selectedChapters.end || start;
 
         return chapter >= start && chapter <= end;

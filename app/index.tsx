@@ -1,4 +1,5 @@
 import { getComebackDaysCount, getMissedDaysCount, getTotalEntryCount } from "@/src/data/database";
+import { sendTestNotification } from "@/src/utils/notifications";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Link, useFocusEffect } from 'expo-router';
@@ -66,7 +67,7 @@ const QuickStats = React.memo(() => {
                 label={`${missedDays === 1 ? 'Missed Day' : 'Missed Days'}`}
             />
             <StatCard
-                icon="trophy-outline"
+                icon="leaf-outline"
                 value={comebackDays}
                 label={`${comebackDays === 1 ? 'Comeback' : 'Comebacks'}`}
             />
@@ -110,6 +111,7 @@ const UpdateCard = React.memo(() => {
 const NavigationButtons = React.memo(() => {
     const button1Anim = useRef(new Animated.Value(0)).current;
     const button2Anim = useRef(new Animated.Value(0)).current;
+    const button3Anim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
         Animated.stagger(100, [
@@ -126,8 +128,18 @@ const NavigationButtons = React.memo(() => {
                 friction: 7,
                 useNativeDriver: true,
             }),
+            Animated.spring(button3Anim, {
+                toValue: 1,
+                tension: 40,
+                friction: 7,
+                useNativeDriver: true,
+            }),
         ]).start();
     }, []);
+
+    const handleTestNotification = async () => {
+        await sendTestNotification();
+    };
 
     return (
         <View style={styles.buttonContainer}>
@@ -153,6 +165,17 @@ const NavigationButtons = React.memo(() => {
                         <Text style={styles.secondaryButtonText}>Past Entries</Text>
                     </TouchableOpacity>
                 </Link>
+            </Animated.View>
+
+            <Animated.View style={{ opacity: button3Anim, transform: [{ scale: button3Anim }], width: '100%' }}>
+                <TouchableOpacity
+                    style={styles.testButton}
+                    activeOpacity={0.9}
+                    onPress={handleTestNotification}
+                >
+                    <Ionicons name="notifications-outline" size={14} color="#8b7355" />
+                    <Text style={styles.testButtonText}>Test Notification</Text>
+                </TouchableOpacity>
             </Animated.View>
         </View>
     );
@@ -364,6 +387,24 @@ const styles = StyleSheet.create({
         gap: 10,
     },
     secondaryButtonText: {
+        color: "#8b7355",
+        fontSize: 15,
+        fontWeight: "600",
+        letterSpacing: 0.3,
+    },
+    testButton: {
+        backgroundColor: "#ffffff",
+        paddingVertical: 16,
+        paddingHorizontal: 24,
+        borderWidth: 1,
+        borderColor: "#e0e0e0",
+        borderRadius: 12,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 10,
+    },
+    testButtonText: {
         color: "#8b7355",
         fontSize: 15,
         fontWeight: "600",

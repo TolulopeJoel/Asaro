@@ -16,7 +16,7 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/foregroundImage.png",
         "monochromeImage": "./assets/images/Vector.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#D9C7A8"
       },
       "package": "com.asaro.meditation"
     },
@@ -32,7 +32,7 @@
           "image": "./assets/images/foregroundImage.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#D9C7A8"
         }
       ],
       "expo-router",

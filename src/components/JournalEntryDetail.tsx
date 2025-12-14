@@ -55,20 +55,44 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
         });
     };
 
-    const formatChapterRange = (): string => {
+    const formatChapterAndVerses = (): string => {
         if (!entry.chapter_start) return '';
-        if (entry.chapter_end && entry.chapter_end !== entry.chapter_start) {
-            return `${entry.chapter_start}—${entry.chapter_end}`;
-        }
-        return entry.chapter_start.toString();
-    };
 
-    const getVerseRange = (): string => {
-        if (!entry.verse_start) return '';
-        if (entry.verse_end && entry.verse_end !== entry.verse_start) {
-            return `:${entry.verse_start}—${entry.verse_end}`;
+        const hasChapterRange = entry.chapter_end && entry.chapter_end !== entry.chapter_start;
+        const hasVerses = entry.verse_start || entry.verse_end;
+
+        // Single chapter with verses: "3:16" or "3:16–20"
+        if (!hasChapterRange && hasVerses) {
+            let result = entry.chapter_start.toString();
+            if (entry.verse_start) {
+                result += `:${entry.verse_start}`;
+                if (entry.verse_end && entry.verse_end !== entry.verse_start) {
+                    result += `–${entry.verse_end}`;
+                }
+            }
+            return result;
         }
-        return entry.verse_start ? `:${entry.verse_start}` : '';
+
+        // Chapter range with verses: "3:16–5:20"
+        if (hasChapterRange && hasVerses) {
+            let result = entry.chapter_start.toString();
+            if (entry.verse_start) {
+                result += `:${entry.verse_start}`;
+            }
+            result += `–${entry.chapter_end}`;
+            if (entry.verse_end) {
+                result += `:${entry.verse_end}`;
+            }
+            return result;
+        }
+
+        // Chapter range without verses: "3–5"
+        if (hasChapterRange) {
+            return `${entry.chapter_start}–${entry.chapter_end}`;
+        }
+
+        // Single chapter without verses: "3"
+        return entry.chapter_start.toString();
     };
 
     const handleDelete = () => {
@@ -84,10 +108,10 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                         setIsDeleting(true);
                         try {
                             const success = deleteJournalEntry(entry.id!);
-                            if (success) {
-                                onDelete?.();
-                            } else {
+                            if (!success) {
                                 throw new Error('Failed to delete entry');
+                            } else {
+                                onDelete?.();
                             }
                         } catch (error) {
                             setIsDeleting(false);
@@ -101,7 +125,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
     const handleShare = async () => {
         setIsSharing(true);
         try {
-            const reference = `${entry.book_name} ${formatChapterRange()}${getVerseRange()}`;
+            const reference = `${entry.book_name} ${formatChapterAndVerses()}`;
             const studyDate = formatDate(entry.created_at);
 
             let content = `Bible Reading (${reference}) for `;
@@ -186,16 +210,16 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                             </View>
                         </TouchableOpacity>
                     )}
-                    
+
                     <View style={styles.dateChip}>
                         <Text style={styles.dateText}>{formatDate(entry.created_at)}</Text>
                     </View>
-                    
+
                     <Text style={styles.reference}>
                         {entry.book_name}
                     </Text>
                     <Text style={styles.verseReference}>
-                        {formatChapterRange()}{getVerseRange()}
+                        {formatChapterAndVerses()}
                     </Text>
                 </View>
 

@@ -13,15 +13,21 @@ interface ChapterRange {
     end?: number;
 }
 
+interface VerseRange {
+    start: string;
+    end: string;
+}
+
 interface DraftData {
     selectedBook?: BibleBook;
     selectedChapters?: ChapterRange;
+    verseRange?: VerseRange | null;
     reflectionAnswers?: ReflectionAnswers;
 }
 
 type Step = 'book' | 'chapter' | 'reflection' | 'summary';
 
-export function useAutoSave(reflectionAnswers: any, selectedBook: any, selectedChapters: any, currentStep: Step, isEditMode: boolean) {
+export function useAutoSave(reflectionAnswers: any, selectedBook: any, selectedChapters: any, verseRange: any, currentStep: Step, isEditMode: boolean) {
     const lastSaveTime = useRef<number>(0);
     const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isMountedRef = useRef(true);
@@ -47,6 +53,7 @@ export function useAutoSave(reflectionAnswers: any, selectedBook: any, selectedC
                 const draftData: DraftData = {
                     selectedBook,
                     selectedChapters,
+                    verseRange,
                     reflectionAnswers,
                 };
                 await AsyncStorage.setItem(
@@ -84,7 +91,7 @@ export function useAutoSave(reflectionAnswers: any, selectedBook: any, selectedC
                 clearTimeout(debounceTimer.current);
             }
         };
-    }, [reflectionAnswers]);
+    }, [reflectionAnswers, verseRange]);
 }
 
 export default function MeditationSessionScreen() {
@@ -97,6 +104,7 @@ export default function MeditationSessionScreen() {
     const [currentStep, setCurrentStep] = useState<Step>('book');
     const [selectedBook, setSelectedBook] = useState<BibleBook>();
     const [selectedChapters, setSelectedChapters] = useState<ChapterRange>();
+    const [verseRange, setVerseRange] = useState<VerseRange | null>(null);
     const [reflectionAnswers, setReflectionAnswers] = useState<ReflectionAnswers>();
     const [isLoading, setIsLoading] = useState(true);
 
@@ -118,6 +126,15 @@ export default function MeditationSessionScreen() {
                         start: entry.chapter_start,
                         end: entry.chapter_end
                     });
+
+                    // Load verse range if it exists
+                    if (entry.verse_start || entry.verse_end) {
+                        setVerseRange({
+                            start: entry.verse_start?.toString() || '',
+                            end: entry.verse_end?.toString() || ''
+                        });
+                    }
+
                     setReflectionAnswers({
                         reflection1: entry.reflection_1 || "",
                         reflection2: entry.reflection_2 || "",
@@ -136,6 +153,9 @@ export default function MeditationSessionScreen() {
                         if (draft.selectedChapters) {
                             setSelectedChapters(draft.selectedChapters);
                         }
+                        if (draft.verseRange) {
+                            setVerseRange(draft.verseRange);
+                        }
                         if (draft.reflectionAnswers) {
                             setReflectionAnswers(draft.reflectionAnswers);
                         }
@@ -152,16 +172,21 @@ export default function MeditationSessionScreen() {
         loadData();
     }, []);
 
-    useAutoSave(reflectionAnswers, selectedBook, selectedChapters, currentStep, isEditMode);
+    useAutoSave(reflectionAnswers, selectedBook, selectedChapters, verseRange, currentStep, isEditMode);
 
     const handleBookSelect = useCallback((book: BibleBook) => {
         setSelectedBook(book);
         setSelectedChapters(undefined);
+        setVerseRange(null);
         setCurrentStep('chapter');
     }, []);
 
     const handleChapterSelect = useCallback((chapters: ChapterRange) => {
         setSelectedChapters(chapters);
+    }, []);
+
+    const handleVerseRangeChange = useCallback((verses: VerseRange | null) => {
+        setVerseRange(verses);
     }, []);
 
     const handleContinueToReflection = useCallback(() => {
@@ -183,6 +208,8 @@ export default function MeditationSessionScreen() {
                 bookName: selectedBook.name,
                 chapterStart: selectedChapters.start,
                 chapterEnd: selectedChapters.end,
+                verseStart: verseRange?.start ? parseInt(verseRange.start) || undefined : undefined,
+                verseEnd: verseRange?.end ? parseInt(verseRange.end) || undefined : undefined,
                 reflections: [
                     answers.reflection1,
                     answers.reflection2,
@@ -206,7 +233,7 @@ export default function MeditationSessionScreen() {
             console.error('Error saving entry:', error);
             Alert.alert('Error', `Failed to ${isEditMode ? 'update' : 'save'} your entry. Please try again.`);
         }
-    }, [selectedBook, selectedChapters, isEditMode, entryId, router]);
+    }, [selectedBook, selectedChapters, verseRange, isEditMode, entryId, router]);
 
     const handleStartOver = useCallback(async () => {
         if (isEditMode) {
@@ -215,6 +242,7 @@ export default function MeditationSessionScreen() {
             await AsyncStorage.removeItem("reflection_draft");
             setSelectedBook(undefined);
             setSelectedChapters(undefined);
+            setVerseRange(null);
             setReflectionAnswers(undefined);
             setCurrentStep('book');
         }
@@ -233,8 +261,9 @@ export default function MeditationSessionScreen() {
                         await AsyncStorage.removeItem("reflection_draft");
                         setSelectedBook(undefined);
                         setSelectedChapters(undefined);
+                        setVerseRange(null);
                         setReflectionAnswers(undefined);
-                        router.push({pathname: '/'})
+                        router.push({ pathname: '/' })
                     },
                 },
             ]
@@ -252,9 +281,27 @@ export default function MeditationSessionScreen() {
             if (selectedChapters.end && selectedChapters.end !== selectedChapters.start) {
                 summary += `–${selectedChapters.end}`;
             }
+
+            // Add verse range if present
+            if (verseRange) {
+                if (selectedChapters.end && selectedChapters.end !== selectedChapters.start) {
+                    // Range of chapters with verses
+                    const startVerse = verseRange.start ? `:${verseRange.start}` : '';
+                    const endVerse = verseRange.end ? `:${verseRange.end}` : '';
+                    if (startVerse || endVerse) {
+                        summary = `${selectedBook.name} ${selectedChapters.start}${startVerse}–${selectedChapters.end}${endVerse}`;
+                    }
+                }
+                else if (verseRange.start) {
+                    summary += `:${verseRange.start}`;
+                    if (verseRange.end) {
+                        summary += `-${verseRange.end}`;
+                    }
+                }
+            }
         }
         return summary;
-    }, [selectedBook, selectedChapters]);
+    }, [selectedBook, selectedChapters, verseRange]);
 
     if (isLoading && isEditMode) {
         return (
@@ -296,6 +343,7 @@ export default function MeditationSessionScreen() {
                                 selectedBook={selectedBook}
                                 selectedChapters={selectedChapters}
                                 onChapterSelect={handleChapterSelect}
+                                onVerseRangeChange={handleVerseRangeChange}
                                 allowRange={true}
                             />
                         </View>

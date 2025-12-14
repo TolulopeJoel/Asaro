@@ -12,7 +12,7 @@ export interface JournalEntry {
     reflection_3?: string;
     reflection_4?: string;
     notes?: string;
-    created_at?: string;
+    created_at: string;
     updated_at?: string;
 }
 

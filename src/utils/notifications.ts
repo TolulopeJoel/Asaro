@@ -36,25 +36,23 @@ export async function requestNotificationPermissions(): Promise<boolean> {
 
   // Check current permission status
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
-  let finalStatus = existingStatus;
+  console.log('Current notification permission status:', existingStatus);
 
-  // If not granted, request permission
+  // If not granted, request permission directly
   if (existingStatus !== 'granted') {
     const { status } = await Notifications.requestPermissionsAsync();
-    finalStatus = status;
-  }
 
-  // Handle denied permissions
-  if (finalStatus !== 'granted') {
-    Alert.alert(
-      'Can I Check Up On You?',
-      'Hi, I\'m Àṣàrò! I will disturb you small if you miss your Bible reading. I won\'t let your phone rest 😂\n\nBut seriously, I care! If I don\'t see you for a while, I\'ll check up on you to make sure your relationship with Jehovah is intact 😌',
-      [
-        { text: 'Maybe Later', style: 'cancel' },
-        { text: 'Allow Notifications', onPress: () => Linking.openSettings() },
-      ]
-    );
-    return false;
+    if (status !== 'granted') {
+      Alert.alert(
+        'Can I Check Up On You? 😏',
+        'Hi, I\'m Àṣàrò. I will disturb you small if you miss your Bible reading. I won\'t let your phone rest\n\nBut, I care! If I don\'t see you, I\'ll check up on you to make sure your relationship with Jehovah is intact 😌',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Allow Notifications', onPress: () => Linking.openSettings() },
+        ]
+      );
+      return false;
+    }
   }
 
   return true;
@@ -146,4 +144,18 @@ export async function cancelAllScheduledNotifications(): Promise<void> {
 
 export async function getAllScheduledNotifications(): Promise<Notifications.NotificationRequest[]> {
   return await Notifications.getAllScheduledNotificationsAsync();
+}
+
+export async function sendTestNotification(): Promise<void> {
+  if (!await requestNotificationPermissions()) {
+    return;
+  }
+
+  await Notifications.scheduleNotificationAsync({
+    content: createNotificationContent(
+      '🔔 Test Notification',
+      'If you can see this, notifications are working perfectly! 🎉'
+    ),
+    trigger: null, // null trigger means immediate notification
+  });
 }
