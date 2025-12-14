@@ -335,7 +335,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: 16,
         marginBottom: 24,
-        borderRadius: 16, // Softened from 2
+        borderRadius: 8, // Softened from 2
         borderWidth: 1,
     },
     selectionText: {
@@ -405,7 +405,7 @@ const styles = StyleSheet.create({
     chapterButton: {
         width: 52,
         height: 52, // Square-ish but soft
-        borderRadius: 18, // Softened from 2
+        borderRadius: 10, // Softened from 2
         borderWidth: 1,
         justifyContent: 'center',
         alignItems: 'center',
@@ -452,7 +452,6 @@ const styles = StyleSheet.create({
     verseInput: {
         width: 48,
         height: 44,
-        borderRadius: 12, // Softened
         borderWidth: 1,
         paddingHorizontal: 4,
         fontSize: 14,
