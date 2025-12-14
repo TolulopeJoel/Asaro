@@ -10,6 +10,7 @@ export default function TabLayout() {
         <Tabs
             screenOptions={{
                 headerShown: false,
+                tabBarShowLabel: false,
                 tabBarStyle: {
                     backgroundColor: colors.cardBackground,
                     borderTopWidth: 1,
@@ -20,10 +21,6 @@ export default function TabLayout() {
                 },
                 tabBarActiveTintColor: colors.accent,
                 tabBarInactiveTintColor: colors.textTertiary,
-                tabBarLabelStyle: {
-                    fontSize: 12,
-                    fontWeight: '500',
-                },
             }}
         >
             <Tabs.Screen
@@ -31,7 +28,7 @@ export default function TabLayout() {
                 options={{
                     title: 'Home',
                     tabBarIcon: ({ color, size }) => (
-                        <Ionicons name="home-outline" size={size} color={color} />
+                        <Ionicons name="triangle-outline" size={size} color={color} />
                     ),
                 }}
             />
@@ -40,7 +37,7 @@ export default function TabLayout() {
                 options={{
                     title: 'Library',
                     tabBarIcon: ({ color, size }) => (
-                        <Ionicons name="library-outline" size={size} color={color} />
+                        <Ionicons name="square-outline" size={size} color={color} />
                     ),
                 }}
             />
@@ -49,7 +46,7 @@ export default function TabLayout() {
                 options={{
                     title: 'Settings',
                     tabBarIcon: ({ color, size }) => (
-                        <Ionicons name="settings-outline" size={size} color={color} />
+                        <Ionicons name="ellipse-outline" size={size} color={color} />
                     ),
                 }}
             />
