@@ -81,7 +81,7 @@ export const WeeklyStreak = () => {
             activeOpacity={0.9}
         >
             <View style={styles.header}>
-                <Text style={[styles.title, { color: colors.textPrimary }]}>Weekly Consistency</Text>
+                <Text style={[styles.title, { color: colors.textPrimary }]}></Text>
                 <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
             </View>
 

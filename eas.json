@@ -14,11 +14,17 @@
       "android": {
         "buildType": "apk"
       },
-      "channel": "preview"
+      "channel": "preview",
+      "env": {
+        "EXPO_NO_SOURCEMAP": "1"
+      }
     },
     "production": {
       "autoIncrement": true,
-      "channel": "production"
+      "channel": "production",
+      "env": {
+        "EXPO_NO_SOURCEMAP": "1"
+      }
     }
   },
   "submit": {
