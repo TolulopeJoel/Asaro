@@ -71,7 +71,7 @@ export const exportBackup = async (): Promise<{ success: boolean; message: strin
 
         return {
             success: true,
-            message: `Backup created successfully! ${entries.length} entries exported.`,
+            message: `Backup created for ${entries.length} entries.`,
             entryCount: entries.length,
         };
     } catch (error) {

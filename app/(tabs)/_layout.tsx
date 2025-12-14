@@ -1,10 +1,12 @@
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import { Platform } from 'react-native';
+
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabLayout() {
     const { colors, isDark } = useTheme();
+    const insets = useSafeAreaInsets();
 
     return (
         <Tabs
@@ -15,8 +17,8 @@ export default function TabLayout() {
                     backgroundColor: colors.cardBackground,
                     borderTopWidth: 1,
                     borderTopColor: colors.border,
-                    height: Platform.OS === 'ios' ? 88 : 60,
-                    paddingBottom: Platform.OS === 'ios' ? 28 : 8,
+                    height: 60 + insets.bottom,
+                    paddingBottom: insets.bottom,
                     paddingTop: 8,
                 },
                 tabBarActiveTintColor: colors.accent,
@@ -28,7 +30,7 @@ export default function TabLayout() {
                 options={{
                     title: 'Home',
                     tabBarIcon: ({ color, size }) => (
-                        <Ionicons name="triangle-outline" size={size} color={color} />
+                        <Ionicons name="prism-outline" size={size} color={color} />
                     ),
                 }}
             />

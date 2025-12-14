@@ -87,106 +87,100 @@ export default function Settings() {
         }
     };
 
-
-
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
             <Stack.Screen options={{ title: 'Settings' }} />
             <ScrollView style={styles.scrollView}>
+                {/* Appearance */}
                 <View style={styles.section}>
-                    <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Appearance</Text>
-                    <View style={[styles.card, { backgroundColor: colors.cardBackground }]}>
-                        <View style={styles.themeSelector}>
-                            {(['light', 'dark', 'system'] as const).map((mode) => (
-                                <TouchableOpacity
-                                    key={mode}
-                                    style={[
-                                        styles.themeOption,
-                                        {
-                                            backgroundColor: theme === mode ? colors.accent : 'transparent',
-                                            borderColor: colors.border
-                                        }
-                                    ]}
-                                    onPress={() => setTheme(mode)}
-                                >
-                                    <Text style={[
-                                        styles.themeOptionText,
-                                        { color: theme === mode ? colors.buttonPrimaryText : colors.textPrimary }
-                                    ]}>
-                                        {mode.charAt(0).toUpperCase() + mode.slice(1)}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
+                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Appearance</Text>
+                    <View style={styles.themeSelector}>
+                        {(['light', 'dark', 'system'] as const).map((mode) => (
+                            <TouchableOpacity
+                                key={mode}
+                                style={[
+                                    styles.themeOption,
+                                    {
+                                        backgroundColor: theme === mode ? colors.accent : 'transparent',
+                                        borderColor: theme === mode ? colors.accent : colors.border,
+                                    }
+                                ]}
+                                onPress={() => setTheme(mode)}
+                            >
+                                <Text style={[
+                                    styles.themeOptionText,
+                                    { color: theme === mode ? colors.buttonPrimaryText : colors.textPrimary }
+                                ]}>
+                                    {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
                     </View>
                 </View>
 
+                {/* Notifications */}
                 <View style={styles.section}>
-                    <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Notifications</Text>
-                    <View style={[styles.card, { backgroundColor: colors.cardBackground }]}>
-                        <Text style={[styles.cardText, { color: colors.textSecondary }]}>
-                            Test if notifications are working correctly on your device.
+                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Notifications</Text>
+                    <TouchableOpacity
+                        style={[styles.actionButton, {
+                            borderColor: colors.accent,
+                            backgroundColor: colors.accent + '08',
+                        }]}
+                        onPress={handleTestNotification}
+                    >
+                        <Text style={[styles.actionButtonText, { color: colors.accent }]}>
+                            Test Notification
                         </Text>
+                    </TouchableOpacity>
+                </View>
+
+                {/* Backup */}
+                <View style={styles.section}>
+                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Backup & Restore</Text>
+                    <View style={styles.buttonGroup}>
                         <TouchableOpacity
-                            style={[styles.button, { backgroundColor: colors.accent }]}
-                            onPress={handleTestNotification}
+                            style={[styles.actionButton, { flex: 1, borderColor: colors.border }]}
+                            onPress={handleExportBackup}
+                            disabled={isBackingUp || isRestoring}
                         >
-                            <Text style={styles.buttonText}>Test Notification</Text>
+                            {isBackingUp ? (
+                                <ActivityIndicator color={colors.textPrimary} size="small" />
+                            ) : (
+                                <Text style={[styles.actionButtonText, { color: colors.textPrimary }]}>
+                                    Export
+                                </Text>
+                            )}
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={[styles.actionButton, { flex: 1, borderColor: colors.border }]}
+                            onPress={handlePickBackup}
+                            disabled={isBackingUp || isRestoring}
+                        >
+                            {isRestoring ? (
+                                <ActivityIndicator color={colors.textPrimary} size="small" />
+                            ) : (
+                                <Text style={[styles.actionButtonText, { color: colors.textPrimary }]}>
+                                    Import
+                                </Text>
+                            )}
                         </TouchableOpacity>
                     </View>
                 </View>
 
+                {/* About */}
                 <View style={styles.section}>
-                    <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Backup & Restore</Text>
-                    <View style={[styles.card, { backgroundColor: colors.cardBackground }]}>
-                        <Text style={[styles.cardText, { color: colors.textSecondary }]}>
-                            Export your journal entries to a file or restore from a previous backup.
+                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>About</Text>
+                    <View style={styles.row}>
+                        <Text style={[styles.label, { color: colors.textSecondary }]}>Version</Text>
+                        <Text style={[styles.value, { color: colors.textPrimary }]}>
+                            {Constants.expoConfig?.version || '1.0.0'}
                         </Text>
-
-                        <View style={styles.buttonGroup}>
-                            <TouchableOpacity
-                                style={[styles.button, { backgroundColor: colors.accent, flex: 1, marginRight: 8 }]}
-                                onPress={handleExportBackup}
-                                disabled={isBackingUp || isRestoring}
-                            >
-                                {isBackingUp ? (
-                                    <ActivityIndicator color={colors.buttonPrimaryText} size="small" />
-                                ) : (
-                                    <Text style={[styles.buttonText, { color: colors.buttonPrimaryText }]}>Export Backup</Text>
-                                )}
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={[styles.button, { backgroundColor: colors.cardHover, flex: 1, marginLeft: 8, borderWidth: 1, borderColor: colors.border }]}
-                                onPress={handlePickBackup}
-                                disabled={isBackingUp || isRestoring}
-                            >
-                                {isRestoring ? (
-                                    <ActivityIndicator color={colors.textPrimary} size="small" />
-                                ) : (
-                                    <Text style={[styles.buttonText, { color: colors.textPrimary }]}>Import Backup</Text>
-                                )}
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-
-                <View style={styles.section}>
-                    <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>About</Text>
-                    <View style={[styles.card, { backgroundColor: colors.cardBackground }]}>
-                        <View style={styles.row}>
-                            <Text style={[styles.label, { color: colors.textPrimary }]}>App Name</Text>
-                            <Text style={[styles.value, { color: colors.textSecondary }]}>Àṣàrò</Text>
-                        </View>
-                        <View style={[styles.divider, { backgroundColor: colors.border }]} />
-                        <View style={styles.row}>
-                            <Text style={[styles.label, { color: colors.textPrimary }]}>Version</Text>
-                            <Text style={[styles.value, { color: colors.textSecondary }]}>{Constants.expoConfig?.version || '1.0.0'}</Text>
-                        </View>
                     </View>
                 </View>
             </ScrollView>
 
+            {/* Restore Modal */}
             <Modal
                 visible={showRestoreModal}
                 transparent
@@ -195,57 +189,68 @@ export default function Settings() {
             >
                 <View style={styles.modalOverlay}>
                     <View style={[styles.modalContent, { backgroundColor: colors.cardBackground }]}>
-                        <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Restore Backup</Text>
+                        <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
+                            Restore Backup
+                        </Text>
 
                         {backupPreview && (
-                            <View style={styles.previewContainer}>
+                            <View style={[styles.previewContainer, { borderColor: colors.border }]}>
                                 <View style={styles.previewRow}>
-                                    <Text style={[styles.previewLabel, { color: colors.textSecondary }]}>Entries:</Text>
-                                    <Text style={[styles.previewValue, { color: colors.textPrimary }]}>{backupPreview.totalEntries}</Text>
+                                    <Text style={[styles.previewLabel, { color: colors.textSecondary }]}>
+                                        Entries
+                                    </Text>
+                                    <Text style={[styles.previewValue, { color: colors.textPrimary }]}>
+                                        {backupPreview.totalEntries}
+                                    </Text>
                                 </View>
                                 <View style={styles.previewRow}>
-                                    <Text style={[styles.previewLabel, { color: colors.textSecondary }]}>Date Range:</Text>
+                                    <Text style={[styles.previewLabel, { color: colors.textSecondary }]}>
+                                        Range
+                                    </Text>
                                     <Text style={[styles.previewValue, { color: colors.textPrimary }]}>
-                                        {backupPreview.dateRange.earliest} - {backupPreview.dateRange.latest}
+                                        {backupPreview.dateRange.earliest} — {backupPreview.dateRange.latest}
                                     </Text>
                                 </View>
                             </View>
                         )}
 
-                        <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
-                            Choose how you want to restore your entries:
-                        </Text>
-
                         <TouchableOpacity
-                            style={[styles.modalButton, { backgroundColor: colors.accent }]}
+                            style={[styles.modalButton, {
+                                backgroundColor: colors.accent,
+                                borderWidth: 0,
+                            }]}
                             onPress={() => handleRestore('merge')}
                         >
-                            <Text style={[styles.modalButtonText, { color: colors.buttonPrimaryText }]}>Merge (Keep Existing)</Text>
-                            <Text style={[styles.modalButtonSubtext, { color: 'rgba(255,255,255,0.8)' }]}>Adds new entries, skips duplicates</Text>
+                            <Text style={[styles.modalButtonText, { color: colors.buttonPrimaryText }]}>
+                                Merge
+                            </Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                            style={[styles.modalButton, { backgroundColor: colors.cardHover, borderWidth: 1, borderColor: colors.border }]}
+                            style={[styles.modalButton, { borderColor: colors.border, borderWidth: 1 }]}
                             onPress={() => {
                                 Alert.alert(
                                     'Replace All Entries?',
-                                    'This will DELETE all current entries and replace them with the backup. This action cannot be undone.',
+                                    'This will delete all current entries. This action cannot be undone.',
                                     [
                                         { text: 'Cancel', style: 'cancel' },
-                                        { text: 'Replace All', style: 'destructive', onPress: () => handleRestore('replace') }
+                                        { text: 'Replace', style: 'destructive', onPress: () => handleRestore('replace') }
                                     ]
                                 );
                             }}
                         >
-                            <Text style={[styles.modalButtonText, { color: colors.textPrimary }]}>Replace All</Text>
-                            <Text style={[styles.modalButtonSubtext, { color: colors.textSecondary }]}>Deletes current entries first</Text>
+                            <Text style={[styles.modalButtonText, { color: colors.textPrimary }]}>
+                                Replace
+                            </Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
                             style={styles.modalCloseButton}
                             onPress={() => setShowRestoreModal(false)}
                         >
-                            <Text style={[styles.modalCloseText, { color: colors.textSecondary }]}>Cancel</Text>
+                            <Text style={[styles.modalCloseText, { color: colors.textSecondary }]}>
+                                Cancel
+                            </Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -260,41 +265,52 @@ const styles = StyleSheet.create({
     },
     scrollView: {
         flex: 1,
-        padding: 16,
+        padding: 28,
     },
     section: {
-        marginBottom: 24,
+        marginBottom: 48,
     },
     sectionTitle: {
-        fontSize: 18,
+        fontSize: 11,
         fontWeight: '600',
-        marginBottom: 8,
-        marginLeft: 4,
+        marginBottom: 20,
+        textTransform: 'uppercase',
+        letterSpacing: 1.5,
+        opacity: 0.5,
     },
-    card: {
-        borderRadius: 12,
-        padding: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
+    themeSelector: {
+        flexDirection: 'row',
+        gap: 12,
     },
-    cardText: {
-        fontSize: 14,
-        marginBottom: 16,
-        lineHeight: 20,
-    },
-    button: {
-        paddingVertical: 12,
-        paddingHorizontal: 20,
-        borderRadius: 8,
+    themeOption: {
+        flex: 1,
+        paddingVertical: 14,
         alignItems: 'center',
+        borderRadius: 10,
+        borderWidth: 1.5,
     },
-    buttonText: {
-        color: 'white',
-        fontSize: 16,
+    themeOptionText: {
+        fontSize: 14,
         fontWeight: '600',
+        letterSpacing: 0.3,
+    },
+    actionButton: {
+        paddingVertical: 16,
+        paddingHorizontal: 24,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1.5,
+        minHeight: 52,
+    },
+    actionButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        letterSpacing: 0.3,
+    },
+    buttonGroup: {
+        flexDirection: 'row',
+        gap: 12,
     },
     row: {
         flexDirection: 'row',
@@ -303,101 +319,81 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
     },
     label: {
-        fontSize: 16,
-    },
-    value: {
-        fontSize: 16,
-    },
-    divider: {
-        height: 1,
-        marginVertical: 8,
-    },
-    themeSelector: {
-        flexDirection: 'row',
-        backgroundColor: '#f0f0f0', // This might need theming too if visible
-        borderRadius: 8,
-        padding: 4,
-        gap: 4,
-    },
-    themeOption: {
-        flex: 1,
-        paddingVertical: 8,
-        alignItems: 'center',
-        borderRadius: 6,
-    },
-    themeOptionText: {
         fontSize: 14,
         fontWeight: '500',
+        opacity: 0.5,
+        letterSpacing: 0.3,
     },
-    buttonGroup: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+    value: {
+        fontSize: 14,
+        fontWeight: '600',
+        letterSpacing: 0.2,
     },
+    // Modal
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
         justifyContent: 'center',
-        padding: 20,
+        padding: 24,
     },
     modalContent: {
-        borderRadius: 16,
-        padding: 24,
+        borderRadius: 20,
+        padding: 32,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-        elevation: 5,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.12,
+        shadowRadius: 24,
+        elevation: 8,
     },
     modalTitle: {
         fontSize: 20,
-        fontWeight: 'bold',
-        marginBottom: 16,
-        textAlign: 'center',
-    },
-    modalSubtitle: {
-        fontSize: 14,
-        marginBottom: 20,
-        textAlign: 'center',
+        fontWeight: '700',
+        marginBottom: 24,
+        letterSpacing: 0.3,
     },
     previewContainer: {
-        backgroundColor: 'rgba(0,0,0,0.05)',
-        borderRadius: 8,
-        padding: 12,
-        marginBottom: 20,
+        borderRadius: 12,
+        padding: 20,
+        marginBottom: 28,
+        borderWidth: 1,
     },
     previewRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginBottom: 4,
+        marginBottom: 12,
     },
     previewLabel: {
-        fontSize: 14,
+        fontSize: 13,
+        fontWeight: '500',
+        opacity: 0.5,
+        letterSpacing: 0.3,
     },
     previewValue: {
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: '600',
+        letterSpacing: 0.2,
     },
     modalButton: {
-        padding: 16,
+        padding: 18,
         borderRadius: 12,
-        marginBottom: 12,
+        marginBottom: 14,
         alignItems: 'center',
+        justifyContent: 'center',
     },
     modalButtonText: {
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: '600',
-        marginBottom: 2,
-    },
-    modalButtonSubtext: {
-        fontSize: 12,
+        letterSpacing: 0.3,
     },
     modalCloseButton: {
         marginTop: 8,
-        padding: 12,
+        padding: 14,
         alignItems: 'center',
     },
     modalCloseText: {
-        fontSize: 16,
-        fontWeight: '500',
+        fontSize: 14,
+        fontWeight: '600',
+        opacity: 0.5,
+        letterSpacing: 0.3,
     },
 });
