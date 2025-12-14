@@ -2,9 +2,9 @@
   "expo": {
     "name": "Àṣàrò",
     "slug": "asaro",
-    "version": "2025.OCT",
+    "version": "2025.DEC",
     "orientation": "portrait",
-    "icon": "./assets/images/àṣàròLogo.png",
+    "icon": "./assets/images/foregroundImage.png",
     "scheme": "asaro",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -14,10 +14,10 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/àṣàròLogo.png",
+        "foregroundImage": "./assets/images/foregroundImage.png",
+        "monochromeImage": "./assets/images/Vector.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true,
       "package": "com.asaro.meditation"
     },
     "web": {
@@ -29,7 +29,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/àṣàròLogo.png",
+          "image": "./assets/images/foregroundImage.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
@@ -37,7 +37,9 @@
       ],
       "expo-router",
       "expo-sqlite",
-      "expo-notifications"
+      "expo-notifications",
+      "expo-font",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
