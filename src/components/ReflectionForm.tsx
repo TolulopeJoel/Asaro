@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { useTheme } from '../theme/ThemeContext';
 import { TextArea } from './TextArea';
 
 export interface ReflectionAnswers {
@@ -31,6 +32,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
   disabled = false,
   saveButtonText = 'Save It',
 }) => {
+  const { colors } = useTheme();
   const [answers, setAnswers] = useState<ReflectionAnswers>({
     reflection1: initialAnswers?.reflection1 || '',
     reflection2: initialAnswers?.reflection2 || '',
@@ -104,9 +106,9 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
     return (
       <View key={id} style={styles.questionContainer}>
         <View style={styles.questionHeader}>
-          <Text style={styles.questionNumber}>{index + 1}</Text>
+          <Text style={[styles.questionNumber, { backgroundColor: colors.badge, color: colors.primary }]}>{index + 1}</Text>
           <View style={styles.questionTitleContainer}>
-            <Text style={styles.questionTitle}>{question}</Text>
+            <Text style={[styles.questionTitle, { color: colors.text }]}>{question}</Text>
           </View>
         </View>
 
@@ -131,8 +133,8 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
 
         <View style={styles.notesContainer}>
           <View style={styles.notesHeader}>
-            <Text style={styles.notesTitle}>Additional Thoughts</Text>
-            <Text style={styles.notesSubtitle}>Optional</Text>
+            <Text style={[styles.notesTitle, { color: colors.textSecondary }]}>Additional Thoughts</Text>
+            <Text style={[styles.notesSubtitle, { color: colors.textTertiary }]}>Optional</Text>
           </View>
           <TextArea
             label=""
@@ -148,17 +150,17 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
       {!disabled && (
         <View style={styles.actionsContainer}>
           <TouchableOpacity
-            style={styles.clearButton}
+            style={[styles.clearButton, { borderColor: colors.border }]}
             onPress={handleClear}
           >
-            <Text style={styles.clearButtonText}>Start Over</Text>
+            <Text style={[styles.clearButtonText, { color: colors.textSecondary }]}>Start Over</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.saveButton}
+            style={[styles.saveButton, { backgroundColor: colors.primary }]}
             onPress={handleSave}
           >
-            <Text style={styles.saveButtonText}>{saveButtonText}</Text>
+            <Text style={[styles.saveButtonText, { color: colors.buttonPrimaryText }]}>{saveButtonText}</Text>
           </TouchableOpacity>
         </View>
       )}

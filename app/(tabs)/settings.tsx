@@ -1,3 +1,4 @@
+import { useTheme } from '@/src/theme/ThemeContext';
 import { sendTestNotification } from '@/src/utils/notifications';
 import Constants from 'expo-constants';
 import { Stack } from 'expo-router';
@@ -5,6 +6,8 @@ import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function Settings() {
+    const { colors, theme, setTheme } = useTheme();
+
     const handleTestNotification = async () => {
         try {
             await sendTestNotification();
@@ -15,32 +18,63 @@ export default function Settings() {
     };
 
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
             <Stack.Screen options={{ title: 'Settings' }} />
             <ScrollView style={styles.scrollView}>
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Notifications</Text>
-                    <View style={styles.card}>
-                        <Text style={styles.cardText}>
+                    <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Appearance</Text>
+                    <View style={[styles.card, { backgroundColor: colors.cardBackground }]}>
+                        <View style={styles.themeSelector}>
+                            {(['light', 'dark', 'system'] as const).map((mode) => (
+                                <TouchableOpacity
+                                    key={mode}
+                                    style={[
+                                        styles.themeOption,
+                                        {
+                                            backgroundColor: theme === mode ? colors.accent : 'transparent',
+                                            borderColor: colors.border
+                                        }
+                                    ]}
+                                    onPress={() => setTheme(mode)}
+                                >
+                                    <Text style={[
+                                        styles.themeOptionText,
+                                        { color: theme === mode ? colors.buttonPrimaryText : colors.textPrimary }
+                                    ]}>
+                                        {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
+                </View>
+
+                <View style={styles.section}>
+                    <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Notifications</Text>
+                    <View style={[styles.card, { backgroundColor: colors.cardBackground }]}>
+                        <Text style={[styles.cardText, { color: colors.textSecondary }]}>
                             Test if notifications are working correctly on your device.
                         </Text>
-                        <TouchableOpacity style={styles.button} onPress={handleTestNotification}>
+                        <TouchableOpacity
+                            style={[styles.button, { backgroundColor: colors.accent }]}
+                            onPress={handleTestNotification}
+                        >
                             <Text style={styles.buttonText}>Test Notification</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
 
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>About</Text>
-                    <View style={styles.card}>
+                    <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>About</Text>
+                    <View style={[styles.card, { backgroundColor: colors.cardBackground }]}>
                         <View style={styles.row}>
-                            <Text style={styles.label}>App Name</Text>
-                            <Text style={styles.value}>Àṣàrò</Text>
+                            <Text style={[styles.label, { color: colors.textPrimary }]}>App Name</Text>
+                            <Text style={[styles.value, { color: colors.textSecondary }]}>Àṣàrò</Text>
                         </View>
-                        <View style={styles.divider} />
+                        <View style={[styles.divider, { backgroundColor: colors.border }]} />
                         <View style={styles.row}>
-                            <Text style={styles.label}>Version</Text>
-                            <Text style={styles.value}>{Constants.expoConfig?.version || '1.0.0'}</Text>
+                            <Text style={[styles.label, { color: colors.textPrimary }]}>Version</Text>
+                            <Text style={[styles.value, { color: colors.textSecondary }]}>{Constants.expoConfig?.version || '1.0.0'}</Text>
                         </View>
                     </View>
                 </View>
@@ -52,7 +86,6 @@ export default function Settings() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f5f5f5',
     },
     scrollView: {
         flex: 1,
@@ -64,12 +97,10 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 18,
         fontWeight: '600',
-        color: '#333',
         marginBottom: 8,
         marginLeft: 4,
     },
     card: {
-        backgroundColor: 'white',
         borderRadius: 12,
         padding: 16,
         shadowColor: '#000',
@@ -80,12 +111,10 @@ const styles = StyleSheet.create({
     },
     cardText: {
         fontSize: 14,
-        color: '#666',
         marginBottom: 16,
         lineHeight: 20,
     },
     button: {
-        backgroundColor: '#8b7355',
         paddingVertical: 12,
         paddingHorizontal: 20,
         borderRadius: 8,
@@ -104,15 +133,29 @@ const styles = StyleSheet.create({
     },
     label: {
         fontSize: 16,
-        color: '#333',
     },
     value: {
         fontSize: 16,
-        color: '#666',
     },
     divider: {
         height: 1,
-        backgroundColor: '#f0f0f0',
         marginVertical: 8,
+    },
+    themeSelector: {
+        flexDirection: 'row',
+        backgroundColor: '#f0f0f0', // This might need theming too if visible
+        borderRadius: 8,
+        padding: 4,
+        gap: 4,
+    },
+    themeOption: {
+        flex: 1,
+        paddingVertical: 8,
+        alignItems: 'center',
+        borderRadius: 6,
+    },
+    themeOptionText: {
+        fontSize: 14,
+        fontWeight: '500',
     },
 });

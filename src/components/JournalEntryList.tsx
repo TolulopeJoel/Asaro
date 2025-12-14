@@ -1,3 +1,4 @@
+import { useTheme } from '@/src/theme/ThemeContext';
 import React, { useEffect, useState } from 'react';
 import {
     Animated,
@@ -28,6 +29,7 @@ interface JournalEntryListProps {
 }
 
 export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress }) => {
+    const { colors } = useTheme();
     const [entries, setEntries] = useState<JournalEntry[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [viewMode, setViewMode] = useState<ViewMode>('recent');
@@ -235,17 +237,17 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
     const renderEntryCard = (entry: JournalEntry) => (
         <TouchableOpacity
             key={entry.id}
-            style={styles.entryCard}
+            style={[styles.entryCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
             activeOpacity={0.7}
             onPress={() => onEntryPress(entry)}
         >
             <View style={styles.entryHeader}>
-                <Text style={styles.entryDate}>{formatDate(entry.created_at)}</Text>
+                <Text style={[styles.entryDate, { color: colors.textTertiary }]}>{formatDate(entry.created_at)}</Text>
                 {entry.book_name && (
-                    <Text style={styles.entryScripture}>{entry.book_name} {getChapterText(entry)}</Text>
+                    <Text style={[styles.entryScripture, { color: colors.textSecondary }]}>{entry.book_name} {getChapterText(entry)}</Text>
                 )}
             </View>
-            <Text style={styles.entryPreview}>
+            <Text style={[styles.entryPreview, { color: colors.textPrimary }]}>
                 {getPreviewText(entry)}
             </Text>
 
@@ -256,7 +258,8 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                             key={index}
                             style={[
                                 styles.reflectionDot,
-                                index < getAnswerCount(entry) && styles.reflectionDotActive
+                                { backgroundColor: colors.border },
+                                index < getAnswerCount(entry) && [styles.reflectionDotActive, { backgroundColor: colors.accentSecondary }]
                             ]}
                         />
                     ))}
@@ -270,7 +273,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
 
         return (
             <View key={title} style={styles.dateGroup}>
-                <Text style={styles.dateGroupTitle}>{title}</Text>
+                <Text style={[styles.dateGroupTitle, { color: colors.textPrimary }]}>{title}</Text>
                 {entries.map(entry => renderEntryCard(entry))}
             </View>
         );
@@ -280,8 +283,8 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         if (availableBooks.length === 0) {
             return (
                 <View style={styles.emptyState}>
-                    <Text style={styles.emptyStateText}>No books studied yet</Text>
-                    <Text style={styles.emptyStateSubtext}>
+                    <Text style={[styles.emptyStateText, { color: colors.textPrimary }]}>No books studied yet</Text>
+                    <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>
                         Create your first reflection to see books here
                     </Text>
                 </View>
@@ -293,12 +296,12 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                 {availableBooks.map(book => (
                     <TouchableOpacity
                         key={book.name}
-                        style={styles.bookCard}
+                        style={[styles.bookCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
                         onPress={() => navigateToBookDetail(book)}
                         activeOpacity={0.7}
                     >
                         <View style={styles.bookCardHeader}>
-                            <Text style={styles.bookCardName}>{book.name}</Text>
+                            <Text style={[styles.bookCardName, { color: colors.textPrimary }]}>{book.name}</Text>
                         </View>
                     </TouchableOpacity>
                 ))}
@@ -311,17 +314,18 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         if (breadcrumbs.length === 0) return null;
 
         return (
-            <View style={styles.breadcrumbsContainer}>
+            <View style={[styles.breadcrumbsContainer, { backgroundColor: colors.backgroundElevated, borderBottomColor: colors.border }]}>
                 {breadcrumbs.map((crumb, index) => (
                     <React.Fragment key={crumb.label}>
-                        {index > 0 && <Text style={styles.breadcrumbSeparator}> / </Text>}
+                        {index > 0 && <Text style={[styles.breadcrumbSeparator, { color: colors.textTertiary }]}> / </Text>}
                         <TouchableOpacity
                             onPress={crumb.onPress}
                             disabled={index === breadcrumbs.length - 1}
                         >
                             <Text style={[
                                 styles.breadcrumbText,
-                                index === breadcrumbs.length - 1 && styles.breadcrumbTextCurrent
+                                { color: colors.textSecondary },
+                                index === breadcrumbs.length - 1 && [styles.breadcrumbTextCurrent, { color: colors.textPrimary }]
                             ]}>
                                 {crumb.label}
                             </Text>
@@ -338,10 +342,10 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                 if (filteredEntries.length === 0) {
                     return (
                         <View style={styles.emptyState}>
-                            <Text style={styles.emptyStateText}>
+                            <Text style={[styles.emptyStateText, { color: colors.text }]}>
                                 {searchQuery ? 'No entries match your search' : 'No entries yet'}
                             </Text>
-                            <Text style={styles.emptyStateSubtext}>
+                            <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>
                                 {searchQuery
                                     ? 'Try adjusting your search terms'
                                     : 'Start your first reflection to see it here'
@@ -385,10 +389,10 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                 if (bookEntries.length === 0) {
                     return (
                         <View style={styles.emptyState}>
-                            <Text style={styles.emptyStateText}>
+                            <Text style={[styles.emptyStateText, { color: colors.text }]}>
                                 {searchQuery ? 'No entries match your search' : 'No entries for this book'}
                             </Text>
-                            <Text style={styles.emptyStateSubtext}>
+                            <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>
                                 {searchQuery
                                     ? 'Try adjusting your search terms'
                                     : 'Create your first entry for this book'
@@ -400,9 +404,9 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
 
                 return (
                     <View style={styles.entriesList}>
-                        <View style={styles.bookDetailHeader}>
-                            <Text style={styles.bookDetailTitle}>{selectedBook?.name}</Text>
-                            <Text style={styles.bookDetailSubtitle}>
+                        <View style={[styles.bookDetailHeader, { borderBottomColor: colors.border }]}>
+                            <Text style={[styles.bookDetailTitle, { color: colors.textPrimary }]}>{selectedBook?.name}</Text>
+                            <Text style={[styles.bookDetailSubtitle, { color: colors.textSecondary }]}>
                                 {bookEntries.length} {bookEntries.length === 1 ? 'entry' : 'entries'}
                             </Text>
                         </View>
@@ -423,9 +427,9 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
     };
 
     return (
-        <View style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.headerTitle}>Past Entries</Text>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
+            <View style={[styles.header, { backgroundColor: colors.backgroundElevated, borderBottomColor: colors.border }]}>
+                <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Past Entries</Text>
 
                 {/* Tab Navigation */}
                 <View style={styles.tabContainer}>
@@ -434,6 +438,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                             style={[
                                 styles.tabIndicator,
                                 {
+                                    backgroundColor: colors.accent,
                                     left: tabAnimation.interpolate({
                                         inputRange: [0, 1],
                                         outputRange: ['2%', '50%'],
@@ -448,7 +453,8 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                         >
                             <Text style={[
                                 styles.tabText,
-                                viewMode === 'recent' && styles.tabTextActive
+                                { color: colors.textSecondary },
+                                viewMode === 'recent' && { color: colors.textPrimary, fontWeight: '500' }
                             ]}>Recent</Text>
                         </TouchableOpacity>
 
@@ -459,7 +465,8 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                         >
                             <Text style={[
                                 styles.tabText,
-                                (viewMode === 'books' || viewMode === 'bookDetail') && styles.tabTextActive
+                                { color: colors.textSecondary },
+                                (viewMode === 'books' || viewMode === 'bookDetail') && { color: colors.textPrimary, fontWeight: '500' }
                             ]}>Books</Text>
                         </TouchableOpacity>
                     </View>
@@ -470,15 +477,15 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
 
             {/* Search */}
             {(viewMode === 'recent' || viewMode === 'bookDetail') && (
-                <View style={styles.searchContainer}>
+                <View style={[styles.searchContainer, { backgroundColor: colors.backgroundElevated, borderBottomColor: colors.border }]}>
                     <TextInput
-                        style={styles.searchInput}
+                        style={[styles.searchInput, { backgroundColor: colors.searchBackground, color: colors.textPrimary, borderColor: colors.border }]}
                         placeholder={
                             viewMode === 'bookDetail' && selectedBook
                                 ? `Search ${selectedBook.name}...`
                                 : "Search entries..."
                         }
-                        placeholderTextColor="#a39b90"
+                        placeholderTextColor={colors.textTertiary}
                         value={searchQuery}
                         onChangeText={setSearchQuery}
                         autoCapitalize="none"
@@ -489,7 +496,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                             style={styles.clearSearch}
                             onPress={() => setSearchQuery('')}
                         >
-                            <Text style={styles.clearSearchText}>×</Text>
+                            <Text style={[styles.clearSearchText, { color: colors.textSecondary }]}>×</Text>
                         </TouchableOpacity>
                     )}
                 </View>

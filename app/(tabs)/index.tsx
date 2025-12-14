@@ -1,9 +1,11 @@
 import { getComebackDaysCount, getMissedDaysCount, getTotalEntryCount } from "@/src/data/database";
+import { useTheme } from "@/src/theme/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Link, useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Animated, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const DRAFT_KEY = "reflection_draft";
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -14,13 +16,16 @@ interface StatCardProps {
     label: string;
 }
 
-const StatCard = React.memo(({ icon, value, label }: StatCardProps) => (
-    <View style={styles.statCard}>
-        <Ionicons name={icon} size={20} color="#8b7355" />
-        <Text style={styles.statValue}>{value}</Text>
-        <Text style={styles.statLabel}>{label}</Text>
-    </View>
-));
+const StatCard = React.memo(({ icon, value, label }: StatCardProps) => {
+    const { colors } = useTheme();
+    return (
+        <View style={[styles.statCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
+            <Ionicons name={icon} size={20} color={colors.accent} />
+            <Text style={[styles.statValue, { color: colors.textPrimary }]}>{value}</Text>
+            <Text style={[styles.statLabel, { color: colors.textTertiary }]}>{label}</Text>
+        </View>
+    );
+});
 
 const QuickStats = React.memo(() => {
     const [stats, setStats] = useState({
@@ -76,6 +81,7 @@ const QuickStats = React.memo(() => {
 
 const UpdateCard = React.memo(() => {
     const scaleAnim = useRef(new Animated.Value(0.9)).current;
+    const { colors } = useTheme();
 
     useEffect(() => {
         Animated.spring(scaleAnim, {
@@ -89,16 +95,16 @@ const UpdateCard = React.memo(() => {
 
     return (
         <Animated.View style={[styles.updateCardWrapper, { transform: [{ scale: scaleAnim }] }]}>
-            <View style={styles.updateCard}>
+            <View style={[styles.updateCard, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
                 <View style={styles.updateHeader}>
-                    <View style={styles.updateBadge}>
-                        <Ionicons name="sparkles" size={12} color="#8b7355" />
-                        <Text style={styles.updateBadgeText}>NEW</Text>
+                    <View style={[styles.updateBadge, { backgroundColor: colors.accentSecondaryLight, borderColor: colors.accentSecondary }]}>
+                        <Ionicons name="sparkles" size={12} color={colors.accentSecondaryDark} />
+                        <Text style={[styles.updateBadgeText, { color: colors.accentSecondaryDark }]}>NEW</Text>
                     </View>
-                    <Text style={styles.updateDate}>Sept 6, 2025</Text>
+                    <Text style={[styles.updateDate, { color: colors.textTertiary }]}>Sept 6, 2025</Text>
                 </View>
-                <Text style={styles.updateTitle}>Quick Update 🏃‍♂️</Text>
-                <Text style={styles.updateContent}>
+                <Text style={[styles.updateTitle, { color: colors.textPrimary }]}>Quick Update 🏃‍♂️</Text>
+                <Text style={[styles.updateContent, { color: colors.textSecondary }]}>
                     Meditation question no. 5 (what do I want to remember?) has been removed. A simple text field won't help you remember research topics effectively.
                     {"\n"}{"\n"}We're building a smarter feature with reminders to help you revisit topics from your readings.
                 </Text>
@@ -108,31 +114,26 @@ const UpdateCard = React.memo(() => {
 });
 
 const NavigationButtons = React.memo(() => {
-    const button1Anim = useRef(new Animated.Value(0)).current;
-
-    useEffect(() => {
-        Animated.spring(button1Anim, {
-            toValue: 1,
-            tension: 40,
-            friction: 7,
-            delay: 400,
-            useNativeDriver: true,
-        }).start();
-    }, []);
+    const { colors } = useTheme();
 
     return (
         <View style={styles.buttonContainer}>
-            <Animated.View style={{ opacity: button1Anim, transform: [{ scale: button1Anim }], width: '100%' }}>
-                <Link href="/addEntry" asChild>
-                    <TouchableOpacity
-                        style={styles.primaryButton}
-                        activeOpacity={0.9}
-                    >
-                        <Ionicons name="add-circle-outline" size={14} color="#ffffff" />
-                        <Text style={styles.primaryButtonText}>Add Entry</Text>
-                    </TouchableOpacity>
-                </Link>
-            </Animated.View>
+            <Link href="/addEntry" asChild>
+                <TouchableOpacity
+                    style={[
+                        styles.primaryButton,
+                        {
+                            backgroundColor: '#FF6B6B', // Bright red for visibility
+                            borderWidth: 3,
+                            borderColor: '#000000', // Black border
+                        }
+                    ]}
+                    activeOpacity={0.9}
+                >
+                    <Ionicons name="add-circle-outline" size={24} color="#FFFFFF" />
+                    <Text style={[styles.primaryButtonText, { color: '#FFFFFF' }]}>Add Entry</Text>
+                </TouchableOpacity>
+            </Link>
         </View>
     );
 });
@@ -140,6 +141,7 @@ const NavigationButtons = React.memo(() => {
 const DraftBar = React.memo(() => {
     const slideAnim = useRef(new Animated.Value(100)).current;
     const pulseAnim = useRef(new Animated.Value(1)).current;
+    const { colors } = useTheme();
 
     useEffect(() => {
         Animated.spring(slideAnim, {
@@ -169,7 +171,12 @@ const DraftBar = React.memo(() => {
         <Animated.View
             style={[
                 styles.draftBar,
-                { transform: [{ translateY: slideAnim }] },
+                {
+                    transform: [{ translateY: slideAnim }],
+                    backgroundColor: colors.draftBar,
+                    borderColor: colors.draftBarBorder,
+                    shadowColor: colors.accent
+                },
             ]}
         >
             <Link href="/addEntry" asChild>
@@ -178,11 +185,11 @@ const DraftBar = React.memo(() => {
                     activeOpacity={0.85}
                 >
                     <View style={styles.draftTextContainer}>
-                        <Text style={styles.draftLabel}>Didn't finish?</Text>
-                        <Text style={styles.draftSubtext}>No worries, pick it up now</Text>
+                        <Text style={[styles.draftLabel, { color: colors.textPrimary }]}>Didn't finish?</Text>
+                        <Text style={[styles.draftSubtext, { color: colors.textSecondary }]}>No worries, pick it up now</Text>
                     </View>
-                    <View style={styles.draftIcon}>
-                        <Ionicons name="arrow-forward" size={20} color="#8b7355" />
+                    <View style={[styles.draftIcon, { backgroundColor: colors.draftIconBg }]}>
+                        <Ionicons name="arrow-forward" size={20} color={colors.accent} />
                     </View>
                 </TouchableOpacity>
             </Link>
@@ -190,10 +197,9 @@ const DraftBar = React.memo(() => {
     );
 });
 
-import { SafeAreaView } from 'react-native-safe-area-context';
-
 export default function Index() {
     const [draftExists, setDraftExists] = useState(false);
+    const { colors } = useTheme();
 
     const checkDraft = useCallback(async () => {
         const draft = await AsyncStorage.getItem(DRAFT_KEY);
@@ -207,12 +213,16 @@ export default function Index() {
     );
 
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
-            <View style={styles.contentWrapper}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+            <ScrollView
+                style={styles.scrollView}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+            >
                 <QuickStats />
                 <UpdateCard />
                 <NavigationButtons />
-            </View>
+            </ScrollView>
 
             {draftExists && <DraftBar />}
         </SafeAreaView>
@@ -222,10 +232,11 @@ export default function Index() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#fafafa",
     },
-    contentWrapper: {
+    scrollView: {
         flex: 1,
+    },
+    scrollContent: {
         alignItems: "center",
         padding: 24,
         paddingBottom: 120,
@@ -238,24 +249,20 @@ const styles = StyleSheet.create({
     },
     statCard: {
         flex: 1,
-        backgroundColor: "#ffffff",
         borderRadius: 12,
         paddingVertical: 14,
         paddingHorizontal: 8,
         alignItems: "center",
         gap: 6,
         borderWidth: 1,
-        borderColor: "#f0f0f0",
     },
     statValue: {
         fontSize: 18,
         fontWeight: "600",
-        color: "#1a1a1a",
     },
     statLabel: {
         fontSize: 10,
         fontWeight: "500",
-        color: "#999999",
         textTransform: "uppercase",
         letterSpacing: 0.5,
     },
@@ -264,11 +271,9 @@ const styles = StyleSheet.create({
         marginBottom: 28,
     },
     updateCard: {
-        backgroundColor: "#ffffff",
         borderRadius: 14,
         padding: 18,
         borderWidth: 1,
-        borderColor: "#f0f0f0",
     },
     updateHeader: {
         flexDirection: "row",
@@ -280,91 +285,49 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         gap: 5,
-        backgroundColor: "#faf9f7",
         paddingHorizontal: 8,
         paddingVertical: 3,
         borderRadius: 6,
         borderWidth: 1,
-        borderColor: "#f0ebe5",
     },
     updateBadgeText: {
         fontSize: 10,
         fontWeight: "700",
-        color: "#8b7355",
         letterSpacing: 0.5,
     },
     updateDate: {
         fontSize: 10,
         fontWeight: "500",
-        color: "#999999",
     },
     updateTitle: {
         fontSize: 15,
         fontWeight: "600",
-        color: "#1a1a1a",
         marginBottom: 6,
         letterSpacing: 0.2,
     },
     updateContent: {
         fontSize: 13,
         fontWeight: "400",
-        color: "#666666",
         lineHeight: 19,
         letterSpacing: 0.1,
     },
     buttonContainer: {
         gap: 10,
         width: "100%",
+        marginTop: 20,
     },
     primaryButton: {
-        backgroundColor: "#4a4037",
-        paddingVertical: 16,
-        paddingHorizontal: 24,
+        paddingVertical: 20,
+        paddingHorizontal: 32,
         borderRadius: 12,
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "center",
         gap: 10,
+        minHeight: 60,
     },
     primaryButtonText: {
-        color: "#ffffff",
-        fontSize: 15,
-        fontWeight: "600",
-        letterSpacing: 0.3,
-    },
-    secondaryButton: {
-        backgroundColor: "#ffffff",
-        paddingVertical: 16,
-        paddingHorizontal: 24,
-        borderWidth: 1,
-        borderColor: "#e0e0e0",
-        borderRadius: 12,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 10,
-    },
-    secondaryButtonText: {
-        color: "#8b7355",
-        fontSize: 15,
-        fontWeight: "600",
-        letterSpacing: 0.3,
-    },
-    testButton: {
-        backgroundColor: "#ffffff",
-        paddingVertical: 16,
-        paddingHorizontal: 24,
-        borderWidth: 1,
-        borderColor: "#e0e0e0",
-        borderRadius: 12,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 10,
-    },
-    testButtonText: {
-        color: "#8b7355",
-        fontSize: 15,
+        fontSize: 18,
         fontWeight: "600",
         letterSpacing: 0.3,
     },
@@ -373,11 +336,8 @@ const styles = StyleSheet.create({
         bottom: 32,
         left: 20,
         right: 20,
-        backgroundColor: "#faf9f7",
         borderRadius: 16,
         borderWidth: 1,
-        borderColor: "#d4c4b0",
-        shadowColor: "#8b7355",
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.15,
         shadowRadius: 12,

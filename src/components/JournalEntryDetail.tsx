@@ -9,6 +9,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useTheme } from '../theme/ThemeContext';
 
 interface JournalEntryDetailProps {
     entry: JournalEntry;
@@ -31,6 +32,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
     onDelete,
     onClose,
 }) => {
+    const { colors } = useTheme();
     const [isDeleting, setIsDeleting] = useState(false);
     const [isSharing, setIsSharing] = useState(false);
 
@@ -65,9 +67,9 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
         if (!hasChapterRange && hasVerses) {
             let result = entry.chapter_start.toString();
             if (entry.verse_start) {
-                result += `:${entry.verse_start}`;
+                result += `:${entry.verse_start} `;
                 if (entry.verse_end && entry.verse_end !== entry.verse_start) {
-                    result += `–${entry.verse_end}`;
+                    result += `–${entry.verse_end} `;
                 }
             }
             return result;
@@ -77,18 +79,18 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
         if (hasChapterRange && hasVerses) {
             let result = entry.chapter_start.toString();
             if (entry.verse_start) {
-                result += `:${entry.verse_start}`;
+                result += `:${entry.verse_start} `;
             }
-            result += `–${entry.chapter_end}`;
+            result += `–${entry.chapter_end} `;
             if (entry.verse_end) {
-                result += `:${entry.verse_end}`;
+                result += `:${entry.verse_end} `;
             }
             return result;
         }
 
         // Chapter range without verses: "3–5"
         if (hasChapterRange) {
-            return `${entry.chapter_start}–${entry.chapter_end}`;
+            return `${entry.chapter_start}–${entry.chapter_end} `;
         }
 
         // Single chapter without verses: "3"
@@ -125,10 +127,10 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
     const handleShare = async () => {
         setIsSharing(true);
         try {
-            const reference = `${entry.book_name} ${formatChapterAndVerses()}`;
+            const reference = `${entry.book_name} ${formatChapterAndVerses()} `;
             const studyDate = formatDate(entry.created_at);
 
-            let content = `Bible Reading (${reference}) for `;
+            let content = `Bible Reading(${reference}) for `;
             content += `${studyDate}\n\n`;
 
             const reflections = [
@@ -140,14 +142,14 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
 
             reflections.forEach((reflection, index) => {
                 if (reflection && reflection.trim()) {
-                    content += `Q${index + 1}. ${REFLECTION_QUESTIONS[index]}\n\n`;
-                    content += `${reflection.trim()}\n\n`;
+                    content += `Q${index + 1}. ${REFLECTION_QUESTIONS[index]} \n\n`;
+                    content += `${reflection.trim()} \n\n`;
                 }
             });
 
             if (entry.notes && entry.notes.trim()) {
                 content += `Additional Thoughts\n`;
-                content += `${entry.notes.trim()}\n\n`;
+                content += `${entry.notes.trim()} \n\n`;
             }
             content += `🫶 Created with Àṣàrò`;
 
@@ -169,11 +171,12 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
 
         return (
             <View key={questionIndex} style={styles.reflectionCard}>
-                <Text style={styles.questionText}>{REFLECTION_QUESTIONS[questionIndex]}</Text>
+                <Text style={[styles.questionText, { color: colors.primary }]}>{REFLECTION_QUESTIONS[questionIndex]}</Text>
                 <View style={styles.answerContainer}>
                     {paragraphs.map((paragraph, pIndex) => (
                         <Text key={pIndex} style={[
                             styles.answerText,
+                            { color: colors.text },
                             pIndex > 0 && styles.answerParagraph
                         ]}>
                             {paragraph.trim()}
@@ -194,31 +197,31 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
     const hasReflections = getAnsweredReflections().length > 0;
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
             <ScrollView
                 style={styles.scrollView}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContent}
             >
                 {/* Hero Header */}
-                <View style={styles.heroHeader}>
+                <View style={[styles.heroHeader, { backgroundColor: colors.background }]}>
                     {onClose && (
-                        <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+                        <TouchableOpacity style={[styles.closeButton, { backgroundColor: colors.cardBackground, borderColor: colors.border }]} onPress={onClose}>
                             <View style={styles.closeIconContainer}>
-                                <View style={styles.closeIcon} />
-                                <View style={[styles.closeIcon, styles.closeIconCross]} />
+                                <View style={[styles.closeIcon, { backgroundColor: colors.primary }]} />
+                                <View style={[styles.closeIcon, styles.closeIconCross, { backgroundColor: colors.primary }]} />
                             </View>
                         </TouchableOpacity>
                     )}
 
-                    <View style={styles.dateChip}>
-                        <Text style={styles.dateText}>{formatDate(entry.created_at)}</Text>
+                    <View style={[styles.dateChip, { backgroundColor: colors.badge, borderColor: colors.badgeBorder }]}>
+                        <Text style={[styles.dateText, { color: colors.primary }]}>{formatDate(entry.created_at)}</Text>
                     </View>
 
-                    <Text style={styles.reference}>
+                    <Text style={[styles.reference, { color: colors.text }]}>
                         {entry.book_name}
                     </Text>
-                    <Text style={styles.verseReference}>
+                    <Text style={[styles.verseReference, { color: colors.primary }]}>
                         {formatChapterAndVerses()}
                     </Text>
                 </View>
@@ -236,15 +239,15 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                         </View>
                     ) : (
                         <View style={styles.emptyState}>
-                            <Text style={styles.emptyText}>awaiting your reflection</Text>
+                            <Text style={[styles.emptyText, { color: colors.textTertiary }]}>awaiting your reflection</Text>
                         </View>
                     )}
 
                     {/* Notes with unique design */}
                     {entry.notes && entry.notes.trim() && (
                         <View style={styles.notesSection}>
-                            <Text style={styles.notesTitle}>Additional Thoughts</Text>
-                            <Text style={styles.notesText}>{entry.notes.trim()}</Text>
+                            <Text style={[styles.notesTitle, { color: colors.primary }]}>Additional Thoughts</Text>
+                            <Text style={[styles.notesText, { color: colors.text }]}>{entry.notes.trim()}</Text>
                         </View>
                     )}
                 </View>

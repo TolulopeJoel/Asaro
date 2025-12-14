@@ -5,6 +5,8 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 
+import { ThemeProvider } from '@/src/theme/ThemeContext';
+
 export default function RootLayout() {
   const [dbInitialized, setDbInitialized] = useState(false);
 
@@ -37,12 +39,12 @@ export default function RootLayout() {
   }
 
   return (
-    <>
+    <ThemeProvider>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="addEntry" options={{ title: 'Kọ silẹ' }} />
       </Stack>
       <StatusBar hidden={true} />
-    </>
+    </ThemeProvider>
   );
 }

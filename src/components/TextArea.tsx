@@ -12,6 +12,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { useTheme } from '../theme/ThemeContext';
 
 const { height: screenHeight } = Dimensions.get('window');
 
@@ -31,6 +32,7 @@ const TextArea: React.FC<{
     disabled = false,
     isAnswered = false,
 }) => {
+        const { colors, isDark } = useTheme();
         const [isExpanded, setIsExpanded] = useState(false);
         const [tempValue, setTempValue] = useState('');
         const regularTextInputRef = useRef<TextInput>(null);
@@ -78,17 +80,19 @@ const TextArea: React.FC<{
                 <View style={textAreaStyles.container}>
                     <View style={[
                         textAreaStyles.inputContainer,
-                        isAnswered && textAreaStyles.inputContainerAnswered,
-                        disabled && textAreaStyles.inputContainerDisabled,
+                        { backgroundColor: colors.cardBackground, borderColor: colors.border },
+                        isAnswered && { borderColor: colors.border, backgroundColor: colors.background },
+                        disabled && { backgroundColor: colors.background },
                     ]}>
                         <TextInput
                             ref={regularTextInputRef}
                             style={[
                                 textAreaStyles.input,
-                                disabled && textAreaStyles.inputDisabled,
+                                { color: colors.text },
+                                disabled && { color: colors.textSecondary },
                             ]}
                             placeholder={placeholder}
-                            placeholderTextColor="#a39b90"
+                            placeholderTextColor={colors.textTertiary}
                             value={value}
                             onChangeText={onChange}
                             multiline={true}
@@ -96,18 +100,18 @@ const TextArea: React.FC<{
                             textAlignVertical="top"
                             editable={!disabled}
                         />
-                        {isAnswered && <View style={textAreaStyles.answeredIndicator} />}
+                        {isAnswered && <View style={[textAreaStyles.answeredIndicator, { backgroundColor: colors.primary }]} />}
 
                         {/* Expand button */}
                         {!disabled && (
                             <TouchableOpacity
-                                style={textAreaStyles.expandButton}
+                                style={[textAreaStyles.expandButton, { backgroundColor: colors.background, borderColor: colors.border }]}
                                 onPress={handleExpand}
                                 hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                                 activeOpacity={0.7}
                             >
                                 <View style={textAreaStyles.expandIcon}>
-                                    <View style={textAreaStyles.expandIconInner} />
+                                    <View style={[textAreaStyles.expandIconInner, { borderColor: colors.textSecondary }]} />
                                 </View>
                             </TouchableOpacity>
                         )}
@@ -121,8 +125,8 @@ const TextArea: React.FC<{
                     presentationStyle="fullScreen"
                     statusBarTranslucent={true}
                 >
-                    <StatusBar backgroundColor="#fefbf7" barStyle="dark-content" />
-                    <SafeAreaView style={fullScreenStyles.container}>
+                    <StatusBar backgroundColor={colors.background} barStyle={isDark ? "light-content" : "dark-content"} />
+                    <SafeAreaView style={[fullScreenStyles.container, { backgroundColor: colors.background }]}>
                         <KeyboardAvoidingView
                             style={fullScreenStyles.keyboardView}
                             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -134,20 +138,20 @@ const TextArea: React.FC<{
                                     onPress={handleCancel}
                                     hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                                 >
-                                    <Text style={fullScreenStyles.cancelText}>Don't Save</Text>
+                                    <Text style={[fullScreenStyles.cancelText, { color: colors.textTertiary }]}>Don't Save</Text>
                                 </TouchableOpacity>
 
                                 {label && (
                                     <View style={fullScreenStyles.labelContainer}>
-                                        <Text style={fullScreenStyles.label}>{label}</Text>
+                                        <Text style={[fullScreenStyles.label, { color: colors.textSecondary }]}>{label}</Text>
                                     </View>
                                 )}
 
                                 <TextInput
                                     ref={expandedTextInputRef}
-                                    style={fullScreenStyles.textInput}
+                                    style={[fullScreenStyles.textInput, { color: colors.text }]}
                                     placeholder={placeholder || "Begin writing..."}
-                                    placeholderTextColor="#a39b90"
+                                    placeholderTextColor={colors.textTertiary}
                                     value={tempValue}
                                     onChangeText={handleTempChange}
                                     multiline={true}
@@ -162,7 +166,7 @@ const TextArea: React.FC<{
                                     onPress={handleSave}
                                     hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                                 >
-                                    <Text style={fullScreenStyles.saveText}>Save</Text>
+                                    <Text style={[fullScreenStyles.saveText, { color: colors.textSecondary }]}>Save</Text>
                                 </TouchableOpacity>
                             </View>
                         </KeyboardAvoidingView>

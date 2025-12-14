@@ -1,3 +1,4 @@
+import { useTheme } from '@/src/theme/ThemeContext';
 import React, { useEffect, useState } from 'react';
 import {
     StyleProp,
@@ -35,6 +36,7 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = ({
     allowRange = true,
     onVerseRangeChange,
 }) => {
+    const { colors } = useTheme();
     const [dragStart, setDragStart] = useState<number | null>(null);
     const [dragCurrent, setDragCurrent] = useState<number | null>(null);
     const [readVerses, setReadVerses] = useState(false);
@@ -116,7 +118,7 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = ({
     const isChapterInSelection = (chapter: number): boolean => {
         if (!selectedChapters || selectedChapters.start === 0) return false;
 
-        const {start} = selectedChapters;
+        const { start } = selectedChapters;
         const end = selectedChapters.end || start;
 
         return chapter >= start && chapter <= end;
@@ -173,17 +175,19 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = ({
                 <TouchableOpacity
                     style={[
                         styles.chapterButton,
-                        (isSelected || isInDrag) && styles.chapterButtonSelected,
-                        isFirst && styles.chapterButtonSingle,
-                        isRangeStart && styles.chapterButtonRangeStart,
-                        isRangeEnd && styles.chapterButtonRangeEnd,
+                        { backgroundColor: colors.cardBackground, borderColor: colors.border },
+                        (isSelected || isInDrag) && [styles.chapterButtonSelected, { backgroundColor: colors.accentSecondary, borderColor: colors.accentSecondary }],
+                        isFirst && [styles.chapterButtonSingle, { backgroundColor: colors.accentSecondary, borderColor: colors.accentSecondary }],
+                        isRangeStart && [styles.chapterButtonRangeStart, { backgroundColor: colors.accentSecondary, borderColor: colors.accentSecondary }],
+                        isRangeEnd && [styles.chapterButtonRangeEnd, { backgroundColor: colors.accentSecondary, borderColor: colors.accentSecondary }],
                     ] as StyleProp<ViewStyle>}
                     onPress={() => handleChapterPress(chapter)}
                     activeOpacity={0.7}
                 >
                     <Text style={[
                         styles.chapterButtonText,
-                        (isSelected || isInDrag) && styles.chapterButtonTextSelected
+                        { color: colors.text },
+                        (isSelected || isInDrag) && [styles.chapterButtonTextSelected, { color: colors.buttonPrimaryText }]
                     ]}>
                         {chapter}
                     </Text>
@@ -193,21 +197,21 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = ({
                 {isSingleChapterSelected && (
                     <View style={styles.verseInputContainer}>
                         <TextInput
-                            style={styles.verseInput}
+                            style={[styles.verseInput, { backgroundColor: colors.cardHover, borderColor: colors.border, color: colors.textPrimary }]}
                             value={startVerse}
                             onChangeText={setStartVerse}
                             keyboardType="numeric"
                             placeholder="1"
-                            placeholderTextColor="#c5bfb5"
+                            placeholderTextColor={colors.textTertiary}
                         />
-                        <Text style={styles.verseColon}>:</Text>
+                        <Text style={[styles.verseColon, { color: colors.textTertiary }]}>:</Text>
                         <TextInput
-                            style={styles.verseInput}
+                            style={[styles.verseInput, { backgroundColor: colors.cardHover, borderColor: colors.border, color: colors.textPrimary }]}
                             value={endVerse}
                             onChangeText={setEndVerse}
                             keyboardType="numeric"
                             placeholder="—"
-                            placeholderTextColor="#c5bfb5"
+                            placeholderTextColor={colors.textTertiary}
                         />
                     </View>
                 )}
@@ -215,14 +219,14 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = ({
                 {/* Range start verse input */}
                 {isRangeStart && showVerseInputsForRange && (
                     <>
-                        <Text style={styles.verseColon}>:</Text>
+                        <Text style={[styles.verseColon, { color: colors.textTertiary }]}>:</Text>
                         <TextInput
-                            style={[styles.verseInput, styles.verseInputRange]}
+                            style={[styles.verseInput, styles.verseInputRange, { backgroundColor: colors.cardHover, borderColor: colors.border, color: colors.textPrimary }]}
                             value={startVerse}
                             onChangeText={setStartVerse}
                             keyboardType="numeric"
                             placeholder="1"
-                            placeholderTextColor="#c5bfb5"
+                            placeholderTextColor={colors.textTertiary}
                         />
                     </>
                 )}
@@ -230,14 +234,14 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = ({
                 {/* Range end verse input */}
                 {isRangeEnd && showVerseInputsForRange && (
                     <>
-                        <Text style={styles.verseColon}>:</Text>
+                        <Text style={[styles.verseColon, { color: colors.textTertiary }]}>:</Text>
                         <TextInput
-                            style={[styles.verseInput, styles.verseInputRange]}
+                            style={[styles.verseInput, styles.verseInputRange, { backgroundColor: colors.cardHover, borderColor: colors.border, color: colors.textPrimary }]}
                             value={endVerse}
                             onChangeText={setEndVerse}
                             keyboardType="numeric"
                             placeholder="—"
-                            placeholderTextColor="#c5bfb5"
+                            placeholderTextColor={colors.textTertiary}
                         />
                     </>
                 )}
@@ -248,25 +252,25 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = ({
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.bookTitle}>{selectedBook?.name}</Text>
-                <Text style={styles.chapterCount}>
+                <Text style={[styles.bookTitle, { color: colors.text }]}>{selectedBook?.name}</Text>
+                <Text style={[styles.chapterCount, { color: colors.textTertiary }]}>
                     {chapters.length} {chapters.length === 1 ? 'chapter' : 'chapters'}
                 </Text>
             </View>
 
             {selectedChapters && selectedChapters.start > 0 && (
-                <View style={styles.selectionContainer}>
-                    <Text style={styles.selectionText}>{getSelectionText()}</Text>
+                <View style={[styles.selectionContainer, { backgroundColor: colors.cardHover, borderColor: colors.border }]}>
+                    <Text style={[styles.selectionText, { color: colors.textSecondary }]}>{getSelectionText()}</Text>
                     <TouchableOpacity
-                        style={styles.clearButton}
+                        style={[styles.clearButton, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}
                         onPress={() => onChapterSelect({ start: 0 })}
                     >
-                        <Text style={styles.clearButtonText}>Clear</Text>
+                        <Text style={[styles.clearButtonText, { color: colors.textSecondary }]}>Clear</Text>
                     </TouchableOpacity>
                 </View>
             )}
 
-            <Text style={styles.instructionText}>
+            <Text style={[styles.instructionText, { color: colors.textTertiary }]}>
                 {allowRange
                     ? 'Tap for single chapter, tap again to extend range'
                     : 'Select a chapter'
@@ -283,13 +287,14 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = ({
             >
                 <View style={[
                     styles.checkbox,
-                    readVerses && styles.checkboxChecked
+                    { backgroundColor: colors.card, borderColor: colors.border },
+                    readVerses && [styles.checkboxChecked, { backgroundColor: colors.textSecondary, borderColor: colors.textSecondary }]
                 ]}>
                     {readVerses && (
-                        <Text style={styles.checkmark}>✓</Text>
+                        <Text style={[styles.checkmark, { color: colors.buttonPrimaryText }]}>✓</Text>
                     )}
                 </View>
-                <Text style={styles.checkboxLabel}>I read verses</Text>
+                <Text style={[styles.checkboxLabel, { color: colors.textSecondary }]}>I read verses</Text>
             </TouchableOpacity>
         </View>
     );

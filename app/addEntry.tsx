@@ -1,4 +1,5 @@
 import { createJournalEntry, getEntryById, JournalEntryInput, updateJournalEntry } from '@/src/data/database';
+import { useTheme } from '@/src/theme/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -95,6 +96,7 @@ export function useAutoSave(reflectionAnswers: any, selectedBook: any, selectedC
 }
 
 export default function MeditationSessionScreen() {
+    const { colors } = useTheme();
     const router = useRouter();
     const params = useLocalSearchParams();
 
@@ -305,9 +307,9 @@ export default function MeditationSessionScreen() {
 
     if (isLoading && isEditMode) {
         return (
-            <SafeAreaView style={styles.container}>
+            <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
                 <View style={styles.loadingContainer}>
-                    <Text style={styles.loadingText}>Loading...</Text>
+                    <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading...</Text>
                 </View>
             </SafeAreaView>
         );
@@ -318,7 +320,7 @@ export default function MeditationSessionScreen() {
             case 'book':
                 return (
                     <View style={styles.stepContent}>
-                        <Text style={styles.stepQuestion}>
+                        <Text style={[styles.stepQuestion, { color: colors.textSecondary }]}>
                             What book?
                         </Text>
 
@@ -334,7 +336,7 @@ export default function MeditationSessionScreen() {
             case 'chapter':
                 return (
                     <View style={styles.stepContent}>
-                        <Text style={styles.stepQuestion}>
+                        <Text style={[styles.stepQuestion, { color: colors.textSecondary }]}>
                             What part did you read?
                         </Text>
 
@@ -350,21 +352,22 @@ export default function MeditationSessionScreen() {
 
                         <View style={styles.navigationContainer}>
                             <TouchableOpacity
-                                style={styles.backButton}
+                                style={[styles.backButton, { borderColor: colors.border }]}
                                 onPress={() => setCurrentStep('book')}
                             >
-                                <Text style={styles.backButtonText}>Back</Text>
+                                <Text style={[styles.backButtonText, { color: colors.textSecondary }]}>Back</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity
                                 style={[
                                     styles.continueButton,
+                                    { backgroundColor: colors.accent },
                                     (!selectedChapters || selectedChapters.start === 0) && styles.continueButtonDisabled
                                 ]}
                                 onPress={handleContinueToReflection}
                                 disabled={!selectedChapters || selectedChapters.start === 0}
                             >
-                                <Text style={styles.continueButtonText}>Continue</Text>
+                                <Text style={[styles.continueButtonText, { color: colors.buttonPrimaryText }]}>Continue</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -373,18 +376,18 @@ export default function MeditationSessionScreen() {
             case 'reflection':
                 return (
                     <View style={styles.stepContent}>
-                        <Text style={styles.stepDescription}>
+                        <Text style={[styles.stepDescription, { color: colors.textSecondary }]}>
                             {isEditMode
                                 ? 'Edit your reflection below:'
                                 : 'A good way to get the most out of your Bible reading is to consider one or more of the following questions as you read:'
                             }
                         </Text>
 
-                        <View style={styles.readingCard}>
-                            <Text style={styles.readingLabel}>
+                        <View style={[styles.readingCard, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
+                            <Text style={[styles.readingLabel, { color: colors.accent }]}>
                                 {isEditMode ? 'Editing Entry' : 'Today\'s Reading'}
                             </Text>
-                            <Text style={styles.readingText}>{selectionSummary}</Text>
+                            <Text style={[styles.readingText, { color: colors.textPrimary }]}>{selectionSummary}</Text>
                         </View>
 
                         <View style={styles.contentArea}>
@@ -401,7 +404,7 @@ export default function MeditationSessionScreen() {
                             style={styles.subtleBackButton}
                             onPress={() => setCurrentStep('chapter')}
                         >
-                            <Text style={styles.subtleBackButtonText}>← Return to chapter selection</Text>
+                            <Text style={[styles.subtleBackButtonText, { color: colors.textTertiary }]}>← Return to chapter selection</Text>
                         </TouchableOpacity>
 
                         {!isEditMode && (reflectionAnswers) && (
@@ -409,7 +412,7 @@ export default function MeditationSessionScreen() {
                                 style={styles.discardButton}
                                 onPress={handleDiscardDraft}
                             >
-                                <Text style={styles.discardButtonText}>Discard draft 🚮</Text>
+                                <Text style={[styles.discardButtonText, { color: colors.textSecondary }]}>Discard draft 🚮</Text>
                             </TouchableOpacity>
                         )}
 
@@ -420,22 +423,22 @@ export default function MeditationSessionScreen() {
                 return (
                     <View style={styles.stepContent}>
                         <View style={styles.titleContainer}>
-                            <Text style={styles.stepTitle}>Complete</Text>
-                            <View style={styles.titleUnderline} />
+                            <Text style={[styles.stepTitle, { color: colors.textPrimary }]}>Complete</Text>
+                            <View style={[styles.titleUnderline, { backgroundColor: colors.border }]} />
                         </View>
 
-                        <Text style={styles.stepDescription}>
+                        <Text style={[styles.stepDescription, { color: colors.textSecondary }]}>
                             Your session has been preserved.
                         </Text>
 
-                        <View style={styles.completionCard}>
+                        <View style={[styles.completionCard, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
                             <View style={styles.completionHeader}>
-                                <View style={styles.completionDot} />
-                                <Text style={styles.completionTitle}>Study Record</Text>
+                                <View style={[styles.completionDot, { backgroundColor: colors.accent }]} />
+                                <Text style={[styles.completionTitle, { color: colors.accent }]}>Study Record</Text>
                             </View>
                             <View style={styles.completionDetails}>
-                                <Text style={styles.completionText}>{selectionSummary}</Text>
-                                <Text style={styles.completionDate}>{new Date().toLocaleDateString('en-US', {
+                                <Text style={[styles.completionText, { color: colors.textPrimary }]}>{selectionSummary}</Text>
+                                <Text style={[styles.completionDate, { color: colors.textSecondary }]}>{new Date().toLocaleDateString('en-US', {
                                     weekday: 'long',
                                     year: 'numeric',
                                     month: 'long',
@@ -445,8 +448,8 @@ export default function MeditationSessionScreen() {
                         </View>
 
                         <View style={styles.contentArea}>
-                            <TouchableOpacity style={styles.primaryButton} onPress={handleStartOver}>
-                                <Text style={styles.primaryButtonText}>Begin New Study</Text>
+                            <TouchableOpacity style={[styles.primaryButton, { backgroundColor: colors.accent }]} onPress={handleStartOver}>
+                                <Text style={[styles.primaryButtonText, { color: colors.buttonPrimaryText }]}>Begin New Study</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -458,7 +461,7 @@ export default function MeditationSessionScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

@@ -1,6 +1,7 @@
 import { JournalEntryDetail } from '@/src/components/JournalEntryDetail';
 import { JournalEntryList } from '@/src/components/JournalEntryList';
 import { JournalEntry } from '@/src/data/database';
+import { useTheme } from '@/src/theme/ThemeContext';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Modal, StyleSheet } from 'react-native';
@@ -10,6 +11,7 @@ export default function PastEntriesScreen() {
     const router = useRouter();
     const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
     const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
+    const { colors } = useTheme();
 
     const handleEntryPress = (entry: JournalEntry) => {
         setSelectedEntry(entry);
@@ -35,7 +37,7 @@ export default function PastEntriesScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
             <JournalEntryList onEntryPress={handleEntryPress} />
 
             {/* Detail Modal */}
@@ -46,7 +48,7 @@ export default function PastEntriesScreen() {
                 presentationStyle="pageSheet"
                 onRequestClose={handleCloseDetail}
             >
-                <SafeAreaView style={styles.modalContainer}>
+                <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.background }]}>
                     {selectedEntry && (
                         <JournalEntryDetail
                             entry={selectedEntry}
@@ -64,10 +66,8 @@ export default function PastEntriesScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#ffffff',
     },
     modalContainer: {
         flex: 1,
-        backgroundColor: '#ffffff',
     },
 });

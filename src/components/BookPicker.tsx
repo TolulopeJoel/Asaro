@@ -8,6 +8,7 @@ import {
     View,
 } from 'react-native';
 import { ALL_BIBLE_BOOKS, BibleBook, GREEK_BOOKS, HEBREW_BOOKS } from '../data/bibleBooks';
+import { useTheme } from '../theme/ThemeContext';
 
 interface BookPickerProps {
     selectedBook?: BibleBook;
@@ -20,6 +21,7 @@ export const BookPicker: React.FC<BookPickerProps> = ({
     onBookSelect,
     availableBooks
 }) => {
+    const { colors } = useTheme();
     const [searchQuery, setSearchQuery] = useState('');
 
     const getFilteredBooks = (books: BibleBook[]): BibleBook[] => {
@@ -34,9 +36,9 @@ export const BookPicker: React.FC<BookPickerProps> = ({
 
     const renderSectionHeader = (title: string, subtitle: string) => (
         <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{title}</Text>
-            <Text style={styles.sectionSubtitle}>{subtitle}</Text>
-            <View style={styles.sectionLine} />
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{title}</Text>
+            <Text style={[styles.sectionSubtitle, { color: colors.textTertiary }]}>{subtitle}</Text>
+            <View style={[styles.sectionLine, { backgroundColor: colors.border }]} />
         </View>
     );
 
@@ -54,24 +56,27 @@ export const BookPicker: React.FC<BookPickerProps> = ({
                             key={book.name}
                             style={[
                                 styles.bookCard,
-                                isSelected && styles.bookCardSelected,
+                                { backgroundColor: colors.cardBackground, borderColor: colors.border },
+                                isSelected && [styles.bookCardSelected, { backgroundColor: colors.backgroundSubtle, borderColor: colors.accentSecondary }],
                             ]}
                             onPress={() => onBookSelect(book)}
                             activeOpacity={0.7}
                         >
                             <Text style={[
                                 styles.bookAbbreviation,
-                                isSelected && styles.bookAbbreviationSelected
+                                { color: colors.text },
+                                isSelected && [styles.bookAbbreviationSelected, { color: colors.textSecondary }]
                             ]}>
                                 {book.abbrv}
                             </Text>
                             <Text style={[
                                 styles.chapterCount,
-                                isSelected && styles.chapterCountSelected
+                                { color: colors.textTertiary },
+                                isSelected && [styles.chapterCountSelected, { color: colors.textSecondary }]
                             ]}>
                                 {book.chapters}
                             </Text>
-                            {isSelected && <View style={styles.selectedDot} />}
+                            {isSelected && <View style={[styles.selectedDot, { backgroundColor: colors.textSecondary }]} />}
                         </TouchableOpacity>
                     );
                 })}
@@ -85,8 +90,8 @@ export const BookPicker: React.FC<BookPickerProps> = ({
         if (filteredBooks.length === 0) {
             return (
                 <View style={styles.emptyState}>
-                    <Text style={styles.emptyStateText}>This Book no dey Bible o 👀😂</Text>
-                    <Text style={styles.emptyStateSubtext}>
+                    <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>This Book no dey Bible o 👀😂</Text>
+                    <Text style={[styles.emptyStateSubtext, { color: colors.textTertiary }]}>
                         Check your spelling or try a different search term
                     </Text>
                 </View>
@@ -105,24 +110,27 @@ export const BookPicker: React.FC<BookPickerProps> = ({
                                 style={[
                                     styles.bookCard,
                                     styles.searchResultCard,
-                                    isSelected && styles.bookCardSelected,
+                                    { backgroundColor: colors.cardBackground, borderColor: colors.border },
+                                    isSelected && [styles.bookCardSelected, { backgroundColor: colors.backgroundSubtle, borderColor: colors.accentSecondary }],
                                 ]}
                                 onPress={() => onBookSelect(book)}
                                 activeOpacity={0.7}
                             >
                                 <Text style={[
                                     styles.bookAbbreviation,
-                                    isSelected && styles.bookAbbreviationSelected
+                                    { color: colors.text },
+                                    isSelected && [styles.bookAbbreviationSelected, { color: colors.textSecondary }]
                                 ]}>
                                     {book.abbrv}
                                 </Text>
                                 <Text style={[
                                     styles.chapterCount,
-                                    isSelected && styles.chapterCountSelected
+                                    { color: colors.textTertiary },
+                                    isSelected && [styles.chapterCountSelected, { color: colors.textSecondary }]
                                 ]}>
                                     {book.chapters}
                                 </Text>
-                                {isSelected && <View style={styles.selectedDot} />}
+                                {isSelected && <View style={[styles.selectedDot, { backgroundColor: colors.textSecondary }]} />}
                             </TouchableOpacity>
                         );
                     })}
@@ -163,9 +171,9 @@ export const BookPicker: React.FC<BookPickerProps> = ({
     return (
         <View style={styles.container}>
             <TextInput
-                style={styles.searchInput}
+                style={[styles.searchInput, { backgroundColor: colors.searchBackground, borderColor: colors.border, color: colors.textPrimary }]}
                 placeholder="Search..."
-                placeholderTextColor="#a39b90"
+                placeholderTextColor={colors.textTertiary}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 autoCapitalize="none"
