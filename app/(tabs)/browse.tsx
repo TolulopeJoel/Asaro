@@ -11,6 +11,7 @@ export default function PastEntriesScreen() {
     const router = useRouter();
     const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
     const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
     const { colors } = useTheme();
 
     const handleEntryPress = (entry: JournalEntry) => {
@@ -21,12 +22,13 @@ export default function PastEntriesScreen() {
     const handleCloseDetail = () => {
         setIsDetailModalVisible(false);
         setSelectedEntry(null);
+        // Trigger refresh when modal closes
+        setRefreshTrigger(prev => prev + 1);
     };
 
     const handleDeleteEntry = () => {
         // Close the modal and refresh the list
         handleCloseDetail();
-        // The list will automatically refresh when the modal closes
     };
 
     const handleEditEntry = (entry: JournalEntry) => {
@@ -38,7 +40,7 @@ export default function PastEntriesScreen() {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-            <JournalEntryList onEntryPress={handleEntryPress} />
+            <JournalEntryList onEntryPress={handleEntryPress} refreshTrigger={refreshTrigger} />
 
             {/* Detail Modal */}
             <Modal

@@ -1,6 +1,7 @@
 import { useTheme } from '@/src/theme/ThemeContext';
 import { getLocalMidnight, isSameDay } from '@/src/utils/dateUtils';
-import React, { useEffect, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     Animated,
     ScrollView,
@@ -27,9 +28,10 @@ interface NavigationBreadcrumb {
 
 interface JournalEntryListProps {
     onEntryPress: (entry: JournalEntry) => void;
+    refreshTrigger?: number;
 }
 
-export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress }) => {
+export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress, refreshTrigger }) => {
     const { colors } = useTheme();
     const [entries, setEntries] = useState<JournalEntry[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
@@ -43,6 +45,26 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
     useEffect(() => {
         loadEntries();
     }, []);
+
+    // Refresh entries when screen comes into focus (e.g., after edit/delete)
+    useFocusEffect(
+        useCallback(() => {
+            loadEntries();
+            if (viewMode === 'bookDetail' && selectedBook) {
+                loadBookEntries();
+            }
+        }, [viewMode, selectedBook])
+    );
+
+    // Refresh when refreshTrigger changes (e.g., after modal close)
+    useEffect(() => {
+        if (refreshTrigger !== undefined && refreshTrigger > 0) {
+            loadEntries();
+            if (viewMode === 'bookDetail' && selectedBook) {
+                loadBookEntries();
+            }
+        }
+    }, [refreshTrigger, viewMode, selectedBook]);
 
     useEffect(() => {
         if (viewMode === 'recent') {
