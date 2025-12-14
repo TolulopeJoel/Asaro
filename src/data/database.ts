@@ -398,3 +398,107 @@ export const getDailyEntryCounts = async (startDate: string, endDate: string): P
 
     return counts;
 };
+
+/**
+ * Get current streak count
+ */
+export const getCurrentStreak = async (): Promise<number> => {
+    const database = await getDb();
+
+    // Get all unique entry dates ordered by date descending
+    const result = await database.getAllAsync<{ entry_date: string }>(`
+        SELECT DISTINCT DATE(created_at, 'localtime') as entry_date
+        FROM journal_entries
+        ORDER BY entry_date DESC
+    `);
+
+    if (result.length === 0) return 0;
+
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+    // Check if the most recent entry is today or yesterday
+    const lastEntryDate = result[0].entry_date;
+
+    if (lastEntryDate !== todayStr && lastEntryDate !== yesterdayStr) {
+        return 0;
+    }
+
+    let streak = 1;
+
+    // Iterate through dates to find consecutive days
+    for (let i = 0; i < result.length - 1; i++) {
+        const currentDate = new Date(result[i].entry_date);
+        const nextDate = new Date(result[i + 1].entry_date);
+
+        // Calculate difference in days
+        const diffTime = Math.abs(currentDate.getTime() - nextDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 1) {
+            streak++;
+        } else {
+            break;
+        }
+    }
+
+    return streak;
+};
+
+/**
+ * Get longest streak count
+ */
+export const getLongestStreak = async (): Promise<number> => {
+    const database = await getDb();
+
+    // Get all unique entry dates ordered by date ascending
+    const result = await database.getAllAsync<{ entry_date: string }>(`
+        SELECT DISTINCT DATE(created_at, 'localtime') as entry_date
+        FROM journal_entries
+        ORDER BY entry_date ASC
+    `);
+
+    if (result.length === 0) return 0;
+
+    let maxStreak = 1;
+    let currentStreak = 1;
+
+    for (let i = 0; i < result.length - 1; i++) {
+        const currentDate = new Date(result[i].entry_date);
+        const nextDate = new Date(result[i + 1].entry_date);
+
+        const diffTime = Math.abs(nextDate.getTime() - currentDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 1) {
+            currentStreak++;
+        } else {
+            currentStreak = 1;
+        }
+
+        if (currentStreak > maxStreak) {
+            maxStreak = currentStreak;
+        }
+    }
+
+    return maxStreak;
+};
+
+/**
+ * Get entry counts for the last 365 days for the contribution graph
+ */
+export const getYearlyEntryCounts = async (): Promise<Record<string, number>> => {
+    const database = await getDb();
+    const today = new Date();
+    const oneYearAgo = new Date(today);
+    oneYearAgo.setDate(oneYearAgo.getDate() - 365);
+
+    const startDate = oneYearAgo.toISOString().split('T')[0];
+    const endDate = today.toISOString().split('T')[0];
+
+    return await getDailyEntryCounts(startDate, endDate);
+};

@@ -1,8 +1,9 @@
 import { getDailyEntryCounts } from '@/src/data/database';
 import { useTheme } from '@/src/theme/ThemeContext';
-import { useFocusEffect } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface DayStatus {
     date: Date;
@@ -70,8 +71,19 @@ export const WeeklyStreak = () => {
         }, [fetchWeekData])
     );
 
+    const router = useRouter();
+
     return (
-        <View style={[styles.container, { backgroundColor: colors.cardBackground }]}>
+        <TouchableOpacity
+            style={[styles.container, { backgroundColor: colors.cardBackground }]}
+            onPress={() => router.push('/stats')}
+            activeOpacity={0.9}
+        >
+            <View style={styles.header}>
+                <Text style={[styles.title, { color: colors.textPrimary }]}>Weekly Consistency</Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+            </View>
+
             <View style={styles.daysContainer}>
                 {weekDays.map((day, index) => (
                     <View key={index} style={styles.dayItem}>
@@ -92,17 +104,16 @@ export const WeeklyStreak = () => {
                                 borderColor: '#10b981',
                             },
                             // Missed day - Judgment
-                            // Stark, empty, "do better". A void.
                             !day.hasEntry && !day.isFuture && !day.isToday && {
-                                backgroundColor: 'transparent',
-                                borderColor: '#ef4444', // Red border
-                                borderWidth: 1.5,
-                                borderStyle: 'dashed', // "Broken" chain
+                                backgroundColor: '#ef4444',
+                                opacity: 0.3,
+                                borderColor: '#ef4444',
+                                borderStyle: 'dashed',
                             },
                             // Today - energetic accent
                             day.isToday && !day.hasEntry && {
                                 borderColor: colors.accent,
-                                borderWidth: 2,
+                                borderWidth: 1.5,
                             },
                             // Future - ghost (barely there)
                             day.isFuture && {
@@ -121,17 +132,29 @@ export const WeeklyStreak = () => {
                     </View>
                 ))}
             </View>
-        </View>
+        </TouchableOpacity>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
         padding: 20,
-        borderRadius: 24,
+        borderRadius: 12,
         marginBottom: 24,
         borderWidth: 1,
         borderColor: 'rgba(0,0,0,0.06)',
+    },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    title: {
+        fontSize: 13,
+        fontWeight: '600',
+        letterSpacing: 0.5,
+        textTransform: 'uppercase',
     },
     daysContainer: {
         flexDirection: 'row',
@@ -150,7 +173,7 @@ const styles = StyleSheet.create({
     dayIndicator: {
         width: 40,
         height: 40,
-        borderRadius: 14,
+        borderRadius: 10,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1,

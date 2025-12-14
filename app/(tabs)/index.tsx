@@ -1,5 +1,4 @@
 import { WeeklyStreak } from '@/src/components/WeeklyStreak';
-import { WeeklyStreakMock } from '@/src/components/WeeklyStreakMock';
 import { getComebackDaysCount, getMissedDaysCount, getTotalEntryCount } from "@/src/data/database";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
@@ -15,16 +14,34 @@ type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 interface StatCardProps {
     icon: IoniconName;
     value: number;
-    label: string;
 }
 
-const StatCard = React.memo(({ icon, value, label }: StatCardProps) => {
+const StatCard = React.memo(({ icon, value }: StatCardProps) => {
     const { colors } = useTheme();
     return (
-        <View style={[styles.statCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
-            <Ionicons name={icon} size={20} color={colors.accent} />
-            <Text style={[styles.statValue, { color: colors.textPrimary }]}>{value}</Text>
-            <Text style={[styles.statLabel, { color: colors.textTertiary }]}>{label}</Text>
+        <View
+            style={[
+                styles.statCard,
+                {
+                    backgroundColor: colors.cardBackground,
+                    borderColor: colors.cardBorder,
+                },
+            ]}
+        >
+            <Ionicons
+                name={icon}
+                size={18}
+                color={colors.accent}
+            />
+
+            <Text
+                style={[
+                    styles.statValue,
+                    { color: colors.textPrimary },
+                ]}
+            >
+                {value}
+            </Text>
         </View>
     );
 });
@@ -62,21 +79,8 @@ const QuickStats = React.memo(() => {
 
     return (
         <View style={styles.statsContainer}>
-            <StatCard
-                icon="flame-outline"
-                value={totalEntries}
-                label={`${totalEntries === 1 ? 'Entry' : 'Entries'}`}
-            />
-            <StatCard
-                icon="rainy-outline"
-                value={missedDays}
-                label={`${missedDays === 1 ? 'Missed Day' : 'Missed Days'}`}
-            />
-            <StatCard
-                icon="leaf-outline"
-                value={comebackDays}
-                label={`${comebackDays === 1 ? 'Comeback' : 'Comebacks'}`}
-            />
+            <StatCard icon="flame-outline" value={totalEntries} />
+            <StatCard icon="rainy-outline" value={missedDays} />
         </View>
     );
 });
@@ -105,10 +109,16 @@ const UpdateCard = React.memo(() => {
                     </View>
                     <Text style={[styles.updateDate, { color: colors.textTertiary }]}>Sept 6, 2025</Text>
                 </View>
-                <Text style={[styles.updateTitle, { color: colors.textPrimary }]}>Quick Update 🏃‍♂️</Text>
+
+                <Text style={[styles.updateTitle, { color: colors.textPrimary }]}>
+                    Quick Update 🏃‍♂️
+                </Text>
+
                 <Text style={[styles.updateContent, { color: colors.textSecondary }]}>
-                    Meditation question no. 5 (what do I want to remember?) has been removed. A simple text field won't help you remember research topics effectively.
-                    {"\n"}{"\n"}We're building a smarter feature with reminders to help you revisit topics from your readings.
+                    Meditation question no. 5 (what do I want to remember?) has been removed.
+                    A simple text field won't help you remember research topics effectively.
+                    {"\n"}{"\n"}
+                    We're building a smarter feature with reminders to help you revisit topics from your readings.
                 </Text>
             </View>
         </Animated.View>
@@ -121,12 +131,7 @@ const FloatingActionButton = React.memo(() => {
 
     return (
         <TouchableOpacity
-            style={[
-                styles.fab,
-                {
-                    backgroundColor: colors.textPrimary,
-                }
-            ]}
+            style={[styles.fab, { backgroundColor: colors.textPrimary }]}
             activeOpacity={0.8}
             onPress={() => router.push("/addEntry")}
         >
@@ -137,7 +142,6 @@ const FloatingActionButton = React.memo(() => {
 
 const DraftBar = React.memo(() => {
     const slideAnim = useRef(new Animated.Value(100)).current;
-    const pulseAnim = useRef(new Animated.Value(1)).current;
     const { colors } = useTheme();
 
     useEffect(() => {
@@ -147,21 +151,6 @@ const DraftBar = React.memo(() => {
             friction: 8,
             useNativeDriver: true,
         }).start();
-
-        Animated.loop(
-            Animated.sequence([
-                Animated.timing(pulseAnim, {
-                    toValue: 1.05,
-                    duration: 1000,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(pulseAnim, {
-                    toValue: 1,
-                    duration: 1000,
-                    useNativeDriver: true,
-                }),
-            ])
-        ).start();
     }, []);
 
     return (
@@ -172,19 +161,21 @@ const DraftBar = React.memo(() => {
                     transform: [{ translateY: slideAnim }],
                     backgroundColor: colors.draftBar,
                     borderColor: colors.draftBarBorder,
-                    shadowColor: colors.accent
+                    shadowColor: colors.accent,
                 },
             ]}
         >
             <Link href="/addEntry" asChild>
-                <TouchableOpacity
-                    style={styles.draftContent}
-                    activeOpacity={0.85}
-                >
+                <TouchableOpacity style={styles.draftContent} activeOpacity={0.85}>
                     <View style={styles.draftTextContainer}>
-                        <Text style={[styles.draftLabel, { color: colors.textPrimary }]}>Didn't finish?</Text>
-                        <Text style={[styles.draftSubtext, { color: colors.textSecondary }]}>No worries, pick it up now</Text>
+                        <Text style={[styles.draftLabel, { color: colors.textPrimary }]}>
+                            Didn't finish?
+                        </Text>
+                        <Text style={[styles.draftSubtext, { color: colors.textSecondary }]}>
+                            No worries, pick it up now
+                        </Text>
                     </View>
+
                     <View style={[styles.draftIcon, { backgroundColor: colors.draftIconBg }]}>
                         <Ionicons name="arrow-forward" size={20} color={colors.accent} />
                     </View>
@@ -219,7 +210,7 @@ export default function Index() {
                 <QuickStats />
                 <UpdateCard />
                 <WeeklyStreak />
-                <WeeklyStreakMock />
+                {/* <WeeklyStreakMock /> */}
             </ScrollView>
 
             {!draftExists && <FloatingActionButton />}
@@ -229,47 +220,42 @@ export default function Index() {
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    scrollView: {
-        flex: 1,
-    },
+    container: { flex: 1 },
+    scrollView: { flex: 1 },
     scrollContent: {
         padding: 24,
         paddingBottom: 120,
     },
+
     statsContainer: {
         flexDirection: "row",
-        gap: 10,
-        marginBottom: 28,
+        gap: 12,
+        marginBottom: 32,
         width: "100%",
     },
     statCard: {
         flex: 1,
         borderRadius: 12,
-        paddingVertical: 14,
+        paddingVertical: 18,
         paddingHorizontal: 8,
         alignItems: "center",
-        gap: 6,
+        justifyContent: "center",
+        gap: 8,
         borderWidth: 1,
     },
     statValue: {
-        fontSize: 18,
-        fontWeight: "600",
+        fontSize: 22,
+        fontWeight: "700",
+        letterSpacing: 0.2,
     },
-    statLabel: {
-        fontSize: 10,
-        fontWeight: "500",
-        textTransform: "uppercase",
-        letterSpacing: 0.5,
-    },
+
+    /* Update card */
     updateCardWrapper: {
         width: "100%",
         marginBottom: 28,
     },
     updateCard: {
-        borderRadius: 14,
+        borderRadius: 12,
         padding: 18,
         borderWidth: 1,
     },
@@ -305,30 +291,11 @@ const styles = StyleSheet.create({
     },
     updateContent: {
         fontSize: 13,
-        fontWeight: "400",
         lineHeight: 19,
         letterSpacing: 0.1,
     },
-    buttonContainer: {
-        gap: 10,
-        width: "100%",
-        marginTop: 20,
-    },
-    primaryButton: {
-        paddingVertical: 20,
-        paddingHorizontal: 32,
-        borderRadius: 12,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 10,
-        minHeight: 60,
-    },
-    primaryButtonText: {
-        fontSize: 18,
-        fontWeight: "600",
-        letterSpacing: 0.3,
-    },
+
+    /* Draft bar */
     draftBar: {
         position: "absolute",
         bottom: 32,
@@ -352,26 +319,23 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     draftLabel: {
-        color: "#2d2520",
         fontSize: 15,
         fontWeight: "600",
-        letterSpacing: 0.2,
         marginBottom: 2,
     },
     draftSubtext: {
-        color: "#6b5d52",
         fontSize: 13,
-        fontWeight: "400",
         letterSpacing: 0.1,
     },
     draftIcon: {
         width: 36,
         height: 36,
         borderRadius: 18,
-        backgroundColor: "#f0ebe3",
         justifyContent: "center",
         alignItems: "center",
     },
+
+    /* FAB */
     fab: {
         position: 'absolute',
         bottom: 32,
