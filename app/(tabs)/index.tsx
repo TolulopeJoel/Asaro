@@ -109,33 +109,16 @@ const UpdateCard = React.memo(() => {
 
 const NavigationButtons = React.memo(() => {
     const button1Anim = useRef(new Animated.Value(0)).current;
-    const button2Anim = useRef(new Animated.Value(0)).current;
-    const button3Anim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-        Animated.stagger(100, [
-            Animated.spring(button1Anim, {
-                toValue: 1,
-                tension: 40,
-                friction: 7,
-                delay: 400,
-                useNativeDriver: true,
-            }),
-            Animated.spring(button2Anim, {
-                toValue: 1,
-                tension: 40,
-                friction: 7,
-                useNativeDriver: true,
-            }),
-            Animated.spring(button3Anim, {
-                toValue: 1,
-                tension: 40,
-                friction: 7,
-                useNativeDriver: true,
-            }),
-        ]).start();
+        Animated.spring(button1Anim, {
+            toValue: 1,
+            tension: 40,
+            friction: 7,
+            delay: 400,
+            useNativeDriver: true,
+        }).start();
     }, []);
-
 
     return (
         <View style={styles.buttonContainer}>
@@ -147,30 +130,6 @@ const NavigationButtons = React.memo(() => {
                     >
                         <Ionicons name="add-circle-outline" size={14} color="#ffffff" />
                         <Text style={styles.primaryButtonText}>Add Entry</Text>
-                    </TouchableOpacity>
-                </Link>
-            </Animated.View>
-
-            <Animated.View style={{ opacity: button2Anim, transform: [{ scale: button2Anim }], width: '100%' }}>
-                <Link href="/browse" asChild>
-                    <TouchableOpacity
-                        style={styles.secondaryButton}
-                        activeOpacity={0.9}
-                    >
-                        <Ionicons name="library-outline" size={14} color="#8b7355" />
-                        <Text style={styles.secondaryButtonText}>Past Entries</Text>
-                    </TouchableOpacity>
-                </Link>
-            </Animated.View>
-
-            <Animated.View style={{ opacity: button3Anim, transform: [{ scale: button3Anim }], width: '100%' }}>
-                <Link href="/settings" asChild>
-                    <TouchableOpacity
-                        style={styles.testButton}
-                        activeOpacity={0.9}
-                    >
-                        <Ionicons name="settings-outline" size={14} color="#8b7355" />
-                        <Text style={styles.testButtonText}>Settings</Text>
                     </TouchableOpacity>
                 </Link>
             </Animated.View>
@@ -231,6 +190,8 @@ const DraftBar = React.memo(() => {
     );
 });
 
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 export default function Index() {
     const [draftExists, setDraftExists] = useState(false);
 
@@ -246,7 +207,7 @@ export default function Index() {
     );
 
     return (
-        <View style={styles.container}>
+        <SafeAreaView style={styles.container} edges={['top']}>
             <View style={styles.contentWrapper}>
                 <QuickStats />
                 <UpdateCard />
@@ -254,7 +215,7 @@ export default function Index() {
             </View>
 
             {draftExists && <DraftBar />}
-        </View>
+        </SafeAreaView>
     );
 }
 

@@ -39,10 +39,8 @@ export default function RootLayout() {
   return (
     <>
       <Stack>
-        <Stack.Screen name="index" options={{ title: 'Àṣàrò' }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="addEntry" options={{ title: 'Kọ silẹ' }} />
-        <Stack.Screen name="browse" options={{ title: 'Wo lẹẹkansi' }} />
-        <Stack.Screen name="settings" options={{ title: 'Settings' }} />
       </Stack>
       <StatusBar hidden={true} />
     </>

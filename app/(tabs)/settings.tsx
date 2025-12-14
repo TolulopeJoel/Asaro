@@ -2,6 +2,7 @@ import { sendTestNotification } from '@/src/utils/notifications';
 import Constants from 'expo-constants';
 import { Stack } from 'expo-router';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function Settings() {
     const handleTestNotification = async () => {
@@ -14,9 +15,9 @@ export default function Settings() {
     };
 
     return (
-        <>
+        <SafeAreaView style={styles.container} edges={['top']}>
             <Stack.Screen options={{ title: 'Settings' }} />
-            <ScrollView style={styles.container}>
+            <ScrollView style={styles.scrollView}>
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Notifications</Text>
                     <View style={styles.card}>
@@ -44,7 +45,7 @@ export default function Settings() {
                     </View>
                 </View>
             </ScrollView>
-        </>
+        </SafeAreaView>
     );
 }
 
@@ -52,6 +53,9 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#f5f5f5',
+    },
+    scrollView: {
+        flex: 1,
         padding: 16,
     },
     section: {

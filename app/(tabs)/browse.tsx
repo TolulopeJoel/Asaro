@@ -1,9 +1,11 @@
+import { JournalEntryDetail } from '@/src/components/JournalEntryDetail';
+import { JournalEntryList } from '@/src/components/JournalEntryList';
 import { JournalEntry } from '@/src/data/database';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Modal, SafeAreaView, StyleSheet } from 'react-native';
-import { JournalEntryDetail } from '../src/components/JournalEntryDetail';
-import { JournalEntryList } from '../src/components/JournalEntryList';
+import { Modal, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 export default function PastEntriesScreen() {
     const router = useRouter();
     const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
@@ -33,7 +35,7 @@ export default function PastEntriesScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={styles.container} edges={['top']}>
             <JournalEntryList onEntryPress={handleEntryPress} />
 
             {/* Detail Modal */}
