@@ -311,7 +311,7 @@ const findDuplicateEntry = async (
          WHERE book_name = ? 
          AND chapter_start = ? 
          AND COALESCE(chapter_end, 0) = COALESCE(?, 0)
-         AND datetime(created_at) BETWEEN datetime(?, '-1 minute') AND datetime(?, '+1 minute')
+         AND datetime(created_at, 'localtime') BETWEEN datetime(?, 'localtime', '-1 minute') AND datetime(?, 'localtime', '+1 minute')
          LIMIT 1`,
         [
             entry.book_name,
