@@ -181,66 +181,58 @@ const textAreaStyles = StyleSheet.create({
         marginBottom: 8,
     },
     inputContainer: {
-        backgroundColor: '#fefefe',
-        borderRadius: 7,
+        borderRadius: 16, // Softened from 7
         borderWidth: 1,
-        borderColor: '#f0ede8',
         position: 'relative',
     },
     inputContainerAnswered: {
-        borderColor: '#d6d3ce',
-        backgroundColor: '#faf9f7',
+        // Colors handled in component
     },
     inputContainerDisabled: {
-        backgroundColor: '#f5f3f0',
+        // Colors handled in component
     },
     input: {
         padding: 20,
         paddingRight: 20, // Make room for expand button
-        fontSize: 15,
-        color: '#3d3528',
+        fontSize: 16,
         fontWeight: '400',
-        lineHeight: 22,
+        lineHeight: 24,
         letterSpacing: 0.1,
         minHeight: 150,
     },
     inputDisabled: {
-        color: '#8b8075',
+        // Colors handled in component
     },
     answeredIndicator: {
         position: 'absolute',
         top: 12,
-        right: 40, // Adjust position to not overlap with expand button
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        backgroundColor: '#8b7355',
+        right: 48, // Adjust position to not overlap with expand button
+        width: 8,
+        height: 8,
+        borderRadius: 4,
     },
     expandButton: {
         position: 'absolute',
         top: 12,
         right: 12,
-        width: 28,
-        height: 28,
+        width: 32,
+        height: 32,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#f8f7f5',
-        borderRadius: 14,
+        borderRadius: 16, // Softened from 14
         borderWidth: 1,
-        borderColor: '#f0efec',
     },
     expandIcon: {
-        width: 12,
-        height: 12,
+        width: 14,
+        height: 14,
         justifyContent: 'center',
         alignItems: 'center',
     },
     expandIconInner: {
-        width: 8,
-        height: 8,
-        borderWidth: 1,
-        borderColor: '#7a6f63',
-        borderRadius: 2,
+        width: 10,
+        height: 10,
+        borderWidth: 1.5,
+        borderRadius: 3,
         backgroundColor: 'transparent',
     },
 });
@@ -249,7 +241,6 @@ const fullScreenStyles = StyleSheet.create({
     container: {
         flex: 1,
         paddingTop: (StatusBar.currentHeight || 2),
-        backgroundColor: '#fefbf7', // Same warm off-white as regular input
     },
     keyboardView: {
         flex: 1,
@@ -260,15 +251,13 @@ const fullScreenStyles = StyleSheet.create({
     },
     label: {
         fontSize: 14,
-        color: '#8b8075',
-        fontWeight: '400',
+        fontWeight: '500',
         lineHeight: 20,
         letterSpacing: 0.1,
     },
     cancelButton: {},
     cancelText: {
-        fontSize: 14,
-        color: '#a39b90',
+        fontSize: 15,
         fontWeight: '400',
         letterSpacing: 0.1,
     },
@@ -281,17 +270,15 @@ const fullScreenStyles = StyleSheet.create({
         paddingHorizontal: 20,
     },
     saveText: {
-        fontSize: 14,
-        color: '#8b8075',
-        fontWeight: '500',
+        fontSize: 15,
+        fontWeight: '600',
         letterSpacing: 0.1,
     },
     textInput: {
         flex: 1,
-        fontSize: 15,
-        color: '#3d3528',
+        fontSize: 16,
         fontWeight: '400',
-        lineHeight: 26,
+        lineHeight: 28,
         letterSpacing: 0.1,
         backgroundColor: 'transparent',
         textAlignVertical: 'top',
