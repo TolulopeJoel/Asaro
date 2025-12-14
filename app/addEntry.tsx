@@ -109,6 +109,7 @@ export default function MeditationSessionScreen() {
     const [verseRange, setVerseRange] = useState<VerseRange | null>(null);
     const [reflectionAnswers, setReflectionAnswers] = useState<ReflectionAnswers>();
     const [isLoading, setIsLoading] = useState(true);
+    const [createdEntryId, setCreatedEntryId] = useState<number | null>(null);
 
     // Load data immediately without waiting
     useEffect(() => {
@@ -226,7 +227,8 @@ export default function MeditationSessionScreen() {
                 Alert.alert('Success', 'Entry updated successfully');
                 router.back();
             } else {
-                await createJournalEntry(entryData);
+                const newEntryId = await createJournalEntry(entryData);
+                setCreatedEntryId(newEntryId);
                 await AsyncStorage.removeItem("reflection_draft");
                 setReflectionAnswers(answers);
                 setCurrentStep('summary');
@@ -237,18 +239,22 @@ export default function MeditationSessionScreen() {
         }
     }, [selectedBook, selectedChapters, verseRange, isEditMode, entryId, router]);
 
-    const handleStartOver = useCallback(async () => {
-        if (isEditMode) {
-            router.back();
+    const handleDone = useCallback(() => {
+        if (createdEntryId) {
+            router.push(`/entry/${createdEntryId}`);
         } else {
-            await AsyncStorage.removeItem("reflection_draft");
-            setSelectedBook(undefined);
-            setSelectedChapters(undefined);
-            setVerseRange(null);
-            setReflectionAnswers(undefined);
-            setCurrentStep('book');
+            router.back();
         }
-    }, [isEditMode, router]);
+    }, [router, createdEntryId]);
+
+    const handleStartOver = useCallback(async () => {
+        await AsyncStorage.removeItem("reflection_draft");
+        setSelectedBook(undefined);
+        setSelectedChapters(undefined);
+        setVerseRange(null);
+        setReflectionAnswers(undefined);
+        setCurrentStep('book');
+    }, []);
 
     const handleDiscardDraft = useCallback(() => {
         Alert.alert(
@@ -448,8 +454,15 @@ export default function MeditationSessionScreen() {
                         </View>
 
                         <View style={styles.contentArea}>
-                            <TouchableOpacity style={[styles.primaryButton, { backgroundColor: colors.accent }]} onPress={handleStartOver}>
-                                <Text style={[styles.primaryButtonText, { color: colors.buttonPrimaryText }]}>Begin New Study</Text>
+                            <TouchableOpacity style={[styles.primaryButton, { backgroundColor: colors.accent }]} onPress={handleDone}>
+                                <Text style={[styles.primaryButtonText, { color: colors.buttonPrimaryText }]}>Done</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={styles.secondaryButton}
+                                onPress={handleStartOver}
+                            >
+                                <Text style={[styles.secondaryButtonText, { color: colors.textSecondary }]}>Begin New Study</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -683,5 +696,16 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         letterSpacing: 0.5,
+    },
+    secondaryButton: {
+        paddingVertical: 16,
+        paddingHorizontal: 32,
+        alignItems: 'center',
+        marginTop: 16,
+    },
+    secondaryButtonText: {
+        fontSize: 15,
+        fontWeight: '500',
+        letterSpacing: 0.3,
     },
 });

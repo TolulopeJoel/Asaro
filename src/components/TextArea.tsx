@@ -150,7 +150,7 @@ const TextArea: React.FC<{
                                 <TextInput
                                     ref={expandedTextInputRef}
                                     style={[fullScreenStyles.textInput, { color: colors.text }]}
-                                    placeholder={placeholder || "Begin writing..."}
+                                    placeholder={placeholder || "..."}
                                     placeholderTextColor={colors.textTertiary}
                                     value={tempValue}
                                     onChangeText={handleTempChange}
