@@ -1,5 +1,6 @@
 import { getDailyEntryCounts } from '@/src/data/database';
 import { useTheme } from '@/src/theme/ThemeContext';
+import { formatDateToLocalString, getLocalMidnight, isSameDay } from '@/src/utils/dateUtils';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -9,7 +10,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const MonthlyHeatmap = ({ data }: { data: Record<string, number> }) => {
     const { colors } = useTheme();
-    const today = new Date();
+    const today = getLocalMidnight();
     const year = today.getFullYear();
     const month = today.getMonth();
 
@@ -45,11 +46,12 @@ const MonthlyHeatmap = ({ data }: { data: Record<string, number> }) => {
                         return <View key={`empty-${index}`} style={styles.dayCellEmpty} />;
                     }
 
-                    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    const dayDate = new Date(year, month, day);
+                    const dateStr = formatDateToLocalString(dayDate);
                     const count = data[dateStr] || 0;
-                    const isToday = day === today.getDate();
-                    const isPast = day < today.getDate();
-                    const isFuture = day > today.getDate();
+                    const isToday = isSameDay(dayDate, today);
+                    const isPast = dayDate.getTime() < today.getTime();
+                    const isFuture = dayDate.getTime() > today.getTime();
 
                     return (
                         <View key={day} style={styles.dayCellWrapper}>
@@ -129,8 +131,8 @@ export default function StatsScreen() {
         const year = today.getFullYear();
         const month = today.getMonth();
 
-        const startDate = new Date(year, month, 1).toISOString().split('T')[0];
-        const endDate = new Date(year, month + 1, 0).toISOString().split('T')[0];
+        const startDate = formatDateToLocalString(new Date(year, month, 1));
+        const endDate = formatDateToLocalString(new Date(year, month + 1, 0));
 
         const data = await getDailyEntryCounts(startDate, endDate);
         setMonthlyData(data);

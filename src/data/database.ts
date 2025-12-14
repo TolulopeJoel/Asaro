@@ -1,4 +1,5 @@
 import * as SQLite from 'expo-sqlite';
+import { formatDateToLocalString, getTodayDateString, getYesterdayDateString, parseLocalDateString } from '../utils/dateUtils';
 
 export interface JournalEntry {
     id?: number;
@@ -380,13 +381,14 @@ export const importEntries = async (
 /**
  * Get entry counts for a date range
  * Returns a map of date string (YYYY-MM-DD) -> count
+ * Uses localtime to match other date queries in the app
  */
 export const getDailyEntryCounts = async (startDate: string, endDate: string): Promise<Record<string, number>> => {
     const database = await getDb();
     const result = await database.getAllAsync<{ day: string; count: number }>(
-        `SELECT date(created_at) as day, COUNT(*) as count 
+        `SELECT DATE(created_at, 'localtime') as day, COUNT(*) as count 
          FROM journal_entries 
-         WHERE date(created_at) BETWEEN date(?) AND date(?) 
+         WHERE DATE(created_at, 'localtime') BETWEEN DATE(?, 'localtime') AND DATE(?, 'localtime') 
          GROUP BY day`,
         [startDate, endDate]
     );
@@ -414,12 +416,9 @@ export const getCurrentStreak = async (): Promise<number> => {
 
     if (result.length === 0) return 0;
 
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
-
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    // Use local timezone date strings to match SQLite's 'localtime' modifier
+    const todayStr = getTodayDateString();
+    const yesterdayStr = getYesterdayDateString();
 
     // Check if the most recent entry is today or yesterday
     const lastEntryDate = result[0].entry_date;
@@ -432,8 +431,8 @@ export const getCurrentStreak = async (): Promise<number> => {
 
     // Iterate through dates to find consecutive days
     for (let i = 0; i < result.length - 1; i++) {
-        const currentDate = new Date(result[i].entry_date);
-        const nextDate = new Date(result[i + 1].entry_date);
+        const currentDate = parseLocalDateString(result[i].entry_date);
+        const nextDate = parseLocalDateString(result[i + 1].entry_date);
 
         // Calculate difference in days
         const diffTime = Math.abs(currentDate.getTime() - nextDate.getTime());
@@ -468,8 +467,8 @@ export const getLongestStreak = async (): Promise<number> => {
     let currentStreak = 1;
 
     for (let i = 0; i < result.length - 1; i++) {
-        const currentDate = new Date(result[i].entry_date);
-        const nextDate = new Date(result[i + 1].entry_date);
+        const currentDate = parseLocalDateString(result[i].entry_date);
+        const nextDate = parseLocalDateString(result[i + 1].entry_date);
 
         const diffTime = Math.abs(nextDate.getTime() - currentDate.getTime());
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -497,8 +496,8 @@ export const getYearlyEntryCounts = async (): Promise<Record<string, number>> =>
     const oneYearAgo = new Date(today);
     oneYearAgo.setDate(oneYearAgo.getDate() - 365);
 
-    const startDate = oneYearAgo.toISOString().split('T')[0];
-    const endDate = today.toISOString().split('T')[0];
+    const startDate = formatDateToLocalString(oneYearAgo);
+    const endDate = formatDateToLocalString(today);
 
     return await getDailyEntryCounts(startDate, endDate);
 };

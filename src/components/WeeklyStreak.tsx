@@ -1,5 +1,6 @@
 import { getDailyEntryCounts } from '@/src/data/database';
 import { useTheme } from '@/src/theme/ThemeContext';
+import { formatDateToLocalString, getLocalMidnight } from '@/src/utils/dateUtils';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
@@ -25,18 +26,18 @@ export const WeeklyStreak = () => {
         // Start from Sunday (currentDay)
         const sunday = new Date(today);
         sunday.setDate(today.getDate() - currentDay);
+        sunday.setHours(0, 0, 0, 0);
 
         const saturday = new Date(sunday);
         saturday.setDate(sunday.getDate() + 6);
+        saturday.setHours(0, 0, 0, 0);
 
-        // Reset today for accurate comparison
-        const todayReset = new Date();
-        todayReset.setHours(0, 0, 0, 0);
+        // Reset today for accurate comparison (local midnight)
+        const todayReset = getLocalMidnight();
 
-        // Format dates for DB query
-        const formatDate = (d: Date) => d.toISOString().split('T')[0];
-        const startDateStr = formatDate(sunday);
-        const endDateStr = formatDate(saturday);
+        // Format dates for DB query using local timezone
+        const startDateStr = formatDateToLocalString(sunday);
+        const endDateStr = formatDateToLocalString(saturday);
 
         try {
             const counts = await getDailyEntryCounts(startDateStr, endDateStr);
@@ -47,7 +48,7 @@ export const WeeklyStreak = () => {
                 d.setDate(sunday.getDate() + i);
                 d.setHours(0, 0, 0, 0);
 
-                const dateStr = formatDate(d);
+                const dateStr = formatDateToLocalString(d);
                 const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
 
                 days.push({

@@ -1,4 +1,5 @@
 import { useTheme } from '@/src/theme/ThemeContext';
+import { formatDateToLocalString, getLocalMidnight, isSameDay } from '@/src/utils/dateUtils';
 import React, { useEffect, useState } from 'react';
 import {
     Animated,
@@ -200,13 +201,16 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
     };
 
     const groupEntriesByDate = (entries: JournalEntry[]) => {
-        const today = new Date();
+        const today = getLocalMidnight();
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
+        yesterday.setHours(0, 0, 0, 0);
         const thisWeek = new Date(today);
         thisWeek.setDate(thisWeek.getDate() - 7);
+        thisWeek.setHours(0, 0, 0, 0);
         const thisMonth = new Date(today);
         thisMonth.setDate(thisMonth.getDate() - 30);
+        thisMonth.setHours(0, 0, 0, 0);
 
         const groups = {
             today: [] as JournalEntry[],
@@ -218,13 +222,15 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
 
         entries.forEach(entry => {
             const entryDate = new Date(entry.created_at || '');
-            if (entryDate.toDateString() === today.toDateString()) {
+            const entryDateLocal = getLocalMidnight(entryDate);
+            
+            if (isSameDay(entryDateLocal, today)) {
                 groups.today.push(entry);
-            } else if (entryDate.toDateString() === yesterday.toDateString()) {
+            } else if (isSameDay(entryDateLocal, yesterday)) {
                 groups.yesterday.push(entry);
-            } else if (entryDate >= thisWeek) {
+            } else if (entryDateLocal.getTime() >= thisWeek.getTime()) {
                 groups.thisWeek.push(entry);
-            } else if (entryDate >= thisMonth) {
+            } else if (entryDateLocal.getTime() >= thisMonth.getTime()) {
                 groups.thisMonth.push(entry);
             } else {
                 groups.older.push(entry);
