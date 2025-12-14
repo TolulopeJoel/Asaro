@@ -167,8 +167,31 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = ({
         const isFirst = selectedChapters?.start === chapter && !selectedChapters?.end;
         const isRangeStart = selectedChapters?.start === chapter && selectedChapters?.end;
         const isRangeEnd = selectedChapters?.end === chapter;
+        const isMiddle = isSelected && !isRangeStart && !isRangeEnd && !isFirst;
         const isSingleChapterSelected = isFirst && readVerses;
         const showVerseInputsForRange = readVerses && (isRangeStart || isRangeEnd);
+
+        // Determine border radius based on position in range
+        let borderRadiusStyle = {};
+        if (isRangeStart) {
+            borderRadiusStyle = {
+                borderTopLeftRadius: 10,
+                borderBottomLeftRadius: 10,
+                borderTopRightRadius: 2,
+                borderBottomRightRadius: 2,
+            };
+        } else if (isRangeEnd) {
+            borderRadiusStyle = {
+                borderTopLeftRadius: 2,
+                borderBottomLeftRadius: 2,
+                borderTopRightRadius: 10,
+                borderBottomRightRadius: 10,
+            };
+        } else if (isMiddle) {
+            borderRadiusStyle = {
+                borderRadius: 2,
+            };
+        }
 
         return (
             <View key={chapter} style={styles.chapterButtonWrapper}>
@@ -176,10 +199,15 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = ({
                     style={[
                         styles.chapterButton,
                         { backgroundColor: colors.cardBackground, borderColor: colors.border },
-                        (isSelected || isInDrag) && [styles.chapterButtonSelected, { backgroundColor: colors.accentSecondary, borderColor: colors.accentSecondary }],
-                        isFirst && [styles.chapterButtonSingle, { backgroundColor: colors.accentSecondary, borderColor: colors.accentSecondary }],
-                        isRangeStart && [styles.chapterButtonRangeStart, { backgroundColor: colors.accentSecondary, borderColor: colors.accentSecondary }],
-                        isRangeEnd && [styles.chapterButtonRangeEnd, { backgroundColor: colors.accentSecondary, borderColor: colors.accentSecondary }],
+                        (isSelected || isInDrag) && {
+                            backgroundColor: colors.accentSecondary,
+                            borderColor: colors.accentSecondary,
+                        },
+                        isFirst && styles.chapterButtonSingle,
+                        borderRadiusStyle,
+                        // Reduce gap between range buttons
+                        isMiddle && styles.chapterButtonMiddle,
+                        isRangeEnd && styles.chapterButtonRangeEnd,
                     ] as StyleProp<ViewStyle>}
                     onPress={() => handleChapterPress(chapter)}
                     activeOpacity={0.7}
@@ -187,7 +215,7 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = ({
                     <Text style={[
                         styles.chapterButtonText,
                         { color: colors.text },
-                        (isSelected || isInDrag) && [styles.chapterButtonTextSelected, { color: colors.buttonPrimaryText }]
+                        (isSelected || isInDrag) && { color: colors.buttonPrimaryText, fontWeight: '600' }
                     ]}>
                         {chapter}
                     </Text>
@@ -335,7 +363,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: 16,
         marginBottom: 24,
-        borderRadius: 8, // Softened from 2
+        borderRadius: 8,
         borderWidth: 1,
     },
     selectionText: {
@@ -343,7 +371,6 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         letterSpacing: 0.2,
     },
-    // Checkbox for verses styles
     checkboxContainer: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -355,7 +382,7 @@ const styles = StyleSheet.create({
     checkbox: {
         width: 22,
         height: 22,
-        borderRadius: 8, // Softened from 2
+        borderRadius: 8,
         borderWidth: 1.5,
         justifyContent: 'center',
         alignItems: 'center',
@@ -375,7 +402,7 @@ const styles = StyleSheet.create({
     clearButton: {
         paddingHorizontal: 16,
         paddingVertical: 8,
-        borderRadius: 20, // Pill shape
+        borderRadius: 20,
         borderWidth: 1,
     },
     clearButtonText: {
@@ -390,7 +417,6 @@ const styles = StyleSheet.create({
         letterSpacing: 0.4,
         lineHeight: 18,
     },
-    // Chapter grid and buttion styles
     chaptersGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
@@ -400,18 +426,15 @@ const styles = StyleSheet.create({
     chapterButtonWrapper: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 0, // Handled by gap
+        marginBottom: 0,
     },
     chapterButton: {
         width: 52,
-        height: 52, // Square-ish but soft
-        borderRadius: 10, // Softened from 2
+        height: 52,
+        borderRadius: 10,
         borderWidth: 1,
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    chapterButtonSelected: {
-        // Colors handled in component
     },
     chapterButtonSingle: {
         shadowOffset: {
@@ -422,27 +445,18 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 3,
     },
-    chapterButtonRangeStart: {
-        borderTopRightRadius: 4,
-        borderBottomRightRadius: 4,
-        marginRight: -4, // Connect visually
-        zIndex: 1,
+    chapterButtonMiddle: {
+        marginLeft: -6,
+        marginRight: -6,
     },
     chapterButtonRangeEnd: {
-        borderTopLeftRadius: 4,
-        borderBottomLeftRadius: 4,
-        marginLeft: -4, // Connect visually
-        zIndex: 1,
+        // marginLeft: -6,
     },
     chapterButtonText: {
         fontSize: 16,
         fontWeight: '500',
         letterSpacing: 0.2,
     },
-    chapterButtonTextSelected: {
-        fontWeight: '600',
-    },
-    // Verse input styles
     verseInputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -452,7 +466,9 @@ const styles = StyleSheet.create({
     verseInput: {
         width: 48,
         height: 44,
+        borderRadius: 12, // Softened
         borderWidth: 1,
+        // borderRadius: 8,
         paddingHorizontal: 4,
         fontSize: 14,
         fontWeight: '600',
