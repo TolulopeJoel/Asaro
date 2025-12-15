@@ -222,14 +222,53 @@ export const hasEntryToday = async (): Promise<boolean> => {
 }
 
 
-export const getMissedDaysCount = async (): Promise<number> => {
+export const getMissedDaysCount = async (month?: string): Promise<number> => {
     const database = await getDb();
 
+    if (month) {
+        // For a specific month, calculate differently
+        const monthStart = `DATE('${month}-01', 'localtime')`;
+        const today = `DATE('now', 'localtime')`;
+
+        // Determine the end date (either today or end of month, whichever is earlier)
+        const result = await database.getFirstAsync(`
+            SELECT 
+                -- Days from start of month to today (or end of month)
+                julianday(MIN(${today}, DATE('${month}-01', '+1 month', '-1 day', 'localtime'))) - julianday(${monthStart}) + 1 as total_days,
+                -- Number of unique days with entries in this month
+                COUNT(DISTINCT DATE(created_at, 'localtime')) as active_days
+            FROM (
+                SELECT ${monthStart} as created_at
+                UNION ALL
+                SELECT created_at FROM journal_entries 
+                WHERE strftime('%Y-%m', created_at, 'localtime') = '${month}'
+            )
+        `) as any;
+
+        const todayEntryResult = await database.getFirstAsync(`
+            SELECT EXISTS(
+                SELECT 1 FROM journal_entries 
+                WHERE DATE(created_at, 'localtime') = ${today}
+                AND strftime('%Y-%m', created_at, 'localtime') = '${month}'
+            ) as has_entry
+        `) as any;
+
+        const todayEntryCount = todayEntryResult?.has_entry || 0;
+
+        if (!result || result.total_days === null) {
+            return 0;
+        }
+
+        const totalDays = Math.floor(result.total_days);
+        const activeDays = (result.active_days - 1 - todayEntryCount) || 0; // -1 to exclude the dummy start date
+
+        return Math.max(0, totalDays - activeDays);
+    }
+
+    // Original logic for all-time
     const result = await database.getFirstAsync(`
         SELECT 
-            -- Total days from first entry to today (exclusive - today not counted)
             julianday(DATE('now', 'localtime')) - julianday(DATE(MIN(created_at), 'localtime')) as total_days,
-            -- Number of unique days with entries
             COUNT(DISTINCT DATE(created_at, 'localtime')) as active_days
         FROM journal_entries
     `) as any;
@@ -240,7 +279,7 @@ export const getMissedDaysCount = async (): Promise<number> => {
             WHERE DATE(created_at, 'localtime') = DATE('now', 'localtime')
         ) as has_entry
     `) as any;
-    const todayEntryCount = todayEntryResult?.has_entry; // retruns 1 if there's an entry today, else 0
+    const todayEntryCount = todayEntryResult?.has_entry || 0;
 
     if (!result || result.total_days === null) {
         return 0;
