@@ -1,141 +1,90 @@
-import { getDailyEntryCounts } from '@/src/data/database';
+import { MonthGrid } from '@/src/components/stats/MonthGrid';
+import { StatCard } from '@/src/components/stats/StatCard';
+import { getDailyEntryCounts, getFirstEntryDate } from '@/src/data/database';
 import { useTheme } from '@/src/theme/ThemeContext';
-import { formatDateToLocalString, getLocalMidnight, isSameDay } from '@/src/utils/dateUtils';
+import { formatDateToLocalString } from '@/src/utils/dateUtils';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+interface MonthData {
+    year: number;
+    month: number;
+    name: string;
+}
 
-const MonthlyHeatmap = ({ data }: { data: Record<string, number> }) => {
-    const { colors } = useTheme();
-    const today = getLocalMidnight();
-    const year = today.getFullYear();
-    const month = today.getMonth();
-
-    const firstDayOfMonth = new Date(year, month, 1);
-    const lastDayOfMonth = new Date(year, month + 1, 0);
-    const daysInMonth = lastDayOfMonth.getDate();
-    const startDayOfWeek = firstDayOfMonth.getDay(); // 0 = Sunday
-
-    const days = [];
-    // Add empty slots for days before the 1st
-    for (let i = 0; i < startDayOfWeek; i++) {
-        days.push(null);
-    }
-    // Add actual days
-    for (let i = 1; i <= daysInMonth; i++) {
-        days.push(i);
-    }
-
-    const weekDays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-
-    return (
-        <View style={styles.calendarContainer}>
-            <View style={styles.weekDaysRow}>
-                {weekDays.map((day, index) => (
-                    <Text key={index} style={[styles.weekDayText, { color: colors.textTertiary }]}>
-                        {day}
-                    </Text>
-                ))}
-            </View>
-            <View style={styles.daysGrid}>
-                {days.map((day, index) => {
-                    if (day === null) {
-                        return <View key={`empty-${index}`} style={styles.dayCellEmpty} />;
-                    }
-
-                    const dayDate = new Date(year, month, day);
-                    const dateStr = formatDateToLocalString(dayDate);
-                    const count = data[dateStr] || 0;
-                    const isToday = isSameDay(dayDate, today);
-                    const isPast = dayDate.getTime() < today.getTime();
-                    const isFuture = dayDate.getTime() > today.getTime();
-
-                    return (
-                        <View key={day} style={styles.dayCellWrapper}>
-                            <View
-                                style={[
-                                    styles.dayCell,
-                                    // Completed - solid accent with building intensity
-                                    count > 0 && {
-                                        backgroundColor: colors.textPrimary,
-                                        borderColor: colors.textPrimary,
-                                        borderWidth: 1,
-                                    },
-                                    // Missed past day - hollow judgment
-                                    count === 0 && isPast && {
-                                        backgroundColor: 'transparent',
-                                        borderColor: colors.textPrimary,
-                                        borderWidth: 1.5,
-                                        opacity: 0.3,
-                                    },
-                                    // Today - magnetic pull
-                                    isToday && count === 0 && {
-                                        backgroundColor: colors.textPrimary + '08',
-                                        borderColor: colors.textPrimary,
-                                        borderWidth: 2,
-                                        opacity: 1,
-                                    },
-                                    // Future - ghost
-                                    isFuture && {
-                                        backgroundColor: 'transparent',
-                                        borderColor: colors.borderSubtle,
-                                        borderWidth: 0.5,
-                                        opacity: 0.15,
-                                    }
-                                ]}
-                            >
-                                <Text style={[
-                                    styles.dayText,
-                                    {
-                                        color: count > 0
-                                            ? colors.background
-                                            : (isToday
-                                                ? colors.textPrimary
-                                                : colors.textSecondary
-                                            ),
-                                        opacity: isFuture ? 0.15 : (count > 0 || isToday ? 1 : 0.4),
-                                        fontWeight: isToday ? '700' : '500',
-                                    }
-                                ]}>
-                                    {day}
-                                </Text>
-                            </View>
-                        </View>
-                    );
-                })}
-            </View>
-        </View>
-    );
-};
-
-const StatCard = ({ label, value, color }: { label: string; value: string | number; color: string }) => {
-    const { colors } = useTheme();
-
-    return (
-        <View style={styles.statCard}>
-            <Text style={[styles.statValue, { color }]}>{value}</Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{label}</Text>
-        </View>
-    );
-};
+interface StatsState {
+    allTimeData: Record<string, number>;
+    months: MonthData[];
+    currentMonthStats: {
+        completed: number;
+        total: number;
+    };
+    isLoading: boolean;
+}
 
 export default function StatsScreen() {
     const { colors } = useTheme();
-    const [monthlyData, setMonthlyData] = useState<Record<string, number>>({});
+    const [state, setState] = useState<StatsState>({
+        allTimeData: {},
+        months: [],
+        currentMonthStats: { completed: 0, total: 0 },
+        isLoading: true
+    });
 
     const loadStats = useCallback(async () => {
         const today = new Date();
-        const year = today.getFullYear();
-        const month = today.getMonth();
+        const currentYear = today.getFullYear();
+        const currentMonth = today.getMonth();
+        const firstEntryDate = await getFirstEntryDate();
 
-        const startDate = formatDateToLocalString(new Date(year, month, 1));
-        const endDate = formatDateToLocalString(new Date(year, month + 1, 0));
+        const startDate = firstEntryDate || new Date(currentYear, currentMonth, 1);
+        const lastDayOfCurrentMonth = new Date(currentYear, currentMonth + 1, 0);
 
-        const data = await getDailyEntryCounts(startDate, endDate);
-        setMonthlyData(data);
+        const data = await getDailyEntryCounts(
+            formatDateToLocalString(startDate),
+            formatDateToLocalString(lastDayOfCurrentMonth)
+        );
+
+        // Calculate current month stats
+        const daysInCurrentMonth = lastDayOfCurrentMonth.getDate();
+        const currentMonthPrefix = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+        const completedInCurrentMonth = Object.keys(data)
+            .filter(date => date.startsWith(currentMonthPrefix) && data[date] > 0)
+            .length;
+
+        // Generate months list from start to current
+        const monthList: MonthData[] = [];
+        const startYear = startDate.getFullYear();
+        const startMonth = startDate.getMonth();
+
+        let year = startYear;
+        let month = startMonth;
+
+        while (year < currentYear || (year === currentYear && month <= currentMonth)) {
+            monthList.unshift({
+                year,
+                month,
+                name: new Date(year, month).toLocaleDateString('en-US', { month: 'long' })
+            });
+
+            month++;
+            if (month > 11) {
+                month = 0;
+                year++;
+            }
+        }
+
+        setState({
+            allTimeData: data,
+            months: monthList,
+            currentMonthStats: {
+                completed: completedInCurrentMonth,
+                total: daysInCurrentMonth
+            },
+            isLoading: false
+        });
     }, []);
 
     useFocusEffect(
@@ -144,39 +93,54 @@ export default function StatsScreen() {
         }, [loadStats])
     );
 
-    // Calculate stats
-    const totalDays = Object.keys(monthlyData).length;
-    const completedDays = Object.values(monthlyData).filter(count => count > 0).length;
-    const currentMonth = new Date().toLocaleDateString('en-US', { month: 'long' });
+    const currentMonthName = new Date().toLocaleDateString('en-US', { month: 'long' });
+
+    const renderHeader = useCallback(() => (
+        <View style={styles.monthHeader}>
+            <Text style={[styles.monthTitleLarge, { color: colors.textPrimary }]}>
+                {currentMonthName}
+            </Text>
+            <View style={styles.statsRow}>
+                <StatCard
+                    label="completed"
+                    value={state.currentMonthStats.completed}
+                    color={colors.textPrimary}
+                />
+                <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+                <StatCard
+                    label="total days"
+                    value={state.currentMonthStats.total}
+                    color={colors.textSecondary}
+                />
+            </View>
+        </View>
+    ), [colors, currentMonthName, state.currentMonthStats]);
+
+    const renderItem = useCallback(({ item, index }: { item: MonthData; index: number }) => {
+        const isCurrentMonth = index === 0;
+        return (
+            <MonthGrid
+                year={item.year}
+                month={item.month}
+                data={state.allTimeData}
+                showTitle={!isCurrentMonth}
+            />
+        );
+    }, [state.allTimeData]);
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-            <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-                {/* Month Overview */}
-                <View style={styles.monthHeader}>
-                    <Text style={[styles.monthTitle, { color: colors.textPrimary }]}>
-                        {currentMonth}
-                    </Text>
-                    <View style={styles.statsRow}>
-                        <StatCard
-                            label="completed"
-                            value={completedDays}
-                            color={colors.textPrimary}
-                        />
-                        <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-                        <StatCard
-                            label="total days"
-                            value={totalDays}
-                            color={colors.textSecondary}
-                        />
-                    </View>
-                </View>
-
-                {/* Heatmap */}
-                <View style={styles.heatmapSection}>
-                    <MonthlyHeatmap data={monthlyData} />
-                </View>
-            </ScrollView>
+            <FlatList
+                data={state.months}
+                renderItem={renderItem}
+                keyExtractor={(item) => `${item.year}-${item.month}`}
+                contentContainerStyle={styles.scrollContent}
+                ListHeaderComponent={renderHeader}
+                showsVerticalScrollIndicator={false}
+                initialNumToRender={2}
+                maxToRenderPerBatch={2}
+                windowSize={3}
+            />
         </SafeAreaView>
     );
 }
@@ -185,16 +149,14 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
-    scrollView: {
-        flex: 1,
-    },
     scrollContent: {
         padding: 28,
+        paddingBottom: 40,
     },
     monthHeader: {
         marginBottom: 40,
     },
-    monthTitle: {
+    monthTitleLarge: {
         fontSize: 32,
         fontWeight: '700',
         letterSpacing: 0.5,
@@ -205,68 +167,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 24,
     },
-    statCard: {
-        flex: 1,
-    },
-    statValue: {
-        fontSize: 40,
-        fontWeight: '700',
-        letterSpacing: -0.5,
-        marginBottom: 4,
-    },
-    statLabel: {
-        fontSize: 11,
-        fontWeight: '600',
-        textTransform: 'uppercase',
-        letterSpacing: 1.2,
-        opacity: 0.5,
-    },
     statDivider: {
         width: 1,
         height: 48,
         opacity: 0.3,
-    },
-    heatmapSection: {
-        marginTop: 12,
-    },
-    calendarContainer: {
-        width: '100%',
-    },
-    weekDaysRow: {
-        flexDirection: 'row',
-        marginBottom: 16,
-    },
-    weekDayText: {
-        flex: 1,
-        textAlign: 'center',
-        fontSize: 10,
-        fontWeight: '600',
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-        opacity: 0.4,
-    },
-    daysGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-    },
-    dayCellWrapper: {
-        width: `${100 / 7}%`,
-        aspectRatio: 1,
-        padding: 2,
-    },
-    dayCellEmpty: {
-        width: `${100 / 7}%`,
-        aspectRatio: 1,
-    },
-    dayCell: {
-        flex: 1,
-        borderRadius: 10,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    dayText: {
-        fontSize: 13,
-        fontWeight: '500',
-        letterSpacing: 0.2,
     },
 });

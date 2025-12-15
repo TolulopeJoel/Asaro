@@ -540,3 +540,16 @@ export const getYearlyEntryCounts = async (): Promise<Record<string, number>> =>
 
     return await getDailyEntryCounts(startDate, endDate);
 };
+
+/**
+ * Get the date of the very first journal entry
+ */
+export const getFirstEntryDate = async (): Promise<Date | null> => {
+    const database = await getDb();
+    const result = await database.getFirstAsync<{ created_at: string }>(`
+        SELECT MIN(created_at) as created_at FROM journal_entries
+    `);
+
+    if (!result?.created_at) return null;
+    return new Date(result.created_at);
+};

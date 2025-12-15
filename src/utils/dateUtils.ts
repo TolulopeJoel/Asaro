@@ -71,4 +71,3 @@ export const getDaysDifference = (date1: Date, date2: Date): number => {
     const diffTime = Math.abs(d1.getTime() - d2.getTime());
     return Math.floor(diffTime / (1000 * 60 * 60 * 24));
 };
-
