@@ -4,7 +4,7 @@ import { formatDateToLocalString, getLocalMidnight } from '@/src/utils/dateUtils
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, Image } from 'react-native';
 
 interface DayStatus {
     date: Date;
@@ -21,9 +21,8 @@ export const WeeklyStreak = () => {
 
     const fetchWeekData = useCallback(async () => {
         const today = new Date();
-        const currentDay = today.getDay(); // 0 is Sunday
+        const currentDay = today.getDay();
 
-        // Start from Sunday (currentDay)
         const sunday = new Date(today);
         sunday.setDate(today.getDate() - currentDay);
         sunday.setHours(0, 0, 0, 0);
@@ -32,10 +31,8 @@ export const WeeklyStreak = () => {
         saturday.setDate(sunday.getDate() + 6);
         saturday.setHours(0, 0, 0, 0);
 
-        // Reset today for accurate comparison (local midnight)
         const todayReset = getLocalMidnight();
 
-        // Format dates for DB query using local timezone
         const startDateStr = formatDateToLocalString(sunday);
         const endDateStr = formatDateToLocalString(saturday);
 
@@ -91,44 +88,59 @@ export const WeeklyStreak = () => {
                         <Text style={[
                             styles.dayName,
                             {
-                                color: day.isToday ? colors.accent : colors.textTertiary,
-                                opacity: day.isFuture ? 0.05 : 1
+                                color: day.isToday ? colors.textPrimary : colors.textTertiary,
+                                opacity: day.isFuture ? 0.35 : 1,
+                                fontWeight: day.isToday ? '600' : '500',
+                                letterSpacing: 1
                             }
                         ]}>
                             {day.dayName.charAt(0)}
                         </Text>
                         <View style={[
                             styles.dayIndicator,
-                            // Completed day - vibrant success green
+                            // Completed - filled with hairline precision
                             day.hasEntry && {
-                                backgroundColor: '#10b981',
-                                borderColor: '#10b981',
+                                backgroundColor: colors.textPrimary,
+                                borderColor: colors.textPrimary,
+                                borderWidth: 0.5,
                             },
-                            // Missed day - Judgment
+                            // Missed - gentle outline, forgiving
                             !day.hasEntry && !day.isFuture && !day.isToday && {
-                                backgroundColor: '#ef4444',
-                                opacity: 0.3,
-                                borderColor: '#ef4444',
-                                borderStyle: 'dashed',
-                            },
-                            // Today - energetic accent
-                            day.isToday && !day.hasEntry && {
-                                borderColor: colors.accent,
-                                borderWidth: 1.5,
-                            },
-                            // Future - ghost (barely there)
-                            day.isFuture && {
-                                borderColor: 'transparent',
                                 backgroundColor: 'transparent',
-                                opacity: 0.05
+                                borderColor: colors.textTertiary,
+                                borderWidth: 0.5,
+                                opacity: 0.3,
+                            },
+                            // Today - precise but warm invitation
+                            day.isToday && !day.hasEntry && {
+                                borderColor: colors.textPrimary,
+                                borderWidth: 1,
+                                backgroundColor: colors.textPrimary + '08',
+                            },
+                            // Future - minimal presence
+                            day.isFuture && {
+                                borderColor: colors.border,
+                                borderWidth: 0.5,
+                                backgroundColor: 'transparent',
+                                opacity: 0.2,
                             }
                         ]}>
-                            <Text style={[
-                                styles.dayNumber,
-                                { color: day.hasEntry ? '#ffffff' : (day.isToday ? colors.accent : (!day.isFuture && !day.hasEntry ? '#ef4444' : colors.textSecondary)) }
-                            ]}>
-                                {day.dayNumber}
-                            </Text>
+                            {day.hasEntry ? (
+                                <View style={[styles.dot, { backgroundColor: colors.cardBackground }]} />
+                            ) : (
+                                <Text style={[
+                                    styles.dayNumber,
+                                    {
+                                        color: day.isToday
+                                            ? colors.textPrimary
+                                            : colors.textSecondary,
+                                        opacity: day.isFuture ? 0.3 : (day.isToday ? 0.7 : 0.45),
+                                        fontWeight: '500'
+                                    }
+                                ]}>
+                                    {day.dayNumber}
+                                </Text>
+                            )}
                         </View>
                     </View>
                 ))}
@@ -140,10 +152,15 @@ export const WeeklyStreak = () => {
 const styles = StyleSheet.create({
     container: {
         padding: 20,
-        borderRadius: 12,
+        borderRadius: 10,
         marginBottom: 24,
-        borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.06)',
+        borderWidth: 0.5,
+        borderColor: 'rgba(0,0,0,0.1)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.03,
+        shadowRadius: 6,
+        elevation: 1,
     },
     header: {
         flexDirection: 'row',
@@ -152,9 +169,9 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     title: {
-        fontSize: 13,
+        fontSize: 12,
         fontWeight: '600',
-        letterSpacing: 0.5,
+        letterSpacing: 1,
         textTransform: 'uppercase',
     },
     daysContainer: {
@@ -166,22 +183,23 @@ const styles = StyleSheet.create({
         gap: 10,
     },
     dayName: {
-        fontSize: 11,
-        fontWeight: '600',
+        fontSize: 10,
         textTransform: 'uppercase',
-        letterSpacing: 0.5,
     },
     dayIndicator: {
         width: 40,
         height: 40,
-        borderRadius: 10,
+        borderRadius: 9,
         justifyContent: 'center',
         alignItems: 'center',
-        borderWidth: 1,
         borderColor: 'transparent',
     },
     dayNumber: {
-        fontSize: 15,
-        fontWeight: '700',
+        fontSize: 14,
+    },
+    dot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
     },
 });

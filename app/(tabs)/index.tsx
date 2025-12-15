@@ -211,7 +211,6 @@ export default function Index() {
                 <QuickStats />
                 <UpdateCard />
                 <WeeklyStreak />
-                {/* <WeeklyStreakMock /> */}
             </ScrollView>
 
             {!draftExists && <FloatingActionButton />}
