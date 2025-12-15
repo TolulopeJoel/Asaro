@@ -58,9 +58,15 @@ export const MonthGrid = React.memo(({ year, month, data, showTitle = true }: Mo
 
                     const dayDate = new Date(year, month, day);
                     const dateStr = formatDateToLocalString(dayDate);
+                    const isFuture = dayDate.getTime() > today.getTime();
+                    
+                    // Hide future dates
+                    if (isFuture) {
+                        return <View key={`empty-future-${index}`} style={styles.dayCellEmpty} />;
+                    }
+
                     const count = data[dateStr] || 0;
                     const isToday = isSameDay(dayDate, today);
-                    const isFuture = dayDate.getTime() > today.getTime();
                     const hasEntry = count > 0;
 
                     return (
@@ -74,7 +80,7 @@ export const MonthGrid = React.memo(({ year, month, data, showTitle = true }: Mo
                                     borderWidth: 0.5,
                                 },
                                 // Missed - gentle outline, forgiving
-                                !hasEntry && !isFuture && !isToday && {
+                                !hasEntry && !isToday && {
                                     backgroundColor: 'transparent',
                                     borderColor: colors.textTertiary,
                                     borderWidth: 0.5,
@@ -85,13 +91,6 @@ export const MonthGrid = React.memo(({ year, month, data, showTitle = true }: Mo
                                     borderColor: colors.textPrimary,
                                     borderWidth: 1,
                                     backgroundColor: colors.textPrimary + '08',
-                                },
-                                // Future - minimal presence
-                                isFuture && {
-                                    borderColor: colors.border,
-                                    borderWidth: 0.5,
-                                    backgroundColor: 'transparent',
-                                    opacity: 0.2,
                                 }
                             ]}>
                                 {hasEntry ? (
@@ -111,7 +110,7 @@ export const MonthGrid = React.memo(({ year, month, data, showTitle = true }: Mo
                                             color: isToday
                                                 ? colors.textPrimary
                                                 : colors.textSecondary,
-                                            opacity: isFuture ? 0.3 : (isToday ? 0.7 : 0.45),
+                                            opacity: isToday ? 0.7 : 0.45,
                                             fontWeight: '500'
                                         }
                                     ]}>
