@@ -73,12 +73,11 @@ export const WeeklyStreak = () => {
 
     return (
         <TouchableOpacity
-            style={[styles.container, { backgroundColor: colors.cardBackground }]}
+            style={[styles.container, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
             onPress={() => router.push('/stats')}
             activeOpacity={0.9}
         >
             <View style={styles.header}>
-                <Text style={[styles.title, { color: colors.textPrimary }]}></Text>
                 <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
             </View>
 
@@ -152,27 +151,14 @@ export const WeeklyStreak = () => {
 const styles = StyleSheet.create({
     container: {
         padding: 20,
-        borderRadius: 10,
-        marginBottom: 24,
-        borderWidth: 0.5,
-        borderColor: 'rgba(0,0,0,0.1)',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.03,
-        shadowRadius: 6,
-        elevation: 1,
+        borderRadius: 12,
+        borderWidth: 1,
     },
     header: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-end',
         alignItems: 'center',
         marginBottom: 16,
-    },
-    title: {
-        fontSize: 12,
-        fontWeight: '600',
-        letterSpacing: 1,
-        textTransform: 'uppercase',
     },
     daysContainer: {
         flexDirection: 'row',

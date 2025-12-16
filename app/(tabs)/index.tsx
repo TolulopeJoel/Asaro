@@ -104,7 +104,7 @@ const UpdateCard = React.memo(() => {
 
     return (
         <Animated.View style={[styles.updateCardWrapper, { transform: [{ scale: scaleAnim }] }]}>
-            <View style={[styles.updateCard, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
+            <View style={[styles.updateCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
                 <View style={styles.updateHeader}>
                     <View style={[styles.updateBadge, { backgroundColor: colors.accentSecondaryLight, borderColor: colors.accentSecondary }]}>
                         <Ionicons name="sparkles" size={12} color={colors.accentSecondaryDark} />
@@ -216,7 +216,7 @@ export default function Index() {
                 showsVerticalScrollIndicator={false}
             >
                 <QuickStats />
-                {/* <UpdateCard /> */}
+                <UpdateCard />
                 <WeeklyStreak />
                 <Flashback
                     onEntryPress={(entry) => {
@@ -266,12 +266,12 @@ const styles = StyleSheet.create({
     scrollContent: {
         padding: 24,
         paddingBottom: 120,
+        gap: 24,
     },
 
     statsContainer: {
         flexDirection: "row",
         gap: 12,
-        marginBottom: 32,
         width: "100%",
     },
     statCard: {
@@ -293,7 +293,6 @@ const styles = StyleSheet.create({
     /* Update card */
     updateCardWrapper: {
         width: "100%",
-        marginBottom: 28,
     },
     updateCard: {
         borderRadius: 12,

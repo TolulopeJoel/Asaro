@@ -140,7 +140,6 @@ export const Flashback: React.FC<FlashbackProps> = ({ onEntryPress }) => {
 const styles = StyleSheet.create({
     cardWrapper: {
         width: "100%",
-        marginBottom: 28,
     },
     card: {
         borderRadius: 12,
