@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Link, useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { JournalEntryDetail } from '@/src/components/JournalEntryDetail';
 import { WavyAddIcon } from '@/src/components/WavyAddIcon';
 import { AnimatedModal } from '@/src/components/AnimatedModal';
@@ -134,10 +134,13 @@ const UpdateCard = React.memo(() => {
 const FloatingActionButton = React.memo(() => {
     const { colors } = useTheme();
     const router = useRouter();
+    const insets = useSafeAreaInsets();
+    // Tab bar height (60) + bottom inset + extra spacing
+    const bottomPosition = 60 + insets.bottom + 20;
 
     return (
         <TouchableOpacity
-            style={[styles.fab, { backgroundColor: colors.textPrimary }]}
+            style={[styles.fab, { backgroundColor: colors.textPrimary, bottom: bottomPosition }]}
             activeOpacity={0.8}
             onPress={() => router.push("/addEntry")}
         >
@@ -149,6 +152,9 @@ const FloatingActionButton = React.memo(() => {
 const DraftBar = React.memo(() => {
     const slideAnim = useRef(new Animated.Value(100)).current;
     const { colors } = useTheme();
+    const insets = useSafeAreaInsets();
+    // Tab bar height (60) + bottom inset + extra spacing
+    const bottomPosition = 60 + insets.bottom + 20;
 
     useEffect(() => {
         Animated.spring(slideAnim, {
@@ -168,6 +174,7 @@ const DraftBar = React.memo(() => {
                     backgroundColor: colors.draftBar,
                     borderColor: colors.draftBarBorder,
                     shadowColor: colors.accent,
+                    bottom: bottomPosition,
                 },
             ]}
         >
@@ -346,7 +353,6 @@ const styles = StyleSheet.create({
     /* Draft bar */
     draftBar: {
         position: "absolute",
-        bottom: 32,
         left: 20,
         right: 20,
         borderRadius: 16,
@@ -386,7 +392,6 @@ const styles = StyleSheet.create({
     /* FAB */
     fab: {
         position: 'absolute',
-        bottom: 32,
         right: 24,
         width: 64,
         height: 64,
