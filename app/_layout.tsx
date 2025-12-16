@@ -26,7 +26,7 @@ function StackNavigator() {
     >
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="addEntry" options={{ title: 'Kọ silẹ' }} />
-      <Stack.Screen name="stats" options={{ title: 'Stats' }} />
+      <Stack.Screen name="stats" options={{ title: 'What you\'ve done 🤩' }} />
     </Stack>
   );
 }

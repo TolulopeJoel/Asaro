@@ -3,7 +3,7 @@ import { StatCard } from '@/src/components/stats/StatCard';
 import { getDailyEntryCounts, getFirstEntryDate } from '@/src/data/database';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { formatDateToLocalString } from '@/src/utils/dateUtils';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useNavigation } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,6 +26,7 @@ interface StatsState {
 
 export default function StatsScreen() {
     const { colors } = useTheme();
+    const navigation = useNavigation();
     const [state, setState] = useState<StatsState>({
         allTimeData: {},
         months: [],
@@ -85,7 +86,19 @@ export default function StatsScreen() {
             },
             isLoading: false
         });
-    }, []);
+        // Update the header emoji based on missed days in the current month
+        const dayOfMonth = today.getDate(); // Current day of the month (1-31)
+        const missedDays = Math.max(dayOfMonth - completedInCurrentMonth, 0);
+        // Keep emojis encouraging (never demotivating)
+        const moodEmoji =
+            missedDays === 0 ? '🤩' :
+                missedDays <= 5 ? '😌' : // small misses,
+                    missedDays <= 14 ? '😎' : // a few more,
+                        '😏'; // higher misses,
+        navigation.setOptions({
+            title: `What you've done ${moodEmoji}`,
+        });
+    }, [navigation]);
 
     useFocusEffect(
         useCallback(() => {
