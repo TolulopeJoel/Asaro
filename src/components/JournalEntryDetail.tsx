@@ -10,6 +10,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 
 interface JournalEntryDetailProps {
@@ -209,10 +210,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                 <View style={[styles.heroHeader, { backgroundColor: colors.background }]}>
                     {onClose && (
                         <TouchableOpacity style={[styles.closeButton, { backgroundColor: colors.cardBackground, borderColor: colors.border }]} onPress={onClose}>
-                            <View style={styles.closeIconContainer}>
-                                <View style={[styles.closeIcon, { backgroundColor: colors.primary }]} />
-                                <View style={[styles.closeIcon, styles.closeIconCross, { backgroundColor: colors.primary }]} />
-                            </View>
+                            <Ionicons name="close" size={20} color={colors.textPrimary} />
                         </TouchableOpacity>
                     )}
 
@@ -309,7 +307,6 @@ const styles = StyleSheet.create({
         paddingBottom: 50,
     },
     heroHeader: {
-        paddingTop: 70,
         paddingBottom: 0,
         paddingHorizontal: 24,
         backgroundColor: '#fff9f5',

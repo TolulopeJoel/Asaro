@@ -9,6 +9,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { JournalEntryDetail } from '@/src/components/JournalEntryDetail';
+import { WavyAddIcon } from '@/src/components/WavyAddIcon';
 
 const DRAFT_KEY = "reflection_draft";
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -138,7 +139,7 @@ const FloatingActionButton = React.memo(() => {
             activeOpacity={0.8}
             onPress={() => router.push("/addEntry")}
         >
-            <Ionicons name="add" size={32} color="#FFFFFF" />
+            <WavyAddIcon size={40} color="#FFFFFF" />
         </TouchableOpacity>
     );
 });
@@ -234,7 +235,7 @@ export default function Index() {
                 visible={isDetailModalVisible}
                 animationType="slide"
                 statusBarTranslucent={true}
-                presentationStyle="pageSheet"
+                presentationStyle="fullScreen"
                 onRequestClose={() => setIsDetailModalVisible(false)}
             >
                 <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -266,7 +267,7 @@ const styles = StyleSheet.create({
     scrollContent: {
         padding: 24,
         paddingBottom: 120,
-        gap: 24,
+        gap: 18,
     },
 
     statsContainer: {
