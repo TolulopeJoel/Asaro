@@ -4,8 +4,9 @@ import { sendTestNotification } from '@/src/utils/notifications';
 import Constants from 'expo-constants';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AnimatedModal } from '@/src/components/AnimatedModal';
 
 export default function Settings() {
     const { colors, theme, setTheme } = useTheme();
@@ -181,10 +182,8 @@ export default function Settings() {
             </ScrollView>
 
             {/* Restore Modal */}
-            <Modal
+            <AnimatedModal
                 visible={showRestoreModal}
-                transparent
-                animationType="fade"
                 onRequestClose={() => setShowRestoreModal(false)}
             >
                 <View style={styles.modalOverlay}>
@@ -254,7 +253,7 @@ export default function Settings() {
                         </TouchableOpacity>
                     </View>
                 </View>
-            </Modal>
+            </AnimatedModal>
         </SafeAreaView>
     );
 }

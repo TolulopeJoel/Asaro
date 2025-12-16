@@ -22,6 +22,8 @@ function StackNavigator() {
           fontWeight: '600',
         },
         headerShadowVisible: false,
+        animation: 'slide_from_right',
+        presentation: 'card',
       }}
     >
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

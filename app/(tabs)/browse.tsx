@@ -4,8 +4,9 @@ import { JournalEntry } from '@/src/data/database';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Modal, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AnimatedModal } from '@/src/components/AnimatedModal';
 
 export default function PastEntriesScreen() {
     const router = useRouter();
@@ -43,11 +44,8 @@ export default function PastEntriesScreen() {
             <JournalEntryList onEntryPress={handleEntryPress} refreshTrigger={refreshTrigger} />
 
             {/* Detail Modal */}
-            <Modal
+            <AnimatedModal
                 visible={isDetailModalVisible}
-                animationType="slide"
-                statusBarTranslucent={true}
-                presentationStyle="pageSheet"
                 onRequestClose={handleCloseDetail}
             >
                 <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.background }]}>
@@ -60,7 +58,7 @@ export default function PastEntriesScreen() {
                         />
                     )}
                 </SafeAreaView>
-            </Modal>
+            </AnimatedModal>
         </SafeAreaView>
     );
 }

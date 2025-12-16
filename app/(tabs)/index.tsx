@@ -6,10 +6,11 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Link, useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Animated, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { JournalEntryDetail } from '@/src/components/JournalEntryDetail';
 import { WavyAddIcon } from '@/src/components/WavyAddIcon';
+import { AnimatedModal } from '@/src/components/AnimatedModal';
 
 const DRAFT_KEY = "reflection_draft";
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -231,11 +232,8 @@ export default function Index() {
             {draftExists && <DraftBar />}
 
             {/* Detail Modal */}
-            <Modal
+            <AnimatedModal
                 visible={isDetailModalVisible}
-                animationType="slide"
-                statusBarTranslucent={true}
-                presentationStyle="fullScreen"
                 onRequestClose={() => setIsDetailModalVisible(false)}
             >
                 <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -256,7 +254,7 @@ export default function Index() {
                         />
                     )}
                 </SafeAreaView>
-            </Modal>
+            </AnimatedModal>
         </SafeAreaView>
     );
 }
