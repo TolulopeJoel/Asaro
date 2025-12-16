@@ -108,31 +108,29 @@ export const Flashback: React.FC<FlashbackProps> = ({ onEntryPress }) => {
     return (
         <Animated.View style={[styles.cardWrapper, { transform: [{ scale: scaleAnim }] }]}>
             <TouchableOpacity
-                activeOpacity={0.9}
+                activeOpacity={0.85}
                 onPress={() => onEntryPress(flashbackData.entry)}
-                style={[styles.card, { backgroundColor: colors.cardBackground, borderColor: colors.accentSecondary }]}
+                style={[styles.card, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
             >
                 <View style={styles.header}>
-                    <View style={[styles.badge, { backgroundColor: colors.accentSecondaryLight, borderColor: colors.accentSecondary }]}>
-                        <Ionicons name="time-outline" size={12} color={colors.accentSecondaryDark} />
-                        <Text style={[styles.badgeText, { color: colors.accentSecondaryDark }]}>FLASHBACK</Text>
-                    </View>
-                    <Text style={[styles.date, { color: colors.textTertiary }]}>
-                        {new Date(flashbackData.entry.created_at).toLocaleDateString()}
+                    <Ionicons name="time-outline" size={16} color={colors.accentSecondaryDark} />
+                    <Text style={[styles.headerText, { color: colors.textSecondary }]}>
+                        {getTitle()}
                     </Text>
                 </View>
 
-                <Text style={[styles.title, { color: colors.textPrimary }]}>
-                    {getTitle()} ⏳
-                </Text>
-
-                <Text style={[styles.content, { color: colors.textSecondary, fontStyle: 'italic' }]}>
-                    "{getPreviewText()}"
+                <Text style={[styles.preview, { color: colors.textPrimary }]}>
+                    {getPreviewText()}
                 </Text>
 
                 <View style={styles.footer}>
-                    <Text style={{ color: colors.accent, fontSize: 13, fontWeight: '600' }}>Review entry</Text>
-                    <Ionicons name="arrow-forward" size={14} color={colors.accent} style={{ marginLeft: 4 }} />
+                    <Text style={[styles.date, { color: colors.textTertiary }]}>
+                        {new Date(flashbackData.entry.created_at).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                        })}
+                    </Text>
                 </View>
             </TouchableOpacity>
         </Animated.View>
@@ -146,47 +144,36 @@ const styles = StyleSheet.create({
     },
     card: {
         borderRadius: 12,
-        padding: 18,
+        padding: 20,
         borderWidth: 1,
     },
     header: {
         flexDirection: "row",
         alignItems: "center",
-        justifyContent: "space-between",
-        marginBottom: 10,
+        gap: 8,
+        marginBottom: 12,
     },
-    badge: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 5,
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: 6,
-        borderWidth: 1,
-    },
-    badgeText: {
-        fontSize: 10,
-        fontWeight: "700",
-        letterSpacing: 0.5,
-    },
-    date: {
-        fontSize: 10,
-        fontWeight: "500",
-    },
-    title: {
-        fontSize: 15,
-        fontWeight: "600",
-        marginBottom: 6,
-        letterSpacing: 0.2,
-    },
-    content: {
+    headerText: {
         fontSize: 13,
-        lineHeight: 19,
+        fontWeight: "600",
+        letterSpacing: 0.3,
+        textTransform: "uppercase",
+    },
+    preview: {
+        fontSize: 16,
+        lineHeight: 24,
+        fontWeight: "400",
+        marginBottom: 16,
         letterSpacing: 0.1,
     },
     footer: {
-        marginTop: 12,
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    date: {
+        fontSize: 12,
+        fontWeight: "500",
+        letterSpacing: 0.2,
     },
 });
