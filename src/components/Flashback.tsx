@@ -1,10 +1,11 @@
-import { JournalEntry, getFlashbackEntry } from '@/src/data/database';
+import { getFlashbackEntry, JournalEntry } from '@/src/data/database';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, StyleSheet, Text, View } from 'react-native';
+import { ScalePressable } from './ScalePressable';
 
 interface FlashbackProps {
     onEntryPress: (entry: JournalEntry) => void;
@@ -62,10 +63,6 @@ export const Flashback: React.FC<FlashbackProps> = ({ onEntryPress }) => {
         setFlashbackData(data);
     }, []);
 
-    useEffect(() => {
-        loadFlashback();
-    }, [loadFlashback]);
-
     useFocusEffect(
         useCallback(() => {
             loadFlashback();
@@ -107,8 +104,7 @@ export const Flashback: React.FC<FlashbackProps> = ({ onEntryPress }) => {
 
     return (
         <Animated.View style={[styles.cardWrapper, { transform: [{ scale: scaleAnim }] }]}>
-            <TouchableOpacity
-                activeOpacity={0.85}
+            <ScalePressable
                 onPress={() => onEntryPress(flashbackData.entry)}
                 style={[styles.card, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
             >
@@ -125,14 +121,14 @@ export const Flashback: React.FC<FlashbackProps> = ({ onEntryPress }) => {
 
                 <View style={styles.footer}>
                     <Text style={[styles.date, { color: colors.textTertiary }]}>
-                        {new Date(flashbackData.entry.created_at).toLocaleDateString('en-US', {
+                        {new Date(flashbackData.entry.created_at || '').toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric',
                             year: 'numeric'
                         })}
                     </Text>
                 </View>
-            </TouchableOpacity>
+            </ScalePressable>
         </Animated.View>
     );
 };

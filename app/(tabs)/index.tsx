@@ -6,12 +6,13 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Link, useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Animated, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { JournalEntryDetail } from '@/src/components/JournalEntryDetail';
 import { WavyAddIcon } from '@/src/components/WavyAddIcon';
 import { AnimatedModal } from '@/src/components/AnimatedModal';
 import { AnimatedListItem } from '@/src/components/AnimatedListItem';
+import { ScalePressable } from '@/src/components/ScalePressable';
 
 const DRAFT_KEY = "reflection_draft";
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -139,13 +140,12 @@ const FloatingActionButton = React.memo(() => {
     const bottomPosition = 60 + insets.bottom + 20;
 
     return (
-        <TouchableOpacity
+        <ScalePressable
             style={[styles.fab, { backgroundColor: colors.textPrimary, bottom: bottomPosition }]}
-            activeOpacity={0.8}
             onPress={() => router.push("/addEntry")}
         >
             <WavyAddIcon size={40} color="#FFFFFF" />
-        </TouchableOpacity>
+        </ScalePressable>
     );
 });
 
@@ -179,7 +179,7 @@ const DraftBar = React.memo(() => {
             ]}
         >
             <Link href="/addEntry" asChild>
-                <TouchableOpacity style={styles.draftContent} activeOpacity={0.85}>
+                <ScalePressable style={styles.draftContent}>
                     <View style={styles.draftTextContainer}>
                         <Text style={[styles.draftLabel, { color: colors.textPrimary }]}>
                             Didn't finish?
@@ -192,7 +192,7 @@ const DraftBar = React.memo(() => {
                     <View style={[styles.draftIcon, { backgroundColor: colors.draftIconBg }]}>
                         <Ionicons name="arrow-forward" size={20} color={colors.accent} />
                     </View>
-                </TouchableOpacity>
+                </ScalePressable>
             </Link>
         </Animated.View>
     );

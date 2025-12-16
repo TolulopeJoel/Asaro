@@ -7,11 +7,11 @@ import {
     Share,
     StyleSheet,
     Text,
-    TouchableOpacity,
     View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
+import { ScalePressable } from './ScalePressable';
 
 interface JournalEntryDetailProps {
     entry: JournalEntry;
@@ -209,9 +209,9 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                 {/* Hero Header */}
                 <View style={[styles.heroHeader, { backgroundColor: colors.background }]}>
                     {onClose && (
-                        <TouchableOpacity style={[styles.closeButton, { backgroundColor: colors.cardBackground, borderColor: colors.border }]} onPress={onClose}>
+                        <ScalePressable style={[styles.closeButton, { backgroundColor: colors.cardBackground, borderColor: colors.border }]} onPress={onClose}>
                             <Ionicons name="close" size={20} color={colors.textPrimary} />
-                        </TouchableOpacity>
+                        </ScalePressable>
                     )}
 
                     <View style={[styles.dateChip, { backgroundColor: colors.badge, borderColor: colors.badgeBorder }]}>
@@ -254,39 +254,36 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
 
                 {/* Floating Action Bar */}
                 <View style={styles.floatingActions}>
-                    <TouchableOpacity
+                    <ScalePressable
                         style={styles.shareFloatingButton}
                         onPress={handleShare}
                         disabled={isSharing}
-                        activeOpacity={0.8}
                     >
                         <Text style={styles.shareFloatingText}>
                             {isSharing ? '↗ sharing' : '↗ share'}
                         </Text>
-                    </TouchableOpacity>
+                    </ScalePressable>
 
                     <View style={styles.actionDivider} />
 
                     {onEdit && (
-                        <TouchableOpacity
+                        <ScalePressable
                             style={styles.iconButton}
                             onPress={() => onEdit(entry)}
-                            activeOpacity={0.8}
                         >
                             <Text style={styles.iconButtonText}>edit</Text>
-                        </TouchableOpacity>
+                        </ScalePressable>
                     )}
 
-                    <TouchableOpacity
+                    <ScalePressable
                         style={styles.iconButton}
                         onPress={handleDelete}
                         disabled={isDeleting}
-                        activeOpacity={0.8}
                     >
                         <Text style={[styles.iconButtonText, styles.deleteIconText]}>
                             {isDeleting ? 'deleting' : 'delete'}
                         </Text>
-                    </TouchableOpacity>
+                    </ScalePressable>
                 </View>
 
                 <View style={styles.bottomSpacer} />

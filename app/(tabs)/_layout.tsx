@@ -2,12 +2,13 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import PagerView from 'react-native-pager-view';
 import { useRef, useState } from 'react';
 import Index from './index';
 import Browse from './browse';
 import Settings from './settings';
+import { ScalePressable } from '@/src/components/ScalePressable';
 
 export default function TabLayout() {
     const { colors } = useTheme();
@@ -67,18 +68,17 @@ export default function TabLayout() {
                 {/* Tab Buttons */}
                 <View style={[styles.tabBar, { paddingBottom: insets.bottom, paddingTop: 8 }]}>
                     {tabs.map((tab, index) => (
-                        <TouchableOpacity
+                        <ScalePressable
                             key={index}
                             style={styles.tabButton}
                             onPress={() => handleTabPress(index)}
-                            activeOpacity={0.7}
                         >
                             <Ionicons
                                 name={tab.icon}
                                 size={24}
                                 color={currentPage === index ? colors.accent : colors.textTertiary}
                             />
-                        </TouchableOpacity>
+                        </ScalePressable>
                     ))}
                 </View>
             </View>

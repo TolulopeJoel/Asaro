@@ -4,7 +4,8 @@ import { formatDateToLocalString, getLocalMidnight } from '@/src/utils/dateUtils
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, Image } from 'react-native';
+import { StyleSheet, Text, View, Image } from 'react-native';
+import { ScalePressable } from './ScalePressable';
 
 interface DayStatus {
     date: Date;
@@ -72,10 +73,9 @@ export const WeeklyStreak = () => {
     const router = useRouter();
 
     return (
-        <TouchableOpacity
+        <ScalePressable
             style={[styles.container, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
             onPress={() => router.push('/stats')}
-            activeOpacity={0.9}
         >
             <View style={styles.header}>
                 <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
@@ -144,7 +144,7 @@ export const WeeklyStreak = () => {
                     </View>
                 ))}
             </View>
-        </TouchableOpacity>
+        </ScalePressable>
     );
 };
 

@@ -10,7 +10,6 @@ import {
     StyleSheet,
     Text,
     TextInput,
-    TouchableOpacity,
     UIManager,
     View,
 } from 'react-native';
@@ -22,6 +21,7 @@ import {
     searchEntries
 } from '../data/database';
 import { AnimatedListItem } from './AnimatedListItem';
+import { ScalePressable } from './ScalePressable';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -278,9 +278,8 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
 
     const renderEntryCard = (entry: JournalEntry, index: number = 0) => (
         <AnimatedListItem key={entry.id} index={index}>
-            <TouchableOpacity
+            <ScalePressable
                 style={[styles.entryCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
-                activeOpacity={0.7}
                 onPress={() => onEntryPress(entry)}
             >
                 <View style={styles.entryHeader}>
@@ -307,7 +306,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                         ))}
                     </View>
                 </View>
-            </TouchableOpacity>
+            </ScalePressable>
         </AnimatedListItem>
     );
 
@@ -337,16 +336,15 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         return (
             <View style={styles.booksGrid}>
                 {availableBooks.map(book => (
-                    <TouchableOpacity
+                    <ScalePressable
                         key={book.name}
                         style={[styles.bookCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
                         onPress={() => navigateToBookDetail(book)}
-                        activeOpacity={0.7}
                     >
                         <View style={styles.bookCardHeader}>
                             <Text style={[styles.bookCardName, { color: colors.textPrimary }]}>{book.name}</Text>
                         </View>
-                    </TouchableOpacity>
+                    </ScalePressable>
                 ))}
             </View>
         );
@@ -361,7 +359,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                 {breadcrumbs.map((crumb, index) => (
                     <React.Fragment key={crumb.label}>
                         {index > 0 && <Text style={[styles.breadcrumbSeparator, { color: colors.textTertiary }]}> / </Text>}
-                        <TouchableOpacity
+                        <ScalePressable
                             onPress={crumb.onPress}
                             disabled={index === breadcrumbs.length - 1}
                         >
@@ -372,7 +370,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                             ]}>
                                 {crumb.label}
                             </Text>
-                        </TouchableOpacity>
+                        </ScalePressable>
                     </React.Fragment>
                 ))}
             </View>
@@ -489,29 +487,27 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                                 }
                             ]}
                         />
-                        <TouchableOpacity
+                        <ScalePressable
                             style={styles.tab}
                             onPress={navigateToRecent}
-                            activeOpacity={0.7}
                         >
                             <Text style={[
                                 styles.tabText,
                                 { color: colors.textSecondary },
                                 viewMode === 'recent' && { color: colors.textPrimary, fontWeight: '500' }
                             ]}>Recent</Text>
-                        </TouchableOpacity>
+                        </ScalePressable>
 
-                        <TouchableOpacity
+                        <ScalePressable
                             style={styles.tab}
                             onPress={navigateToBooks}
-                            activeOpacity={0.7}
                         >
                             <Text style={[
                                 styles.tabText,
                                 { color: colors.textSecondary },
                                 (viewMode === 'books' || viewMode === 'bookDetail') && { color: colors.textPrimary, fontWeight: '500' }
                             ]}>Books</Text>
-                        </TouchableOpacity>
+                        </ScalePressable>
                     </View>
                 </View>
             </View>
@@ -535,12 +531,12 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                         autoCorrect={false}
                     />
                     {searchQuery.length > 0 && (
-                        <TouchableOpacity
+                        <ScalePressable
                             style={styles.clearSearch}
                             onPress={() => setSearchQuery('')}
                         >
                             <Text style={[styles.clearSearchText, { color: colors.textSecondary }]}>×</Text>
-                        </TouchableOpacity>
+                        </ScalePressable>
                     )}
                 </View>
             )}
