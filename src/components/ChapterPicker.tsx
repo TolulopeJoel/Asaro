@@ -281,9 +281,6 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = ({
         <View style={styles.container}>
             <View style={styles.header}>
                 <Text style={[styles.bookTitle, { color: colors.text }]}>{selectedBook?.name}</Text>
-                <Text style={[styles.chapterCount, { color: colors.textTertiary }]}>
-                    {chapters.length} {chapters.length === 1 ? 'chapter' : 'chapters'}
-                </Text>
             </View>
 
             {selectedChapters && selectedChapters.start > 0 && (
@@ -297,13 +294,6 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = ({
                     </TouchableOpacity>
                 </View>
             )}
-
-            <Text style={[styles.instructionText, { color: colors.textTertiary }]}>
-                {allowRange
-                    ? 'Tap for single chapter, tap again to extend range'
-                    : 'Select a chapter'
-                }
-            </Text>
 
             <View style={styles.chaptersGrid}>
                 {chapters.map(renderChapterButton)}
@@ -350,12 +340,6 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         marginBottom: 4,
         letterSpacing: 0.2,
-    },
-    chapterCount: {
-        fontSize: 13,
-        fontWeight: '400',
-        letterSpacing: 0.5,
-        textTransform: 'uppercase',
     },
     selectionContainer: {
         flexDirection: 'row',
@@ -409,13 +393,6 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '500',
         letterSpacing: 0.3,
-    },
-    instructionText: {
-        fontSize: 13,
-        marginBottom: 20,
-        fontWeight: '400',
-        letterSpacing: 0.4,
-        lineHeight: 18,
     },
     chaptersGrid: {
         flexDirection: 'row',

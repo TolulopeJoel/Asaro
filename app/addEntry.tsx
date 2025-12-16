@@ -246,8 +246,8 @@ export default function MeditationSessionScreen() {
                 bookName: selectedBook.name,
                 chapterStart: selectedChapters.start,
                 chapterEnd: selectedChapters.end,
-                verseStart: verseRange?.start ? parseInt(verseRange.start) || undefined : undefined,
-                verseEnd: verseRange?.end ? parseInt(verseRange.end) || undefined : undefined,
+                verseStart: verseRange?.start || undefined,
+                verseEnd: verseRange?.end || undefined,
                 reflections: [
                     answers.reflection1,
                     answers.reflection2,
@@ -422,19 +422,11 @@ export default function MeditationSessionScreen() {
         <View style={[styles.stepContainer, { width: screenWidth }]}>
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.stepContent}>
-                    <Text style={[styles.stepDescription, { color: colors.textSecondary }]}>
-                        {isEditMode
-                            ? 'Edit your reflection below:'
-                            : 'A good way to get the most out of your Bible reading is to consider one or more of the following questions as you read:'
-                        }
-                    </Text>
-
-                    <View style={[styles.readingCard, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
-                        <Text style={[styles.readingLabel, { color: colors.accent }]}>
-                            {isEditMode ? 'Editing Entry' : 'Today\'s Reading'}
+                    {!isEditMode &&
+                        <Text style={[styles.stepDescription, { color: colors.textSecondary }]}>
+                            A good way to get the most out of your Bible reading is to consider one or more of the following questions as you read:
                         </Text>
-                        <Text style={[styles.readingText, { color: colors.textPrimary }]}>{selectionSummary}</Text>
-                    </View>
+                    }
 
                     <View style={styles.contentArea}>
                         <ReflectionForm
@@ -458,7 +450,7 @@ export default function MeditationSessionScreen() {
                             style={styles.discardButton}
                             onPress={handleDiscardDraft}
                         >
-                            <Text style={[styles.discardButtonText, { color: colors.textSecondary }]}>Discard draft 🚮</Text>
+                            <Text style={[styles.discardButtonText, { color: colors.textSecondary }]}>Discard Draft</Text>
                         </ScalePressable>
                     )}
 
@@ -475,10 +467,6 @@ export default function MeditationSessionScreen() {
                         <Text style={[styles.stepTitle, { color: colors.textPrimary }]}>Complete</Text>
                         <View style={[styles.titleUnderline, { backgroundColor: colors.border }]} />
                     </View>
-
-                    <Text style={[styles.stepDescription, { color: colors.textSecondary }]}>
-                        Your session has been preserved.
-                    </Text>
 
                     <View style={[styles.completionCard, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
                         <View style={styles.completionHeader}>
@@ -505,7 +493,7 @@ export default function MeditationSessionScreen() {
                             style={styles.secondaryButton}
                             onPress={handleStartOver}
                         >
-                            <Text style={[styles.secondaryButtonText, { color: colors.textSecondary }]}>Begin New Study</Text>
+                            <Text style={[styles.secondaryButtonText, { color: colors.textSecondary }]}>New Entry</Text>
                         </ScalePressable>
                     </View>
                 </View>
@@ -540,6 +528,9 @@ export default function MeditationSessionScreen() {
 
 const styles = StyleSheet.create({
     container: {
+        flex: 1,
+    },
+    stepContainer: {
         flex: 1,
     },
     loadingContainer: {
@@ -598,28 +589,12 @@ const styles = StyleSheet.create({
         flex: 1,
         minHeight: 200,
     },
-    readingCard: {
-        padding: 24,
-        marginBottom: 32,
-        borderRadius: 24, // Softened from 2
-        borderWidth: 1,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 12,
-        elevation: 2,
-    },
     readingLabel: {
         fontSize: 12,
         fontWeight: '600',
         letterSpacing: 1,
         textTransform: 'uppercase',
         marginBottom: 8,
-    },
-    readingText: {
-        fontSize: 24,
-        fontWeight: '400',
-        letterSpacing: -0.2,
-        lineHeight: 32,
     },
     navigationContainer: {
         flexDirection: 'row',
