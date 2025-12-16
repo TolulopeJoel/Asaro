@@ -3,11 +3,18 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, LayoutAnimation, Platform, SafeAreaView, ScrollView, StyleSheet, Text, UIManager, View, useWindowDimensions } from 'react-native';
 import { BookPicker } from '../src/components/BookPicker';
 import { ChapterPicker } from '../src/components/ChapterPicker';
 import { ReflectionAnswers, ReflectionForm } from '../src/components/ReflectionForm';
+import { ScalePressable } from '../src/components/ScalePressable';
 import { BibleBook, getBookByName } from '../src/data/bibleBooks';
+
+if (Platform.OS === 'android') {
+    if (UIManager.setLayoutAnimationEnabledExperimental) {
+        UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
+}
 
 interface ChapterRange {
     start: number;
@@ -177,11 +184,39 @@ export default function MeditationSessionScreen() {
 
     useAutoSave(reflectionAnswers, selectedBook, selectedChapters, verseRange, currentStep, isEditMode);
 
+    const scrollViewRef = useRef<ScrollView>(null);
+    const { width: screenWidth } = useWindowDimensions();
+
+    const steps: Step[] = ['book', 'chapter', 'reflection', 'summary'];
+
+    const scrollToStep = (step: Step) => {
+        const index = steps.indexOf(step);
+        if (index !== -1 && scrollViewRef.current) {
+            scrollViewRef.current.scrollTo({ x: index * screenWidth, animated: true });
+            setCurrentStep(step);
+        }
+    };
+
+    // Sync scroll with currentStep on mount/update (e.g. when loading draft)
+    useEffect(() => {
+        const index = steps.indexOf(currentStep);
+        if (index !== -1 && scrollViewRef.current) {
+            // Use a small timeout to ensure layout is ready
+            setTimeout(() => {
+                scrollViewRef.current?.scrollTo({ x: index * screenWidth, animated: false });
+            }, 100);
+        }
+    }, [isLoading]); // Only run when loading finishes to set initial position
+
+    const changeStep = (step: Step) => {
+        scrollToStep(step);
+    };
+
     const handleBookSelect = useCallback((book: BibleBook) => {
         setSelectedBook(book);
         setSelectedChapters(undefined);
         setVerseRange(null);
-        setCurrentStep('chapter');
+        changeStep('chapter');
     }, []);
 
     const handleChapterSelect = useCallback((chapters: ChapterRange) => {
@@ -197,7 +232,7 @@ export default function MeditationSessionScreen() {
             Alert.alert('Please select a chapter', 'You need to select at least one chapter to continue.');
             return;
         }
-        setCurrentStep('reflection');
+        changeStep('reflection');
     }, [selectedChapters]);
 
     const handleSaveReflection = useCallback(async (answers: ReflectionAnswers) => {
@@ -231,7 +266,7 @@ export default function MeditationSessionScreen() {
                 setCreatedEntryId(newEntryId);
                 await AsyncStorage.removeItem("reflection_draft");
                 setReflectionAnswers(answers);
-                setCurrentStep('summary');
+                changeStep('summary');
             }
         } catch (error) {
             console.error('Error saving entry:', error);
@@ -253,7 +288,7 @@ export default function MeditationSessionScreen() {
         setSelectedChapters(undefined);
         setVerseRange(null);
         setReflectionAnswers(undefined);
-        setCurrentStep('book');
+        changeStep('book');
     }, []);
 
     const handleDiscardDraft = useCallback(() => {
@@ -321,157 +356,162 @@ export default function MeditationSessionScreen() {
         );
     }
 
-    const renderCurrentStep = () => {
-        switch (currentStep) {
-            case 'book':
-                return (
-                    <View style={styles.stepContent}>
-                        <Text style={[styles.stepQuestion, { color: colors.textSecondary }]}>
-                            What book?
-                        </Text>
+    const renderBookStep = () => (
+        <View style={[styles.stepContainer, { width: screenWidth }]}>
+            <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                <View style={styles.stepContent}>
+                    <Text style={[styles.stepQuestion, { color: colors.textSecondary }]}>
+                        What book?
+                    </Text>
 
-                        <View style={styles.contentArea}>
-                            <BookPicker
-                                selectedBook={selectedBook}
-                                onBookSelect={handleBookSelect}
-                            />
-                        </View>
+                    <View style={styles.contentArea}>
+                        <BookPicker
+                            selectedBook={selectedBook}
+                            onBookSelect={handleBookSelect}
+                        />
                     </View>
-                );
+                </View>
+            </ScrollView>
+        </View>
+    );
 
-            case 'chapter':
-                return (
-                    <View style={styles.stepContent}>
-                        <Text style={[styles.stepQuestion, { color: colors.textSecondary }]}>
-                            What part did you read?
-                        </Text>
+    const renderChapterStep = () => (
+        <View style={[styles.stepContainer, { width: screenWidth }]}>
+            <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                <View style={styles.stepContent}>
+                    <Text style={[styles.stepQuestion, { color: colors.textSecondary }]}>
+                        What part did you read?
+                    </Text>
 
-                        <View style={styles.contentArea}>
-                            <ChapterPicker
-                                selectedBook={selectedBook}
-                                selectedChapters={selectedChapters}
-                                onChapterSelect={handleChapterSelect}
-                                onVerseRangeChange={handleVerseRangeChange}
-                                allowRange={true}
-                            />
-                        </View>
-
-                        <View style={styles.navigationContainer}>
-                            <TouchableOpacity
-                                style={[styles.backButton, { borderColor: colors.border }]}
-                                onPress={() => setCurrentStep('book')}
-                            >
-                                <Text style={[styles.backButtonText, { color: colors.textSecondary }]}>Back</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={[
-                                    styles.continueButton,
-                                    { backgroundColor: colors.accent },
-                                    (!selectedChapters || selectedChapters.start === 0) && styles.continueButtonDisabled
-                                ]}
-                                onPress={handleContinueToReflection}
-                                disabled={!selectedChapters || selectedChapters.start === 0}
-                            >
-                                <Text style={[styles.continueButtonText, { color: colors.buttonPrimaryText }]}>Continue</Text>
-                            </TouchableOpacity>
-                        </View>
+                    <View style={styles.contentArea}>
+                        <ChapterPicker
+                            selectedBook={selectedBook}
+                            selectedChapters={selectedChapters}
+                            onChapterSelect={handleChapterSelect}
+                            onVerseRangeChange={handleVerseRangeChange}
+                            allowRange={true}
+                        />
                     </View>
-                );
 
-            case 'reflection':
-                return (
-                    <View style={styles.stepContent}>
-                        <Text style={[styles.stepDescription, { color: colors.textSecondary }]}>
-                            {isEditMode
-                                ? 'Edit your reflection below:'
-                                : 'A good way to get the most out of your Bible reading is to consider one or more of the following questions as you read:'
-                            }
-                        </Text>
-
-                        <View style={[styles.readingCard, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
-                            <Text style={[styles.readingLabel, { color: colors.accent }]}>
-                                {isEditMode ? 'Editing Entry' : 'Today\'s Reading'}
-                            </Text>
-                            <Text style={[styles.readingText, { color: colors.textPrimary }]}>{selectionSummary}</Text>
-                        </View>
-
-                        <View style={styles.contentArea}>
-                            <ReflectionForm
-                                initialAnswers={reflectionAnswers}
-                                onAnswersChange={setReflectionAnswers}
-                                onSave={handleSaveReflection}
-                                disabled={false}
-                                saveButtonText={isEditMode ? 'Update It' : 'Save It'}
-                            />
-                        </View>
-
-                        <TouchableOpacity
-                            style={styles.subtleBackButton}
-                            onPress={() => setCurrentStep('chapter')}
+                    <View style={styles.navigationContainer}>
+                        <ScalePressable
+                            style={[styles.backButton, { borderColor: colors.border }]}
+                            onPress={() => changeStep('book')}
                         >
-                            <Text style={[styles.subtleBackButtonText, { color: colors.textTertiary }]}>← Return to chapter selection</Text>
-                        </TouchableOpacity>
+                            <Text style={[styles.backButtonText, { color: colors.textSecondary }]}>Back</Text>
+                        </ScalePressable>
 
-                        {!isEditMode && (reflectionAnswers) && (
-                            <TouchableOpacity
-                                style={styles.discardButton}
-                                onPress={handleDiscardDraft}
-                            >
-                                <Text style={[styles.discardButtonText, { color: colors.textSecondary }]}>Discard draft 🚮</Text>
-                            </TouchableOpacity>
-                        )}
-
+                        <ScalePressable
+                            style={[
+                                styles.continueButton,
+                                { backgroundColor: colors.accent },
+                                (!selectedChapters || selectedChapters.start === 0) && styles.continueButtonDisabled
+                            ]}
+                            onPress={handleContinueToReflection}
+                            disabled={!selectedChapters || selectedChapters.start === 0}
+                        >
+                            <Text style={[styles.continueButtonText, { color: colors.buttonPrimaryText }]}>Continue</Text>
+                        </ScalePressable>
                     </View>
-                );
+                </View>
+            </ScrollView>
+        </View>
+    );
 
-            case 'summary':
-                return (
-                    <View style={styles.stepContent}>
-                        <View style={styles.titleContainer}>
-                            <Text style={[styles.stepTitle, { color: colors.textPrimary }]}>Complete</Text>
-                            <View style={[styles.titleUnderline, { backgroundColor: colors.border }]} />
-                        </View>
+    const renderReflectionStep = () => (
+        <View style={[styles.stepContainer, { width: screenWidth }]}>
+            <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                <View style={styles.stepContent}>
+                    <Text style={[styles.stepDescription, { color: colors.textSecondary }]}>
+                        {isEditMode
+                            ? 'Edit your reflection below:'
+                            : 'A good way to get the most out of your Bible reading is to consider one or more of the following questions as you read:'
+                        }
+                    </Text>
 
-                        <Text style={[styles.stepDescription, { color: colors.textSecondary }]}>
-                            Your session has been preserved.
+                    <View style={[styles.readingCard, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
+                        <Text style={[styles.readingLabel, { color: colors.accent }]}>
+                            {isEditMode ? 'Editing Entry' : 'Today\'s Reading'}
                         </Text>
+                        <Text style={[styles.readingText, { color: colors.textPrimary }]}>{selectionSummary}</Text>
+                    </View>
 
-                        <View style={[styles.completionCard, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
-                            <View style={styles.completionHeader}>
-                                <View style={[styles.completionDot, { backgroundColor: colors.accent }]} />
-                                <Text style={[styles.completionTitle, { color: colors.accent }]}>Study Record</Text>
-                            </View>
-                            <View style={styles.completionDetails}>
-                                <Text style={[styles.completionText, { color: colors.textPrimary }]}>{selectionSummary}</Text>
-                                <Text style={[styles.completionDate, { color: colors.textSecondary }]}>{new Date().toLocaleDateString('en-US', {
-                                    weekday: 'long',
-                                    year: 'numeric',
-                                    month: 'long',
-                                    day: 'numeric'
-                                })}</Text>
-                            </View>
+                    <View style={styles.contentArea}>
+                        <ReflectionForm
+                            initialAnswers={reflectionAnswers}
+                            onAnswersChange={setReflectionAnswers}
+                            onSave={handleSaveReflection}
+                            disabled={false}
+                            saveButtonText={isEditMode ? 'Update It' : 'Save It'}
+                        />
+                    </View>
+
+                    <ScalePressable
+                        style={styles.subtleBackButton}
+                        onPress={() => changeStep('chapter')}
+                    >
+                        <Text style={[styles.subtleBackButtonText, { color: colors.textTertiary }]}>← Return to chapter selection</Text>
+                    </ScalePressable>
+
+                    {!isEditMode && (reflectionAnswers) && (
+                        <ScalePressable
+                            style={styles.discardButton}
+                            onPress={handleDiscardDraft}
+                        >
+                            <Text style={[styles.discardButtonText, { color: colors.textSecondary }]}>Discard draft 🚮</Text>
+                        </ScalePressable>
+                    )}
+
+                </View>
+            </ScrollView>
+        </View>
+    );
+
+    const renderSummaryStep = () => (
+        <View style={[styles.stepContainer, { width: screenWidth }]}>
+            <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                <View style={styles.stepContent}>
+                    <View style={styles.titleContainer}>
+                        <Text style={[styles.stepTitle, { color: colors.textPrimary }]}>Complete</Text>
+                        <View style={[styles.titleUnderline, { backgroundColor: colors.border }]} />
+                    </View>
+
+                    <Text style={[styles.stepDescription, { color: colors.textSecondary }]}>
+                        Your session has been preserved.
+                    </Text>
+
+                    <View style={[styles.completionCard, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
+                        <View style={styles.completionHeader}>
+                            <View style={[styles.completionDot, { backgroundColor: colors.accent }]} />
+                            <Text style={[styles.completionTitle, { color: colors.accent }]}>Study Record</Text>
                         </View>
-
-                        <View style={styles.contentArea}>
-                            <TouchableOpacity style={[styles.primaryButton, { backgroundColor: colors.accent }]} onPress={handleDone}>
-                                <Text style={[styles.primaryButtonText, { color: colors.buttonPrimaryText }]}>Done</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={styles.secondaryButton}
-                                onPress={handleStartOver}
-                            >
-                                <Text style={[styles.secondaryButtonText, { color: colors.textSecondary }]}>Begin New Study</Text>
-                            </TouchableOpacity>
+                        <View style={styles.completionDetails}>
+                            <Text style={[styles.completionText, { color: colors.textPrimary }]}>{selectionSummary}</Text>
+                            <Text style={[styles.completionDate, { color: colors.textSecondary }]}>{new Date().toLocaleDateString('en-US', {
+                                weekday: 'long',
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                            })}</Text>
                         </View>
                     </View>
-                );
 
-            default:
-                return null;
-        }
-    };
+                    <View style={styles.contentArea}>
+                        <ScalePressable style={[styles.primaryButton, { backgroundColor: colors.accent }]} onPress={handleDone}>
+                            <Text style={[styles.primaryButtonText, { color: colors.buttonPrimaryText }]}>Done</Text>
+                        </ScalePressable>
+
+                        <ScalePressable
+                            style={styles.secondaryButton}
+                            onPress={handleStartOver}
+                        >
+                            <Text style={[styles.secondaryButtonText, { color: colors.textSecondary }]}>Begin New Study</Text>
+                        </ScalePressable>
+                    </View>
+                </View>
+            </ScrollView>
+        </View>
+    );
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -480,12 +520,18 @@ export default function MeditationSessionScreen() {
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             >
                 <ScrollView
-                    style={styles.scrollView}
-                    contentContainerStyle={styles.scrollContent}
-                    showsVerticalScrollIndicator={false}
+                    ref={scrollViewRef}
+                    horizontal
+                    pagingEnabled
+                    scrollEnabled={false}
+                    showsHorizontalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
+                    style={{ flex: 1 }}
                 >
-                    {renderCurrentStep()}
+                    {renderBookStep()}
+                    {renderChapterStep()}
+                    {renderReflectionStep()}
+                    {renderSummaryStep()}
                 </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>

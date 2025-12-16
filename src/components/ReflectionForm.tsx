@@ -1,12 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
+  Animated,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
+import { ScalePressable } from './ScalePressable';
 import { TextArea } from './TextArea';
 
 export interface ReflectionAnswers {
@@ -41,11 +42,30 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
     notes: initialAnswers?.notes || '',
   });
 
+  // Animation values
+  const saveButtonScale = useRef(new Animated.Value(0)).current;
+  const saveButtonOpacity = useRef(new Animated.Value(0)).current;
+  const questionAnims = useRef(REFLECTION_QUESTIONS.map(() => new Animated.Value(0))).current;
+
   useEffect(() => {
     if (onAnswersChange) {
       onAnswersChange(answers);
     }
   }, [answers, onAnswersChange]);
+
+  // Staggered entrance animation for questions
+  useEffect(() => {
+    const animations = questionAnims.map((anim, index) => {
+      return Animated.timing(anim, {
+        toValue: 1,
+        duration: 400,
+        delay: index * 100,
+        useNativeDriver: true,
+      });
+    });
+
+    Animated.stagger(100, animations).start();
+  }, []);
 
   const updateAnswer = (questionId: keyof ReflectionAnswers, value: string) => {
     setAnswers(prev => ({
@@ -55,6 +75,23 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
   };
 
   const hasContent = Object.values(answers).some(answer => answer.trim().length > 0);
+
+  // Animate save button based on content presence
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(saveButtonScale, {
+        toValue: hasContent ? 1 : 0,
+        useNativeDriver: true,
+        friction: 6,
+        tension: 50,
+      }),
+      Animated.timing(saveButtonOpacity, {
+        toValue: hasContent ? 1 : 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [hasContent]);
 
   const handleSave = () => {
     if (!hasContent) return;
@@ -93,9 +130,26 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
   const renderQuestion = (questionData: ReflectionQuestion, index: number) => {
     const { id, question, placeholder } = questionData;
     const value = answers[id];
+    const anim = questionAnims[index];
 
     return (
-      <View key={id} style={styles.questionContainer}>
+      <Animated.View
+        key={id}
+        style={[
+          styles.questionContainer,
+          {
+            opacity: anim,
+            transform: [
+              {
+                translateY: anim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [20, 0],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
         <View style={styles.questionHeader}>
           <Text style={[styles.questionNumber, { backgroundColor: colors.badge, color: colors.primary }]}>{index + 1}</Text>
           <View style={styles.questionTitleContainer}>
@@ -111,7 +165,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
           disabled={disabled}
           isAnswered={value.trim().length > 0}
         />
-      </View>
+      </Animated.View>
     );
   };
 
@@ -140,21 +194,28 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
 
       {!disabled && (
         <View style={styles.actionsContainer}>
-          <TouchableOpacity
+          <ScalePressable
             style={[styles.clearButton, { borderColor: colors.border }]}
             onPress={handleClear}
           >
             <Text style={[styles.clearButtonText, { color: colors.textSecondary }]}>Start Over</Text>
-          </TouchableOpacity>
+          </ScalePressable>
 
-          {hasContent && (
-            <TouchableOpacity
+          <Animated.View
+            style={{
+              flex: 1,
+              transform: [{ scale: saveButtonScale }],
+              opacity: saveButtonOpacity,
+            }}
+          >
+            <ScalePressable
               style={[styles.saveButton, { backgroundColor: colors.primary }]}
               onPress={handleSave}
+              disabled={!hasContent}
             >
               <Text style={[styles.saveButtonText, { color: colors.buttonPrimaryText }]}>{saveButtonText}</Text>
-            </TouchableOpacity>
-          )}
+            </ScalePressable>
+          </Animated.View>
         </View>
       )}
     </View>
@@ -265,7 +326,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   saveButton: {
-    flex: 1,
+    width: '100%', // Ensure it fills the Animated.View
     paddingVertical: 18,
     borderRadius: 16, // Softened from 2
     alignItems: 'center',
