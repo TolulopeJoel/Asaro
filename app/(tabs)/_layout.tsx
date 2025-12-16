@@ -30,11 +30,12 @@ export default function TabLayout() {
 
     return (
         <View style={styles.container}>
-            {/* Swipeable Content */}
+            {/* Tab Content */}
             <PagerView
                 ref={pagerRef}
                 style={styles.pager}
                 initialPage={0}
+                scrollEnabled={false}
                 onPageSelected={(e) => setCurrentPage(e.nativeEvent.position)}
             >
                 {tabs.map((tab, index) => (
