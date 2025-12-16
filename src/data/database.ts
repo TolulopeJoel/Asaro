@@ -553,3 +553,76 @@ export const getFirstEntryDate = async (): Promise<Date | null> => {
     if (!result?.created_at) return null;
     return new Date(result.created_at);
 };
+
+/**
+ * Get a "Flashback" entry to review
+ * Priority:
+ * 1. Entry from exactly 1 year ago
+ * 2. Entry from exactly 1 month ago
+ * 3. Random entry older than 30 days (excluding recently shown)
+ * @param excludeIds - Array of entry IDs to exclude (recently shown in last 30 days)
+ */
+export const getFlashbackEntry = async (excludeIds: number[] = []): Promise<{ entry: JournalEntry, type: 'year' | 'month' | 'random' } | null> => {
+    const database = await getDb();
+
+    // 1. Check for 1 year ago
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    const oneYearStr = formatDateToLocalString(oneYearAgo);
+
+    const yearEntry = await database.getFirstAsync<JournalEntry>(`
+        SELECT *, datetime(created_at, 'localtime') as created_at
+        FROM journal_entries
+        WHERE DATE(created_at, 'localtime') = ?
+        ORDER BY RANDOM() LIMIT 1
+    `, [oneYearStr]);
+
+    if (yearEntry) return { entry: yearEntry, type: 'year' };
+
+    // 2. Check for 1 month ago
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+    const oneMonthStr = formatDateToLocalString(oneMonthAgo);
+
+    const monthEntry = await database.getFirstAsync<JournalEntry>(`
+        SELECT *, datetime(created_at, 'localtime') as created_at
+        FROM journal_entries
+        WHERE DATE(created_at, 'localtime') = ?
+        ORDER BY RANDOM() LIMIT 1
+    `, [oneMonthStr]);
+
+    if (monthEntry) return { entry: monthEntry, type: 'month' };
+
+    // 3. Random entry older than 30 days (excluding recently shown)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const thirtyDaysStr = formatDateToLocalString(thirtyDaysAgo);
+
+    let randomEntry: JournalEntry | null = null;
+
+    // First try to get entries excluding the recently shown ones
+    if (excludeIds.length > 0) {
+        const placeholders = excludeIds.map(() => '?').join(',');
+        randomEntry = await database.getFirstAsync<JournalEntry>(`
+            SELECT *, datetime(created_at, 'localtime') as created_at
+            FROM journal_entries
+            WHERE DATE(created_at, 'localtime') <= ?
+            AND id NOT IN (${placeholders})
+            ORDER BY RANDOM() LIMIT 1
+        `, [thirtyDaysStr, ...excludeIds]);
+
+        if (randomEntry) return { entry: randomEntry, type: 'random' };
+    }
+
+    // If all entries have been shown or no excludeIds, just get any random old entry
+    randomEntry = await database.getFirstAsync<JournalEntry>(`
+        SELECT *, datetime(created_at, 'localtime') as created_at
+        FROM journal_entries
+        WHERE DATE(created_at, 'localtime') <= ?
+        ORDER BY RANDOM() LIMIT 1
+    `, [thirtyDaysStr]);
+
+    if (randomEntry) return { entry: randomEntry, type: 'random' };
+
+    return null;
+};

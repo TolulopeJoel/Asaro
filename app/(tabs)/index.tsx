@@ -1,12 +1,14 @@
+import { Flashback } from '@/src/components/Flashback';
 import { WeeklyStreak } from '@/src/components/WeeklyStreak';
-import { getComebackDaysCount, getMissedDaysCount, getTotalEntryCount } from "@/src/data/database";
+import { getComebackDaysCount, getMissedDaysCount, getTotalEntryCount, JournalEntry } from "@/src/data/database";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Link, useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Animated, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { JournalEntryDetail } from '@/src/components/JournalEntryDetail';
 
 const DRAFT_KEY = "reflection_draft";
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -186,9 +188,14 @@ const DraftBar = React.memo(() => {
     );
 });
 
+
+
 export default function Index() {
     const [draftExists, setDraftExists] = useState(false);
+    const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
+    const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
     const { colors } = useTheme();
+    const router = useRouter();
 
     const checkDraft = useCallback(async () => {
         const draft = await AsyncStorage.getItem(DRAFT_KEY);
@@ -211,10 +218,44 @@ export default function Index() {
                 <QuickStats />
                 <UpdateCard />
                 <WeeklyStreak />
+                <Flashback
+                    onEntryPress={(entry) => {
+                        setSelectedEntry(entry);
+                        setIsDetailModalVisible(true);
+                    }}
+                />
             </ScrollView>
 
             {!draftExists && <FloatingActionButton />}
             {draftExists && <DraftBar />}
+
+            {/* Detail Modal */}
+            <Modal
+                visible={isDetailModalVisible}
+                animationType="slide"
+                statusBarTranslucent={true}
+                presentationStyle="pageSheet"
+                onRequestClose={() => setIsDetailModalVisible(false)}
+            >
+                <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+                    {selectedEntry && (
+                        <JournalEntryDetail
+                            entry={selectedEntry}
+                            onEdit={(entry) => {
+                                setIsDetailModalVisible(false);
+                                router.push({
+                                    pathname: '/addEntry',
+                                    params: { entryId: entry.id!.toString() }
+                                });
+                            }}
+                            onDelete={() => {
+                                setIsDetailModalVisible(false);
+                            }}
+                            onClose={() => setIsDetailModalVisible(false)}
+                        />
+                    )}
+                </SafeAreaView>
+            </Modal>
         </SafeAreaView>
     );
 }
