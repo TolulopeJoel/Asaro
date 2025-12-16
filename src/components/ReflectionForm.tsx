@@ -54,17 +54,10 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
     }));
   };
 
-  const handleSave = () => {
-    const hasContent = Object.values(answers).some(answer => answer.trim().length > 0);
+  const hasContent = Object.values(answers).some(answer => answer.trim().length > 0);
 
-    if (!hasContent) {
-      Alert.alert(
-        'Nothing yet?',
-        'Jot down even a quick thought before saving.',
-        [{ text: 'Keep Writing' }]
-      );
-      return;
-    }
+  const handleSave = () => {
+    if (!hasContent) return;
 
     if (onSave) {
       onSave(answers);
@@ -72,8 +65,6 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
   };
 
   const handleClear = () => {
-    const hasContent = Object.values(answers).some(answer => answer.trim().length > 0);
-
     if (!hasContent) return;
 
     Alert.alert(
@@ -156,12 +147,14 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
             <Text style={[styles.clearButtonText, { color: colors.textSecondary }]}>Start Over</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.saveButton, { backgroundColor: colors.primary }]}
-            onPress={handleSave}
-          >
-            <Text style={[styles.saveButtonText, { color: colors.buttonPrimaryText }]}>{saveButtonText}</Text>
-          </TouchableOpacity>
+          {hasContent && (
+            <TouchableOpacity
+              style={[styles.saveButton, { backgroundColor: colors.primary }]}
+              onPress={handleSave}
+            >
+              <Text style={[styles.saveButtonText, { color: colors.buttonPrimaryText }]}>{saveButtonText}</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
     </View>

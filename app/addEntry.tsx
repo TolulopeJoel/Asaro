@@ -603,11 +603,10 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
         shadowRadius: 8,
-        elevation: 3,
     },
     continueButtonDisabled: {
         shadowOpacity: 0,
-        elevation: 0,
+        display: 'none',
     },
     continueButtonText: {
         fontSize: 16,
@@ -646,7 +645,6 @@ const styles = StyleSheet.create({
         },
         shadowOpacity: 0.08,
         shadowRadius: 12,
-        elevation: 2,
     },
     completionHeader: {
         flexDirection: 'row',
