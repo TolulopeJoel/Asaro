@@ -5,7 +5,31 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 
-import { ThemeProvider } from '@/src/theme/ThemeContext';
+import { ThemeProvider, useTheme } from '@/src/theme/ThemeContext';
+
+function StackNavigator() {
+  const { colors } = useTheme();
+
+  return (
+    <Stack
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: colors.background,
+        },
+        headerTintColor: colors.textPrimary,
+        headerTitleStyle: {
+          color: colors.textPrimary,
+          fontWeight: '600',
+        },
+        headerShadowVisible: false,
+      }}
+    >
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="addEntry" options={{ title: 'Kọ silẹ' }} />
+      <Stack.Screen name="stats" options={{ title: 'Stats' }} />
+    </Stack>
+  );
+}
 
 export default function RootLayout() {
   const [dbInitialized, setDbInitialized] = useState(false);
@@ -40,10 +64,7 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="addEntry" options={{ title: 'Kọ silẹ' }} />
-      </Stack>
+      <StackNavigator />
       <StatusBar hidden={true} />
     </ThemeProvider>
   );
