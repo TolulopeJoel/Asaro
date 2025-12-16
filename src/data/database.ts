@@ -198,9 +198,22 @@ export const deleteJournalEntry = async (id: number) => {
     await database.runAsync(`DELETE FROM journal_entries WHERE id = ?`, [id]);
 };
 
-export const getTotalEntryCount = async (): Promise<number> => {
+export const getTotalEntryCount = async (month?: string): Promise<number> => {
     const database = await getDb();
-    const result = await database.getFirstAsync(`SELECT COUNT(*) as count FROM journal_entries`) as any;
+
+    if (month) {
+        const result = await database.getFirstAsync(`
+            SELECT COUNT(DISTINCT DATE(created_at, 'localtime')) as count 
+            FROM journal_entries 
+            WHERE strftime('%Y-%m', created_at, 'localtime') = ?
+        `, [month]) as any;
+        return result?.count ?? 0;
+    }
+
+    const result = await database.getFirstAsync(`
+        SELECT COUNT(DISTINCT DATE(created_at, 'localtime')) as count 
+        FROM journal_entries
+    `) as any;
     return result?.count ?? 0;
 };
 

@@ -58,7 +58,7 @@ const QuickStats = React.memo(() => {
     const loadStats = useCallback(async () => {
         const currentMonth = new Date().toISOString().slice(0, 7);
         const [totalEntries, missedDays, comebackDays] = await Promise.all([
-            getTotalEntryCount(),
+            getTotalEntryCount(currentMonth),
             getMissedDaysCount(currentMonth),
             getComebackDaysCount(),
         ]);
@@ -216,7 +216,7 @@ export default function Index() {
                 showsVerticalScrollIndicator={false}
             >
                 <QuickStats />
-                <UpdateCard />
+                {/* <UpdateCard /> */}
                 <WeeklyStreak />
                 <Flashback
                     onEntryPress={(entry) => {
