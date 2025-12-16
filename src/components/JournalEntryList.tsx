@@ -1,7 +1,7 @@
 import { useTheme } from '@/src/theme/ThemeContext';
 import { getLocalMidnight, isSameDay } from '@/src/utils/dateUtils';
 import { useFocusEffect } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     Animated,
     LayoutAnimation,
@@ -20,7 +20,6 @@ import {
     getJournalEntries,
     searchEntries
 } from '../data/database';
-import { AnimatedListItem } from './AnimatedListItem';
 import { ScalePressable } from './ScalePressable';
 
 // Enable LayoutAnimation on Android
@@ -50,6 +49,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
     const [filteredEntries, setFilteredEntries] = useState<JournalEntry[]>([]);
     const [availableBooks, setAvailableBooks] = useState<BibleBook[]>([]);
     const [tabAnimation] = useState(new Animated.Value(0));
+    const [tabContainerWidth, setTabContainerWidth] = useState(0);
 
     useEffect(() => {
         loadEntries();
@@ -75,10 +75,23 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         }
     }, [refreshTrigger, viewMode, selectedBook]);
 
-    // Trigger layout animation when entries change
+    // Trigger layout animation only when entries count changes (not on every render)
+    const prevEntriesLength = useRef(0);
+    const prevFilteredLength = useRef(0);
+    const prevBookEntriesLength = useRef(0);
+    
     useEffect(() => {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    }, [entries, filteredEntries, bookEntries]);
+        const entriesChanged = entries.length !== prevEntriesLength.current;
+        const filteredChanged = filteredEntries.length !== prevFilteredLength.current;
+        const bookEntriesChanged = bookEntries.length !== prevBookEntriesLength.current;
+        
+        if (entriesChanged || filteredChanged || bookEntriesChanged) {
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            prevEntriesLength.current = entries.length;
+            prevFilteredLength.current = filteredEntries.length;
+            prevBookEntriesLength.current = bookEntries.length;
+        }
+    }, [entries.length, filteredEntries.length, bookEntries.length]);
 
     useEffect(() => {
         if (viewMode === 'recent') {
@@ -93,14 +106,21 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
     }, [selectedBook, searchQuery]);
 
     useEffect(() => {
-        const toValue = viewMode === 'recent' ? 0 : 1;
-        Animated.spring(tabAnimation, {
+        if (tabContainerWidth === 0) return; // Wait for layout
+        
+        const toValue = viewMode === 'recent' ? 0 : tabContainerWidth * 0.5; // 50% of container width
+        const animation = Animated.spring(tabAnimation, {
             toValue,
-            useNativeDriver: false,
+            useNativeDriver: true,
             tension: 100,
             friction: 8,
-        }).start();
-    }, [viewMode]);
+        });
+        animation.start();
+        
+        return () => {
+            animation.stop();
+        };
+    }, [viewMode, tabAnimation, tabContainerWidth]);
 
     const loadEntries = async () => {
         try {
@@ -277,7 +297,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
     };
 
     const renderEntryCard = (entry: JournalEntry, index: number = 0) => (
-        <AnimatedListItem key={entry.id} index={index}>
+        <View key={entry.id}>
             <ScalePressable
                 style={[styles.entryCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
                 onPress={() => onEntryPress(entry)}
@@ -307,7 +327,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                     </View>
                 </View>
             </ScalePressable>
-        </AnimatedListItem>
+        </View>
     );
 
     const renderDateGroup = (title: string, entries: JournalEntry[], startIndex: number = 0) => {
@@ -474,16 +494,21 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
 
                 {/* Tab Navigation */}
                 <View style={styles.tabContainer}>
-                    <View style={styles.tabBackground}>
+                    <View 
+                        style={styles.tabBackground}
+                        onLayout={(e) => {
+                            const { width } = e.nativeEvent.layout;
+                            if (width > 0 && tabContainerWidth !== width) {
+                                setTabContainerWidth(width);
+                            }
+                        }}
+                    >
                         <Animated.View
                             style={[
                                 styles.tabIndicator,
                                 {
                                     backgroundColor: colors.accent,
-                                    left: tabAnimation.interpolate({
-                                        inputRange: [0, 1],
-                                        outputRange: ['2%', '50%'],
-                                    }),
+                                    transform: [{ translateX: tabAnimation }],
                                 }
                             ]}
                         />
@@ -580,6 +605,7 @@ const styles = StyleSheet.create({
     tabIndicator: {
         position: 'absolute',
         bottom: 0,
+        left: 0,
         width: '50%',
         height: 2,
         borderRadius: 1,

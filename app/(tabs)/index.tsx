@@ -11,7 +11,6 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { JournalEntryDetail } from '@/src/components/JournalEntryDetail';
 import { WavyAddIcon } from '@/src/components/WavyAddIcon';
 import { AnimatedModal } from '@/src/components/AnimatedModal';
-import { AnimatedListItem } from '@/src/components/AnimatedListItem';
 import { ScalePressable } from '@/src/components/ScalePressable';
 
 const DRAFT_KEY = "reflection_draft";
@@ -97,14 +96,19 @@ const UpdateCard = React.memo(() => {
     const { colors } = useTheme();
 
     useEffect(() => {
-        Animated.spring(scaleAnim, {
+        const animation = Animated.spring(scaleAnim, {
             toValue: 1,
             tension: 40,
             friction: 7,
             delay: 200,
             useNativeDriver: true,
-        }).start();
-    }, []);
+        });
+        animation.start();
+
+        return () => {
+            animation.stop();
+        };
+    }, [scaleAnim]);
 
     return (
         <Animated.View style={[styles.updateCardWrapper, { transform: [{ scale: scaleAnim }] }]}>
@@ -157,13 +161,18 @@ const DraftBar = React.memo(() => {
     const bottomPosition = 60 + insets.bottom + 20;
 
     useEffect(() => {
-        Animated.spring(slideAnim, {
+        const animation = Animated.spring(slideAnim, {
             toValue: 0,
             tension: 50,
             friction: 8,
             useNativeDriver: true,
-        }).start();
-    }, []);
+        });
+        animation.start();
+
+        return () => {
+            animation.stop();
+        };
+    }, [slideAnim]);
 
     return (
         <Animated.View
@@ -225,23 +234,15 @@ export default function Index() {
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
-                <AnimatedListItem index={0}>
-                    <QuickStats />
-                </AnimatedListItem>
-                <AnimatedListItem index={1}>
-                    <UpdateCard />
-                </AnimatedListItem>
-                <AnimatedListItem index={2}>
-                    <WeeklyStreak />
-                </AnimatedListItem>
-                <AnimatedListItem index={3}>
-                    <Flashback
-                        onEntryPress={(entry) => {
-                            setSelectedEntry(entry);
-                            setIsDetailModalVisible(true);
-                        }}
-                    />
-                </AnimatedListItem>
+                <QuickStats />
+                <UpdateCard />
+                <WeeklyStreak />
+                <Flashback
+                    onEntryPress={(entry) => {
+                        setSelectedEntry(entry);
+                        setIsDetailModalVisible(true);
+                    }}
+                />
             </ScrollView>
 
             {!draftExists && <FloatingActionButton />}

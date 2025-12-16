@@ -30,9 +30,11 @@ export const AnimatedModal: React.FC<AnimatedModalProps> = ({
     const backdropOpacity = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
+        let animation: Animated.CompositeAnimation | null = null;
+        
         if (visible) {
             // Animate in
-            Animated.parallel([
+            animation = Animated.parallel([
                 Animated.timing(translateY, {
                     toValue: 0,
                     duration: MODAL_DURATION,
@@ -44,10 +46,11 @@ export const AnimatedModal: React.FC<AnimatedModalProps> = ({
                     duration: MODAL_DURATION,
                     useNativeDriver: true,
                 }),
-            ]).start();
+            ]);
+            animation.start();
         } else {
             // Animate out
-            Animated.parallel([
+            animation = Animated.parallel([
                 Animated.timing(translateY, {
                     toValue: screenHeight,
                     duration: MODAL_DURATION,
@@ -59,8 +62,15 @@ export const AnimatedModal: React.FC<AnimatedModalProps> = ({
                     duration: MODAL_DURATION,
                     useNativeDriver: true,
                 }),
-            ]).start();
+            ]);
+            animation.start();
         }
+        
+        return () => {
+            if (animation) {
+                animation.stop();
+            }
+        };
     }, [visible, screenHeight, translateY, backdropOpacity]);
 
     return (

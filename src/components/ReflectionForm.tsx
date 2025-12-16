@@ -64,8 +64,14 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
       });
     });
 
-    Animated.stagger(100, animations).start();
-  }, []);
+    const staggerAnimation = Animated.stagger(100, animations);
+    staggerAnimation.start();
+    
+    return () => {
+      staggerAnimation.stop();
+      animations.forEach(anim => anim.stop());
+    };
+  }, [questionAnims]);
 
   const updateAnswer = (questionId: keyof ReflectionAnswers, value: string) => {
     setAnswers(prev => ({
@@ -78,7 +84,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
 
   // Animate save button based on content presence
   useEffect(() => {
-    Animated.parallel([
+    const animation = Animated.parallel([
       Animated.spring(saveButtonScale, {
         toValue: hasContent ? 1 : 0,
         useNativeDriver: true,
@@ -90,8 +96,13 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
         duration: 200,
         useNativeDriver: true,
       }),
-    ]).start();
-  }, [hasContent]);
+    ]);
+    animation.start();
+    
+    return () => {
+      animation.stop();
+    };
+  }, [hasContent, saveButtonScale, saveButtonOpacity]);
 
   const handleSave = () => {
     if (!hasContent) return;

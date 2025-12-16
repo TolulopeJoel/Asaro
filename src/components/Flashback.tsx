@@ -71,15 +71,20 @@ export const Flashback: React.FC<FlashbackProps> = ({ onEntryPress }) => {
 
     useEffect(() => {
         if (flashbackData) {
-            Animated.spring(scaleAnim, {
+            const animation = Animated.spring(scaleAnim, {
                 toValue: 1,
                 tension: 40,
                 friction: 7,
                 delay: 300,
                 useNativeDriver: true,
-            }).start();
+            });
+            animation.start();
+            
+            return () => {
+                animation.stop();
+            };
         }
-    }, [flashbackData]);
+    }, [flashbackData, scaleAnim]);
 
     const getTitle = () => {
         if (!flashbackData) return '';
