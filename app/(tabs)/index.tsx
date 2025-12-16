@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { JournalEntryDetail } from '@/src/components/JournalEntryDetail';
 import { WavyAddIcon } from '@/src/components/WavyAddIcon';
 import { AnimatedModal } from '@/src/components/AnimatedModal';
+import { AnimatedListItem } from '@/src/components/AnimatedListItem';
 
 const DRAFT_KEY = "reflection_draft";
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -217,15 +218,23 @@ export default function Index() {
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
-                <QuickStats />
-                <UpdateCard />
-                <WeeklyStreak />
-                <Flashback
-                    onEntryPress={(entry) => {
-                        setSelectedEntry(entry);
-                        setIsDetailModalVisible(true);
-                    }}
-                />
+                <AnimatedListItem index={0}>
+                    <QuickStats />
+                </AnimatedListItem>
+                <AnimatedListItem index={1}>
+                    <UpdateCard />
+                </AnimatedListItem>
+                <AnimatedListItem index={2}>
+                    <WeeklyStreak />
+                </AnimatedListItem>
+                <AnimatedListItem index={3}>
+                    <Flashback
+                        onEntryPress={(entry) => {
+                            setSelectedEntry(entry);
+                            setIsDetailModalVisible(true);
+                        }}
+                    />
+                </AnimatedListItem>
             </ScrollView>
 
             {!draftExists && <FloatingActionButton />}

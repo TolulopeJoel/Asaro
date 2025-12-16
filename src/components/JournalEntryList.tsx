@@ -4,11 +4,14 @@ import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     Animated,
+    LayoutAnimation,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
+    UIManager,
     View,
 } from 'react-native';
 import { ALL_BIBLE_BOOKS, BibleBook } from '../data/bibleBooks';
@@ -18,6 +21,12 @@ import {
     getJournalEntries,
     searchEntries
 } from '../data/database';
+import { AnimatedListItem } from './AnimatedListItem';
+
+// Enable LayoutAnimation on Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 type ViewMode = 'recent' | 'books' | 'bookDetail';
 
@@ -65,6 +74,11 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
             }
         }
     }, [refreshTrigger, viewMode, selectedBook]);
+
+    // Trigger layout animation when entries change
+    useEffect(() => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    }, [entries, filteredEntries, bookEntries]);
 
     useEffect(() => {
         if (viewMode === 'recent') {
@@ -262,47 +276,48 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         return groups;
     };
 
-    const renderEntryCard = (entry: JournalEntry) => (
-        <TouchableOpacity
-            key={entry.id}
-            style={[styles.entryCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
-            activeOpacity={0.7}
-            onPress={() => onEntryPress(entry)}
-        >
-            <View style={styles.entryHeader}>
-                <Text style={[styles.entryDate, { color: colors.textTertiary }]}>{formatDate(entry.created_at)}</Text>
-                {entry.book_name && (
-                    <Text style={[styles.entryScripture, { color: colors.textSecondary }]}>{entry.book_name} {getChapterText(entry)}</Text>
-                )}
-            </View>
-            <Text style={[styles.entryPreview, { color: colors.textPrimary }]}>
-                {getPreviewText(entry)}
-            </Text>
-
-            <View style={styles.entryFooter}>
-                <View style={styles.reflectionIndicator}>
-                    {Array.from({ length: 4 }).map((_, index) => (
-                        <View
-                            key={index}
-                            style={[
-                                styles.reflectionDot,
-                                { backgroundColor: colors.border },
-                                index < getAnswerCount(entry) && [styles.reflectionDotActive, { backgroundColor: colors.accentSecondary }]
-                            ]}
-                        />
-                    ))}
+    const renderEntryCard = (entry: JournalEntry, index: number = 0) => (
+        <AnimatedListItem key={entry.id} index={index}>
+            <TouchableOpacity
+                style={[styles.entryCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
+                activeOpacity={0.7}
+                onPress={() => onEntryPress(entry)}
+            >
+                <View style={styles.entryHeader}>
+                    <Text style={[styles.entryDate, { color: colors.textTertiary }]}>{formatDate(entry.created_at)}</Text>
+                    {entry.book_name && (
+                        <Text style={[styles.entryScripture, { color: colors.textSecondary }]}>{entry.book_name} {getChapterText(entry)}</Text>
+                    )}
                 </View>
-            </View>
-        </TouchableOpacity>
+                <Text style={[styles.entryPreview, { color: colors.textPrimary }]}>
+                    {getPreviewText(entry)}
+                </Text>
+
+                <View style={styles.entryFooter}>
+                    <View style={styles.reflectionIndicator}>
+                        {Array.from({ length: 4 }).map((_, idx) => (
+                            <View
+                                key={idx}
+                                style={[
+                                    styles.reflectionDot,
+                                    { backgroundColor: colors.border },
+                                    idx < getAnswerCount(entry) && [styles.reflectionDotActive, { backgroundColor: colors.accentSecondary }]
+                                ]}
+                            />
+                        ))}
+                    </View>
+                </View>
+            </TouchableOpacity>
+        </AnimatedListItem>
     );
 
-    const renderDateGroup = (title: string, entries: JournalEntry[]) => {
+    const renderDateGroup = (title: string, entries: JournalEntry[], startIndex: number = 0) => {
         if (entries.length === 0) return null;
 
         return (
             <View key={title} style={styles.dateGroup}>
                 <Text style={[styles.dateGroupTitle, { color: colors.textPrimary }]}>{title}</Text>
-                {entries.map(entry => renderEntryCard(entry))}
+                {entries.map((entry, index) => renderEntryCard(entry, startIndex + index))}
             </View>
         );
     };

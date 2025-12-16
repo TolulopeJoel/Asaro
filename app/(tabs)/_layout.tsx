@@ -49,6 +49,8 @@ export default function TabLayout() {
                 ),
                 tabBarActiveTintColor: colors.accent,
                 tabBarInactiveTintColor: colors.textTertiary,
+                // Add smooth slide animations for tab transitions
+                animation: 'shift',
             }}
         >
             <Tabs.Screen

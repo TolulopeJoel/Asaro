@@ -70,3 +70,15 @@ export const getModalStyle = (progress: any, screenHeight: number) => ({
         },
     ],
 });
+
+// List item animations
+export const LIST_ITEM_DURATION = 300; // milliseconds
+export const LIST_ITEM_STAGGER = 50; // Delay between items in ms
+export const LIST_ITEM_EASING = Easing.out(Easing.cubic);
+
+// Spring configuration for layout changes
+export const SPRING_CONFIG = {
+    damping: 20,
+    mass: 0.8,
+    stiffness: 100,
+};
