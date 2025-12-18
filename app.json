@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Àṣàrò",
+    "name": "Àṣàrò",
     "slug": "asaro",
     "version": "2025.DEC",
     "orientation": "portrait",
@@ -13,6 +13,19 @@
       "bundleIdentifier": "com.asaro.meditation"
     },
     "android": {
+      "permissions": [
+        "SCHEDULE_EXACT_ALARM",
+        "USE_EXACT_ALARM",
+        "WAKE_LOCK",
+        "RECEIVE_BOOT_COMPLETED",
+        "android.permission.SCHEDULE_EXACT_ALARM",
+        "android.permission.USE_EXACT_ALARM",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.VIBRATE",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.WAKE_LOCK"
+      ],
+      "useNextNotificationsApi": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/foregroundImage.png",
         "monochromeImage": "./assets/images/Vector.png",
@@ -37,7 +50,16 @@
       ],
       "expo-router",
       "expo-sqlite",
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/foregroundImage.png",
+          "color": "#D9C7A8",
+          "sounds": [],
+          "androidMode": "default",
+          "androidCollapsedTitle": "Àṣàrò Reminder"
+        }
+      ],
       "expo-font",
       "expo-web-browser"
     ],

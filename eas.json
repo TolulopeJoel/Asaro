@@ -23,7 +23,7 @@
       "autoIncrement": true,
       "channel": "production",
       "android": {
-        "buildType": "aab"
+        "buildType": "app-bundle"
       },
       "env": {
         "EXPO_NO_SOURCEMAP": "1"

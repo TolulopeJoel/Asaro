@@ -9,6 +9,7 @@ import { ChapterPicker } from '../src/components/ChapterPicker';
 import { ReflectionAnswers, ReflectionForm } from '../src/components/ReflectionForm';
 import { ScalePressable } from '../src/components/ScalePressable';
 import { BibleBook, getBookByName } from '../src/data/bibleBooks';
+import { setupDailyNotifications } from '../src/utils/notifications';
 
 if (Platform.OS === 'android') {
     if (UIManager.setLayoutAnimationEnabledExperimental) {
@@ -259,12 +260,14 @@ export default function MeditationSessionScreen() {
 
             if (isEditMode && entryId) {
                 await updateJournalEntry(entryId, entryData);
+                await setupDailyNotifications();
                 Alert.alert('Success', 'Entry updated successfully');
                 router.back();
             } else {
                 const newEntryId = await createJournalEntry(entryData);
                 setCreatedEntryId(newEntryId);
                 await AsyncStorage.removeItem("reflection_draft");
+                await setupDailyNotifications();
                 setReflectionAnswers(answers);
                 changeStep('summary');
             }

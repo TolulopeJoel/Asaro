@@ -1,5 +1,9 @@
 import { initializeDatabase } from '@/src/data/database';
-import { requestNotificationPermissions, setupDailyNotifications } from '@/src/utils/notifications';
+import {
+  initializeNotificationChannel,
+  requestNotificationPermissions,
+  setupDailyNotifications
+} from '@/src/utils/notifications';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
@@ -39,14 +43,24 @@ export default function RootLayout() {
   useEffect(() => {
     const init = async () => {
       try {
-        // initialise database
+        // Initialize database
         const success = await initializeDatabase();
         setDbInitialized(success);
         if (!success) {
           console.error('Failed to initialize database');
+          return;
         }
-        await requestNotificationPermissions();
-        await setupDailyNotifications();
+
+        // Initialize notification channel (Android only, no UI)
+        await initializeNotificationChannel();
+
+        const permissionsGranted = await requestNotificationPermissions();
+        if (permissionsGranted) {
+          await setupDailyNotifications();
+          console.log('Notifications set up successfully');
+        } else {
+          console.log('Notification permissions not granted');
+        }
       } catch (error) {
         console.error('Initialization error:', error);
         setDbInitialized(false);

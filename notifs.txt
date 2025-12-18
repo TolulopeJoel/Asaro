@@ -1,8 +1,3 @@
-late -  { title: "Just so you know", body: "I'm keeping record o. Every single day wey you miss, I dey write am down" },
-
-late -    { title: "Late warning", body: "Your mates are sleeping with clear conscience. You sef, you no want?" },
-
-
 const morningReminders = [
   { title: "Good morning o", body: "Àṣàrò here. You haven't read your Bible yet? Ehn ehn, we're starting like this?" },
   { title: "Morning check", body: "I'm not asking you, I'm telling you - open that Bible now" },
