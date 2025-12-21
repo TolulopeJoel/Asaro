@@ -2,16 +2,13 @@
   "expo": {
     "name": "Àṣàrò",
     "slug": "asaro",
-    "version": "202666",
+    "version": "2025.DEC",
+    "runtimeVersion": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/yaya.png",
+    "icon": "./assets/images/foregroundImage.png",
     "scheme": "asaro",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.asaro.meditation"
-    },
     "android": {
       "permissions": [
         "SCHEDULE_EXACT_ALARM",
@@ -29,23 +26,18 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/foregroundImage.png",
         "monochromeImage": "./assets/images/kaka.png",
-        "backgroundColor": "#D9C7A8"
+        "backgroundColor": "#E18F43"
       },
       "package": "com.asaro.meditation"
-    },
-    "web": {
-      "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/yaya.png",
+          "image": "./assets/images/foregroundImage.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#D9C7A8"
+          "backgroundColor": "#E18F43"
         }
       ],
       "expo-router",
@@ -53,8 +45,8 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/yaya.png",
-          "color": "#D9C7A8",
+          "icon": "./assets/images/foregroundImage.png",
+          "color": "#E18F43",
           "sounds": [],
           "androidMode": "default",
           "androidCollapsedTitle": "Àṣàrò Reminder"
@@ -71,9 +63,6 @@
       "eas": {
         "projectId": "3eab02f1-b324-49fc-ae59-6d1bf4813176"
       }
-    },
-    "runtimeVersion": {
-      "policy": "appVersion"
     },
     "updates": {
       "url": "https://u.expo.dev/3eab02f1-b324-49fc-ae59-6d1bf4813176",
