@@ -253,9 +253,21 @@ export async function setupDailyNotifications(): Promise<boolean> {
     return false;
   }
 
-  // Cancel all existing notifications first to avoid duplicates
-  await cancelAllScheduledNotifications();
+  // Check if we already have notifications scheduled
+  const existingNotifications = await getAllScheduledNotifications();
 
+  // We expect 4 repeating notifications. If we have them, we don't need to reschedule.
+  // This prevents the "all notifications fire on open" issue caused by cancelling and rescheduling.
+  const repeatingNotifications = existingNotifications.filter(n =>
+    n.trigger && typeof n.trigger === 'object' && 'hour' in n.trigger
+  );
+
+  if (repeatingNotifications.length >= 4) {
+    console.log(`✅ ${repeatingNotifications.length} daily notifications already scheduled. Skipping setup.`);
+    return true;
+  }
+
+  // If we're here, we need to schedule (either first time or some are missing)
   console.log('Setting up daily notifications with repeating triggers...');
 
   try {
@@ -266,64 +278,36 @@ export async function setupDailyNotifications(): Promise<boolean> {
       { hour: 23, minute: 0, reminders: finalReminders, name: 'Final' },
     ];
 
-    const scheduledIds: string[] = [];
-
     // Schedule repeating notifications
     for (const notif of notifications) {
+      // Check if this specific hour is already scheduled to avoid duplicates
+      const isAlreadyScheduled = repeatingNotifications.some(n =>
+        (n.trigger as any).hour === notif.hour && (n.trigger as any).minute === notif.minute
+      );
+
+      if (isAlreadyScheduled) {
+        console.log(`ℹ️ ${notif.name} notification already scheduled for ${notif.hour}:${String(notif.minute).padStart(2, '0')}`);
+        continue;
+      }
+
       const reminder = getRandomReminder(notif.reminders);
 
-      const notificationId = await Notifications.scheduleNotificationAsync({
+      await Notifications.scheduleNotificationAsync({
         content: {
           ...createNotificationContent(reminder.title, reminder.body),
           categoryIdentifier: 'reminder',
         },
         trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DAILY,
           hour: notif.hour,
           minute: notif.minute,
           repeats: true,
           channelId: Platform.OS === 'android' ? 'asaro-reminders' : undefined,
-        },
+        } as any,
       });
 
-      scheduledIds.push(notificationId);
       console.log(`✅ ${notif.name} repeating notification scheduled for ${notif.hour}:${String(notif.minute).padStart(2, '0')}`);
     }
-
-    // BACKUP: Schedule exact date/time notifications for next 14 days
-    const daysToSchedule = 14;
-    for (let day = 0; day < daysToSchedule; day++) {
-      for (const notif of notifications) {
-        const scheduleDate = new Date();
-        scheduleDate.setDate(scheduleDate.getDate() + day);
-        scheduleDate.setHours(notif.hour, notif.minute, 0, 0);
-
-        if (scheduleDate > new Date()) {
-          const reminder = getRandomReminder(notif.reminders);
-
-          const notificationId = await Notifications.scheduleNotificationAsync({
-            content: {
-              ...createNotificationContent(reminder.title, reminder.body),
-              categoryIdentifier: 'reminder',
-              data: {
-                timestamp: Date.now(),
-                backup: true,
-                day: day
-              },
-            },
-            trigger: {
-              type: Notifications.SchedulableTriggerInputTypes.DATE,
-              date: scheduleDate,
-              channelId: Platform.OS === 'android' ? 'asaro-reminders' : undefined,
-            },
-          });
-
-          scheduledIds.push(notificationId);
-        }
-      }
-    }
-
-    const scheduled = await getAllScheduledNotifications();
-    console.log(`✅ Successfully scheduled ${scheduled.length} notifications`);
 
     return true;
   } catch (error) {

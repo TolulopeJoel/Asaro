@@ -2,9 +2,9 @@
   "expo": {
     "name": "Àṣàrò",
     "slug": "asaro",
-    "version": "2025.DEC",
+    "version": "202666",
     "orientation": "portrait",
-    "icon": "./assets/images/foregroundImage.png",
+    "icon": "./assets/images/yaya.png",
     "scheme": "asaro",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -28,7 +28,7 @@
       "useNextNotificationsApi": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/foregroundImage.png",
-        "monochromeImage": "./assets/images/Vector.png",
+        "monochromeImage": "./assets/images/kaka.png",
         "backgroundColor": "#D9C7A8"
       },
       "package": "com.asaro.meditation"
@@ -42,7 +42,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/foregroundImage.png",
+          "image": "./assets/images/yaya.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#D9C7A8"
@@ -53,7 +53,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/foregroundImage.png",
+          "icon": "./assets/images/yaya.png",
           "color": "#D9C7A8",
           "sounds": [],
           "androidMode": "default",

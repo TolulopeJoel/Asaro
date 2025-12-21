@@ -56,8 +56,10 @@ export default function RootLayout() {
 
         const permissionsGranted = await requestNotificationPermissions();
         if (permissionsGranted) {
-          await setupDailyNotifications();
-          console.log('Notifications set up successfully');
+          const setupSuccess = await setupDailyNotifications();
+          if (setupSuccess) {
+            console.log('Notifications set up successfully');
+          }
         } else {
           console.log('Notification permissions not granted');
         }
