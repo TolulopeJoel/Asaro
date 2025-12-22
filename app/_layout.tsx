@@ -1,10 +1,11 @@
 import { initializeDatabase } from '@/src/data/database';
 import {
   initializeNotificationChannel,
-  requestNotificationPermissions,
+  hasNotificationPermissions,
+  isBatteryOptimizationDisabled,
   setupDailyNotifications
 } from '@/src/utils/notifications';
-import { Stack } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
@@ -33,12 +34,16 @@ function StackNavigator() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="addEntry" options={{ title: 'Kọ silẹ' }} />
       <Stack.Screen name="stats" options={{ title: 'What you\'ve done 🤩' }} />
+      <Stack.Screen name="permissions" options={{ headerShown: false, gestureEnabled: false }} />
+      <Stack.Screen name="battery-optimization" options={{ headerShown: false, gestureEnabled: false }} />
     </Stack>
   );
 }
 
 export default function RootLayout() {
   const [dbInitialized, setDbInitialized] = useState(false);
+  const router = useRouter();
+  const segments = useSegments();
 
   useEffect(() => {
     const init = async () => {
@@ -54,15 +59,23 @@ export default function RootLayout() {
         // Initialize notification channel (Android only, no UI)
         await initializeNotificationChannel();
 
-        const permissionsGranted = await requestNotificationPermissions();
-        if (permissionsGranted) {
-          const setupSuccess = await setupDailyNotifications();
-          if (setupSuccess) {
-            console.log('Notifications set up successfully');
-          }
-        } else {
-          console.log('Notification permissions not granted');
+        // Check permissions
+        const hasPermissions = await hasNotificationPermissions();
+        if (!hasPermissions) {
+          // We'll let the layout effect handle the redirect
+          return;
         }
+
+        // Check battery optimization (Android only)
+        const isOptimized = await isBatteryOptimizationDisabled();
+        if (!isOptimized) {
+          // We'll let the layout effect handle the redirect
+          return;
+        }
+
+        // If we have permissions, ensure notifications are scheduled
+        await setupDailyNotifications();
+
       } catch (error) {
         console.error('Initialization error:', error);
         setDbInitialized(false);
@@ -71,6 +84,37 @@ export default function RootLayout() {
 
     init();
   }, []);
+
+  useEffect(() => {
+    if (!dbInitialized) return;
+
+    const checkRequirements = async () => {
+      const hasPermissions = await hasNotificationPermissions();
+      const inAuthGroup = segments[0] === 'permissions' || segments[0] === 'battery-optimization';
+
+      if (!hasPermissions) {
+        if (segments[0] !== 'permissions') {
+          router.replace('/permissions');
+        }
+        return;
+      }
+
+      const isBatteryOk = await isBatteryOptimizationDisabled();
+      if (!isBatteryOk) {
+        if (segments[0] !== 'battery-optimization') {
+          router.replace('/battery-optimization');
+        }
+        return;
+      }
+
+      // If everything is good and we are on a blocking screen, go home
+      if (inAuthGroup) {
+        router.replace('/');
+      }
+    };
+
+    checkRequirements();
+  }, [dbInitialized, segments]);
 
   if (!dbInitialized) {
     return (

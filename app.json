@@ -14,18 +14,20 @@
         "SCHEDULE_EXACT_ALARM",
         "USE_EXACT_ALARM",
         "WAKE_LOCK",
+        "REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
         "RECEIVE_BOOT_COMPLETED",
         "android.permission.SCHEDULE_EXACT_ALARM",
         "android.permission.USE_EXACT_ALARM",
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.VIBRATE",
         "android.permission.RECEIVE_BOOT_COMPLETED",
-        "android.permission.WAKE_LOCK"
+        "android.permission.WAKE_LOCK",
+        "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"
       ],
       "useNextNotificationsApi": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/foregroundImage.png",
-        "monochromeImage": "./assets/images/kaka.png",
+        "monochromeImage": "./assets/images/monochrome.png",
         "backgroundColor": "#E18F43"
       },
       "package": "com.asaro.meditation"

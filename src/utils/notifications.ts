@@ -55,7 +55,7 @@ export async function hasNotificationPermissions(): Promise<boolean> {
 }
 
 // Check if battery optimization is disabled for the app
-async function isBatteryOptimizationDisabled(): Promise<boolean> {
+export async function isBatteryOptimizationDisabled(): Promise<boolean> {
   if (Platform.OS !== 'android') {
     return true; // iOS doesn't have this concept
   }
@@ -105,23 +105,7 @@ export async function requestNotificationPermissions(): Promise<boolean> {
     return false;
   }
 
-  // Check battery optimization status - only show prompt if battery optimization is still enabled
-  if (Platform.OS === 'android') {
-    const isOptimizationDisabled = await isBatteryOptimizationDisabled();
 
-    if (!isOptimizationDisabled) {
-      Alert.alert(
-        'One More Thing...',
-        'To ensure notifications work perfectly even when your phone is sleeping, please allow this app to run in the background without restrictions.',
-        [
-          {
-            text: 'Open Battery Settings',
-            onPress: () => openBatterySettings()
-          },
-        ]
-      );
-    }
-  }
 
   return true;
 }
@@ -147,34 +131,7 @@ export async function openNotificationSettings() {
   }
 }
 
-// Open battery optimization settings
-export async function openBatterySettings() {
-  if (Platform.OS === 'android') {
-    const pkg = 'com.asaro.meditation';
 
-    try {
-      await IntentLauncher.startActivityAsync(
-        'android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
-        {
-          data: `package:${pkg}`
-        }
-      );
-    } catch (error) {
-      console.log('Could not open battery optimization, trying alternative:', error);
-
-      try {
-        await IntentLauncher.startActivityAsync(
-          'android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS'
-        );
-      } catch (error2) {
-        console.log('Could not open battery settings, using app settings:', error2);
-        Linking.openSettings();
-      }
-    }
-  } else {
-    Linking.openSettings();
-  }
-}
 
 export async function scheduleReminderNotification(
   time: Date,

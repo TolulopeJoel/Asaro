@@ -112,6 +112,57 @@ export default function NotificationDebugger() {
         await checkStatus();
     };
 
+    const handleScheduleIn15Minutes = async () => {
+        const twoMinutesFromNow = new Date(Date.now() + 15 * 60 * 1000);
+        await Notifications.scheduleNotificationAsync({
+            content: {
+                title: "15 minute test ⏰",
+                body: "Background notifications working!",
+                sound: true,
+                priority: Platform.OS === 'android'
+                    ? Notifications.AndroidNotificationPriority.HIGH
+                    : undefined,
+            },
+            trigger: {
+                type: Notifications.SchedulableTriggerInputTypes.DATE,
+                date: twoMinutesFromNow,
+                channelId: Platform.OS === 'android' ? 'asaro-reminders' : undefined,
+            },
+        });
+
+        const timeStr = twoMinutesFromNow.toLocaleTimeString();
+        Alert.alert(
+            'Scheduled for ' + timeStr,
+            'Close app and wait 15 minutes with phone locked!'
+        );
+        await checkStatus();
+    };
+    const handleScheduleIn30Minutes = async () => {
+        const twoMinutesFromNow = new Date(Date.now() + 30 * 60 * 1000);
+        await Notifications.scheduleNotificationAsync({
+            content: {
+                title: "30 minute test ⏰",
+                body: "Background notifications working!",
+                sound: true,
+                priority: Platform.OS === 'android'
+                    ? Notifications.AndroidNotificationPriority.HIGH
+                    : undefined,
+            },
+            trigger: {
+                type: Notifications.SchedulableTriggerInputTypes.DATE,
+                date: twoMinutesFromNow,
+                channelId: Platform.OS === 'android' ? 'asaro-reminders' : undefined,
+            },
+        });
+
+        const timeStr = twoMinutesFromNow.toLocaleTimeString();
+        Alert.alert(
+            'Scheduled for ' + timeStr,
+            'Close app and wait 30 minutes with phone locked!'
+        );
+        await checkStatus();
+    };
+
     const handleCancelAll = async () => {
         Alert.alert(
             'Cancel All?',
@@ -203,6 +254,22 @@ export default function NotificationDebugger() {
                 <Button
                     title="4️⃣ Schedule in 2 Minutes"
                     onPress={handleScheduleInTwoMinutes}
+                    disabled={permissionStatus !== 'granted'}
+                    color={permissionStatus !== 'granted' ? '#ccc' : '#FF9500'}
+                />
+                <View style={styles.spacer} />
+
+                <Button
+                    title="4️⃣ Schedule in 15 Minutes"
+                    onPress={handleScheduleIn15Minutes}
+                    disabled={permissionStatus !== 'granted'}
+                    color={permissionStatus !== 'granted' ? '#ccc' : '#FF9500'}
+                />
+                <View style={styles.spacer} />
+
+                <Button
+                    title="4️⃣ Schedule in 30 Minutes"
+                    onPress={handleScheduleIn30Minutes}
                     disabled={permissionStatus !== 'granted'}
                     color={permissionStatus !== 'granted' ? '#ccc' : '#FF9500'}
                 />
