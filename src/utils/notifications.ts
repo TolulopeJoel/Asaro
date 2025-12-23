@@ -317,9 +317,9 @@ export async function setupDailyNotifications(): Promise<boolean> {
     // Check if we already have notifications scheduled
     const existingNotifications = await getAllScheduledNotifications();
 
-    // Count how many future notifications we have
+    // Count how many future date-based notifications we have
     const now = new Date();
-    const futureNotifications = existingNotifications.filter(n => {
+    const futureDateNotifications = existingNotifications.filter(n => {
       if (n.trigger && typeof n.trigger === 'object' && 'date' in n.trigger) {
         const triggerDate = new Date(n.trigger.date as number);
         return triggerDate > now;
@@ -327,15 +327,20 @@ export async function setupDailyNotifications(): Promise<boolean> {
       return false;
     });
 
-    // If we have at least 12 future notifications (3 days worth), skip rescheduling
-    if (futureNotifications.length >= 12) {
-      console.log(`✅ ${futureNotifications.length} future notifications already scheduled. Skipping setup.`);
+    // Count how many repeating notifications we have
+    const repeatingNotifications = existingNotifications.filter(n =>
+      n.trigger && typeof n.trigger === 'object' && 'hour' in n.trigger
+    );
+
+    // If we have both types already scheduled, skip
+    if (futureDateNotifications.length >= 12 && repeatingNotifications.length >= 4) {
+      console.log(`✅ Already have ${repeatingNotifications.length} repeating + ${futureDateNotifications.length} date-based notifications. Skipping setup.`);
       return true;
     }
 
     // Cancel all existing scheduled notifications to start fresh
     await cancelAllScheduledNotifications();
-    console.log('Setting up 7-day notification schedule...');
+    console.log('Setting up BOTH repeating AND 7-day notification schedules for testing...');
 
     const notificationTimes = [
       { hour: 7, minute: 0, reminders: morningReminders, name: 'Morning' },
@@ -344,6 +349,39 @@ export async function setupDailyNotifications(): Promise<boolean> {
       { hour: 23, minute: 0, reminders: finalReminders, name: 'Final' },
     ];
 
+    // ========================================
+    // PART 1: Schedule REPEATING notifications
+    // ========================================
+    console.log('📅 Scheduling repeating daily notifications...');
+    for (const notif of notificationTimes) {
+      const reminder = getRandomReminder(notif.reminders);
+
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          ...createNotificationContent(`[REPEAT] ${reminder.title}`, reminder.body),
+          categoryIdentifier: 'reminder',
+          data: {
+            timestamp: Date.now(),
+            type: 'repeating',
+            timeSlot: notif.hour,
+          },
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DAILY,
+          hour: notif.hour,
+          minute: notif.minute,
+          repeats: true,
+          channelId: Platform.OS === 'android' ? 'asaro-reminders' : undefined,
+        } as any,
+      });
+
+      console.log(`  ✅ ${notif.name} repeating notification at ${notif.hour}:${String(notif.minute).padStart(2, '0')}`);
+    }
+
+    // ========================================
+    // PART 2: Schedule DATE-BASED notifications for 7 days
+    // ========================================
+    console.log('📅 Scheduling date-based notifications for 7 days...');
     let scheduledCount = 0;
     const startDate = new Date();
     startDate.setHours(0, 0, 0, 0);
@@ -366,10 +404,11 @@ export async function setupDailyNotifications(): Promise<boolean> {
 
         await Notifications.scheduleNotificationAsync({
           content: {
-            ...createNotificationContent(reminder.title, reminder.body),
+            ...createNotificationContent(`[DATE] ${reminder.title}`, reminder.body),
             categoryIdentifier: 'reminder',
             data: {
               timestamp: Date.now(),
+              type: 'date-based',
               scheduledFor: scheduledTime.toISOString(),
               timeSlot: notif.hour,
             },
@@ -385,7 +424,7 @@ export async function setupDailyNotifications(): Promise<boolean> {
       }
     }
 
-    console.log(`✅ Scheduled ${scheduledCount} notifications for the next 7 days`);
+    console.log(`✅ Scheduled 4 repeating + ${scheduledCount} date-based notifications (TESTING MODE)`);
     return true;
   } catch (error) {
     console.error('Error scheduling notifications:', error);
