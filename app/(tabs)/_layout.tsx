@@ -8,7 +8,6 @@ import { useRef, useState } from 'react';
 import Index from './index';
 import Browse from './browse';
 import Settings from './settings';
-import NotificationDebugger from './test';
 import { ScalePressable } from '@/src/components/ScalePressable';
 
 export default function TabLayout() {
@@ -23,7 +22,6 @@ export default function TabLayout() {
         { name: 'Home', icon: 'prism-outline' as const, component: Index },
         { name: 'Library', icon: 'square-outline' as const, component: Browse },
         { name: 'Settings', icon: 'ellipse-outline' as const, component: Settings },
-        { name: 'Test', icon: 'planet-outline' as const, component: NotificationDebugger },
     ];
 
     const handleTabPress = (index: number) => {

@@ -1,9 +1,0 @@
-- I hate the fact that the "Add Entry" page shows loading, fix that!
-- Make entries count on main page real-time
-- Make deleting of a past entry real-time
-- Ability to edit past entries (the logic is in place, just push on next update)
-- Add navbar (past entries, profile), then round button to add entry on home page
-- Feature for users to add verses, not just chapters
-- Streak days view (colored jooor)
-!- Resarcher (set date + time reminder)
-- editing of past entries 
