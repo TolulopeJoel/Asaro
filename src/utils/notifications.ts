@@ -203,49 +203,82 @@ function getRandomReminder(reminders: { title: string, body: string }[]) {
   return reminders[Math.floor(Math.random() * reminders.length)];
 }
 
-export async function setupDailyNotifications(): Promise<boolean> {
-  // Check permissions without requesting
+// Helper function to get the start of a day
+function getStartOfDay(date: Date): Date {
+  const newDate = new Date(date);
+  newDate.setHours(0, 0, 0, 0);
+  return newDate;
+}
+
+// Helper function to check if a date is today
+function isToday(date: Date): boolean {
+  const today = getStartOfDay(new Date());
+  const checkDate = getStartOfDay(date);
+  return today.getTime() === checkDate.getTime();
+}
+
+// Cancel all scheduled notifications for the remainder of today
+export async function cancelRemainingNotificationsForToday(): Promise<void> {
   if (!await hasNotificationPermissions()) {
-    console.log('Notification permissions not granted, skipping notification setup');
-    return false;
+    console.log('Notification permissions not granted');
+    return;
   }
 
-  // Check if we already have notifications scheduled
+  const now = new Date();
   const existingNotifications = await getAllScheduledNotifications();
 
-  // We expect 4 repeating notifications. If we have them, we don't need to reschedule.
-  // This prevents the "all notifications fire on open" issue caused by cancelling and rescheduling.
-  const repeatingNotifications = existingNotifications.filter(n =>
-    n.trigger && typeof n.trigger === 'object' && 'hour' in n.trigger
-  );
+  let cancelledCount = 0;
+  for (const notification of existingNotifications) {
+    if (notification.trigger && typeof notification.trigger === 'object' && 'date' in notification.trigger) {
+      const triggerDate = new Date(notification.trigger.date as number);
 
-  if (repeatingNotifications.length >= 4) {
-    console.log(`✅ ${repeatingNotifications.length} daily notifications already scheduled. Skipping setup.`);
-    return true;
+      // Cancel if it's scheduled for today and hasn't fired yet
+      if (isToday(triggerDate) && triggerDate > now) {
+        await Notifications.cancelScheduledNotificationAsync(notification.identifier);
+        cancelledCount++;
+      }
+    }
   }
 
-  // If we're here, we need to schedule (either first time or some are missing)
-  console.log('Setting up daily notifications with repeating triggers...');
+  console.log(`✅ Cancelled ${cancelledCount} remaining notifications for today`);
+}
+
+// Add notifications for a new day (7 days from now) to maintain the 7-day schedule
+export async function addNotificationsForNewDay(): Promise<void> {
+  if (!await hasNotificationPermissions()) {
+    console.log('Notification permissions not granted');
+    return;
+  }
 
   try {
-    const notifications = [
+    // Find the furthest scheduled notification date
+    const existingNotifications = await getAllScheduledNotifications();
+    let furthestDate = new Date();
+
+    for (const notification of existingNotifications) {
+      if (notification.trigger && typeof notification.trigger === 'object' && 'date' in notification.trigger) {
+        const triggerDate = new Date(notification.trigger.date as number);
+        if (triggerDate > furthestDate) {
+          furthestDate = triggerDate;
+        }
+      }
+    }
+
+    // Add one day to the furthest date
+    const newDay = new Date(furthestDate);
+    newDay.setDate(newDay.getDate() + 1);
+    newDay.setHours(0, 0, 0, 0);
+
+    const notificationTimes = [
       { hour: 7, minute: 0, reminders: morningReminders, name: 'Morning' },
       { hour: 19, minute: 0, reminders: eveningReminders, name: 'Evening' },
       { hour: 21, minute: 0, reminders: lateReminders, name: 'Late' },
       { hour: 23, minute: 0, reminders: finalReminders, name: 'Final' },
     ];
 
-    // Schedule repeating notifications
-    for (const notif of notifications) {
-      // Check if this specific hour is already scheduled to avoid duplicates
-      const isAlreadyScheduled = repeatingNotifications.some(n =>
-        (n.trigger as any).hour === notif.hour && (n.trigger as any).minute === notif.minute
-      );
-
-      if (isAlreadyScheduled) {
-        console.log(`ℹ️ ${notif.name} notification already scheduled for ${notif.hour}:${String(notif.minute).padStart(2, '0')}`);
-        continue;
-      }
+    for (const notif of notificationTimes) {
+      const scheduledTime = new Date(newDay);
+      scheduledTime.setHours(notif.hour, notif.minute, 0, 0);
 
       const reminder = getRandomReminder(notif.reminders);
 
@@ -253,19 +286,106 @@ export async function setupDailyNotifications(): Promise<boolean> {
         content: {
           ...createNotificationContent(reminder.title, reminder.body),
           categoryIdentifier: 'reminder',
+          data: {
+            timestamp: Date.now(),
+            scheduledFor: scheduledTime.toISOString(),
+            timeSlot: notif.hour,
+          },
         },
         trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DAILY,
-          hour: notif.hour,
-          minute: notif.minute,
-          repeats: true,
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: scheduledTime,
           channelId: Platform.OS === 'android' ? 'asaro-reminders' : undefined,
-        } as any,
+        },
       });
-
-      console.log(`✅ ${notif.name} repeating notification scheduled for ${notif.hour}:${String(notif.minute).padStart(2, '0')}`);
     }
 
+    console.log(`✅ Added 4 notifications for ${newDay.toDateString()}`);
+  } catch (error) {
+    console.error('Error adding notifications for new day:', error);
+  }
+}
+
+export async function setupDailyNotifications(): Promise<boolean> {
+  // Check permissions without requesting
+  if (!await hasNotificationPermissions()) {
+    console.log('Notification permissions not granted, skipping notification setup');
+    return false;
+  }
+
+  try {
+    // Check if we already have notifications scheduled
+    const existingNotifications = await getAllScheduledNotifications();
+
+    // Count how many future notifications we have
+    const now = new Date();
+    const futureNotifications = existingNotifications.filter(n => {
+      if (n.trigger && typeof n.trigger === 'object' && 'date' in n.trigger) {
+        const triggerDate = new Date(n.trigger.date as number);
+        return triggerDate > now;
+      }
+      return false;
+    });
+
+    // If we have at least 12 future notifications (3 days worth), skip rescheduling
+    if (futureNotifications.length >= 12) {
+      console.log(`✅ ${futureNotifications.length} future notifications already scheduled. Skipping setup.`);
+      return true;
+    }
+
+    // Cancel all existing scheduled notifications to start fresh
+    await cancelAllScheduledNotifications();
+    console.log('Setting up 7-day notification schedule...');
+
+    const notificationTimes = [
+      { hour: 7, minute: 0, reminders: morningReminders, name: 'Morning' },
+      { hour: 19, minute: 0, reminders: eveningReminders, name: 'Evening' },
+      { hour: 21, minute: 0, reminders: lateReminders, name: 'Late' },
+      { hour: 23, minute: 0, reminders: finalReminders, name: 'Final' },
+    ];
+
+    let scheduledCount = 0;
+    const startDate = new Date();
+    startDate.setHours(0, 0, 0, 0);
+
+    // Schedule notifications for the next 7 days
+    for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+      const targetDate = new Date(startDate);
+      targetDate.setDate(startDate.getDate() + dayOffset);
+
+      for (const notif of notificationTimes) {
+        const scheduledTime = new Date(targetDate);
+        scheduledTime.setHours(notif.hour, notif.minute, 0, 0);
+
+        // Skip if the time has already passed
+        if (scheduledTime <= now) {
+          continue;
+        }
+
+        const reminder = getRandomReminder(notif.reminders);
+
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            ...createNotificationContent(reminder.title, reminder.body),
+            categoryIdentifier: 'reminder',
+            data: {
+              timestamp: Date.now(),
+              scheduledFor: scheduledTime.toISOString(),
+              timeSlot: notif.hour,
+            },
+          },
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
+            date: scheduledTime,
+            channelId: Platform.OS === 'android' ? 'asaro-reminders' : undefined,
+          },
+        });
+
+        scheduledCount++;
+      }
+    }
+
+    console.log(`✅ Scheduled ${scheduledCount} notifications for the next 7 days`);
     return true;
   } catch (error) {
     console.error('Error scheduling notifications:', error);

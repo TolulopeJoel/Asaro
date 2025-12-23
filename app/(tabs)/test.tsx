@@ -7,7 +7,9 @@ import {
     getAllScheduledNotifications,
     setupDailyNotifications,
     requestNotificationPermissions,
-    cancelAllScheduledNotifications
+    cancelAllScheduledNotifications,
+    cancelRemainingNotificationsForToday,
+    addNotificationsForNewDay
 } from '@/src/utils/notifications';
 
 export default function NotificationDebugger() {
@@ -298,6 +300,32 @@ export default function NotificationDebugger() {
                 <Button
                     title="🔄 Refresh Status"
                     onPress={checkStatus}
+                />
+
+                <View style={styles.spacer} />
+
+                <Button
+                    title="🚫 Cancel Remaining Today's Notifications"
+                    onPress={async () => {
+                        await cancelRemainingNotificationsForToday();
+                        Alert.alert('Done', 'Cancelled remaining notifications for today');
+                        await checkStatus();
+                    }}
+                    disabled={permissionStatus !== 'granted'}
+                    color={permissionStatus !== 'granted' ? '#ccc' : '#FF9500'}
+                />
+
+                <View style={styles.spacer} />
+
+                <Button
+                    title="➕ Add Notifications for New Day"
+                    onPress={async () => {
+                        await addNotificationsForNewDay();
+                        Alert.alert('Done', 'Added 4 notifications for a new day');
+                        await checkStatus();
+                    }}
+                    disabled={permissionStatus !== 'granted'}
+                    color={permissionStatus !== 'granted' ? '#ccc' : '#34C759'}
                 />
             </View>
 

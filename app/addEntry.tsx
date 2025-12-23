@@ -9,7 +9,7 @@ import { ChapterPicker } from '../src/components/ChapterPicker';
 import { ReflectionAnswers, ReflectionForm } from '../src/components/ReflectionForm';
 import { ScalePressable } from '../src/components/ScalePressable';
 import { BibleBook, getBookByName } from '../src/data/bibleBooks';
-import { setupDailyNotifications } from '../src/utils/notifications';
+import { setupDailyNotifications, cancelRemainingNotificationsForToday, addNotificationsForNewDay } from '../src/utils/notifications';
 
 if (Platform.OS === 'android') {
     if (UIManager.setLayoutAnimationEnabledExperimental) {
@@ -260,6 +260,11 @@ export default function MeditationSessionScreen() {
 
             if (isEditMode && entryId) {
                 await updateJournalEntry(entryId, entryData);
+                // Cancel remaining notifications for today
+                await cancelRemainingNotificationsForToday();
+                // Add notifications for a new day to the stack
+                await addNotificationsForNewDay();
+                // Ensure we have notifications for the next 7 days
                 await setupDailyNotifications();
                 Alert.alert('Success', 'Entry updated successfully');
                 router.back();
@@ -267,6 +272,11 @@ export default function MeditationSessionScreen() {
                 const newEntryId = await createJournalEntry(entryData);
                 setCreatedEntryId(newEntryId);
                 await AsyncStorage.removeItem("reflection_draft");
+                // Cancel remaining notifications for today
+                await cancelRemainingNotificationsForToday();
+                // Add notifications for a new day to the stack
+                await addNotificationsForNewDay();
+                // Ensure we have notifications for the next 7 days
                 await setupDailyNotifications();
                 setReflectionAnswers(answers);
                 changeStep('summary');
