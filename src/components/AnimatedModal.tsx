@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     Animated,
     Dimensions,
@@ -25,16 +25,16 @@ export const AnimatedModal: React.FC<AnimatedModalProps> = ({
     children,
     ...modalProps
 }) => {
+    const [showModal, setShowModal] = useState(visible);
     const screenHeight = Dimensions.get('window').height;
     const translateY = useRef(new Animated.Value(screenHeight)).current;
     const backdropOpacity = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-        let animation: Animated.CompositeAnimation | null = null;
-        
         if (visible) {
+            setShowModal(true);
             // Animate in
-            animation = Animated.parallel([
+            Animated.parallel([
                 Animated.timing(translateY, {
                     toValue: 0,
                     duration: MODAL_DURATION,
@@ -46,11 +46,10 @@ export const AnimatedModal: React.FC<AnimatedModalProps> = ({
                     duration: MODAL_DURATION,
                     useNativeDriver: true,
                 }),
-            ]);
-            animation.start();
+            ]).start();
         } else {
             // Animate out
-            animation = Animated.parallel([
+            Animated.parallel([
                 Animated.timing(translateY, {
                     toValue: screenHeight,
                     duration: MODAL_DURATION,
@@ -62,20 +61,17 @@ export const AnimatedModal: React.FC<AnimatedModalProps> = ({
                     duration: MODAL_DURATION,
                     useNativeDriver: true,
                 }),
-            ]);
-            animation.start();
+            ]).start(({ finished }) => {
+                if (finished) {
+                    setShowModal(false);
+                }
+            });
         }
-        
-        return () => {
-            if (animation) {
-                animation.stop();
-            }
-        };
     }, [visible, screenHeight, translateY, backdropOpacity]);
 
     return (
         <Modal
-            visible={visible}
+            visible={showModal}
             transparent
             statusBarTranslucent
             onRequestClose={onRequestClose}

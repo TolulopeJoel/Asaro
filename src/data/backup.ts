@@ -43,7 +43,7 @@ export const exportBackup = async (): Promise<{ success: boolean; message: strin
         const backupData: BackupData = {
             version: '1.0',
             exportDate: new Date().toISOString(),
-            appVersion: '1.0.0', // TODO: Get from app.json
+            appVersion: '1.0.0',
             totalEntries: entries.length,
             entries: entries,
         };
@@ -51,7 +51,7 @@ export const exportBackup = async (): Promise<{ success: boolean; message: strin
         // Generate filename with current date
         const date = new Date().toISOString().split('T')[0];
         const filename = `asaro-backup-${date}.json`;
-        const fileUri = (FileSystem as any).documentDirectory + filename;
+        const fileUri = FileSystem.documentDirectory + filename;
 
         // Write JSON to file
         await FileSystem.writeAsStringAsync(
@@ -195,12 +195,21 @@ export const importBackup = async (
 /**
  * Pick a backup file using document picker
  */
+
+
+/**
+ * Pick a backup file using document picker
+ */
 export const pickBackupFile = async (): Promise<string | null> => {
     try {
+
+
         const result = await DocumentPicker.getDocumentAsync({
             type: 'application/json',
             copyToCacheDirectory: true,
         });
+
+
 
         if (result.canceled) {
             return null;
@@ -209,6 +218,7 @@ export const pickBackupFile = async (): Promise<string | null> => {
         return result.assets[0].uri;
     } catch (error) {
         console.error('Pick file error:', error);
+
         return null;
     }
 };
