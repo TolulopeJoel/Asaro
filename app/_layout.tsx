@@ -45,34 +45,6 @@ export default function RootLayout() {
   const router = useRouter();
   const segments = useSegments();
 
-  // Global error handler for keep-awake errors
-  useEffect(() => {
-    if (Platform.OS === 'android' || Platform.OS === 'ios') {
-      const originalHandler = ErrorUtils.getGlobalHandler();
-
-      ErrorUtils.setGlobalHandler((error, isFatal) => {
-        // Suppress keep-awake errors
-        if (error?.message?.includes('keep awake') ||
-          error?.message?.includes('Unable to activate keep awake')) {
-          console.warn('Keep awake error suppressed:', error.message);
-          return;
-        }
-
-        // Pass all other errors to the original handler
-        if (originalHandler) {
-          originalHandler(error, isFatal);
-        }
-      });
-
-      return () => {
-        // Restore original handler on cleanup
-        if (originalHandler) {
-          ErrorUtils.setGlobalHandler(originalHandler);
-        }
-      };
-    }
-  }, []);
-
   useEffect(() => {
     const init = async () => {
       try {

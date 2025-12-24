@@ -1,4 +1,3 @@
-import { BackupPreview, exportBackup, getBackupPreview, importBackup, pickBackupFile } from '@/src/data/backup';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { getAllScheduledNotifications } from '@/src/utils/notifications';
 import Constants from 'expo-constants';
@@ -68,12 +67,6 @@ export default function Settings() {
         }
     };
 
-    const [isBackingUp, setIsBackingUp] = useState(false);
-    const [isRestoring, setIsRestoring] = useState(false);
-    const [showRestoreModal, setShowRestoreModal] = useState(false);
-    const [backupPreview, setBackupPreview] = useState<BackupPreview | null>(null);
-    const [selectedBackupFile, setSelectedBackupFile] = useState<string | null>(null);
-
     const formatTrigger = (trigger: any) => {
         if (trigger.type === 'date') {
             return new Date(trigger.value).toLocaleString();
@@ -83,68 +76,6 @@ export default function Settings() {
             return `Daily at ${hour}:${minute}${trigger.repeats ? ' (Repeating)' : ''}`;
         }
         return JSON.stringify(trigger);
-    };
-
-    const handleExportBackup = async () => {
-        setIsBackingUp(true);
-        try {
-            const result = await exportBackup();
-            if (result.success) {
-                Alert.alert('Backup Created', result.message);
-            } else {
-                Alert.alert('Backup Failed', result.message);
-            }
-        } catch (error) {
-            Alert.alert('Error', 'An unexpected error occurred during backup.');
-        } finally {
-            setIsBackingUp(false);
-        }
-    };
-
-    const handlePickBackup = async () => {
-        try {
-            const fileUri = await pickBackupFile();
-            if (!fileUri) return;
-
-            setIsRestoring(true);
-            const preview = await getBackupPreview(fileUri);
-
-            if (!preview.isValid) {
-                Alert.alert('Invalid Backup', preview.errorMessage || 'The selected file is not a valid backup.');
-                setIsRestoring(false);
-                return;
-            }
-
-            setBackupPreview(preview);
-            setSelectedBackupFile(fileUri);
-            setShowRestoreModal(true);
-            setIsRestoring(false);
-        } catch (error) {
-            setIsRestoring(false);
-            Alert.alert('Error', 'Failed to pick backup file.');
-        }
-    };
-
-    const handleRestore = async (mode: 'merge' | 'replace') => {
-        if (!selectedBackupFile) return;
-
-        setShowRestoreModal(false);
-        setIsRestoring(true);
-
-        try {
-            const result = await importBackup(selectedBackupFile, mode);
-            if (result.success) {
-                Alert.alert('Restore Complete', result.message);
-            } else {
-                Alert.alert('Restore Failed', result.message);
-            }
-        } catch (error) {
-            Alert.alert('Error', 'An unexpected error occurred during restore.');
-        } finally {
-            setIsRestoring(false);
-            setBackupPreview(null);
-            setSelectedBackupFile(null);
-        }
     };
 
     return (
@@ -229,40 +160,6 @@ export default function Settings() {
                     </View>
                 )}
 
-                {/* Backup */}
-                <View style={styles.section}>
-                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Backup & Restore</Text>
-                    <View style={styles.buttonGroup}>
-                        <TouchableOpacity
-                            style={[styles.actionButton, { flex: 1, borderColor: colors.border }]}
-                            onPress={handleExportBackup}
-                            disabled={isBackingUp || isRestoring}
-                        >
-                            {isBackingUp ? (
-                                <ActivityIndicator color={colors.textPrimary} size="small" />
-                            ) : (
-                                <Text style={[styles.actionButtonText, { color: colors.textPrimary }]}>
-                                    Export
-                                </Text>
-                            )}
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={[styles.actionButton, { flex: 1, borderColor: colors.border }]}
-                            onPress={handlePickBackup}
-                            disabled={isBackingUp || isRestoring}
-                        >
-                            {isRestoring ? (
-                                <ActivityIndicator color={colors.textPrimary} size="small" />
-                            ) : (
-                                <Text style={[styles.actionButtonText, { color: colors.textPrimary }]}>
-                                    Import
-                                </Text>
-                            )}
-                        </TouchableOpacity>
-                    </View>
-                </View>
-
                 {/* About */}
                 <View style={styles.section}>
                     <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>About</Text>
@@ -276,80 +173,6 @@ export default function Settings() {
                     </View>
                 </View>
             </ScrollView>
-
-            {/* Restore Modal */}
-            <AnimatedModal
-                visible={showRestoreModal}
-                onRequestClose={() => setShowRestoreModal(false)}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={[styles.modalContent, { backgroundColor: colors.cardBackground }]}>
-                        <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
-                            Restore Backup
-                        </Text>
-
-                        {backupPreview && (
-                            <View style={[styles.previewContainer, { borderColor: colors.border }]}>
-                                <View style={styles.previewRow}>
-                                    <Text style={[styles.previewLabel, { color: colors.textSecondary }]}>
-                                        Entries
-                                    </Text>
-                                    <Text style={[styles.previewValue, { color: colors.textPrimary }]}>
-                                        {backupPreview.totalEntries}
-                                    </Text>
-                                </View>
-                                <View style={styles.previewRow}>
-                                    <Text style={[styles.previewLabel, { color: colors.textSecondary }]}>
-                                        Range
-                                    </Text>
-                                    <Text style={[styles.previewValue, { color: colors.textPrimary }]}>
-                                        {backupPreview.dateRange.earliest} — {backupPreview.dateRange.latest}
-                                    </Text>
-                                </View>
-                            </View>
-                        )}
-
-                        <TouchableOpacity
-                            style={[styles.modalButton, {
-                                backgroundColor: colors.accent,
-                                borderWidth: 0,
-                            }]}
-                            onPress={() => handleRestore('merge')}
-                        >
-                            <Text style={[styles.modalButtonText, { color: colors.buttonPrimaryText }]}>
-                                Merge
-                            </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={[styles.modalButton, { borderColor: colors.border, borderWidth: 1 }]}
-                            onPress={() => {
-                                Alert.alert(
-                                    'Replace All Entries?',
-                                    'This will delete all current entries. This action cannot be undone.',
-                                    [
-                                        { text: 'Cancel', style: 'cancel' },
-                                        { text: 'Replace', style: 'destructive', onPress: () => handleRestore('replace') }
-                                    ]
-                                );
-                            }}
-                        >
-                            <Text style={[styles.modalButtonText, { color: colors.textPrimary }]}>
-                                Replace
-                            </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.modalCloseButton}
-                            onPress={() => setShowRestoreModal(false)}
-                        >
-                            <Text style={[styles.modalCloseText, { color: colors.textSecondary }]}>
-                                Cancel
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </AnimatedModal>
         </SafeAreaView>
     );
 }
