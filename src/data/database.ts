@@ -338,6 +338,120 @@ export const getMissedDaysCount = async (month?: string): Promise<number> => {
     });
 };
 
+/**
+ * Export all journal entries as a JSON string
+ * The JSON format is:
+ * {
+ *   "version": 1,
+ *   "exportedAt": string,
+ *   "entries": JournalEntry[]
+ * }
+ */
+export const exportJournalEntriesToJson = async (): Promise<string> => {
+    return await withDatabase(async (database) => {
+        const entries = await database.getAllAsync<JournalEntry>(`
+            SELECT 
+                id,
+                book_name,
+                chapter_start,
+                chapter_end,
+                verse_start,
+                verse_end,
+                reflection_1,
+                reflection_2,
+                reflection_3,
+                reflection_4,
+                notes,
+                datetime(created_at, 'localtime') as created_at,
+                datetime(updated_at, 'localtime') as updated_at
+            FROM journal_entries
+            ORDER BY created_at ASC
+        `);
+
+        const payload = {
+            version: 1,
+            exportedAt: new Date().toISOString(),
+            entries,
+        };
+
+        return JSON.stringify(payload, null, 2);
+    });
+};
+
+/**
+ * Import journal entries from a JSON string previously created by exportJournalEntriesToJson.
+ * This will REPLACE all existing journal entries with the ones from the backup.
+ */
+export const importJournalEntriesFromJson = async (json: string): Promise<{ imported: number }> => {
+    let parsed: any;
+    try {
+        parsed = JSON.parse(json);
+    } catch (error) {
+        throw new Error('Invalid JSON file');
+    }
+
+    if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.entries)) {
+        throw new Error('Invalid backup format');
+    }
+
+    const entries = parsed.entries as Partial<JournalEntry>[];
+
+    return await withDatabase(async (database) => {
+        await database.execAsync('BEGIN TRANSACTION');
+        try {
+            // Clear existing entries so this acts as a restore
+            await database.execAsync('DELETE FROM journal_entries');
+
+            for (const entry of entries) {
+                // Basic validation / defaults
+                if (!entry.book_name) continue;
+
+                const reflections = [
+                    entry.reflection_1 ?? '',
+                    entry.reflection_2 ?? '',
+                    entry.reflection_3 ?? '',
+                    entry.reflection_4 ?? '',
+                ];
+
+                await database.runAsync(
+                    `INSERT INTO journal_entries (
+                        book_name,
+                        chapter_start,
+                        chapter_end,
+                        verse_start,
+                        verse_end,
+                        reflection_1,
+                        reflection_2,
+                        reflection_3,
+                        reflection_4,
+                        notes,
+                        created_at,
+                        updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [
+                        entry.book_name,
+                        entry.chapter_start ?? null,
+                        entry.chapter_end ?? null,
+                        entry.verse_start ?? null,
+                        entry.verse_end ?? null,
+                        ...reflections,
+                        entry.notes ?? null,
+                        entry.created_at ?? new Date().toISOString(),
+                        entry.updated_at ?? new Date().toISOString(),
+                    ]
+                );
+            }
+
+            await database.execAsync('COMMIT');
+
+            return { imported: entries.length };
+        } catch (error) {
+            await database.execAsync('ROLLBACK');
+            throw error;
+        }
+    });
+};
+
 export const getComebackDaysCount = async (): Promise<number> => {
     return await withDatabase(async (database) => {
         const result = await database.getFirstAsync(`

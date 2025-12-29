@@ -1,8 +1,12 @@
 import { useTheme } from '@/src/theme/ThemeContext';
 import { getAllScheduledNotifications } from '@/src/utils/notifications';
+import { exportJournalEntriesToJson, importJournalEntriesFromJson } from '@/src/data/database';
 import Constants from 'expo-constants';
+import * as DocumentPicker from 'expo-document-picker';
+import { documentDirectory, writeAsStringAsync, readAsStringAsync } from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { Stack } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AnimatedModal } from '@/src/components/AnimatedModal';
@@ -15,6 +19,8 @@ export default function Settings() {
     const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
     const [tapCount, setTapCount] = useState(0);
+    const [isExporting, setIsExporting] = useState(false);
+    const [isImporting, setIsImporting] = useState(false);
 
     const handleNotificationTitleTap = () => {
         const newCount = tapCount + 1;
@@ -76,6 +82,80 @@ export default function Settings() {
             return `Daily at ${hour}:${minute}${trigger.repeats ? ' (Repeating)' : ''}`;
         }
         return JSON.stringify(trigger);
+    };
+
+    const handleExport = async () => {
+        if (isExporting) return;
+        setIsExporting(true);
+        try {
+            const json = await exportJournalEntriesToJson();
+            const fileName = `journal-backup-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+            const uri = `${documentDirectory || ''}${fileName}`;
+
+            await writeAsStringAsync(uri, json);
+
+            if (await Sharing.isAvailableAsync()) {
+                await Sharing.shareAsync(uri, {
+                    mimeType: 'application/json',
+                    dialogTitle: 'Share journal backup',
+                });
+            } else {
+                Alert.alert(
+                    'Backup created',
+                    'Your journal backup has been saved on this device.',
+                );
+            }
+        } catch (error: any) {
+            console.error('Failed to export journal entries:', error);
+            Alert.alert('Export failed', error?.message || 'Something went wrong while exporting your journal entries.');
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    const handleImport = async () => {
+        if (isImporting) return;
+
+        Alert.alert(
+            'Replace existing entries?',
+            'Importing a backup will replace all existing journal entries with those from the backup file.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Continue',
+                    style: 'destructive',
+                    onPress: async () => {
+                        setIsImporting(true);
+                        try {
+                            const result = await DocumentPicker.getDocumentAsync({
+                                type: 'application/json',
+                                copyToCacheDirectory: true,
+                            });
+
+                            if (result.canceled || !result.assets || result.assets.length === 0) {
+                                setIsImporting(false);
+                                return;
+                            }
+
+                            const asset = result.assets[0];
+                            const content = await readAsStringAsync(asset.uri);
+
+                            const { imported } = await importJournalEntriesFromJson(content);
+
+                            Alert.alert(
+                                'Import complete',
+                                `Imported ${imported} journal entries from backup.`,
+                            );
+                        } catch (error: any) {
+                            console.error('Failed to import journal entries:', error);
+                            Alert.alert('Import failed', error?.message || 'Something went wrong while importing your backup.');
+                        } finally {
+                            setIsImporting(false);
+                        }
+                    },
+                },
+            ],
+        );
     };
 
     return (
@@ -169,6 +249,47 @@ export default function Settings() {
                             <Text style={[styles.value, { color: colors.textPrimary }]}>
                                 {Constants.expoConfig?.version || '1.0.0'}
                             </Text>
+                        </TouchableOpacity>
+                    </View>
+                    <View style={{ height: 16 }} />
+                    <View style={styles.buttonGroup}>
+                        <TouchableOpacity
+                            style={[
+                                styles.actionButton,
+                                {
+                                    backgroundColor: colors.cardBackground,
+                                    borderColor: colors.border,
+                                },
+                            ]}
+                            onPress={handleExport}
+                            disabled={isExporting}
+                        >
+                            {isExporting ? (
+                                <ActivityIndicator color={colors.textSecondary} />
+                            ) : (
+                                <Text style={[styles.actionButtonText, { color: colors.textPrimary }]}>
+                                    Export journal
+                                </Text>
+                            )}
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[
+                                styles.actionButton,
+                                {
+                                    backgroundColor: colors.cardBackground,
+                                    borderColor: colors.border,
+                                },
+                            ]}
+                            onPress={handleImport}
+                            disabled={isImporting}
+                        >
+                            {isImporting ? (
+                                <ActivityIndicator color={colors.textSecondary} />
+                            ) : (
+                                <Text style={[styles.actionButtonText, { color: colors.textPrimary }]}>
+                                    Import journal
+                                </Text>
+                            )}
                         </TouchableOpacity>
                     </View>
                 </View>
