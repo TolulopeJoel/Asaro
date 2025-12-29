@@ -11,7 +11,7 @@ interface FlashbackProps {
     onEntryPress: (entry: JournalEntry) => void;
 }
 
-export const Flashback: React.FC<FlashbackProps> = ({ onEntryPress }) => {
+export const Flashback: React.FC<FlashbackProps> = React.memo(({ onEntryPress }) => {
     const { colors } = useTheme();
     const [flashbackData, setFlashbackData] = useState<{ entry: JournalEntry, type: 'year' | 'month' | 'random' } | null>(null);
     const scaleAnim = useRef(new Animated.Value(0.9)).current;
@@ -136,7 +136,7 @@ export const Flashback: React.FC<FlashbackProps> = ({ onEntryPress }) => {
             </ScalePressable>
         </Animated.View>
     );
-};
+});
 
 const styles = StyleSheet.create({
     cardWrapper: {

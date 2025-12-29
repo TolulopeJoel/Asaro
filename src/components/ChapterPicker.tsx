@@ -31,7 +31,7 @@ interface ChapterPickerProps {
     onVerseRangeChange?: (verses: VerseRange | null) => void;
 }
 
-export const ChapterPicker: React.FC<ChapterPickerProps> = ({
+export const ChapterPicker: React.FC<ChapterPickerProps> = React.memo(({
     selectedBook,
     selectedChapters,
     onChapterSelect,
@@ -318,7 +318,7 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = ({
             </TouchableOpacity>
         </View>
     );
-};
+});
 
 const styles = StyleSheet.create({
     container: {

@@ -16,7 +16,7 @@ interface DayStatus {
     isFuture: boolean;
 }
 
-export const WeeklyStreak = () => {
+export const WeeklyStreak = React.memo(() => {
     const { colors } = useTheme();
     const [weekDays, setWeekDays] = useState<DayStatus[]>([]);
 
@@ -146,7 +146,7 @@ export const WeeklyStreak = () => {
             </View>
         </ScalePressable>
     );
-};
+});
 
 const styles = StyleSheet.create({
     container: {

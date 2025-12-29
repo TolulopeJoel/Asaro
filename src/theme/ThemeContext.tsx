@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useColorScheme } from 'react-native';
 import { Colors, ThemeColors } from './colors';
 
@@ -24,6 +24,7 @@ const THEME_STORAGE_KEY = 'user_theme_preference';
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const systemColorScheme = useColorScheme();
     const [theme, setThemeState] = useState<ThemeMode>('light');
+    const [isInitialized, setIsInitialized] = useState(false);
 
     useEffect(() => {
         // Load saved theme preference
@@ -31,22 +32,33 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
             if (savedTheme && (savedTheme === 'light' || savedTheme === 'dark' || savedTheme === 'system')) {
                 setThemeState(savedTheme as ThemeMode);
             }
+            setIsInitialized(true);
         });
     }, []);
 
-    const setTheme = async (mode: ThemeMode) => {
+    const setTheme = React.useCallback(async (mode: ThemeMode) => {
         setThemeState(mode);
         await AsyncStorage.setItem(THEME_STORAGE_KEY, mode);
-    };
+    }, []);
 
-    const isDark =
-        theme === 'dark' || (theme === 'system' && systemColorScheme === 'dark');
+    const isDark = useMemo(
+        () => theme === 'dark' || (theme === 'system' && systemColorScheme === 'dark'),
+        [theme, systemColorScheme]
+    );
 
-    const colors = isDark ? Colors.dark : Colors.light;
+    const colors = useMemo(
+        () => isDark ? Colors.dark : Colors.light,
+        [isDark]
+    );
+
+    const contextValue = useMemo(
+        () => ({ theme, colors, setTheme, isDark }),
+        [theme, colors, setTheme, isDark]
+    );
 
     // Don't block rendering - just use default theme until loaded
     return (
-        <ThemeContext.Provider value={{ theme, colors, setTheme, isDark }}>
+        <ThemeContext.Provider value={contextValue}>
             {children}
         </ThemeContext.Provider>
     );

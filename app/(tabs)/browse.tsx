@@ -8,6 +8,7 @@ import { StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AnimatedModal } from '@/src/components/AnimatedModal';
 
+
 export default function PastEntriesScreen() {
     const router = useRouter();
     const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);

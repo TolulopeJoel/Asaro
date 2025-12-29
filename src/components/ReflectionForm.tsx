@@ -28,7 +28,7 @@ interface ReflectionFormProps {
   saveButtonText?: string;
 }
 
-export const ReflectionForm: React.FC<ReflectionFormProps> = ({
+export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
   initialAnswers,
   onAnswersChange,
   onSave,
@@ -49,9 +49,23 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
   const saveButtonOpacity = useRef(new Animated.Value(0)).current;
   const questionAnims = useRef(REFLECTION_QUESTIONS.map(() => new Animated.Value(0))).current;
 
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     if (onAnswersChange) {
-      onAnswersChange(answers);
+      // Debounce the callback to avoid excessive parent re-renders
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+      debounceTimer.current = setTimeout(() => {
+        onAnswersChange(answers);
+      }, 150);
+
+      return () => {
+        if (debounceTimer.current) {
+          clearTimeout(debounceTimer.current);
+        }
+      };
     }
   }, [answers, onAnswersChange]);
 
@@ -233,7 +247,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
       )}
     </View>
   );
-};
+});
 
 interface ReflectionQuestion {
   id: keyof ReflectionAnswers;

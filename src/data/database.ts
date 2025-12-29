@@ -100,6 +100,7 @@ export const initializeDatabase = async () => {
                         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                     );
                     CREATE INDEX IF NOT EXISTS idx_book_name ON journal_entries(book_name);
+                    CREATE INDEX IF NOT EXISTS idx_created_at ON journal_entries(created_at);
                 `);
             };
 
@@ -141,6 +142,7 @@ export const initializeDatabase = async () => {
                         DROP TABLE journal_entries;
                         ALTER TABLE journal_entries_new RENAME TO journal_entries;
                         CREATE INDEX IF NOT EXISTS idx_book_name ON journal_entries(book_name);
+                        CREATE INDEX IF NOT EXISTS idx_created_at ON journal_entries(created_at);
                         
                         COMMIT;
                     `);
@@ -212,7 +214,10 @@ export const searchEntries = async (term: string): Promise<JournalEntry[]> => {
 
     return await withDatabase(async (database) => {
         return await database.getAllAsync(
-            `SELECT * FROM journal_entries WHERE reflection_1 LIKE ? OR reflection_2 LIKE ? OR reflection_3 LIKE ? OR reflection_4 LIKE ? OR notes LIKE ? ORDER BY created_at DESC`,
+            `SELECT * FROM journal_entries 
+             WHERE reflection_1 LIKE ? OR reflection_2 LIKE ? OR reflection_3 LIKE ? OR reflection_4 LIKE ? OR notes LIKE ? 
+             ORDER BY created_at DESC 
+             LIMIT 100`,
             [pattern, pattern, pattern, pattern, pattern]
         );
     });

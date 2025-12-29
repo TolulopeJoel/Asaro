@@ -42,16 +42,32 @@ export function useAutoSave(reflectionAnswers: any, selectedBook: any, selectedC
     const lastSaveTime = useRef<number>(0);
     const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isMountedRef = useRef(true);
+    const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     useEffect(() => {
         isMountedRef.current = true;
         return () => {
             isMountedRef.current = false;
+            if (debounceTimer.current) {
+                clearTimeout(debounceTimer.current);
+            }
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+            }
         };
     }, []);
 
     useEffect(() => {
         if (isEditMode || currentStep !== 'reflection') {
+            // Clear any running timers when not in reflection step
+            if (debounceTimer.current) {
+                clearTimeout(debounceTimer.current);
+                debounceTimer.current = null;
+            }
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+                intervalRef.current = null;
+            }
             return;
         }
 
@@ -81,7 +97,16 @@ export function useAutoSave(reflectionAnswers: any, selectedBook: any, selectedC
             return;
         }
 
-        // save draft every 20 seconds
+        // Set up periodic save every 20 seconds
+        if (!intervalRef.current) {
+            intervalRef.current = setInterval(() => {
+                if (isMountedRef.current) {
+                    saveDraft();
+                }
+            }, 20000);
+        }
+
+        // Save immediately if it's been more than 20 seconds since last save
         const now = Date.now();
         const timeSinceLastSave = now - lastSaveTime.current;
         if (timeSinceLastSave >= 20000) {
@@ -89,12 +114,14 @@ export function useAutoSave(reflectionAnswers: any, selectedBook: any, selectedC
             return;
         }
 
-        // save as draft if user stop typing after 0.8 seconds
+        // Debounced save after user stops typing (0.8 seconds)
         if (debounceTimer.current) {
             clearTimeout(debounceTimer.current);
         }
         debounceTimer.current = setTimeout(() => {
-            saveDraft();
+            if (isMountedRef.current) {
+                saveDraft();
+            }
         }, 800);
 
         return () => {
@@ -102,7 +129,7 @@ export function useAutoSave(reflectionAnswers: any, selectedBook: any, selectedC
                 clearTimeout(debounceTimer.current);
             }
         };
-    }, [reflectionAnswers, verseRange]);
+    }, [reflectionAnswers, selectedBook, selectedChapters, verseRange, currentStep, isEditMode]);
 }
 
 export default function MeditationSessionScreen() {
@@ -190,30 +217,32 @@ export default function MeditationSessionScreen() {
     const scrollViewRef = useRef<ScrollView>(null);
     const { width: screenWidth } = useWindowDimensions();
 
-    const steps: Step[] = ['book', 'chapter', 'reflection', 'summary'];
+    const steps: Step[] = useMemo(() => ['book', 'chapter', 'reflection', 'summary'], []);
 
-    const scrollToStep = (step: Step) => {
+    const scrollToStep = useCallback((step: Step) => {
         const index = steps.indexOf(step);
         if (index !== -1 && scrollViewRef.current) {
             scrollViewRef.current.scrollTo({ x: index * screenWidth, animated: true });
             setCurrentStep(step);
         }
-    };
+    }, [screenWidth]);
 
     // Sync scroll with currentStep on mount/update (e.g. when loading draft)
     useEffect(() => {
-        const index = steps.indexOf(currentStep);
-        if (index !== -1 && scrollViewRef.current) {
-            // Use a small timeout to ensure layout is ready
-            setTimeout(() => {
-                scrollViewRef.current?.scrollTo({ x: index * screenWidth, animated: false });
-            }, 100);
+        if (!isLoading) {
+            const index = steps.indexOf(currentStep);
+            if (index !== -1 && scrollViewRef.current) {
+                // Use requestAnimationFrame for better performance
+                requestAnimationFrame(() => {
+                    scrollViewRef.current?.scrollTo({ x: index * screenWidth, animated: false });
+                });
+            }
         }
-    }, [isLoading]); // Only run when loading finishes to set initial position
+    }, [isLoading, currentStep, screenWidth]); // Only run when loading finishes to set initial position
 
-    const changeStep = (step: Step) => {
+    const changeStep = useCallback((step: Step) => {
         scrollToStep(step);
-    };
+    }, []);
 
     const handleBookSelect = useCallback((book: BibleBook) => {
         setSelectedBook(book);
@@ -260,26 +289,23 @@ export default function MeditationSessionScreen() {
                 notes: answers.notes,
             };
 
+            // Batch notification operations
+            const updateNotifications = async () => {
+                await cancelRemainingNotificationsForToday();
+                await addNotificationsForNewDay();
+                await setupDailyNotifications();
+            };
+
             if (isEditMode && entryId) {
                 await updateJournalEntry(entryId, entryData);
-                // Cancel remaining notifications for today
-                await cancelRemainingNotificationsForToday();
-                // Add notifications for a new day to the stack
-                await addNotificationsForNewDay();
-                // Ensure we have notifications for the next 7 days
-                await setupDailyNotifications();
+                await updateNotifications();
                 Alert.alert('Success', 'Entry updated successfully');
                 router.back();
             } else {
                 const newEntryId = await createJournalEntry(entryData);
                 setCreatedEntryId(newEntryId);
                 await AsyncStorage.removeItem("reflection_draft");
-                // Cancel remaining notifications for today
-                await cancelRemainingNotificationsForToday();
-                // Add notifications for a new day to the stack
-                await addNotificationsForNewDay();
-                // Ensure we have notifications for the next 7 days
-                await setupDailyNotifications();
+                await updateNotifications();
                 setReflectionAnswers(answers);
                 changeStep('summary');
             }
@@ -371,7 +397,7 @@ export default function MeditationSessionScreen() {
         );
     }
 
-    const renderBookStep = () => (
+    const renderBookStep = useCallback(() => (
         <View style={[styles.stepContainer, { width: screenWidth }]}>
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.stepContent}>
@@ -388,9 +414,9 @@ export default function MeditationSessionScreen() {
                 </View>
             </ScrollView>
         </View>
-    );
+    ), [screenWidth, colors.textSecondary, selectedBook, handleBookSelect]);
 
-    const renderChapterStep = () => (
+    const renderChapterStep = useCallback(() => (
         <View style={[styles.stepContainer, { width: screenWidth }]}>
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.stepContent}>
@@ -431,9 +457,9 @@ export default function MeditationSessionScreen() {
                 </View>
             </ScrollView>
         </View>
-    );
+    ), [screenWidth, colors, selectedBook, selectedChapters, handleChapterSelect, handleVerseRangeChange, handleContinueToReflection]);
 
-    const renderReflectionStep = () => (
+    const renderReflectionStep = useCallback(() => (
         <View style={[styles.stepContainer, { width: screenWidth }]}>
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.stepContent}>
@@ -472,9 +498,18 @@ export default function MeditationSessionScreen() {
                 </View>
             </ScrollView>
         </View>
-    );
+    ), [screenWidth, colors, isEditMode, reflectionAnswers, handleSaveReflection, handleDiscardDraft]);
 
-    const renderSummaryStep = () => (
+    const formattedDate = useMemo(() => {
+        return new Date().toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+    }, []);
+
+    const renderSummaryStep = useCallback(() => (
         <View style={[styles.stepContainer, { width: screenWidth }]}>
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.stepContent}>
@@ -490,12 +525,7 @@ export default function MeditationSessionScreen() {
                         </View>
                         <View style={styles.completionDetails}>
                             <Text style={[styles.completionText, { color: colors.textPrimary }]}>{selectionSummary}</Text>
-                            <Text style={[styles.completionDate, { color: colors.textSecondary }]}>{new Date().toLocaleDateString('en-US', {
-                                weekday: 'long',
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric'
-                            })}</Text>
+                            <Text style={[styles.completionDate, { color: colors.textSecondary }]}>{formattedDate}</Text>
                         </View>
                     </View>
 
@@ -514,7 +544,7 @@ export default function MeditationSessionScreen() {
                 </View>
             </ScrollView>
         </View>
-    );
+    ), [screenWidth, colors, selectionSummary, formattedDate, handleDone, handleStartOver]);
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>

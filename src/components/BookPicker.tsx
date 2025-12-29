@@ -18,7 +18,7 @@ interface BookPickerProps {
     availableBooks?: BibleBook[];
 }
 
-export const BookPicker: React.FC<BookPickerProps> = ({
+export const BookPicker: React.FC<BookPickerProps> = React.memo(({
     selectedBook,
     onBookSelect,
     availableBooks
@@ -191,7 +191,7 @@ export const BookPicker: React.FC<BookPickerProps> = ({
             </ScrollView>
         </View>
     );
-};
+});
 
 const styles = StyleSheet.create({
     container: {

@@ -240,10 +240,10 @@ export default function Index() {
                 <UpdateCard />
                 <WeeklyStreak />
                 <Flashback
-                    onEntryPress={(entry) => {
+                    onEntryPress={useCallback((entry) => {
                         setSelectedEntry(entry);
                         setIsDetailModalVisible(true);
-                    }}
+                    }, [])}
                 />
             </ScrollView>
 

@@ -1,12 +1,12 @@
 import { useTheme } from '@/src/theme/ThemeContext';
 import { getLocalMidnight, isSameDay } from '@/src/utils/dateUtils';
 import { useFocusEffect } from 'expo-router';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     Animated,
+    FlatList,
     LayoutAnimation,
     Platform,
-    ScrollView,
     StyleSheet,
     Text,
     TextInput,
@@ -34,6 +34,12 @@ interface NavigationBreadcrumb {
     onPress: () => void;
 }
 
+type ListItem = 
+    | { type: 'header'; title: string; id: string }
+    | { type: 'entry'; entry: JournalEntry; id: number }
+    | { type: 'bookHeader'; bookName: string; entryCount: number; id: string }
+    | { type: 'book'; book: BibleBook; id: string };
+
 interface JournalEntryListProps {
     onEntryPress: (entry: JournalEntry) => void;
     refreshTrigger?: number;
@@ -43,6 +49,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
     const { colors } = useTheme();
     const [entries, setEntries] = useState<JournalEntry[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
+    const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
     const [viewMode, setViewMode] = useState<ViewMode>('recent');
     const [selectedBook, setSelectedBook] = useState<BibleBook>();
     const [bookEntries, setBookEntries] = useState<JournalEntry[]>([]);
@@ -50,6 +57,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
     const [availableBooks, setAvailableBooks] = useState<BibleBook[]>([]);
     const [tabAnimation] = useState(new Animated.Value(0));
     const [tabContainerWidth, setTabContainerWidth] = useState(0);
+    const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         loadEntries();
@@ -93,17 +101,33 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         }
     }, [entries.length, filteredEntries.length, bookEntries.length]);
 
+    // Debounce search query
+    useEffect(() => {
+        if (searchTimeoutRef.current) {
+            clearTimeout(searchTimeoutRef.current);
+        }
+        searchTimeoutRef.current = setTimeout(() => {
+            setDebouncedSearchQuery(searchQuery);
+        }, 300);
+
+        return () => {
+            if (searchTimeoutRef.current) {
+                clearTimeout(searchTimeoutRef.current);
+            }
+        };
+    }, [searchQuery]);
+
     useEffect(() => {
         if (viewMode === 'recent') {
             filterEntries();
         }
-    }, [searchQuery, entries]);
+    }, [debouncedSearchQuery, entries, viewMode]);
 
     useEffect(() => {
         if (viewMode === 'bookDetail' && selectedBook) {
             loadBookEntries();
         }
-    }, [selectedBook, searchQuery]);
+    }, [selectedBook, debouncedSearchQuery, viewMode]);
 
     useEffect(() => {
         if (tabContainerWidth === 0) return; // Wait for layout
@@ -144,14 +168,14 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         }
     };
 
-    const loadBookEntries = async () => {
+    const loadBookEntries = useCallback(async () => {
         if (!selectedBook) return;
 
         try {
             let dbEntries: JournalEntry[] = [];
 
-            if (searchQuery.trim()) {
-                const allSearchResults = await searchEntries(searchQuery);
+            if (debouncedSearchQuery.trim()) {
+                const allSearchResults = await searchEntries(debouncedSearchQuery);
                 dbEntries = allSearchResults.filter(entry => entry.book_name === selectedBook.name);
             } else {
                 dbEntries = await getEntriesByBook(selectedBook.name);
@@ -161,22 +185,22 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         } catch (error) {
             console.error('Error loading book entries:', error);
         }
-    };
+    }, [selectedBook, debouncedSearchQuery]);
 
-    const filterEntries = async () => {
-        if (!searchQuery.trim()) {
+    const filterEntries = useCallback(async () => {
+        if (!debouncedSearchQuery.trim()) {
             setFilteredEntries(entries);
             return;
         }
 
         try {
-            const searchResults = await searchEntries(searchQuery);
+            const searchResults = await searchEntries(debouncedSearchQuery);
             setFilteredEntries(searchResults);
         } catch (error) {
             console.error('Error filtering entries:', error);
             setFilteredEntries([]);
         }
-    };
+    }, [debouncedSearchQuery, entries]);
 
     const navigateToRecent = () => {
         setViewMode('recent');
@@ -213,19 +237,19 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         return breadcrumbs;
     };
 
-    const getChapterText = (entry: JournalEntry): string => {
+    const getChapterText = useCallback((entry: JournalEntry): string => {
         if (entry.chapter_end && entry.chapter_end !== entry.chapter_start) {
             return `${entry.chapter_start}–${entry.chapter_end}`;
         }
         return entry.chapter_start?.toString() || '';
-    };
+    }, []);
 
-    const getAnswerCount = (entry: JournalEntry): number => {
+    const getAnswerCount = useCallback((entry: JournalEntry): number => {
         return [entry.reflection_1, entry.reflection_2, entry.reflection_3, entry.reflection_4]
             .filter(r => (r ?? '').trim().length > 0).length;
-    };
+    }, []);
 
-    const formatDate = (dateString?: string): string => {
+    const formatDate = useCallback((dateString?: string): string => {
         if (!dateString) return '';
         const date = new Date(dateString);
         return date.toLocaleDateString('en-US', {
@@ -233,9 +257,9 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
             day: 'numeric',
             year: 'numeric',
         });
-    };
+    }, []);
 
-    const getPreviewText = (entry: JournalEntry): string => {
+    const getPreviewText = useCallback((entry: JournalEntry): string => {
         const reflections = [entry.reflection_1, entry.reflection_2, entry.reflection_3, entry.reflection_4]
             .filter(r => r && r.trim().length > 0);
 
@@ -254,9 +278,9 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         }
 
         return 'No reflection recorded';
-    };
+    }, []);
 
-    const groupEntriesByDate = (entries: JournalEntry[]) => {
+    const groupEntriesByDate = useCallback((entries: JournalEntry[]) => {
         const today = getLocalMidnight();
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
@@ -294,10 +318,10 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         });
 
         return groups;
-    };
+    }, []);
 
-    const renderEntryCard = (entry: JournalEntry, index: number = 0) => (
-        <View key={entry.id}>
+    const renderEntryCard = useCallback((entry: JournalEntry) => (
+        <View>
             <ScalePressable
                 style={[styles.entryCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
                 onPress={() => onEntryPress(entry)}
@@ -328,47 +352,79 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                 </View>
             </ScalePressable>
         </View>
-    );
+    ), [colors, onEntryPress, formatDate, getChapterText, getPreviewText, getAnswerCount]);
 
-    const renderDateGroup = (title: string, entries: JournalEntry[], startIndex: number = 0) => {
-        if (entries.length === 0) return null;
-
+    const renderDateGroupHeader = useCallback((title: string) => {
         return (
-            <View key={title} style={styles.dateGroup}>
+            <View style={styles.dateGroup}>
                 <Text style={[styles.dateGroupTitle, { color: colors.textPrimary }]}>{title}</Text>
-                {entries.map((entry, index) => renderEntryCard(entry, startIndex + index))}
             </View>
         );
-    };
+    }, [colors]);
 
-    const renderBooksGrid = () => {
-        if (availableBooks.length === 0) {
-            return (
-                <View style={styles.emptyState}>
-                    <Text style={[styles.emptyStateText, { color: colors.textPrimary }]}>No books studied yet</Text>
-                    <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>
-                        Create your first reflection to see books here
-                    </Text>
-                </View>
-            );
+    // Convert grouped entries to flat list format
+    const getFlatListData = useMemo(() => {
+        if (viewMode === 'books') {
+            return availableBooks.map(book => ({ type: 'book' as const, book, id: book.name }));
         }
 
-        return (
-            <View style={styles.booksGrid}>
-                {availableBooks.map(book => (
-                    <ScalePressable
-                        key={book.name}
-                        style={[styles.bookCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
-                        onPress={() => navigateToBookDetail(book)}
-                    >
-                        <View style={styles.bookCardHeader}>
-                            <Text style={[styles.bookCardName, { color: colors.textPrimary }]}>{book.name}</Text>
-                        </View>
-                    </ScalePressable>
-                ))}
-            </View>
+        if (viewMode === 'bookDetail') {
+            const items: ListItem[] = [];
+            if (selectedBook) {
+                items.push({
+                    type: 'bookHeader',
+                    bookName: selectedBook.name,
+                    entryCount: bookEntries.length,
+                    id: `header-${selectedBook.name}`
+                });
+            }
+            const sorted = [...bookEntries].sort((a, b) => {
+                if (a.chapter_start !== b.chapter_start) {
+                    return (a.chapter_start || 0) - (b.chapter_start || 0);
+                }
+                return new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime();
+            });
+            sorted.forEach(entry => {
+                items.push({ type: 'entry', entry, id: entry.id! });
+            });
+            return items;
+        }
+
+        // Recent view
+        if (debouncedSearchQuery.trim()) {
+            // Search results - no grouping
+            return filteredEntries
+                .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())
+                .map(entry => ({ type: 'entry' as const, entry, id: entry.id! }));
+        }
+
+        // Grouped entries
+        const sortedEntries = [...filteredEntries].sort(
+            (a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime()
         );
-    };
+        const grouped = groupEntriesByDate(sortedEntries);
+        const items: ListItem[] = [];
+
+        const sections = [
+            { title: 'Today', entries: grouped.today },
+            { title: 'Yesterday', entries: grouped.yesterday },
+            { title: 'This Week', entries: grouped.thisWeek },
+            { title: 'This Month', entries: grouped.thisMonth },
+            { title: 'Older', entries: grouped.older },
+        ];
+
+        sections.forEach(section => {
+            if (section.entries.length > 0) {
+                items.push({ type: 'header', title: section.title, id: `header-${section.title}` });
+                section.entries.forEach(entry => {
+                    items.push({ type: 'entry', entry, id: entry.id! });
+                });
+            }
+        });
+
+        return items;
+    }, [viewMode, filteredEntries, debouncedSearchQuery, availableBooks, bookEntries, selectedBook, groupEntriesByDate]);
+
 
     const renderBreadcrumbs = () => {
         const breadcrumbs = getBreadcrumbs();
@@ -397,95 +453,67 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         );
     };
 
-    const renderContent = () => {
-        switch (viewMode) {
-            case 'recent':
-                if (filteredEntries.length === 0) {
+    const renderListItem = useCallback(({ item }: { item: ListItem }) => {
+        switch (item.type) {
+            case 'header':
+                return renderDateGroupHeader(item.title);
+            case 'entry':
+                return renderEntryCard(item.entry);
+            case 'bookHeader':
                     return (
-                        <View style={styles.emptyState}>
-                            <Text style={[styles.emptyStateText, { color: colors.text }]}>
-                                {searchQuery ? 'No entries match your search' : 'No entries yet'}
-                            </Text>
-                            <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>
-                                {searchQuery
-                                    ? 'Try adjusting your search terms'
-                                    : 'Start your first reflection to see it here'
-                                }
+                    <View style={[styles.bookDetailHeader, { borderBottomColor: colors.border }]}>
+                        <Text style={[styles.bookDetailTitle, { color: colors.textPrimary }]}>{item.bookName}</Text>
+                        <Text style={[styles.bookDetailSubtitle, { color: colors.textSecondary }]}>
+                            {item.entryCount} {item.entryCount === 1 ? 'entry' : 'entries'}
                             </Text>
                         </View>
-                    );
-                }
-
-                if (searchQuery.trim()) {
-                    // Show search results without grouping
-                    return (
-                        <View style={styles.entriesList}>
-                            {filteredEntries
-                                .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())
-                                .map(entry => renderEntryCard(entry))}
-                        </View>
-                    );
-                }
-
-                // Show grouped entries
-                const sortedEntries = filteredEntries.sort(
-                    (a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime()
                 );
-                const groupedEntries = groupEntriesByDate(sortedEntries);
-
+            case 'book':
                 return (
-                    <View style={styles.entriesList}>
-                        {renderDateGroup('Today', groupedEntries.today)}
-                        {renderDateGroup('Yesterday', groupedEntries.yesterday)}
-                        {renderDateGroup('This Week', groupedEntries.thisWeek)}
-                        {renderDateGroup('This Month', groupedEntries.thisMonth)}
-                        {renderDateGroup('Older', groupedEntries.older)}
+                    <View style={styles.bookCardWrapper}>
+                        <ScalePressable
+                            style={[styles.bookCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
+                            onPress={() => navigateToBookDetail(item.book)}
+                        >
+                            <View style={styles.bookCardHeader}>
+                                <Text style={[styles.bookCardName, { color: colors.textPrimary }]}>{item.book.name}</Text>
+                            </View>
+                        </ScalePressable>
                     </View>
                 );
-
-            case 'books':
-                return renderBooksGrid();
-
-            case 'bookDetail':
-                if (bookEntries.length === 0) {
-                    return (
-                        <View style={styles.emptyState}>
-                            <Text style={[styles.emptyStateText, { color: colors.text }]}>
-                                {searchQuery ? 'No entries match your search' : 'No entries for this book'}
-                            </Text>
-                            <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>
-                                {searchQuery
-                                    ? 'Try adjusting your search terms'
-                                    : 'Create your first entry for this book'
-                                }
-                            </Text>
-                        </View>
-                    );
-                }
-
-                return (
-                    <View style={styles.entriesList}>
-                        <View style={[styles.bookDetailHeader, { borderBottomColor: colors.border }]}>
-                            <Text style={[styles.bookDetailTitle, { color: colors.textPrimary }]}>{selectedBook?.name}</Text>
-                            <Text style={[styles.bookDetailSubtitle, { color: colors.textSecondary }]}>
-                                {bookEntries.length} {bookEntries.length === 1 ? 'entry' : 'entries'}
-                            </Text>
-                        </View>
-                        {bookEntries
-                            .sort((a, b) => {
-                                if (a.chapter_start !== b.chapter_start) {
-                                    return (a.chapter_start || 0) - (b.chapter_start || 0);
-                                }
-                                return new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime();
-                            })
-                            .map(entry => renderEntryCard(entry))}
-                    </View>
-                );
-
             default:
                 return null;
         }
-    };
+    }, [colors, renderDateGroupHeader, renderEntryCard, navigateToBookDetail]);
+
+    const renderEmptyState = useCallback(() => {
+        if (viewMode === 'books') {
+                    return (
+                        <View style={styles.emptyState}>
+                    <Text style={[styles.emptyStateText, { color: colors.textPrimary }]}>No books studied yet</Text>
+                            <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>
+                        Create your first reflection to see books here
+                            </Text>
+                        </View>
+                    );
+                }
+
+                return (
+            <View style={styles.emptyState}>
+                <Text style={[styles.emptyStateText, { color: colors.text }]}>
+                    {debouncedSearchQuery ? 'No entries match your search' : viewMode === 'bookDetail' ? 'No entries for this book' : 'No entries yet'}
+                </Text>
+                <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>
+                    {debouncedSearchQuery
+                        ? 'Try adjusting your search terms'
+                        : viewMode === 'bookDetail'
+                            ? 'Create your first entry for this book'
+                            : 'Start your first reflection to see it here'
+                    }
+                            </Text>
+                    </View>
+                );
+    }, [viewMode, debouncedSearchQuery, colors]);
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -566,13 +594,22 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                 </View>
             )}
 
-            <ScrollView
-                style={styles.scrollView}
-                contentContainerStyle={styles.scrollContent}
+            <FlatList
+                data={getFlatListData}
+                renderItem={renderListItem}
+                keyExtractor={(item) => item.id.toString()}
+                contentContainerStyle={[
+                    viewMode === 'books' ? { paddingTop: 24 } : styles.entriesList,
+                    styles.scrollContent,
+                    getFlatListData.length === 0 && styles.emptyContainer
+                ]}
+                ListEmptyComponent={renderEmptyState}
                 showsVerticalScrollIndicator={false}
-            >
-                {renderContent()}
-            </ScrollView>
+                initialNumToRender={10}
+                maxToRenderPerBatch={10}
+                windowSize={5}
+                removeClippedSubviews={Platform.OS === 'android'}
+            />
         </View>
     );
 };
@@ -677,6 +714,9 @@ const styles = StyleSheet.create({
     scrollContent: {
         paddingBottom: 100,
     },
+    emptyContainer: {
+        flexGrow: 1,
+    },
     entriesList: {
         paddingHorizontal: 20,
         paddingTop: 24,
@@ -742,6 +782,10 @@ const styles = StyleSheet.create({
         paddingTop: 24,
         justifyContent: 'space-between',
         gap: 12,
+    },
+    bookCardWrapper: {
+        paddingHorizontal: 24,
+        marginBottom: 12,
     },
     bookCard: {
         borderRadius: 8, // Softened
