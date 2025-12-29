@@ -4,7 +4,6 @@ import {
     KeyboardAvoidingView,
     Modal,
     Platform,
-    SafeAreaView,
     StatusBar,
     StyleSheet,
     Text,
@@ -13,6 +12,7 @@ import {
     View
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { height: screenHeight } = Dimensions.get('window');
 

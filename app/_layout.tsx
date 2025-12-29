@@ -10,6 +10,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { Text, View, Platform } from 'react-native';
 
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '@/src/theme/ThemeContext';
 
 function StackNavigator() {
@@ -125,9 +126,11 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider>
-      <StackNavigator />
-      <StatusBar hidden={true} />
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <StackNavigator />
+        <StatusBar hidden={true} />
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }

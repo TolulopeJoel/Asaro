@@ -3,7 +3,8 @@ import { getEntryById } from '@/src/data/database';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, SafeAreaView, StyleSheet } from 'react-native';
+import { Alert, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { JournalEntry } from '@/src/data/database';
 
 export default function EntryDetailScreen() {
