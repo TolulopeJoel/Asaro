@@ -1,5 +1,7 @@
 import { createJournalEntry, getEntryById, JournalEntryInput, updateJournalEntry } from '@/src/data/database';
 import { useTheme } from '@/src/theme/ThemeContext';
+import { Spacing } from '@/src/theme/spacing';
+import { Typography } from '@/src/theme/typography';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -552,17 +554,17 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     loadingText: {
-        fontSize: 16,
-        fontWeight: '500',
-        letterSpacing: 0.2,
+        fontSize: Typography.size.md,
+        fontWeight: Typography.weight.medium,
+        letterSpacing: Typography.letterSpacing.wide,
     },
     scrollView: {
         flex: 1,
     },
     scrollContent: {
         flexGrow: 1,
-        paddingHorizontal: 24,
-        paddingBottom: 48,
+        paddingHorizontal: Spacing.layout.screenPadding,
+        paddingBottom: Spacing.xxxl,
     },
     stepContent: {
         flex: 1,
@@ -570,13 +572,13 @@ const styles = StyleSheet.create({
     },
     titleContainer: {
         alignItems: 'center',
-        marginBottom: 24,
+        marginBottom: Spacing.xl,
     },
     stepTitle: {
-        fontSize: 32,
-        fontWeight: '600',
-        letterSpacing: -0.5,
-        marginBottom: 8,
+        fontSize: Typography.size.xxxl,
+        fontWeight: Typography.weight.semibold,
+        letterSpacing: Typography.letterSpacing.tight,
+        marginBottom: Spacing.sm,
     },
     titleUnderline: {
         width: 40,
@@ -584,56 +586,56 @@ const styles = StyleSheet.create({
         borderRadius: 1,
     },
     stepDescription: {
-        fontSize: 18,
-        fontWeight: '400',
+        fontSize: Typography.size.lg,
+        fontWeight: Typography.weight.regular,
         textAlign: 'center',
-        marginBottom: 12,
-        lineHeight: 26,
-        letterSpacing: 0.2,
+        marginBottom: Spacing.md,
+        lineHeight: Typography.lineHeight.xl,
+        letterSpacing: Typography.letterSpacing.wide,
     },
     stepQuestion: {
-        fontSize: 28,
-        fontWeight: '600',
-        marginBottom: 32,
+        fontSize: 28, // Keeping large for impact
+        fontWeight: Typography.weight.semibold,
+        marginBottom: Spacing.xxl,
         lineHeight: 34,
-        letterSpacing: -0.5,
+        letterSpacing: Typography.letterSpacing.tight,
     },
     contentArea: {
         flex: 1,
         minHeight: 200,
     },
     readingLabel: {
-        fontSize: 12,
-        fontWeight: '600',
-        letterSpacing: 1,
+        fontSize: Typography.size.sm,
+        fontWeight: Typography.weight.semibold,
+        letterSpacing: Typography.letterSpacing.wider,
         textTransform: 'uppercase',
-        marginBottom: 8,
+        marginBottom: Spacing.sm,
     },
     navigationContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         marginTop: 40,
-        gap: 16,
+        gap: Spacing.lg,
     },
     backButton: {
         flex: 1,
-        paddingVertical: 18,
-        paddingHorizontal: 24,
+        paddingVertical: Spacing.layout.cardPadding,
+        paddingHorizontal: Spacing.layout.screenPadding,
         backgroundColor: 'transparent',
         borderWidth: 1,
-        borderRadius: 16, // Softened from 2
+        borderRadius: Spacing.borderRadius.lg,
     },
     backButtonText: {
-        fontSize: 16,
-        fontWeight: '500',
+        fontSize: Typography.size.lg,
+        fontWeight: Typography.weight.medium,
         textAlign: 'center',
         letterSpacing: 0.3,
     },
     continueButton: {
         flex: 1,
-        paddingVertical: 18,
-        paddingHorizontal: 24,
-        borderRadius: 16, // Softened from 2
+        paddingVertical: Spacing.layout.cardPadding,
+        paddingHorizontal: Spacing.layout.screenPadding,
+        borderRadius: Spacing.borderRadius.lg,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
         shadowRadius: 8,
@@ -643,35 +645,35 @@ const styles = StyleSheet.create({
         display: 'none',
     },
     continueButtonText: {
-        fontSize: 16,
-        fontWeight: '600',
+        fontSize: Typography.size.lg,
+        fontWeight: Typography.weight.semibold,
         textAlign: 'center',
         letterSpacing: 0.3,
     },
     subtleBackButton: {
         alignItems: 'center',
-        paddingVertical: 16,
-        marginTop: 24,
+        paddingVertical: Spacing.lg,
+        marginTop: Spacing.layout.screenPadding,
     },
     subtleBackButtonText: {
-        fontSize: 14,
-        fontWeight: '500',
-        letterSpacing: 0.5,
+        fontSize: Typography.size.md,
+        fontWeight: Typography.weight.medium,
+        letterSpacing: Typography.letterSpacing.wide,
     },
     discardButton: {
         alignItems: 'center',
-        paddingVertical: 12,
-        marginTop: 24,
+        paddingVertical: Spacing.md,
+        marginTop: Spacing.layout.screenPadding,
     },
     discardButtonText: {
-        fontSize: 14,
-        fontWeight: '500',
+        fontSize: Typography.size.md,
+        fontWeight: Typography.weight.medium,
         letterSpacing: 0.3,
     },
     completionCard: {
-        padding: 32,
+        padding: Spacing.xxl,
         marginBottom: 40,
-        borderRadius: 24, // Softened from 2
+        borderRadius: Spacing.borderRadius.xl,
         borderWidth: 1,
         shadowOffset: {
             width: 0,
@@ -683,17 +685,17 @@ const styles = StyleSheet.create({
     completionHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 16,
+        marginBottom: Spacing.lg,
     },
     completionDot: {
         width: 8,
         height: 8,
         borderRadius: 4,
-        marginRight: 12,
+        marginRight: Spacing.md,
     },
     completionTitle: {
-        fontSize: 14,
-        fontWeight: '600',
+        fontSize: Typography.size.md,
+        fontWeight: Typography.weight.semibold,
         letterSpacing: 0.8,
         textTransform: 'uppercase',
     },
@@ -701,20 +703,20 @@ const styles = StyleSheet.create({
         paddingLeft: 20,
     },
     completionText: {
-        fontSize: 20,
-        fontWeight: '400',
-        marginBottom: 4,
+        fontSize: Typography.size.xl,
+        fontWeight: Typography.weight.regular,
+        marginBottom: Spacing.xs,
         letterSpacing: -0.2,
     },
     completionDate: {
-        fontSize: 14,
-        fontWeight: '400',
-        letterSpacing: 0.2,
+        fontSize: Typography.size.md,
+        fontWeight: Typography.weight.regular,
+        letterSpacing: Typography.letterSpacing.wide,
     },
     primaryButton: {
         paddingVertical: 20,
-        paddingHorizontal: 32,
-        borderRadius: 16, // Softened from 2
+        paddingHorizontal: Spacing.xxl,
+        borderRadius: Spacing.borderRadius.lg,
         alignItems: 'center',
         shadowOffset: {
             width: 0,
@@ -725,19 +727,19 @@ const styles = StyleSheet.create({
         elevation: 4,
     },
     primaryButtonText: {
-        fontSize: 16,
-        fontWeight: '600',
-        letterSpacing: 0.5,
+        fontSize: Typography.size.lg,
+        fontWeight: Typography.weight.semibold,
+        letterSpacing: Typography.letterSpacing.wide,
     },
     secondaryButton: {
-        paddingVertical: 16,
-        paddingHorizontal: 32,
+        paddingVertical: Spacing.lg,
+        paddingHorizontal: Spacing.xxl,
         alignItems: 'center',
-        marginTop: 16,
+        marginTop: Spacing.lg,
     },
     secondaryButtonText: {
         fontSize: 15,
-        fontWeight: '500',
+        fontWeight: Typography.weight.medium,
         letterSpacing: 0.3,
     },
 });

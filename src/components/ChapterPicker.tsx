@@ -1,4 +1,6 @@
 import { useTheme } from '@/src/theme/ThemeContext';
+import { Spacing } from '@/src/theme/spacing';
+import { Typography } from '@/src/theme/typography';
 import React, { useEffect, useState } from 'react';
 import {
     StyleProp,
@@ -175,8 +177,8 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = ({
         let borderRadiusStyle = {};
         if (isRangeStart) {
             borderRadiusStyle = {
-                borderTopLeftRadius: 10,
-                borderBottomLeftRadius: 10,
+                borderTopLeftRadius: Spacing.borderRadius.md,
+                borderBottomLeftRadius: Spacing.borderRadius.md,
                 borderTopRightRadius: 2,
                 borderBottomRightRadius: 2,
             };
@@ -184,8 +186,8 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = ({
             borderRadiusStyle = {
                 borderTopLeftRadius: 2,
                 borderBottomLeftRadius: 2,
-                borderTopRightRadius: 10,
-                borderBottomRightRadius: 10,
+                borderTopRightRadius: Spacing.borderRadius.md,
+                borderBottomRightRadius: Spacing.borderRadius.md,
             };
         } else if (isMiddle) {
             borderRadiusStyle = {
@@ -215,7 +217,7 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = ({
                     <Text style={[
                         styles.chapterButtonText,
                         { color: colors.text },
-                        (isSelected || isInDrag) && { color: colors.buttonPrimaryText, fontWeight: '600' }
+                        (isSelected || isInDrag) && { color: colors.buttonPrimaryText, fontWeight: Typography.weight.semibold }
                     ]}>
                         {chapter}
                     </Text>
@@ -324,49 +326,49 @@ const styles = StyleSheet.create({
         minHeight: 250,
     },
     emptyContainer: {
-        paddingVertical: 40,
+        paddingVertical: Spacing.xxxl,
         alignItems: 'center',
     },
     emptyText: {
-        fontSize: 15,
-        fontWeight: '400',
+        fontSize: Typography.size.md,
+        fontWeight: Typography.weight.regular,
         letterSpacing: 0.3,
     },
     header: {
-        marginBottom: 20,
+        marginBottom: Spacing.lg,
     },
     bookTitle: {
-        fontSize: 20,
-        fontWeight: '600',
-        marginBottom: 4,
+        fontSize: Typography.size.xl,
+        fontWeight: Typography.weight.semibold,
+        marginBottom: Spacing.xs,
         letterSpacing: 0.2,
     },
     selectionContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 16,
-        marginBottom: 24,
-        borderRadius: 8,
+        padding: Spacing.md,
+        marginBottom: Spacing.xl,
+        borderRadius: Spacing.borderRadius.md,
         borderWidth: 1,
     },
     selectionText: {
-        fontSize: 15,
-        fontWeight: '500',
+        fontSize: Typography.size.md,
+        fontWeight: Typography.weight.medium,
         letterSpacing: 0.2,
     },
     checkboxContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
-        marginTop: 24,
-        padding: 12,
-        borderRadius: 12,
+        gap: Spacing.md,
+        marginTop: Spacing.xl,
+        padding: Spacing.sm,
+        borderRadius: Spacing.borderRadius.lg,
     },
     checkbox: {
         width: 22,
         height: 22,
-        borderRadius: 8,
+        borderRadius: Spacing.borderRadius.sm,
         borderWidth: 1.5,
         justifyContent: 'center',
         alignItems: 'center',
@@ -375,23 +377,23 @@ const styles = StyleSheet.create({
         // Colors handled in component
     },
     checkmark: {
-        fontSize: 14,
-        fontWeight: '600',
+        fontSize: Typography.size.sm,
+        fontWeight: Typography.weight.semibold,
     },
     checkboxLabel: {
-        fontSize: 15,
-        fontWeight: '400',
+        fontSize: Typography.size.md,
+        fontWeight: Typography.weight.regular,
         letterSpacing: 0.2,
     },
     clearButton: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
+        paddingHorizontal: Spacing.md,
+        paddingVertical: Spacing.sm,
+        borderRadius: Spacing.borderRadius.xl,
         borderWidth: 1,
     },
     clearButtonText: {
-        fontSize: 13,
-        fontWeight: '500',
+        fontSize: Typography.size.sm,
+        fontWeight: Typography.weight.medium,
         letterSpacing: 0.3,
     },
     chaptersGrid: {
@@ -408,7 +410,7 @@ const styles = StyleSheet.create({
     chapterButton: {
         width: 52,
         height: 52,
-        borderRadius: 10,
+        borderRadius: Spacing.borderRadius.md,
         borderWidth: 1,
         justifyContent: 'center',
         alignItems: 'center',
@@ -430,24 +432,24 @@ const styles = StyleSheet.create({
         // marginLeft: -6,
     },
     chapterButtonText: {
-        fontSize: 16,
-        fontWeight: '500',
+        fontSize: Typography.size.md,
+        fontWeight: Typography.weight.medium,
         letterSpacing: 0.2,
     },
     verseInputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginLeft: 8,
+        marginLeft: Spacing.sm,
         gap: 4,
     },
     verseInput: {
         width: 52,
         height: 52,
         borderWidth: 1,
-        borderRadius: 8,
+        borderRadius: Spacing.borderRadius.sm,
         paddingHorizontal: 4,
-        fontSize: 14,
-        fontWeight: '600',
+        fontSize: Typography.size.sm,
+        fontWeight: Typography.weight.semibold,
         textAlign: 'center',
         letterSpacing: 0.2,
     },
@@ -456,8 +458,8 @@ const styles = StyleSheet.create({
         marginRight: 4,
     },
     verseColon: {
-        fontSize: 16,
-        fontWeight: '600',
+        fontSize: Typography.size.md,
+        fontWeight: Typography.weight.semibold,
         marginHorizontal: 2,
     },
 });

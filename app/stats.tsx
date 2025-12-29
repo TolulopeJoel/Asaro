@@ -2,6 +2,8 @@ import { MonthGrid } from '@/src/components/stats/MonthGrid';
 import { StatCard } from '@/src/components/stats/StatCard';
 import { getDailyEntryCounts, getFirstEntryDate } from '@/src/data/database';
 import { useTheme } from '@/src/theme/ThemeContext';
+import { Spacing } from '@/src/theme/spacing';
+import { Typography } from '@/src/theme/typography';
 import { formatDateToLocalString } from '@/src/utils/dateUtils';
 import { useFocusEffect, useNavigation } from 'expo-router';
 import React, { useCallback, useState } from 'react';
@@ -163,22 +165,22 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     scrollContent: {
-        padding: 28,
+        padding: Spacing.layout.screenPadding,
         paddingBottom: 40,
     },
     monthHeader: {
-        marginBottom: 40,
+        marginBottom: Spacing.xxxl,
     },
     monthTitleLarge: {
-        fontSize: 32,
-        fontWeight: '700',
-        letterSpacing: 0.5,
-        marginBottom: 24,
+        fontSize: Typography.size.xxxl,
+        fontWeight: Typography.weight.bold,
+        letterSpacing: Typography.letterSpacing.wide,
+        marginBottom: Spacing.xl,
     },
     statsRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 24,
+        gap: Spacing.xl,
     },
     statDivider: {
         width: 1,

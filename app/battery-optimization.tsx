@@ -3,6 +3,8 @@ import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { AppState, Text, View, StyleSheet, TouchableOpacity, Platform, Linking, Dimensions } from 'react-native';
 import { useTheme } from '@/src/theme/ThemeContext';
+import { Spacing } from '@/src/theme/spacing';
+import { Typography } from '@/src/theme/typography';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as IntentLauncher from 'expo-intent-launcher';
@@ -76,7 +78,7 @@ export default function BatteryOptimizationScreen() {
             <View style={styles.content}>
                 <View style={styles.header}>
                     <View style={[styles.iconContainer, { backgroundColor: 'rgba(225, 143, 67, 0.1)' }]}>
-                        <Ionicons name="battery-charging" size={48} color={colors.primary} />
+                        <Ionicons name="battery-charging" size={Typography.size.display} color={colors.primary} />
                     </View>
                 </View>
 
@@ -89,8 +91,8 @@ export default function BatteryOptimizationScreen() {
                         To ensure you receive your daily reflections, Àṣàrò needs to run in the background.
                     </Text>
 
-                    <View style={[styles.infoBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                        <Ionicons name="information-circle-outline" size={20} color={colors.textSecondary} style={{ marginRight: 8 }} />
+                    <View style={[styles.infoBox, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
+                        <Ionicons name="information-circle-outline" size={Typography.size.xl} color={colors.textSecondary} style={{ marginRight: Spacing.sm }} />
                         <Text style={[styles.infoText, { color: colors.textSecondary }]}>
                             Please disable battery optimization for this app.
                         </Text>
@@ -104,7 +106,7 @@ export default function BatteryOptimizationScreen() {
                         activeOpacity={0.8}
                     >
                         <Text style={styles.buttonText}>Fix Settings</Text>
-                        <Ionicons name="arrow-forward" size={20} color="#FFF" style={{ marginLeft: 8 }} />
+                        <Ionicons name="arrow-forward" size={Typography.size.xl} color="#FFF" style={{ marginLeft: Spacing.sm }} />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -125,7 +127,7 @@ const styles = StyleSheet.create({
     },
     content: {
         flex: 1,
-        padding: 32,
+        padding: Spacing.xxl,
         justifyContent: 'space-between',
     },
     header: {
@@ -134,47 +136,47 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     iconContainer: {
-        padding: 24,
-        borderRadius: 32,
+        padding: Spacing.xl,
+        borderRadius: Spacing.borderRadius.xl,
     },
     textContainer: {
         flex: 1,
         alignItems: 'center',
     },
     title: {
-        fontSize: 32,
-        fontWeight: '800',
+        fontSize: Typography.size.xxxl,
+        fontWeight: Typography.weight.bold,
         textAlign: 'center',
-        marginBottom: 16,
-        letterSpacing: -0.5,
+        marginBottom: Spacing.lg,
+        letterSpacing: Typography.letterSpacing.tight,
     },
     description: {
-        fontSize: 16,
+        fontSize: Typography.size.lg,
         textAlign: 'center',
-        lineHeight: 24,
-        marginBottom: 32,
+        lineHeight: Typography.lineHeight.lg,
+        marginBottom: Spacing.xxl,
         opacity: 0.8,
     },
     infoBox: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 16,
-        borderRadius: 16,
+        padding: Spacing.lg,
+        borderRadius: Spacing.borderRadius.lg,
         borderWidth: 1,
         width: '100%',
     },
     infoText: {
-        fontSize: 14,
+        fontSize: Typography.size.md,
         flex: 1,
-        lineHeight: 20,
+        lineHeight: Typography.lineHeight.md,
     },
     footer: {
-        paddingTop: 32,
+        paddingTop: Spacing.xxl,
     },
     button: {
         flexDirection: 'row',
         paddingVertical: 18,
-        borderRadius: 20,
+        borderRadius: Spacing.borderRadius.xl,
         alignItems: 'center',
         justifyContent: 'center',
         width: '100%',
@@ -185,7 +187,7 @@ const styles = StyleSheet.create({
     },
     buttonText: {
         color: '#FFFFFF',
-        fontSize: 18,
-        fontWeight: '700',
+        fontSize: Typography.size.lg,
+        fontWeight: Typography.weight.bold,
     },
 });

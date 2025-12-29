@@ -77,31 +77,36 @@ export const AnimatedModal: React.FC<AnimatedModalProps> = ({
             onRequestClose={onRequestClose}
             {...modalProps}
         >
-            {/* Backdrop */}
-            <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
-                <TouchableOpacity
-                    style={styles.backdropTouchable}
-                    activeOpacity={1}
-                    onPress={onRequestClose}
-                />
-            </Animated.View>
+            <View style={styles.container}>
+                {/* Backdrop */}
+                <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
+                    <TouchableOpacity
+                        style={styles.backdropTouchable}
+                        activeOpacity={1}
+                        onPress={onRequestClose}
+                    />
+                </Animated.View>
 
-            {/* Modal content */}
-            <Animated.View
-                style={[
-                    styles.modalContainer,
-                    {
-                        transform: [{ translateY }],
-                    },
-                ]}
-            >
-                {children}
-            </Animated.View>
+                {/* Modal content */}
+                <Animated.View
+                    style={[
+                        styles.modalContent,
+                        {
+                            transform: [{ translateY }],
+                        },
+                    ]}
+                >
+                    {children}
+                </Animated.View>
+            </View>
         </Modal>
     );
 };
 
 const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+    },
     backdrop: {
         ...StyleSheet.absoluteFillObject,
         backgroundColor: '#000',
@@ -109,12 +114,8 @@ const styles = StyleSheet.create({
     backdropTouchable: {
         flex: 1,
     },
-    modalContainer: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        top: 0,
+    modalContent: {
+        flex: 1,
         backgroundColor: 'transparent',
     },
 });

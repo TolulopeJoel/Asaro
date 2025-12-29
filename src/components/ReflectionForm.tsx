@@ -7,6 +7,8 @@ import {
   View
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
+import { Spacing } from '../theme/spacing';
+import { Typography } from '../theme/typography';
 import { ScalePressable } from './ScalePressable';
 import { TextArea } from './TextArea';
 
@@ -66,7 +68,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
 
     const staggerAnimation = Animated.stagger(100, animations);
     staggerAnimation.start();
-    
+
     return () => {
       staggerAnimation.stop();
       animations.forEach(anim => anim.stop());
@@ -98,7 +100,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = ({
       }),
     ]);
     animation.start();
-    
+
     return () => {
       animation.stop();
     };
@@ -270,22 +272,22 @@ const styles = StyleSheet.create({
     // Removed paddingHorizontal since parent handles it
   },
   questionContainer: {
-    marginBottom: 40,
+    marginBottom: Spacing.xxxl,
   },
   questionHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 16,
+    marginBottom: Spacing.md,
   },
   questionNumber: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: Typography.size.xs,
+    fontWeight: Typography.weight.medium,
     textAlign: 'center',
     lineHeight: 24,
-    marginRight: 16,
+    marginRight: Spacing.md,
     marginTop: 2,
     overflow: 'hidden',
   },
@@ -293,53 +295,53 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   questionTitle: {
-    fontSize: 16,
-    fontWeight: '400',
-    lineHeight: 24,
+    fontSize: Typography.size.md,
+    fontWeight: Typography.weight.regular,
+    lineHeight: Typography.lineHeight.md,
     letterSpacing: 0.1,
   },
   notesContainer: {
-    marginTop: 20,
+    marginTop: Spacing.xl,
   },
   notesHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: Spacing.md,
   },
   notesTitle: {
-    fontSize: 16,
-    fontWeight: '400',
+    fontSize: Typography.size.md,
+    fontWeight: Typography.weight.regular,
     letterSpacing: 0.2,
-    marginRight: 8,
+    marginRight: Spacing.sm,
   },
   notesSubtitle: {
-    fontSize: 12,
-    fontWeight: '300',
+    fontSize: Typography.size.xs,
+    fontWeight: Typography.weight.light,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
   actionsContainer: {
     flexDirection: 'row',
-    paddingVertical: 32,
-    gap: 16,
+    paddingVertical: Spacing.xxl,
+    gap: Spacing.md,
   },
   clearButton: {
     flex: 1,
     paddingVertical: 18,
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderRadius: 16, // Softened from 2
+    borderRadius: Spacing.borderRadius.lg,
     alignItems: 'center',
   },
   clearButtonText: {
-    fontSize: 16,
-    fontWeight: '500',
+    fontSize: Typography.size.md,
+    fontWeight: Typography.weight.medium,
     letterSpacing: 0.3,
   },
   saveButton: {
     width: '100%', // Ensure it fills the Animated.View
     paddingVertical: 18,
-    borderRadius: 16, // Softened from 2
+    borderRadius: Spacing.borderRadius.lg,
     alignItems: 'center',
     shadowOffset: {
       width: 0,
@@ -350,8 +352,8 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   saveButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: Typography.size.md,
+    fontWeight: Typography.weight.semibold,
     letterSpacing: 0.3,
   },
 });

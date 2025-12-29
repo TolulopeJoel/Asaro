@@ -2,6 +2,8 @@ import { Flashback } from '@/src/components/Flashback';
 import { WeeklyStreak } from '@/src/components/WeeklyStreak';
 import { getComebackDaysCount, getMissedDaysCount, getTotalEntryCount, JournalEntry } from "@/src/data/database";
 import { useTheme } from "@/src/theme/ThemeContext";
+import { Spacing } from "@/src/theme/spacing";
+import { Typography } from "@/src/theme/typography";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Link, useFocusEffect, useRouter } from 'expo-router';
@@ -35,7 +37,7 @@ const StatCard = React.memo(({ icon, value }: StatCardProps) => {
         >
             <Ionicons
                 name={icon}
-                size={18}
+                size={Typography.size.xl}
                 color={colors.accent}
             />
 
@@ -115,7 +117,7 @@ const UpdateCard = React.memo(() => {
             <View style={[styles.updateCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
                 <View style={styles.updateHeader}>
                     <View style={[styles.updateBadge, { backgroundColor: colors.accentSecondaryLight, borderColor: colors.accentSecondary }]}>
-                        <Ionicons name="sparkles" size={12} color={colors.accentSecondaryDark} />
+                        <Ionicons name="sparkles" size={Typography.size.xs} color={colors.accentSecondaryDark} />
                         <Text style={[styles.updateBadgeText, { color: colors.accentSecondaryDark }]}>NEW</Text>
                     </View>
                     <Text style={[styles.updateDate, { color: colors.textTertiary }]}>Sept 6, 2025</Text>
@@ -141,14 +143,14 @@ const FloatingActionButton = React.memo(() => {
     const router = useRouter();
     const insets = useSafeAreaInsets();
     // Tab bar height (60) + bottom inset + extra spacing
-    const bottomPosition = 60 + insets.bottom + 20;
+    const bottomPosition = 60 + insets.bottom + Spacing.xl;
 
     return (
         <ScalePressable
             style={[styles.fab, { backgroundColor: colors.textPrimary, bottom: bottomPosition }]}
             onPress={() => router.push("/addEntry")}
         >
-            <WavyAddIcon size={40} color="#FFFFFF" />
+            <WavyAddIcon size={Typography.size.display} color="#FFFFFF" />
         </ScalePressable>
     );
 });
@@ -158,7 +160,7 @@ const DraftBar = React.memo(() => {
     const { colors } = useTheme();
     const insets = useSafeAreaInsets();
     // Tab bar height (60) + bottom inset + extra spacing
-    const bottomPosition = 60 + insets.bottom + 20;
+    const bottomPosition = 60 + insets.bottom + Spacing.xl;
 
     useEffect(() => {
         const animation = Animated.spring(slideAnim, {
@@ -199,7 +201,7 @@ const DraftBar = React.memo(() => {
                     </View>
 
                     <View style={[styles.draftIcon, { backgroundColor: colors.draftIconBg }]}>
-                        <Ionicons name="arrow-forward" size={20} color={colors.accent} />
+                        <Ionicons name="arrow-forward" size={Typography.size.xl} color={colors.accent} />
                     </View>
                 </ScalePressable>
             </Link>
@@ -280,30 +282,30 @@ const styles = StyleSheet.create({
     container: { flex: 1 },
     scrollView: { flex: 1 },
     scrollContent: {
-        padding: 24,
+        padding: Spacing.layout.screenPadding,
         paddingBottom: 120,
-        gap: 18,
+        gap: Spacing.layout.cardPadding,
     },
 
     statsContainer: {
         flexDirection: "row",
-        gap: 12,
+        gap: Spacing.md,
         width: "100%",
     },
     statCard: {
         flex: 1,
-        borderRadius: 12,
-        paddingVertical: 18,
-        paddingHorizontal: 8,
+        borderRadius: Spacing.borderRadius.md,
+        paddingVertical: Spacing.layout.cardPadding,
+        paddingHorizontal: Spacing.sm,
         alignItems: "center",
         justifyContent: "center",
-        gap: 8,
+        gap: Spacing.sm,
         borderWidth: 1,
     },
     statValue: {
-        fontSize: 22,
-        fontWeight: "700",
-        letterSpacing: 0.2,
+        fontSize: Typography.size.xxl,
+        fontWeight: Typography.weight.bold,
+        letterSpacing: Typography.letterSpacing.wide,
     },
 
     /* Update card */
@@ -311,52 +313,52 @@ const styles = StyleSheet.create({
         width: "100%",
     },
     updateCard: {
-        borderRadius: 12,
-        padding: 18,
+        borderRadius: Spacing.borderRadius.md,
+        padding: Spacing.layout.cardPadding,
         borderWidth: 1,
     },
     updateHeader: {
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
-        marginBottom: 10,
+        marginBottom: Spacing.sm,
     },
     updateBadge: {
         flexDirection: "row",
         alignItems: "center",
         gap: 5,
-        paddingHorizontal: 8,
+        paddingHorizontal: Spacing.sm,
         paddingVertical: 3,
-        borderRadius: 6,
+        borderRadius: Spacing.borderRadius.sm,
         borderWidth: 1,
     },
     updateBadgeText: {
-        fontSize: 10,
-        fontWeight: "700",
-        letterSpacing: 0.5,
+        fontSize: Typography.size.xs,
+        fontWeight: Typography.weight.bold,
+        letterSpacing: Typography.letterSpacing.wide,
     },
     updateDate: {
-        fontSize: 10,
-        fontWeight: "500",
+        fontSize: Typography.size.xs,
+        fontWeight: Typography.weight.medium,
     },
     updateTitle: {
-        fontSize: 15,
-        fontWeight: "600",
+        fontSize: Typography.size.lg,
+        fontWeight: Typography.weight.semibold,
         marginBottom: 6,
-        letterSpacing: 0.2,
+        letterSpacing: Typography.letterSpacing.wide,
     },
     updateContent: {
-        fontSize: 13,
-        lineHeight: 19,
-        letterSpacing: 0.1,
+        fontSize: Typography.size.md,
+        lineHeight: Typography.lineHeight.md,
+        letterSpacing: Typography.letterSpacing.wide,
     },
 
     /* Draft bar */
     draftBar: {
         position: "absolute",
-        left: 20,
-        right: 20,
-        borderRadius: 16,
+        left: Spacing.xl,
+        right: Spacing.xl,
+        borderRadius: Spacing.borderRadius.lg,
         borderWidth: 1,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.15,
@@ -367,20 +369,20 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
-        paddingVertical: 18,
-        paddingHorizontal: 20,
+        paddingVertical: Spacing.layout.cardPadding,
+        paddingHorizontal: Spacing.xl,
     },
     draftTextContainer: {
         flex: 1,
     },
     draftLabel: {
-        fontSize: 15,
-        fontWeight: "600",
+        fontSize: Typography.size.lg,
+        fontWeight: Typography.weight.semibold,
         marginBottom: 2,
     },
     draftSubtext: {
-        fontSize: 13,
-        letterSpacing: 0.1,
+        fontSize: Typography.size.md,
+        letterSpacing: Typography.letterSpacing.wide,
     },
     draftIcon: {
         width: 36,
@@ -393,7 +395,7 @@ const styles = StyleSheet.create({
     /* FAB */
     fab: {
         position: 'absolute',
-        right: 24,
+        right: Spacing.layout.screenPadding,
         width: 64,
         height: 64,
         borderRadius: 32,

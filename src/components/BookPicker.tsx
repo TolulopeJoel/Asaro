@@ -9,6 +9,8 @@ import {
 } from 'react-native';
 import { ALL_BIBLE_BOOKS, BibleBook, GREEK_BOOKS, HEBREW_BOOKS } from '../data/bibleBooks';
 import { useTheme } from '../theme/ThemeContext';
+import { Spacing } from '../theme/spacing';
+import { Typography } from '../theme/typography';
 
 interface BookPickerProps {
     selectedBook?: BibleBook;
@@ -198,39 +200,39 @@ const styles = StyleSheet.create({
     },
     searchInput: {
         borderWidth: 1,
-        borderRadius: 12, // Softened from 2
+        borderRadius: Spacing.borderRadius.lg,
         paddingVertical: 14,
-        paddingHorizontal: 16,
-        fontSize: 16,
-        marginBottom: 24,
-        fontWeight: '400',
+        paddingHorizontal: Spacing.lg,
+        fontSize: Typography.size.md,
+        marginBottom: Spacing.xl,
+        fontWeight: Typography.weight.regular,
         letterSpacing: 0.2,
     },
     scrollView: {
         flex: 1,
     },
     scrollContent: {
-        paddingBottom: 20,
+        paddingBottom: Spacing.xl,
     },
     booksContainer: {
         flex: 1,
     },
     sectionHeader: {
-        marginBottom: 16,
-        marginTop: 8,
+        marginBottom: Spacing.lg,
+        marginTop: Spacing.sm,
     },
     sectionTitle: {
-        fontSize: 14,
-        fontWeight: '600',
-        marginBottom: 4,
+        fontSize: Typography.size.sm,
+        fontWeight: Typography.weight.semibold,
+        marginBottom: Spacing.xs,
         letterSpacing: 1,
         textTransform: 'uppercase',
     },
     sectionSubtitle: {
-        fontSize: 12,
-        fontWeight: '400',
+        fontSize: Typography.size.xs,
+        fontWeight: Typography.weight.regular,
         letterSpacing: 0.5,
-        marginBottom: 8,
+        marginBottom: Spacing.sm,
     },
     sectionLine: {
         height: 1,
@@ -240,28 +242,28 @@ const styles = StyleSheet.create({
     booksGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        justifyContent: 'space-between', // Changed from space-around for better alignment
-        marginBottom: 12,
-        gap: 8, // Use gap for cleaner spacing
+        justifyContent: 'space-between',
+        marginBottom: Spacing.md,
+        gap: Spacing.sm,
     },
     GreekBooksGrid: {
-        paddingTop: 12,
+        paddingTop: Spacing.md,
     },
     bookCard: {
         width: '31%',
-        aspectRatio: 1.3, // Slightly wider
-        borderRadius: 16, // Softened from 2
+        aspectRatio: 1.3,
+        borderRadius: Spacing.borderRadius.lg,
         borderWidth: 1,
-        marginBottom: 8,
-        paddingVertical: 12,
-        paddingHorizontal: 8,
+        marginBottom: Spacing.sm,
+        paddingVertical: Spacing.md,
+        paddingHorizontal: Spacing.sm,
         alignItems: 'center',
         justifyContent: 'center',
         position: 'relative',
     },
     bookCardSelected: {
-        borderRadius: 16,
-        borderWidth: 1.5, // Slightly thicker border for selection
+        borderRadius: Spacing.borderRadius.lg,
+        borderWidth: 1.5,
         shadowOffset: {
             width: 0,
             height: 2,
@@ -271,30 +273,30 @@ const styles = StyleSheet.create({
         elevation: 2,
     },
     searchResultCard: {
-        paddingTop: 8,
+        paddingTop: Spacing.sm,
     },
     bookAbbreviation: {
-        fontSize: 15,
-        fontWeight: '500',
+        fontSize: 15, // Keeping slightly custom for specific card fit
+        fontWeight: Typography.weight.medium,
         textAlign: 'center',
         marginBottom: 2,
         letterSpacing: 0.3,
     },
     bookAbbreviationSelected: {
-        fontWeight: '600',
+        fontWeight: Typography.weight.semibold,
     },
     chapterCount: {
-        fontSize: 11,
-        fontWeight: '400',
+        fontSize: Typography.size.xs,
+        fontWeight: Typography.weight.regular,
         letterSpacing: 0.3,
     },
     chapterCountSelected: {
-        fontWeight: '500',
+        fontWeight: Typography.weight.medium,
     },
     selectedDot: {
         position: 'absolute',
-        top: 8,
-        right: 8,
+        top: Spacing.sm,
+        right: Spacing.sm,
         width: 6,
         height: 6,
         borderRadius: 3,
@@ -306,21 +308,21 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         flexWrap: 'wrap',
         justifyContent: 'space-between',
-        gap: 8,
+        gap: Spacing.sm,
     },
     emptyState: {
         alignItems: 'center',
-        paddingVertical: 40,
+        paddingVertical: Spacing.xxxl,
     },
     emptyStateText: {
-        fontSize: 16,
-        fontWeight: '500',
-        marginBottom: 8,
+        fontSize: Typography.size.md,
+        fontWeight: Typography.weight.medium,
+        marginBottom: Spacing.sm,
         letterSpacing: 0.2,
     },
     emptyStateSubtext: {
-        fontSize: 14,
-        fontWeight: '400',
+        fontSize: Typography.size.sm,
+        fontWeight: Typography.weight.regular,
         letterSpacing: 0.3,
         textAlign: 'center',
     },

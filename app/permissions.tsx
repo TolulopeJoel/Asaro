@@ -3,6 +3,8 @@ import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { AppState, Text, View, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { useTheme } from '@/src/theme/ThemeContext';
+import { Spacing } from '@/src/theme/spacing';
+import { Typography } from '@/src/theme/typography';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -54,7 +56,7 @@ export default function PermissionsScreen() {
             <View style={styles.content}>
                 <View style={styles.header}>
                     <View style={[styles.iconContainer, { backgroundColor: 'rgba(225, 143, 67, 0.1)' }]}>
-                        <Ionicons name="notifications" size={48} color={colors.primary} />
+                        <Ionicons name="notifications" size={Typography.size.display} color={colors.primary} />
                     </View>
                 </View>
 
@@ -75,7 +77,7 @@ export default function PermissionsScreen() {
                         activeOpacity={0.8}
                     >
                         <Text style={styles.buttonText}>Allow Notifications</Text>
-                        <Ionicons name="arrow-forward" size={20} color="#FFF" style={{ marginLeft: 8 }} />
+                        <Ionicons name="arrow-forward" size={Typography.size.xl} color="#FFF" style={{ marginLeft: Spacing.sm }} />
                     </TouchableOpacity>
 
                     {permissionStatus === 'denied' && (
@@ -107,7 +109,7 @@ const styles = StyleSheet.create({
     },
     content: {
         flex: 1,
-        padding: 32,
+        padding: Spacing.xxl,
         justifyContent: 'space-between',
     },
     header: {
@@ -116,35 +118,35 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     iconContainer: {
-        padding: 24,
-        borderRadius: 32,
+        padding: Spacing.xl,
+        borderRadius: Spacing.borderRadius.xl,
     },
     textContainer: {
         flex: 1,
         alignItems: 'center',
     },
     title: {
-        fontSize: 32,
-        fontWeight: '800',
+        fontSize: Typography.size.xxxl,
+        fontWeight: Typography.weight.bold,
         textAlign: 'center',
-        marginBottom: 16,
-        letterSpacing: -0.5,
+        marginBottom: Spacing.lg,
+        letterSpacing: Typography.letterSpacing.tight,
     },
     description: {
-        fontSize: 16,
+        fontSize: Typography.size.lg,
         textAlign: 'center',
-        lineHeight: 24,
-        marginBottom: 32,
+        lineHeight: Typography.lineHeight.lg,
+        marginBottom: Spacing.xxl,
         opacity: 0.8,
     },
     footer: {
-        paddingTop: 32,
-        gap: 16,
+        paddingTop: Spacing.xxl,
+        gap: Spacing.lg,
     },
     button: {
         flexDirection: 'row',
         paddingVertical: 18,
-        borderRadius: 20,
+        borderRadius: Spacing.borderRadius.xl,
         alignItems: 'center',
         justifyContent: 'center',
         width: '100%',
@@ -155,16 +157,16 @@ const styles = StyleSheet.create({
     },
     buttonText: {
         color: '#FFFFFF',
-        fontSize: 18,
-        fontWeight: '700',
+        fontSize: Typography.size.lg,
+        fontWeight: Typography.weight.bold,
     },
     secondaryButton: {
-        paddingVertical: 16,
+        paddingVertical: Spacing.lg,
         alignItems: 'center',
         width: '100%',
     },
     secondaryButtonText: {
-        fontSize: 16,
-        fontWeight: '600',
+        fontSize: Typography.size.lg,
+        fontWeight: Typography.weight.semibold,
     },
 });
