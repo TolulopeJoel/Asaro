@@ -6,7 +6,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, KeyboardAvoidingView, LayoutAnimation, Platform, ScrollView, StyleSheet, Text, UIManager, View, useWindowDimensions } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { BookPicker } from '../src/components/BookPicker';
 import { ChapterPicker } from '../src/components/ChapterPicker';
 import { ReflectionAnswers, ReflectionForm } from '../src/components/ReflectionForm';
@@ -390,11 +389,11 @@ export default function MeditationSessionScreen() {
 
     if (isLoading && isEditMode) {
         return (
-            <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+            <View style={[styles.container, { backgroundColor: colors.background }]}>
                 <View style={styles.loadingContainer}>
                     <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading...</Text>
                 </View>
-            </SafeAreaView>
+            </View>
         );
     }
 
@@ -548,7 +547,7 @@ export default function MeditationSessionScreen() {
     ), [screenWidth, colors, selectionSummary, formattedDate, handleDone, handleStartOver]);
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -568,7 +567,7 @@ export default function MeditationSessionScreen() {
                     {renderSummaryStep()}
                 </ScrollView>
             </KeyboardAvoidingView>
-        </SafeAreaView>
+        </View>
     );
 }
 

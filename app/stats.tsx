@@ -8,7 +8,6 @@ import { formatDateToLocalString } from '@/src/utils/dateUtils';
 import { useFocusEffect, useNavigation } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface MonthData {
     year: number;
@@ -144,7 +143,7 @@ export default function StatsScreen() {
     }, [state.allTimeData]);
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
             <FlatList
                 data={state.months}
                 renderItem={renderItem}
@@ -156,7 +155,7 @@ export default function StatsScreen() {
                 maxToRenderPerBatch={2}
                 windowSize={3}
             />
-        </SafeAreaView>
+        </View>
     );
 }
 
