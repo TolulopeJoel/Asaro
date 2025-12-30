@@ -1,4 +1,6 @@
 import { useTheme } from '@/src/theme/ThemeContext';
+import { Spacing } from '@/src/theme/spacing';
+import { Typography } from '@/src/theme/typography';
 import { getAllScheduledNotifications } from '@/src/utils/notifications';
 import { exportJournalEntriesToJson, importJournalEntriesFromJson } from '@/src/data/database';
 import Constants from 'expo-constants';
@@ -251,7 +253,7 @@ export default function Settings() {
                             </Text>
                         </TouchableOpacity>
                     </View>
-                    <View style={{ height: 16 }} />
+                    <View style={{ height: Spacing.lg }} />
                     <View style={styles.buttonGroup}>
                         <TouchableOpacity
                             style={[
@@ -304,122 +306,122 @@ const styles = StyleSheet.create({
     },
     scrollView: {
         flex: 1,
-        padding: 28,
+        padding: Spacing.xxl + Spacing.xs,
     },
     section: {
-        marginBottom: 48,
+        marginBottom: Spacing.xxxl,
     },
     sectionTitle: {
-        fontSize: 11,
-        fontWeight: '600',
-        marginBottom: 20,
+        fontSize: Typography.size.xs,
+        fontWeight: Typography.weight.semibold,
+        marginBottom: Spacing.lg + Spacing.xs,
         textTransform: 'uppercase',
-        letterSpacing: 1.5,
+        letterSpacing: Typography.letterSpacing.wider + 0.5,
         opacity: 0.5,
     },
     themeSelector: {
         flexDirection: 'row',
-        gap: 12,
+        gap: Spacing.md,
     },
     themeOption: {
         flex: 1,
-        paddingVertical: 14,
+        paddingVertical: Spacing.md + 2,
         alignItems: 'center',
-        borderRadius: 10,
+        borderRadius: Spacing.borderRadius.md - 2,
         borderWidth: 1.5,
     },
     themeOptionText: {
-        fontSize: 14,
-        fontWeight: '600',
-        letterSpacing: 0.3,
+        fontSize: Typography.size.md,
+        fontWeight: Typography.weight.semibold,
+        letterSpacing: Typography.letterSpacing.normal,
     },
     actionButton: {
-        paddingVertical: 16,
-        paddingHorizontal: 24,
-        borderRadius: 10,
+        paddingVertical: Spacing.lg,
+        paddingHorizontal: Spacing.xxl,
+        borderRadius: Spacing.borderRadius.md - 2,
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1.5,
         minHeight: 52,
     },
     actionButtonText: {
-        fontSize: 14,
-        fontWeight: '600',
-        letterSpacing: 0.3,
+        fontSize: Typography.size.md,
+        fontWeight: Typography.weight.semibold,
+        letterSpacing: Typography.letterSpacing.normal,
     },
     buttonGroup: {
         flexDirection: 'row',
-        gap: 12,
+        gap: Spacing.md,
     },
     row: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: 8,
+        paddingVertical: Spacing.sm,
     },
     label: {
-        fontSize: 14,
-        fontWeight: '500',
+        fontSize: Typography.size.md,
+        fontWeight: Typography.weight.medium,
         opacity: 0.5,
-        letterSpacing: 0.3,
+        letterSpacing: Typography.letterSpacing.normal,
     },
     value: {
-        fontSize: 14,
-        fontWeight: '600',
-        letterSpacing: 0.2,
+        fontSize: Typography.size.md,
+        fontWeight: Typography.weight.semibold,
+        letterSpacing: Typography.letterSpacing.normal,
     },
     // Notifications
     sectionHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 20,
+        marginBottom: Spacing.lg + Spacing.xs,
     },
     refreshButton: {
-        padding: 4,
+        padding: Spacing.xs,
         opacity: 0.5,
     },
     notificationsList: {
-        gap: 12,
+        gap: Spacing.md,
     },
     notificationsCount: {
-        fontSize: 12,
-        fontWeight: '500',
-        marginBottom: 8,
+        fontSize: Typography.size.sm,
+        fontWeight: Typography.weight.medium,
+        marginBottom: Spacing.sm,
         opacity: 0.5,
-        letterSpacing: 0.3,
+        letterSpacing: Typography.letterSpacing.normal,
     },
     notificationItem: {
-        padding: 16,
-        borderRadius: 10,
+        padding: Spacing.lg,
+        borderRadius: Spacing.borderRadius.md - 2,
         borderWidth: 1,
-        gap: 6,
+        gap: Spacing.xs + 2,
     },
     notificationTitle: {
-        fontSize: 13,
-        fontWeight: '600',
-        letterSpacing: 0.2,
+        fontSize: Typography.size.sm + 1,
+        fontWeight: Typography.weight.semibold,
+        letterSpacing: Typography.letterSpacing.normal,
     },
     notificationBody: {
-        fontSize: 12,
-        fontWeight: '500',
+        fontSize: Typography.size.sm,
+        fontWeight: Typography.weight.medium,
         opacity: 0.7,
-        letterSpacing: 0.2,
+        letterSpacing: Typography.letterSpacing.normal,
     },
     notificationTime: {
-        fontSize: 11,
-        fontWeight: '500',
+        fontSize: Typography.size.xs,
+        fontWeight: Typography.weight.medium,
         opacity: 0.5,
-        letterSpacing: 0.2,
+        letterSpacing: Typography.letterSpacing.normal,
         marginTop: 2,
     },
     emptyText: {
-        fontSize: 13,
-        fontWeight: '500',
+        fontSize: Typography.size.sm + 1,
+        fontWeight: Typography.weight.medium,
         opacity: 0.5,
         textAlign: 'center',
-        paddingVertical: 20,
-        letterSpacing: 0.2,
+        paddingVertical: Spacing.lg + Spacing.xs,
+        letterSpacing: Typography.letterSpacing.normal,
     },
     // Modal
     modalOverlay: {

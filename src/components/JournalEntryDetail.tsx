@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
+import { Spacing } from '../theme/spacing';
+import { Typography } from '../theme/typography';
 import { ScalePressable } from './ScalePressable';
 
 interface JournalEntryDetailProps {
@@ -173,13 +175,13 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
         const paragraphs = reflection.trim().split('\n\n').filter(p => p.trim());
 
         return (
-            <View key={questionIndex} style={styles.reflectionCard}>
-                <Text style={[styles.questionText, { color: colors.primary }]}>{REFLECTION_QUESTIONS[questionIndex]}</Text>
+            <View key={questionIndex} style={[styles.reflectionCard, { borderLeftColor: colors.accentSecondary }]}>
+                <Text style={[styles.questionText, { color: colors.accent }]}>{REFLECTION_QUESTIONS[questionIndex]}</Text>
                 <View style={styles.answerContainer}>
                     {paragraphs.map((paragraph, pIndex) => (
                         <Text key={pIndex} style={[
                             styles.answerText,
-                            { color: colors.text },
+                            { color: colors.textPrimary },
                             pIndex > 0 && styles.answerParagraph
                         ]}>
                             {paragraph.trim()}
@@ -215,13 +217,13 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                     )}
 
                     <View style={[styles.dateChip, { backgroundColor: colors.badge, borderColor: colors.badgeBorder }]}>
-                        <Text style={[styles.dateText, { color: colors.primary }]}>{formatDate(entry.created_at)}</Text>
+                        <Text style={[styles.dateText, { color: colors.badgeText }]}>{formatDate(entry.created_at)}</Text>
                     </View>
 
-                    <Text style={[styles.reference, { color: colors.text }]}>
+                    <Text style={[styles.reference, { color: colors.textPrimary }]}>
                         {entry.book_name}
                     </Text>
-                    <Text style={[styles.verseReference, { color: colors.primary }]}>
+                    <Text style={[styles.verseReference, { color: colors.accent }]}>
                         {formatChapterAndVerses()}
                     </Text>
                 </View>
@@ -238,40 +240,42 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                             ].map((reflection, index) => renderReflection(reflection, index))}
                         </View>
                     ) : (
-                        <View style={styles.emptyState}>
+                        <View style={[styles.emptyState, { borderLeftColor: colors.border }]}>
                             <Text style={[styles.emptyText, { color: colors.textTertiary }]}>awaiting your reflection</Text>
                         </View>
                     )}
 
                     {/* Notes with unique design */}
                     {entry.notes && entry.notes.trim() && (
-                        <View style={styles.notesSection}>
-                            <Text style={[styles.notesTitle, { color: colors.primary }]}>Additional Thoughts</Text>
-                            <Text style={[styles.notesText, { color: colors.text }]}>{entry.notes.trim()}</Text>
+                        <View style={[styles.notesSection, { borderLeftColor: colors.accentSecondary }]}>
+                            <Text style={[styles.notesTitle, { color: colors.accent }]}>Additional Thoughts</Text>
+                            <View style={[styles.notesContent, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
+                                <Text style={[styles.notesText, { color: colors.textPrimary }]}>{entry.notes.trim()}</Text>
+                            </View>
                         </View>
                     )}
                 </View>
 
                 {/* Floating Action Bar */}
-                <View style={styles.floatingActions}>
+                <View style={[styles.floatingActions, { backgroundColor: colors.cardBackground, borderColor: colors.border, shadowColor: colors.accent }]}>
                     <ScalePressable
-                        style={styles.shareFloatingButton}
+                        style={[styles.shareFloatingButton, { backgroundColor: colors.backgroundSubtle }]}
                         onPress={handleShare}
                         disabled={isSharing}
                     >
-                        <Text style={styles.shareFloatingText}>
+                        <Text style={[styles.shareFloatingText, { color: colors.textSecondary }]}>
                             {isSharing ? '↗ sharing' : '↗ share'}
                         </Text>
                     </ScalePressable>
 
-                    <View style={styles.actionDivider} />
+                    <View style={[styles.actionDivider, { backgroundColor: colors.border }]} />
 
                     {onEdit && (
                         <ScalePressable
                             style={styles.iconButton}
                             onPress={() => onEdit(entry)}
                         >
-                            <Text style={styles.iconButtonText}>edit</Text>
+                            <Text style={[styles.iconButtonText, { color: colors.textSecondary }]}>edit</Text>
                         </ScalePressable>
                     )}
 
@@ -280,7 +284,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                         onPress={handleDelete}
                         disabled={isDeleting}
                     >
-                        <Text style={[styles.iconButtonText, styles.deleteIconText]}>
+                        <Text style={[styles.iconButtonText, { color: colors.textTertiary }]}>
                             {isDeleting ? 'deleting' : 'delete'}
                         </Text>
                     </ScalePressable>
@@ -295,298 +299,164 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#fff9f5',
     },
     scrollView: {
         flex: 1,
     },
     scrollContent: {
-        paddingBottom: 50,
+        paddingBottom: Spacing.xxxl + Spacing.sm,
     },
     heroHeader: {
         paddingBottom: 0,
-        paddingHorizontal: 24,
-        backgroundColor: '#fff9f5',
+        paddingHorizontal: Spacing.layout.screenPadding,
         position: 'relative',
     },
     closeButton: {
         position: 'absolute',
         top: 56,
-        right: 24,
+        right: Spacing.layout.screenPadding,
         width: 36,
         height: 36,
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 10,
-        backgroundColor: '#fff',
         borderRadius: 18,
         borderWidth: 1.5,
-        borderColor: '#e8ddd5',
-    },
-    closeIcon: {
-        width: 2,
-        height: 16,
-        backgroundColor: '#8b7355',
-    },
-    closeIconContainer: {
-        width: 16,
-        height: 16,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    closeIconCross: {
-        position: 'absolute',
-        transform: [{ rotate: '90deg' }],
-    },
-    headerOrnamentTop: {
-        width: 40,
-        height: 2,
-        backgroundColor: '#8b6b6b',
-        marginBottom: 24,
-        opacity: 0.3,
-        borderRadius: 1,
     },
     dateChip: {
         alignSelf: 'flex-start',
-        backgroundColor: '#f0e8e0',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 6,
-        marginBottom: 20,
+        paddingHorizontal: Spacing.md,
+        paddingVertical: Spacing.xs + 2,
+        borderRadius: Spacing.borderRadius.sm,
+        marginBottom: Spacing.lg + Spacing.xs,
         borderWidth: 1,
-        borderColor: '#e8ddd5',
     },
     dateText: {
-        fontSize: 11,
-        color: '#8b7355',
-        fontWeight: '600',
-        letterSpacing: 0.8,
+        fontSize: Typography.size.xs,
+        fontWeight: Typography.weight.semibold,
+        letterSpacing: Typography.letterSpacing.wider,
         textTransform: 'uppercase',
     },
     reference: {
-        fontSize: 32,
-        fontWeight: '600',
-        color: '#2d1a1a',
-        letterSpacing: -0.8,
-        lineHeight: 38,
-        marginBottom: 8,
+        fontSize: Typography.size.xxxl,
+        fontWeight: Typography.weight.semibold,
+        letterSpacing: Typography.letterSpacing.tight,
+        lineHeight: Typography.lineHeight.xxxl + 6,
+        marginBottom: Spacing.sm,
     },
     verseReference: {
-        fontSize: 20,
-        fontWeight: '500',
-        color: '#c68a7c',
-        marginBottom: 32,
-        letterSpacing: 0.2,
-    },
-    headerOrnamentBottom: {
-        width: 60,
-        height: 1,
-        backgroundColor: '#8b6b6b',
-        marginTop: 24,
-        opacity: 0.25,
+        fontSize: Typography.size.xl,
+        fontWeight: Typography.weight.medium,
+        marginBottom: Spacing.xxl,
+        letterSpacing: Typography.letterSpacing.normal,
     },
     contentSection: {
-        paddingHorizontal: 20,
-        paddingTop: 28,
+        paddingHorizontal: Spacing.lg + Spacing.xs,
+        paddingTop: Spacing.xxl + Spacing.xs,
     },
     reflectionsContainer: {
-        gap: 28,
+        gap: Spacing.xxl + Spacing.xs,
     },
     reflectionCard: {
-        paddingLeft: 16,
+        paddingLeft: Spacing.lg,
         borderLeftWidth: 3,
-        borderLeftColor: '#d48b7d',
-        paddingBottom: 8,
-    },
-    questionSidebar: {
-        alignItems: 'center',
-        paddingTop: 4,
-    },
-    questionNumberCircle: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: '#e8e3dd',
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 2,
-        borderColor: '#d6d3ce',
-    },
-    questionNumberText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#8b7355',
-    },
-    questionLine: {
-        width: 2,
-        flex: 1,
-        backgroundColor: '#f0ede8',
-        marginTop: 12,
-        minHeight: 20,
-    },
-    reflectionContent: {
-        flex: 1,
-        backgroundColor: '#ffffff',
-        borderRadius: 16,
-        padding: 20,
-        borderWidth: 1,
-        borderColor: '#f0ede8',
-        shadowColor: '#8b7355',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 12,
-        elevation: 2,
+        paddingBottom: Spacing.sm,
     },
     questionText: {
-        fontSize: 14,
-        fontWeight: '500',
-        color: '#8b7355',
-        lineHeight: 20,
-        letterSpacing: 0.3,
-        marginBottom: 12,
+        fontSize: Typography.size.md,
+        fontWeight: Typography.weight.medium,
+        lineHeight: Typography.lineHeight.lg + 4,
+        letterSpacing: Typography.letterSpacing.normal,
+        marginBottom: Spacing.md,
     },
     answerContainer: {
-        gap: 14,
+        gap: Spacing.md + 2,
     },
     answerText: {
-        fontSize: 15,
-        color: '#3d3528',
-        lineHeight: 24,
-        fontWeight: '400',
-        letterSpacing: 0.2,
+        fontSize: Typography.size.lg - 1,
+        lineHeight: Typography.lineHeight.xl,
+        fontWeight: Typography.weight.regular,
+        letterSpacing: Typography.letterSpacing.normal,
     },
     answerParagraph: {
         marginTop: 0,
     },
     emptyState: {
-        paddingVertical: 80,
-        paddingLeft: 16,
+        paddingVertical: Spacing.xxxl + Spacing.xxl,
+        paddingLeft: Spacing.lg,
         borderLeftWidth: 3,
-        borderLeftColor: '#e8e3dd',
-    },
-    emptyCircle: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        borderWidth: 2,
-        borderColor: '#e8e3dd',
-        borderStyle: 'dashed',
-        marginBottom: 20,
     },
     emptyText: {
-        fontSize: 14,
-        color: '#a39b90',
-        fontWeight: '400',
-        letterSpacing: 0.8,
+        fontSize: Typography.size.md,
+        fontWeight: Typography.weight.regular,
+        letterSpacing: Typography.letterSpacing.wider,
         fontStyle: 'italic',
     },
     notesSection: {
-        marginTop: 40,
-        paddingLeft: 16,
+        marginTop: Spacing.xxxl,
+        paddingLeft: Spacing.lg,
         borderLeftWidth: 3,
-        borderLeftColor: '#d4a5a5',
-    },
-    notesBorder: {
-        position: 'absolute',
-        left: 0,
-        top: 0,
-        bottom: 0,
-        width: 3,
-        backgroundColor: '#d4a5a5',
-        borderRadius: 2,
-        opacity: 0.6,
     },
     notesContent: {
-        marginLeft: 20,
-        backgroundColor: '#faf9f7',
-        borderRadius: 12,
-        padding: 20,
+        marginLeft: Spacing.lg + Spacing.xs,
+        borderRadius: Spacing.borderRadius.md,
+        padding: Spacing.lg + Spacing.xs,
         borderWidth: 1,
-        borderColor: '#f0ede8',
-    },
-    notesHeaderRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 12,
-        gap: 10,
-    },
-    notesDotPattern: {
-        flexDirection: 'row',
-        gap: 3,
-    },
-    notesDot: {
-        width: 4,
-        height: 4,
-        borderRadius: 2,
-        backgroundColor: '#d4a5a5',
-        opacity: 0.5,
     },
     notesTitle: {
-        fontSize: 13,
-        fontWeight: '500',
-        color: '#8b7355',
-        letterSpacing: 0.3,
-        marginBottom: 12,
+        fontSize: Typography.size.sm + 1,
+        fontWeight: Typography.weight.medium,
+        letterSpacing: Typography.letterSpacing.normal,
+        marginBottom: Spacing.md,
     },
     notesText: {
-        fontSize: 15,
-        color: '#3d3528',
-        lineHeight: 24,
-        fontWeight: '400',
-        letterSpacing: 0.2,
+        fontSize: Typography.size.lg - 1,
+        lineHeight: Typography.lineHeight.xl,
+        fontWeight: Typography.weight.regular,
+        letterSpacing: Typography.letterSpacing.normal,
     },
     floatingActions: {
-        marginHorizontal: 20,
-        marginTop: 40,
-        backgroundColor: '#faf9f7',
-        borderRadius: 16,
+        marginHorizontal: Spacing.lg + Spacing.xs,
+        marginTop: Spacing.xxxl,
+        borderRadius: Spacing.borderRadius.lg,
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 4,
-        paddingHorizontal: 6,
+        paddingVertical: Spacing.xs,
+        paddingHorizontal: Spacing.xs + 2,
         borderWidth: 1,
-        borderColor: '#e8e3dd',
-        shadowColor: '#8b7355',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.08,
-        shadowRadius: 8,
+        shadowRadius: Spacing.sm,
         elevation: 3,
     },
     shareFloatingButton: {
         flex: 1,
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        backgroundColor: '#f0ede8',
-        borderRadius: 12,
+        paddingVertical: Spacing.md,
+        paddingHorizontal: Spacing.lg,
+        borderRadius: Spacing.borderRadius.md,
         alignItems: 'center',
     },
     shareFloatingText: {
-        fontSize: 13,
-        fontWeight: '500',
-        color: '#6b5b47',
-        letterSpacing: 0.3,
+        fontSize: Typography.size.sm + 1,
+        fontWeight: Typography.weight.medium,
+        letterSpacing: Typography.letterSpacing.normal,
     },
     actionDivider: {
         width: 1,
-        height: 20,
-        backgroundColor: '#e8e3dd',
-        marginHorizontal: 8,
+        height: Spacing.lg + Spacing.xs,
+        marginHorizontal: Spacing.sm,
     },
     iconButton: {
-        paddingVertical: 12,
-        paddingHorizontal: 16,
+        paddingVertical: Spacing.md,
+        paddingHorizontal: Spacing.lg,
         alignItems: 'center',
     },
     iconButtonText: {
-        fontSize: 13,
-        fontWeight: '400',
-        color: '#8b8075',
-        letterSpacing: 0.3,
-    },
-    deleteIconText: {
-        color: '#a08b7d',
+        fontSize: Typography.size.sm + 1,
+        fontWeight: Typography.weight.regular,
+        letterSpacing: Typography.letterSpacing.normal,
     },
     bottomSpacer: {
-        height: 40,
+        height: Spacing.xxxl,
     },
 });

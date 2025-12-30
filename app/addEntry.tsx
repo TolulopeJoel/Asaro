@@ -13,10 +13,8 @@ import { ScalePressable } from '../src/components/ScalePressable';
 import { BibleBook, getBookByName } from '../src/data/bibleBooks';
 import { setupDailyNotifications, cancelRemainingNotificationsForToday, addNotificationsForNewDay } from '../src/utils/notifications';
 
-if (Platform.OS === 'android') {
-    if (UIManager.setLayoutAnimationEnabledExperimental) {
-        UIManager.setLayoutAnimationEnabledExperimental(true);
-    }
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
 interface ChapterRange {
@@ -342,17 +340,23 @@ export default function MeditationSessionScreen() {
                     text: 'Discard',
                     style: 'destructive',
                     onPress: async () => {
-                        await AsyncStorage.removeItem("reflection_draft");
-                        setSelectedBook(undefined);
-                        setSelectedChapters(undefined);
-                        setVerseRange(null);
-                        setReflectionAnswers(undefined);
-                        router.push({ pathname: '/' })
+                        try {
+                            await AsyncStorage.removeItem("reflection_draft");
+
+                            setSelectedBook(undefined);
+                            setSelectedChapters(undefined);
+                            setVerseRange(null);
+                            setReflectionAnswers(undefined);
+
+                            router.replace('/');
+                        } catch (error) {
+                            console.error('Error discarding draft:', error);
+                        }
                     },
                 },
             ]
         );
-    }, []);
+    }, [router]);
 
     const selectionSummary = useMemo(() => {
         if (!selectedBook) {

@@ -139,18 +139,22 @@ const UpdateCard = React.memo(() => {
 });
 
 const FloatingActionButton = React.memo(() => {
-    const { colors } = useTheme();
+    const { colors, isDark } = useTheme();
     const router = useRouter();
     const insets = useSafeAreaInsets();
     // Tab bar height (60) + bottom inset + extra spacing
     const bottomPosition = 60 + insets.bottom + Spacing.xl;
 
+    // Use light neutral color in dark mode, dark in light mode
+    const fabBackground = isDark ? colors.textPrimary : colors.textPrimary;
+    const iconColor = isDark ? colors.background : '#FFFFFF';
+
     return (
         <ScalePressable
-            style={[styles.fab, { backgroundColor: colors.textPrimary, bottom: bottomPosition }]}
+            style={[styles.fab, { backgroundColor: fabBackground, bottom: bottomPosition, shadowColor: fabBackground }]}
             onPress={() => router.push("/addEntry")}
         >
-            <WavyAddIcon size={Typography.size.display} color="#FFFFFF" />
+            <WavyAddIcon size={Typography.size.display} color={iconColor} />
         </ScalePressable>
     );
 });
@@ -219,13 +223,23 @@ export default function Index() {
     const router = useRouter();
 
     const checkDraft = useCallback(async () => {
-        const draft = await AsyncStorage.getItem(DRAFT_KEY);
-        setDraftExists(Boolean(draft && draft.trim()));
+        try {
+            const draft = await AsyncStorage.getItem(DRAFT_KEY);
+            setDraftExists(Boolean(draft && draft.trim()));
+        } catch (error) {
+            console.error('Error checking draft:', error);
+            setDraftExists(false);
+        }
     }, []);
 
     useFocusEffect(
         useCallback(() => {
-            checkDraft();
+            // Small delay to ensure AsyncStorage operations complete
+            const timer = setTimeout(() => {
+                checkDraft();
+            }, 100);
+
+            return () => clearTimeout(timer);
         }, [checkDraft])
     );
 
@@ -402,5 +416,9 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 100,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        elevation: 4,
     },
 });
