@@ -218,36 +218,30 @@ export default function MeditationSessionScreen() {
     const steps: Step[] = useMemo(() => ['book', 'chapter', 'reflection', 'summary'], []);
 
     const scrollToStep = useCallback((step: Step) => {
-        const index = steps.indexOf(step);
-        if (index !== -1 && scrollViewRef.current) {
-            scrollViewRef.current.scrollTo({ x: index * screenWidth, animated: true });
-            setCurrentStep(step);
+        if (Platform.OS === 'ios' || (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental)) {
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         }
-    }, [screenWidth]);
+        setCurrentStep(step);
+    }, []);
 
     // Sync scroll with currentStep on mount/update (e.g. when loading draft)
     useEffect(() => {
         if (!isLoading) {
-            const index = steps.indexOf(currentStep);
-            if (index !== -1 && scrollViewRef.current) {
-                // Use requestAnimationFrame for better performance
-                requestAnimationFrame(() => {
-                    scrollViewRef.current?.scrollTo({ x: index * screenWidth, animated: false });
-                });
-            }
+            // No longer need to scroll, just set the step
+            // currentStep is already set by loadData
         }
-    }, [isLoading, currentStep, screenWidth]); // Only run when loading finishes to set initial position
+    }, [isLoading]);
 
     const changeStep = useCallback((step: Step) => {
         scrollToStep(step);
-    }, []);
+    }, [scrollToStep]);
 
     const handleBookSelect = useCallback((book: BibleBook) => {
         setSelectedBook(book);
         setSelectedChapters(undefined);
         setVerseRange(null);
         changeStep('chapter');
-    }, []);
+    }, [changeStep]);
 
     const handleChapterSelect = useCallback((chapters: ChapterRange) => {
         setSelectedChapters(chapters);
@@ -263,7 +257,7 @@ export default function MeditationSessionScreen() {
             return;
         }
         changeStep('reflection');
-    }, [selectedChapters]);
+    }, [selectedChapters, changeStep]);
 
     const handleSaveReflection = useCallback(async (answers: ReflectionAnswers) => {
         if (!selectedBook || !selectedChapters || selectedChapters.start === 0) {
@@ -311,7 +305,7 @@ export default function MeditationSessionScreen() {
             console.error('Error saving entry:', error);
             Alert.alert('Error', `Failed to ${isEditMode ? 'update' : 'save'} your entry. Please try again.`);
         }
-    }, [selectedBook, selectedChapters, verseRange, isEditMode, entryId, router]);
+    }, [selectedBook, selectedChapters, verseRange, isEditMode, entryId, router, changeStep]);
 
     const handleDone = useCallback(() => {
         if (createdEntryId) {
@@ -328,7 +322,7 @@ export default function MeditationSessionScreen() {
         setVerseRange(null);
         setReflectionAnswers(undefined);
         changeStep('book');
-    }, []);
+    }, [changeStep]);
 
     const handleDiscardDraft = useCallback(() => {
         Alert.alert(
@@ -402,7 +396,7 @@ export default function MeditationSessionScreen() {
     }
 
     const renderBookStep = useCallback(() => (
-        <View style={[styles.stepContainer, { width: screenWidth }]}>
+        <View style={styles.stepContainer}>
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.stepContent}>
                     <Text style={[styles.stepQuestion, { color: colors.textSecondary }]}>
@@ -418,10 +412,10 @@ export default function MeditationSessionScreen() {
                 </View>
             </ScrollView>
         </View>
-    ), [screenWidth, colors.textSecondary, selectedBook, handleBookSelect]);
+    ), [colors.textSecondary, selectedBook, handleBookSelect]);
 
     const renderChapterStep = useCallback(() => (
-        <View style={[styles.stepContainer, { width: screenWidth }]}>
+        <View style={styles.stepContainer}>
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.stepContent}>
                     <Text style={[styles.stepQuestion, { color: colors.textSecondary }]}>
@@ -461,10 +455,10 @@ export default function MeditationSessionScreen() {
                 </View>
             </ScrollView>
         </View>
-    ), [screenWidth, colors, selectedBook, selectedChapters, handleChapterSelect, handleVerseRangeChange, handleContinueToReflection]);
+    ), [colors, selectedBook, selectedChapters, handleChapterSelect, handleVerseRangeChange, handleContinueToReflection, changeStep]);
 
     const renderReflectionStep = useCallback(() => (
-        <View style={[styles.stepContainer, { width: screenWidth }]}>
+        <View style={styles.stepContainer}>
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.stepContent}>
                     {!isEditMode &&
@@ -502,7 +496,7 @@ export default function MeditationSessionScreen() {
                 </View>
             </ScrollView>
         </View>
-    ), [screenWidth, colors, isEditMode, reflectionAnswers, handleSaveReflection, handleDiscardDraft]);
+    ), [colors, isEditMode, reflectionAnswers, handleSaveReflection, handleDiscardDraft, changeStep]);
 
     const formattedDate = useMemo(() => {
         return new Date().toLocaleDateString('en-US', {
@@ -514,7 +508,7 @@ export default function MeditationSessionScreen() {
     }, []);
 
     const renderSummaryStep = useCallback(() => (
-        <View style={[styles.stepContainer, { width: screenWidth }]}>
+        <View style={styles.stepContainer}>
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.stepContent}>
                     <View style={styles.titleContainer}>
@@ -548,7 +542,17 @@ export default function MeditationSessionScreen() {
                 </View>
             </ScrollView>
         </View>
-    ), [screenWidth, colors, selectionSummary, formattedDate, handleDone, handleStartOver]);
+    ), [colors, selectionSummary, formattedDate, handleDone, handleStartOver]);
+
+    const renderCurrentStep = () => {
+        switch (currentStep) {
+            case 'book': return renderBookStep();
+            case 'chapter': return renderChapterStep();
+            case 'reflection': return renderReflectionStep();
+            case 'summary': return renderSummaryStep();
+            default: return null;
+        }
+    };
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -556,20 +560,7 @@ export default function MeditationSessionScreen() {
                 style={{ flex: 1 }}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             >
-                <ScrollView
-                    ref={scrollViewRef}
-                    horizontal
-                    pagingEnabled
-                    scrollEnabled={false}
-                    showsHorizontalScrollIndicator={false}
-                    keyboardShouldPersistTaps="handled"
-                    style={{ flex: 1 }}
-                >
-                    {renderBookStep()}
-                    {renderChapterStep()}
-                    {renderReflectionStep()}
-                    {renderSummaryStep()}
-                </ScrollView>
+                {renderCurrentStep()}
             </KeyboardAvoidingView>
         </View>
     );

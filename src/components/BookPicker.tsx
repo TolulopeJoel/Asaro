@@ -44,44 +44,48 @@ export const BookPicker: React.FC<BookPickerProps> = React.memo(({
         </View>
     );
 
+    const BookCard = React.memo(({ book, isSelected }: { book: BibleBook, isSelected: boolean }) => (
+        <TouchableOpacity
+            key={book.name}
+            style={[
+                styles.bookCard,
+                { backgroundColor: colors.cardBackground, borderColor: colors.border },
+                isSelected && [styles.bookCardSelected, { backgroundColor: colors.backgroundSubtle, borderColor: colors.accentSecondary }],
+            ]}
+            onPress={() => onBookSelect(book)}
+            activeOpacity={0.7}
+        >
+            <Text style={[
+                styles.bookAbbreviation,
+                { color: colors.text },
+                isSelected && [styles.bookAbbreviationSelected, { color: colors.textSecondary }]
+            ]}>
+                {book.abbrv}
+            </Text>
+            <Text style={[
+                styles.chapterCount,
+                { color: colors.textTertiary },
+                isSelected && [styles.chapterCountSelected, { color: colors.textSecondary }]
+            ]}>
+                {book.chapters}
+            </Text>
+            {isSelected && <View style={[styles.selectedDot, { backgroundColor: colors.textSecondary }]} />}
+        </TouchableOpacity>
+    ));
+
     const renderBookGrid = (books: BibleBook[], isGreekBooks = false) => {
         return (
             <View style={[
                 styles.booksGrid,
                 isGreekBooks && styles.GreekBooksGrid
             ]}>
-                {books.map(book => {
-                    const isSelected = selectedBook?.name === book.name;
-
-                    return (
-                        <TouchableOpacity
-                            key={book.name}
-                            style={[
-                                styles.bookCard,
-                                { backgroundColor: colors.cardBackground, borderColor: colors.border },
-                                isSelected && [styles.bookCardSelected, { backgroundColor: colors.backgroundSubtle, borderColor: colors.accentSecondary }],
-                            ]}
-                            onPress={() => onBookSelect(book)}
-                            activeOpacity={0.7}
-                        >
-                            <Text style={[
-                                styles.bookAbbreviation,
-                                { color: colors.text },
-                                isSelected && [styles.bookAbbreviationSelected, { color: colors.textSecondary }]
-                            ]}>
-                                {book.abbrv}
-                            </Text>
-                            <Text style={[
-                                styles.chapterCount,
-                                { color: colors.textTertiary },
-                                isSelected && [styles.chapterCountSelected, { color: colors.textSecondary }]
-                            ]}>
-                                {book.chapters}
-                            </Text>
-                            {isSelected && <View style={[styles.selectedDot, { backgroundColor: colors.textSecondary }]} />}
-                        </TouchableOpacity>
-                    );
-                })}
+                {books.map(book => (
+                    <BookCard
+                        key={book.name}
+                        book={book}
+                        isSelected={selectedBook?.name === book.name}
+                    />
+                ))}
             </View>
         );
     };
@@ -103,39 +107,13 @@ export const BookPicker: React.FC<BookPickerProps> = React.memo(({
         return (
             <View style={styles.searchResults}>
                 <View style={styles.searchResultsGrid}>
-                    {filteredBooks.map(book => {
-                        const isSelected = selectedBook?.name === book.name;
-
-                        return (
-                            <TouchableOpacity
-                                key={book.name}
-                                style={[
-                                    styles.bookCard,
-                                    styles.searchResultCard,
-                                    { backgroundColor: colors.cardBackground, borderColor: colors.border },
-                                    isSelected && [styles.bookCardSelected, { backgroundColor: colors.backgroundSubtle, borderColor: colors.accentSecondary }],
-                                ]}
-                                onPress={() => onBookSelect(book)}
-                                activeOpacity={0.7}
-                            >
-                                <Text style={[
-                                    styles.bookAbbreviation,
-                                    { color: colors.text },
-                                    isSelected && [styles.bookAbbreviationSelected, { color: colors.textSecondary }]
-                                ]}>
-                                    {book.abbrv}
-                                </Text>
-                                <Text style={[
-                                    styles.chapterCount,
-                                    { color: colors.textTertiary },
-                                    isSelected && [styles.chapterCountSelected, { color: colors.textSecondary }]
-                                ]}>
-                                    {book.chapters}
-                                </Text>
-                                {isSelected && <View style={[styles.selectedDot, { backgroundColor: colors.textSecondary }]} />}
-                            </TouchableOpacity>
-                        );
-                    })}
+                    {filteredBooks.map(book => (
+                        <BookCard
+                            key={book.name}
+                            book={book}
+                            isSelected={selectedBook?.name === book.name}
+                        />
+                    ))}
                 </View>
             </View>
         );
