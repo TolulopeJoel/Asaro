@@ -283,9 +283,12 @@ export default function MeditationSessionScreen() {
 
             // Batch notification operations
             const updateNotifications = async () => {
-                await cancelRemainingNotificationsForToday();
-                await addNotificationsForNewDay();
-                await setupDailyNotifications();
+                if (isEditMode) {
+                    await setupDailyNotifications(false);
+                } else {
+                    // New Entry: Reset schedule starting from tomorrow (cancels today's)
+                    await setupDailyNotifications(true);
+                }
             };
 
             if (isEditMode && entryId) {

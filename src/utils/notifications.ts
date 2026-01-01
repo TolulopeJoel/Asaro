@@ -306,7 +306,7 @@ export async function addNotificationsForNewDay(): Promise<void> {
   }
 }
 
-export async function setupDailyNotifications(): Promise<boolean> {
+export async function setupDailyNotifications(startFromTomorrow: boolean = false): Promise<boolean> {
   // Check permissions without requesting
   if (!await hasNotificationPermissions()) {
     console.log('Notification permissions not granted, skipping notification setup');
@@ -328,14 +328,15 @@ export async function setupDailyNotifications(): Promise<boolean> {
     });
 
     // If we have enough date-based notifications, skip
-    if (futureDateNotifications.length >= 12) {
+    // If startFromTomorrow is true, we might be resetting to cancel today's, so we shouldn't skip based on count alone if the count includes today's
+    if (!startFromTomorrow && futureDateNotifications.length >= 12) {
       console.log(`✅ Already have ${futureDateNotifications.length} date-based notifications. Skipping setup.`);
       return true;
     }
 
     // Cancel all existing scheduled notifications to start fresh
     await cancelAllScheduledNotifications();
-    console.log('Setting up 7-day notification schedules...');
+    console.log(`Setting up 7-day notification schedules (startFromTomorrow: ${startFromTomorrow})...`);
 
     const notificationTimes = [
       { hour: 7, minute: 0, reminders: morningReminders, name: 'Morning' },
@@ -353,7 +354,8 @@ export async function setupDailyNotifications(): Promise<boolean> {
     startDate.setHours(0, 0, 0, 0);
 
     // Schedule notifications for the next 7 days
-    for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+    const startOffset = startFromTomorrow ? 1 : 0;
+    for (let dayOffset = startOffset; dayOffset < 7 + startOffset; dayOffset++) {
       const targetDate = new Date(startDate);
       targetDate.setDate(startDate.getDate() + dayOffset);
 
@@ -404,6 +406,8 @@ export async function cancelScheduledNotification(notificationId: string): Promi
 
 export async function cancelAllScheduledNotifications(): Promise<void> {
   await Notifications.cancelAllScheduledNotificationsAsync();
+  // Also dismiss any delivered notifications to clear the tray
+  await Notifications.dismissAllNotificationsAsync();
 }
 
 export async function getAllScheduledNotifications(): Promise<Notifications.NotificationRequest[]> {
