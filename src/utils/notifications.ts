@@ -270,7 +270,7 @@ export async function addNotificationsForNewDay(): Promise<void> {
     newDay.setHours(0, 0, 0, 0);
 
     const notificationTimes = [
-      { hour: 7, minute: 0, reminders: morningReminders, name: 'Morning' },
+      { hour: 12, minute: 0, reminders: morningReminders, name: 'Morning' },
       { hour: 19, minute: 0, reminders: eveningReminders, name: 'Evening' },
       { hour: 21, minute: 0, reminders: lateReminders, name: 'Late' },
       { hour: 23, minute: 0, reminders: finalReminders, name: 'Final' },

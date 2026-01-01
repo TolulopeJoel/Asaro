@@ -89,7 +89,7 @@ export default function StatsScreen() {
         });
         // Update the header emoji based on missed days in the current month
         const dayOfMonth = today.getDate(); // Current day of the month (1-31)
-        const missedDays = Math.max(dayOfMonth - completedInCurrentMonth, 0);
+        const missedDays = Math.max(dayOfMonth - 1 - completedInCurrentMonth, 0);
         // Keep emojis encouraging (never demotivating)
         const moodEmoji =
             missedDays === 0 ? '🤩' :
