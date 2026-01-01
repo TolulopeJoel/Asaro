@@ -309,7 +309,10 @@ export default function MeditationSessionScreen() {
 
     const handleDone = useCallback(() => {
         if (createdEntryId) {
-            router.push(`/entry/${createdEntryId}`);
+            router.replace({
+                pathname: '/(tabs)/browse',
+                params: { openEntryId: createdEntryId }
+            });
         } else {
             router.back();
         }
