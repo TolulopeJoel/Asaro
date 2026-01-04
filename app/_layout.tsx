@@ -1,4 +1,5 @@
 import { initializeDatabase } from '@/src/data/database';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   initializeNotificationChannel,
   hasNotificationPermissions,
@@ -37,6 +38,8 @@ function StackNavigator() {
       <Stack.Screen name="stats" options={{ title: 'What you\'ve done 🤩' }} />
       <Stack.Screen name="permissions" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="battery-optimization" options={{ headerShown: false, gestureEnabled: false }} />
+      <Stack.Screen name="onboarding/name" options={{ headerShown: false, gestureEnabled: false }} />
+      <Stack.Screen name="onboarding/sleep-time" options={{ headerShown: false, gestureEnabled: false }} />
     </Stack>
   );
 }
@@ -90,6 +93,29 @@ export default function RootLayout() {
     if (!dbInitialized) return;
 
     const checkRequirements = async () => {
+      // 1. Check Name
+      const userName = await AsyncStorage.getItem('user_name');
+      if (!userName) {
+        // Check if we are already on the name screen to avoid loop
+        // segments might be ['onboarding', 'name']
+        const isOnNameScreen = segments[0] === 'onboarding' && segments[1] === 'name';
+        if (!isOnNameScreen) {
+          router.replace('/onboarding/name');
+        }
+        return;
+      }
+
+      // 2. Check Sleep Time
+      const sleepTime = await AsyncStorage.getItem('sleep_time');
+      if (!sleepTime) {
+        const isOnSleepScreen = segments[0] === 'onboarding' && segments[1] === 'sleep-time';
+        if (!isOnSleepScreen) {
+          router.replace('/onboarding/sleep-time');
+        }
+        return;
+      }
+
+      // 3. Check Permissions
       const hasPermissions = await hasNotificationPermissions();
       const inAuthGroup = segments[0] === 'permissions' || segments[0] === 'battery-optimization';
 
@@ -100,6 +126,7 @@ export default function RootLayout() {
         return;
       }
 
+      // 4. Check Battery Optimization
       const isBatteryOk = await isBatteryOptimizationDisabled();
       if (!isBatteryOk) {
         if (segments[0] !== 'battery-optimization') {
@@ -108,8 +135,9 @@ export default function RootLayout() {
         return;
       }
 
-      // If everything is good and we are on a blocking screen, go home
-      if (inAuthGroup) {
+      // If everything is good and we are on a blocking screen (onboarding or permissions), go home
+      const isOnboarding = segments[0] === 'onboarding' || segments[0] === 'permissions' || segments[0] === 'battery-optimization';
+      if (isOnboarding) {
         router.replace('/');
       }
     };

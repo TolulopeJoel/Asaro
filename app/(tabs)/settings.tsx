@@ -5,7 +5,7 @@ import { getAllScheduledNotifications } from '@/src/utils/notifications';
 import { exportJournalEntriesToJson, importJournalEntriesFromJson } from '@/src/data/database';
 import Constants from 'expo-constants';
 import * as DocumentPicker from 'expo-document-picker';
-import { documentDirectory, writeAsStringAsync, readAsStringAsync } from 'expo-file-system/legacy';
+import { documentDirectory, writeAsStringAsync, readAsStringAsync } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Stack } from 'expo-router';
 import { useState } from 'react';

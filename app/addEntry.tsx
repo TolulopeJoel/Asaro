@@ -5,7 +5,7 @@ import { Typography } from '@/src/theme/typography';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, KeyboardAvoidingView, LayoutAnimation, Platform, ScrollView, StyleSheet, Text, UIManager, View, useWindowDimensions } from 'react-native';
+import { Alert, KeyboardAvoidingView, LayoutAnimation, Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { BookPicker } from '../src/components/BookPicker';
 import { ChapterPicker } from '../src/components/ChapterPicker';
 import { ReflectionAnswers, ReflectionForm } from '../src/components/ReflectionForm';
@@ -13,9 +13,7 @@ import { ScalePressable } from '../src/components/ScalePressable';
 import { BibleBook, getBookByName } from '../src/data/bibleBooks';
 import { setupDailyNotifications, cancelRemainingNotificationsForToday, addNotificationsForNewDay } from '../src/utils/notifications';
 
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-    UIManager.setLayoutAnimationEnabledExperimental(true);
-}
+
 
 interface ChapterRange {
     start: number;
@@ -218,9 +216,7 @@ export default function MeditationSessionScreen() {
     const steps: Step[] = useMemo(() => ['book', 'chapter', 'reflection', 'summary'], []);
 
     const scrollToStep = useCallback((step: Step) => {
-        if (Platform.OS === 'ios' || (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental)) {
-            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        }
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setCurrentStep(step);
     }, []);
 

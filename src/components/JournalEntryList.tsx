@@ -10,7 +10,7 @@ import {
     StyleSheet,
     Text,
     TextInput,
-    UIManager,
+
     View,
 } from 'react-native';
 import { ALL_BIBLE_BOOKS, BibleBook } from '../data/bibleBooks';
@@ -22,10 +22,7 @@ import {
 } from '../data/database';
 import { ScalePressable } from './ScalePressable';
 
-// Enable LayoutAnimation on Android
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-    UIManager.setLayoutAnimationEnabledExperimental(true);
-}
+
 
 type ViewMode = 'recent' | 'books' | 'bookDetail';
 
@@ -34,7 +31,7 @@ interface NavigationBreadcrumb {
     onPress: () => void;
 }
 
-type ListItem = 
+type ListItem =
     | { type: 'header'; title: string; id: string }
     | { type: 'entry'; entry: JournalEntry; id: number }
     | { type: 'bookHeader'; bookName: string; entryCount: number; id: string }
@@ -57,7 +54,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
     const [availableBooks, setAvailableBooks] = useState<BibleBook[]>([]);
     const [tabAnimation] = useState(new Animated.Value(0));
     const [tabContainerWidth, setTabContainerWidth] = useState(0);
-    const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const searchTimeoutRef = useRef<any>(null);
 
     useEffect(() => {
         loadEntries();
@@ -87,12 +84,12 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
     const prevEntriesLength = useRef(0);
     const prevFilteredLength = useRef(0);
     const prevBookEntriesLength = useRef(0);
-    
+
     useEffect(() => {
         const entriesChanged = entries.length !== prevEntriesLength.current;
         const filteredChanged = filteredEntries.length !== prevFilteredLength.current;
         const bookEntriesChanged = bookEntries.length !== prevBookEntriesLength.current;
-        
+
         if (entriesChanged || filteredChanged || bookEntriesChanged) {
             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             prevEntriesLength.current = entries.length;
@@ -131,7 +128,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
 
     useEffect(() => {
         if (tabContainerWidth === 0) return; // Wait for layout
-        
+
         const toValue = viewMode === 'recent' ? 0 : tabContainerWidth * 0.5; // 50% of container width
         const animation = Animated.spring(tabAnimation, {
             toValue,
@@ -140,7 +137,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
             friction: 8,
         });
         animation.start();
-        
+
         return () => {
             animation.stop();
         };
@@ -460,13 +457,13 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
             case 'entry':
                 return renderEntryCard(item.entry);
             case 'bookHeader':
-                    return (
+                return (
                     <View style={[styles.bookDetailHeader, { borderBottomColor: colors.border }]}>
                         <Text style={[styles.bookDetailTitle, { color: colors.textPrimary }]}>{item.bookName}</Text>
                         <Text style={[styles.bookDetailSubtitle, { color: colors.textSecondary }]}>
                             {item.entryCount} {item.entryCount === 1 ? 'entry' : 'entries'}
-                            </Text>
-                        </View>
+                        </Text>
+                    </View>
                 );
             case 'book':
                 return (
@@ -488,17 +485,17 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
 
     const renderEmptyState = useCallback(() => {
         if (viewMode === 'books') {
-                    return (
-                        <View style={styles.emptyState}>
+            return (
+                <View style={styles.emptyState}>
                     <Text style={[styles.emptyStateText, { color: colors.textPrimary }]}>No books studied yet</Text>
-                            <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>
+                    <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>
                         Create your first reflection to see books here
-                            </Text>
-                        </View>
-                    );
-                }
+                    </Text>
+                </View>
+            );
+        }
 
-                return (
+        return (
             <View style={styles.emptyState}>
                 <Text style={[styles.emptyStateText, { color: colors.text }]}>
                     {debouncedSearchQuery ? 'No entries match your search' : viewMode === 'bookDetail' ? 'No entries for this book' : 'No entries yet'}
@@ -510,9 +507,9 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                             ? 'Create your first entry for this book'
                             : 'Start your first reflection to see it here'
                     }
-                            </Text>
-                    </View>
-                );
+                </Text>
+            </View>
+        );
     }, [viewMode, debouncedSearchQuery, colors]);
 
     return (
@@ -522,7 +519,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
 
                 {/* Tab Navigation */}
                 <View style={styles.tabContainer}>
-                    <View 
+                    <View
                         style={styles.tabBackground}
                         onLayout={(e) => {
                             const { width } = e.nativeEvent.layout;

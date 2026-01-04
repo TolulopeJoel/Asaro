@@ -372,7 +372,7 @@ export async function setupDailyNotifications(startFromTomorrow: boolean = false
 
         await Notifications.scheduleNotificationAsync({
           content: {
-            ...createNotificationContent(`[DATE] ${reminder.title}`, reminder.body),
+            ...createNotificationContent(`${reminder.title}`, reminder.body),
             categoryIdentifier: 'reminder',
             data: {
               timestamp: Date.now(),
