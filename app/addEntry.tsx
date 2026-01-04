@@ -11,7 +11,7 @@ import { ChapterPicker } from '../src/components/ChapterPicker';
 import { ReflectionAnswers, ReflectionForm } from '../src/components/ReflectionForm';
 import { ScalePressable } from '../src/components/ScalePressable';
 import { BibleBook, getBookByName } from '../src/data/bibleBooks';
-import { setupDailyNotifications, cancelRemainingNotificationsForToday, addNotificationsForNewDay } from '../src/utils/notifications';
+import { setupDailyNotifications } from '../src/utils/notifications';
 
 
 
@@ -387,15 +387,7 @@ export default function MeditationSessionScreen() {
         return summary;
     }, [selectedBook, selectedChapters, verseRange]);
 
-    if (isLoading && isEditMode) {
-        return (
-            <View style={[styles.container, { backgroundColor: colors.background }]}>
-                <View style={styles.loadingContainer}>
-                    <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading...</Text>
-                </View>
-            </View>
-        );
-    }
+
 
     const renderBookStep = useCallback(() => (
         <View style={styles.stepContainer}>
@@ -555,6 +547,16 @@ export default function MeditationSessionScreen() {
             default: return null;
         }
     };
+
+    if (isLoading && isEditMode) {
+        return (
+            <View style={[styles.container, { backgroundColor: colors.background }]}>
+                <View style={styles.loadingContainer}>
+                    <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading...</Text>
+                </View>
+            </View>
+        );
+    }
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>

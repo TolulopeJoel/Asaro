@@ -320,6 +320,8 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = React.memo(({
     );
 });
 
+ChapterPicker.displayName = 'ChapterPicker';
+
 const styles = StyleSheet.create({
     container: {
         flex: 1,

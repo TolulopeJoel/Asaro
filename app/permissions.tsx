@@ -1,7 +1,7 @@
 import { requestNotificationPermissions, openNotificationSettings, hasNotificationPermissions } from '@/src/utils/notifications';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { AppState, Text, View, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { AppState, Text, View, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';

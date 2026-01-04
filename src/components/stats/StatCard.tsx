@@ -19,6 +19,8 @@ export const StatCard = React.memo(({ label, value, color }: StatCardProps) => {
     );
 });
 
+StatCard.displayName = 'StatCard';
+
 const styles = StyleSheet.create({
     statCard: {
         flex: 1,

@@ -171,6 +171,8 @@ export const BookPicker: React.FC<BookPickerProps> = React.memo(({
     );
 });
 
+BookPicker.displayName = 'BookPicker';
+
 const styles = StyleSheet.create({
     container: {
         flex: 1,

@@ -46,7 +46,7 @@ export async function initializeNotificationChannel(): Promise<void> {
 // Check if notification permissions are granted (no UI, just status check)
 export async function hasNotificationPermissions(): Promise<boolean> {
   if (!Device.isDevice) {
-    console.log('Must use physical device for notifications');
+
     return false;
   }
 
@@ -65,8 +65,8 @@ export async function isBatteryOptimizationDisabled(): Promise<boolean> {
     // If battery optimization is enabled, it means restrictions ARE active (bad for us)
     // We want it to be disabled (false) so our app can run unrestricted
     return !batteryOptimizationEnabled;
-  } catch (error) {
-    console.log('Error checking battery optimization:', error);
+  } catch {
+
     // If we can't check, assume it's not configured properly
     return false;
   }
@@ -75,7 +75,7 @@ export async function isBatteryOptimizationDisabled(): Promise<boolean> {
 // Request notification permissions with user interaction
 export async function requestNotificationPermissions(): Promise<boolean> {
   if (!Device.isDevice) {
-    console.log('Must use physical device for notifications');
+
     return false;
   }
 
@@ -122,8 +122,8 @@ export async function openNotificationSettings() {
           extra: { 'android.provider.extra.APP_PACKAGE': pkg }
         }
       );
-    } catch (error) {
-      console.log('Could not open notification settings, falling back:', error);
+    } catch {
+
       Linking.openSettings();
     }
   } else {
@@ -140,7 +140,7 @@ export async function scheduleReminderNotification(
 ): Promise<string | null> {
   // Check permissions without requesting
   if (!await hasNotificationPermissions()) {
-    console.log('Notification permissions not granted');
+
     return null;
   }
 
@@ -220,14 +220,14 @@ function isToday(date: Date): boolean {
 // Cancel all scheduled notifications for the remainder of today
 export async function cancelRemainingNotificationsForToday(): Promise<void> {
   if (!await hasNotificationPermissions()) {
-    console.log('Notification permissions not granted');
+
     return;
   }
 
   const now = new Date();
   const existingNotifications = await getAllScheduledNotifications();
 
-  let cancelledCount = 0;
+
   for (const notification of existingNotifications) {
     if (notification.trigger && typeof notification.trigger === 'object' && 'date' in notification.trigger) {
       const triggerDate = new Date(notification.trigger.date as number);
@@ -235,18 +235,17 @@ export async function cancelRemainingNotificationsForToday(): Promise<void> {
       // Cancel if it's scheduled for today and hasn't fired yet
       if (isToday(triggerDate) && triggerDate > now) {
         await Notifications.cancelScheduledNotificationAsync(notification.identifier);
-        cancelledCount++;
       }
     }
   }
 
-  console.log(`✅ Cancelled ${cancelledCount} remaining notifications for today`);
+
 }
 
 // Add notifications for a new day (7 days from now) to maintain the 7-day schedule
 export async function addNotificationsForNewDay(): Promise<void> {
   if (!await hasNotificationPermissions()) {
-    console.log('Notification permissions not granted');
+
     return;
   }
 
@@ -300,7 +299,7 @@ export async function addNotificationsForNewDay(): Promise<void> {
       });
     }
 
-    console.log(`✅ Added 4 notifications for ${newDay.toDateString()}`);
+
   } catch (error) {
     console.error('Error adding notifications for new day:', error);
   }
@@ -309,7 +308,7 @@ export async function addNotificationsForNewDay(): Promise<void> {
 export async function setupDailyNotifications(startFromTomorrow: boolean = false): Promise<boolean> {
   // Check permissions without requesting
   if (!await hasNotificationPermissions()) {
-    console.log('Notification permissions not granted, skipping notification setup');
+
     return false;
   }
 
@@ -330,13 +329,13 @@ export async function setupDailyNotifications(startFromTomorrow: boolean = false
     // If we have enough date-based notifications, skip
     // If startFromTomorrow is true, we might be resetting to cancel today's, so we shouldn't skip based on count alone if the count includes today's
     if (!startFromTomorrow && futureDateNotifications.length >= 12) {
-      console.log(`✅ Already have ${futureDateNotifications.length} date-based notifications. Skipping setup.`);
+
       return true;
     }
 
     // Cancel all existing scheduled notifications to start fresh
     await cancelAllScheduledNotifications();
-    console.log(`Setting up 7-day notification schedules (startFromTomorrow: ${startFromTomorrow})...`);
+
 
     const notificationTimes = [
       { hour: 7, minute: 0, reminders: morningReminders, name: 'Morning' },
@@ -348,8 +347,8 @@ export async function setupDailyNotifications(startFromTomorrow: boolean = false
     // ========================================
     // PART 2: Schedule DATE-BASED notifications for 7 days
     // ========================================
-    console.log('📅 Scheduling date-based notifications for 7 days...');
-    let scheduledCount = 0;
+
+
     const startDate = new Date();
     startDate.setHours(0, 0, 0, 0);
 
@@ -388,11 +387,11 @@ export async function setupDailyNotifications(startFromTomorrow: boolean = false
           },
         });
 
-        scheduledCount++;
+
       }
     }
 
-    console.log(`✅ Scheduled ${scheduledCount} date-based notifications`);
+
     return true;
   } catch (error) {
     console.error('Error scheduling notifications:', error);
@@ -416,7 +415,7 @@ export async function getAllScheduledNotifications(): Promise<Notifications.Noti
 
 export async function sendTestNotification(): Promise<void> {
   if (!await hasNotificationPermissions()) {
-    console.log('Notification permissions not granted');
+
     return;
   }
 

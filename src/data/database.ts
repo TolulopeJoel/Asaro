@@ -386,7 +386,7 @@ export const importJournalEntriesFromJson = async (json: string): Promise<{ impo
     let parsed: any;
     try {
         parsed = JSON.parse(json);
-    } catch (error) {
+    } catch {
         throw new Error('Invalid JSON file');
     }
 

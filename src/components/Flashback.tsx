@@ -29,7 +29,7 @@ export const Flashback: React.FC<FlashbackProps> = React.memo(({ onEntryPress })
                 const parsedCache = JSON.parse(cached);
                 setFlashbackData(parsedCache);
                 return;
-            } catch (e) {
+            } catch {
                 // If parsing fails, continue to fetch new
             }
         }
@@ -40,7 +40,7 @@ export const Flashback: React.FC<FlashbackProps> = React.memo(({ onEntryPress })
         if (historyJson) {
             try {
                 history = JSON.parse(historyJson);
-            } catch (e) {
+            } catch {
                 history = [];
             }
         }
@@ -79,7 +79,7 @@ export const Flashback: React.FC<FlashbackProps> = React.memo(({ onEntryPress })
                 useNativeDriver: true,
             });
             animation.start();
-            
+
             return () => {
                 animation.stop();
             };
@@ -137,6 +137,8 @@ export const Flashback: React.FC<FlashbackProps> = React.memo(({ onEntryPress })
         </Animated.View>
     );
 });
+
+Flashback.displayName = 'Flashback';
 
 const styles = StyleSheet.create({
     cardWrapper: {

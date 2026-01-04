@@ -59,7 +59,7 @@ export const MonthGrid = React.memo(({ year, month, data, showTitle = true }: Mo
                     const dayDate = new Date(year, month, day);
                     const dateStr = formatDateToLocalString(dayDate);
                     const isFuture = dayDate.getTime() > today.getTime();
-                    
+
                     // Hide future dates
                     if (isFuture) {
                         return <View key={`empty-future-${index}`} style={styles.dayCellEmpty} />;
@@ -125,6 +125,8 @@ export const MonthGrid = React.memo(({ year, month, data, showTitle = true }: Mo
         </View>
     );
 });
+
+MonthGrid.displayName = 'MonthGrid';
 
 const styles = StyleSheet.create({
     monthContainer: {

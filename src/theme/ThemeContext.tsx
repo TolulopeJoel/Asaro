@@ -24,7 +24,7 @@ const THEME_STORAGE_KEY = 'user_theme_preference';
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const systemColorScheme = useColorScheme();
     const [theme, setThemeState] = useState<ThemeMode>('light');
-    const [isInitialized, setIsInitialized] = useState(false);
+
 
     useEffect(() => {
         // Load saved theme preference
@@ -32,7 +32,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
             if (savedTheme && (savedTheme === 'light' || savedTheme === 'dark' || savedTheme === 'system')) {
                 setThemeState(savedTheme as ThemeMode);
             }
-            setIsInitialized(true);
+
         });
     }, []);
 

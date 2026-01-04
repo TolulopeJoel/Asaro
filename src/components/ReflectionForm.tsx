@@ -249,6 +249,8 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
   );
 });
 
+ReflectionForm.displayName = 'ReflectionForm';
+
 interface ReflectionQuestion {
   id: keyof ReflectionAnswers;
   question: string;
@@ -330,7 +332,7 @@ const styles = StyleSheet.create({
   },
   notesSubtitle: {
     fontSize: Typography.size.xs,
-    fontWeight: Typography.weight.light,
+    fontWeight: Typography.weight.regular,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },

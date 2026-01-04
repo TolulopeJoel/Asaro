@@ -4,7 +4,7 @@ import { formatDateToLocalString, getLocalMidnight } from '@/src/utils/dateUtils
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { StyleSheet, Text, View, Image } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { ScalePressable } from './ScalePressable';
 
 interface DayStatus {
@@ -147,6 +147,8 @@ export const WeeklyStreak = React.memo(() => {
         </ScalePressable>
     );
 });
+
+WeeklyStreak.displayName = 'WeeklyStreak';
 
 const styles = StyleSheet.create({
     container: {

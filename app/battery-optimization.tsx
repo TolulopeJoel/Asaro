@@ -53,14 +53,14 @@ export default function BatteryOptimizationScreen() {
                     }
                 );
             } catch (error) {
-                console.log('Could not open battery optimization, trying alternative:', error);
+
 
                 try {
                     await IntentLauncher.startActivityAsync(
                         'android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS'
                     );
                 } catch (error2) {
-                    console.log('Could not open battery settings, using app settings:', error2);
+
                     Linking.openSettings();
                 }
             }

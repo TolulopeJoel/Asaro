@@ -120,7 +120,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                             } else {
                                 onDelete?.();
                             }
-                        } catch (error) {
+                        } catch {
                             setIsDeleting(false);
                         }
                     },
