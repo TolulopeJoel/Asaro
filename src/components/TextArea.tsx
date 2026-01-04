@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    Dimensions,
+
     KeyboardAvoidingView,
     Modal,
     Platform,
@@ -14,7 +14,7 @@ import {
 import { useTheme } from '../theme/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const { height: screenHeight } = Dimensions.get('window');
+
 
 const TextArea: React.FC<{
     label: string;
@@ -138,7 +138,7 @@ const TextArea: React.FC<{
                                     onPress={handleCancel}
                                     hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                                 >
-                                    <Text style={[fullScreenStyles.cancelText, { color: colors.textTertiary }]}>Don't Save</Text>
+                                    <Text style={[fullScreenStyles.cancelText, { color: colors.textTertiary }]}>Don&apos;t Save</Text>
                                 </TouchableOpacity>
 
                                 {label && (
@@ -181,7 +181,7 @@ const textAreaStyles = StyleSheet.create({
         marginBottom: 8,
     },
     inputContainer: {
-        borderRadius: 16, // Softened from 7
+        borderRadius: 10,
         borderWidth: 1,
         position: 'relative',
     },
@@ -198,7 +198,7 @@ const textAreaStyles = StyleSheet.create({
         fontWeight: '400',
         lineHeight: 24,
         letterSpacing: 0.1,
-        minHeight: 150,
+        minHeight: 250,
     },
     inputDisabled: {
         // Colors handled in component
@@ -219,7 +219,7 @@ const textAreaStyles = StyleSheet.create({
         height: 32,
         justifyContent: 'center',
         alignItems: 'center',
-        borderRadius: 16, // Softened from 14
+        borderRadius: 12,
         borderWidth: 1,
     },
     expandIcon: {
