@@ -129,8 +129,6 @@ const UpdateCard = React.memo(() => {
 
                 <Text style={[styles.updateContent, { color: colors.textSecondary }]}>
                     Meditation question no. 5 (what do I want to remember?) has been removed.
-                    A simple text field won't help you remember research topics effectively.
-                    {"\n"}{"\n"}
                     We're building a smarter feature with reminders to help you revisit topics from your readings.
                 </Text>
             </View>

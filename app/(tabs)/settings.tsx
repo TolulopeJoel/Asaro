@@ -5,7 +5,7 @@ import { getAllScheduledNotifications } from '@/src/utils/notifications';
 import { exportJournalEntriesToJson, importJournalEntriesFromJson } from '@/src/data/database';
 import Constants from 'expo-constants';
 import * as DocumentPicker from 'expo-document-picker';
-import { documentDirectory, writeAsStringAsync, readAsStringAsync } from 'expo-file-system';
+import { documentDirectory, writeAsStringAsync, readAsStringAsync } from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
@@ -87,7 +87,7 @@ export default function Settings() {
         setIsExporting(true);
         try {
             const json = await exportJournalEntriesToJson();
-            const fileName = `journal-backup-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+            const fileName = `asaro-backup-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
             const uri = `${documentDirectory || ''}${fileName}`;
 
             await writeAsStringAsync(uri, json);
@@ -95,17 +95,17 @@ export default function Settings() {
             if (await Sharing.isAvailableAsync()) {
                 await Sharing.shareAsync(uri, {
                     mimeType: 'application/json',
-                    dialogTitle: 'Share journal backup',
+                    dialogTitle: 'Share entries backup',
                 });
             } else {
                 Alert.alert(
                     'Backup created',
-                    'Your journal backup has been saved on this device.',
+                    'Your entries backup has been saved on this device.',
                 );
             }
         } catch (error: any) {
-            console.error('Failed to export journal entries:', error);
-            Alert.alert('Export failed', error?.message || 'Something went wrong while exporting your journal entries.');
+            console.error('Failed to export entries:', error);
+            Alert.alert('Export failed', error?.message || 'Something went wrong while exporting your entries.');
         } finally {
             setIsExporting(false);
         }
