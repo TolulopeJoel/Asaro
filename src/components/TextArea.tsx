@@ -185,12 +185,6 @@ const textAreaStyles = StyleSheet.create({
         borderWidth: 1,
         position: 'relative',
     },
-    inputContainerAnswered: {
-        // Colors handled in component
-    },
-    inputContainerDisabled: {
-        // Colors handled in component
-    },
     input: {
         padding: 20,
         paddingRight: 20, // Make room for expand button
@@ -199,9 +193,6 @@ const textAreaStyles = StyleSheet.create({
         lineHeight: 24,
         letterSpacing: 0.1,
         minHeight: 250,
-    },
-    inputDisabled: {
-        // Colors handled in component
     },
     answeredIndicator: {
         position: 'absolute',

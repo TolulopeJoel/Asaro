@@ -24,10 +24,9 @@ interface JournalEntryDetailProps {
 
 const REFLECTION_QUESTIONS = [
     'What does this tell me about Jehovah?',
-    'How does this section of the Scriptures contribute to the Bible’s message?',
+    'How does this section of the Scriptures contribute to the Bible\'s message?',
     'How can I realistically apply this in my life?',
     'How can I use these verses to help others?',
-    'What is one thing I want to remember from this study?',
 ];
 
 export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
@@ -114,12 +113,8 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                     onPress: async () => {
                         setIsDeleting(true);
                         try {
-                            const success = deleteJournalEntry(entry.id!);
-                            if (!success) {
-                                throw new Error('Failed to delete entry');
-                            } else {
-                                onDelete?.();
-                            }
+                            await deleteJournalEntry(entry.id!);
+                            onDelete?.();
                         } catch {
                             setIsDeleting(false);
                         }

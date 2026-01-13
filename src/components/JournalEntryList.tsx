@@ -655,9 +655,6 @@ const styles = StyleSheet.create({
         fontWeight: '400',
         letterSpacing: 0.2,
     },
-    tabTextActive: {
-        fontWeight: '600',
-    },
     breadcrumbsContainer: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -773,12 +770,6 @@ const styles = StyleSheet.create({
     },
     reflectionDotActive: {
         // Color handled in component
-    },
-    booksGrid: {
-        paddingHorizontal: 24,
-        paddingTop: 24,
-        justifyContent: 'space-between',
-        gap: 12,
     },
     bookCardWrapper: {
         paddingHorizontal: 24,

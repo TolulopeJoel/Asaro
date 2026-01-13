@@ -1,5 +1,5 @@
 import * as SQLite from 'expo-sqlite';
-import { formatDateToLocalString, getTodayDateString, getYesterdayDateString, parseLocalDateString } from '../utils/dateUtils';
+import { formatDateToLocalString, getTodayDateString } from '../utils/dateUtils';
 
 export interface JournalEntry {
     id?: number;
@@ -254,24 +254,6 @@ export const getTotalEntryCount = async (month?: string): Promise<number> => {
     });
 };
 
-export const getBookEntryCount = async (bookName: string): Promise<number> => {
-    return await withDatabase(async (database) => {
-        const result = await database.getFirstAsync(`SELECT COUNT(*) as count FROM journal_entries WHERE book_name = ?`, [bookName]) as any;
-        return result?.count ?? 0;
-    });
-};
-
-export const hasEntryToday = async (): Promise<boolean> => {
-    return await withDatabase(async (database) => {
-        const result = await database.getFirstAsync(`
-            SELECT EXISTS(
-                SELECT 1 FROM journal_entries 
-                WHERE DATE(created_at, 'localtime') = DATE('now', 'localtime')
-            ) as has_entry
-        `) as any;
-        return result?.has_entry === 1;
-    });
-}
 
 
 export const getMissedDaysCount = async (month?: string): Promise<number> => {
@@ -452,33 +434,6 @@ export const importJournalEntriesFromJson = async (json: string): Promise<{ impo
     });
 };
 
-export const getComebackDaysCount = async (): Promise<number> => {
-    return await withDatabase(async (database) => {
-        const result = await database.getFirstAsync(`
-            WITH dated_entries AS (
-                SELECT DISTINCT DATE(created_at, 'localtime') as entry_date
-                FROM journal_entries
-                ORDER BY entry_date
-            ),
-            with_gaps AS (
-                SELECT 
-                    entry_date,
-                    LAG(entry_date, 1) OVER (ORDER BY entry_date) as prev_date_1,
-                    LAG(entry_date, 2) OVER (ORDER BY entry_date) as prev_date_2
-                FROM dated_entries
-            )
-            SELECT COUNT(*) as comeback_days
-            FROM with_gaps
-            WHERE 
-                -- Current day and previous day are consecutive (2 days in a row)
-                julianday(entry_date) - julianday(prev_date_1) = 1
-                -- But there was a 2+ day gap before those 2 consecutive days
-                AND julianday(prev_date_1) - julianday(prev_date_2) >= 2
-        `) as any;
-
-        return result?.comeback_days || 0;
-    });
-};
 
 /**
  * Get entry counts for a date range
@@ -504,105 +459,6 @@ export const getDailyEntryCounts = async (startDate: string, endDate: string): P
     });
 };
 
-/**
- * Get current streak count
- */
-export const getCurrentStreak = async (): Promise<number> => {
-    return await withDatabase(async (database) => {
-        // Get all unique entry dates ordered by date descending
-        const result = await database.getAllAsync<{ entry_date: string }>(`
-            SELECT DISTINCT DATE(created_at, 'localtime') as entry_date
-            FROM journal_entries
-            ORDER BY entry_date DESC
-        `);
-
-        if (result.length === 0) return 0;
-
-        // Use local timezone date strings to match SQLite's 'localtime' modifier
-        const todayStr = getTodayDateString();
-        const yesterdayStr = getYesterdayDateString();
-
-        // Check if the most recent entry is today or yesterday
-        const lastEntryDate = result[0].entry_date;
-
-        if (lastEntryDate !== todayStr && lastEntryDate !== yesterdayStr) {
-            return 0;
-        }
-
-        let streak = 1;
-
-        // Iterate through dates to find consecutive days
-        for (let i = 0; i < result.length - 1; i++) {
-            const currentDate = parseLocalDateString(result[i].entry_date);
-            const nextDate = parseLocalDateString(result[i + 1].entry_date);
-
-            // Calculate difference in days
-            const diffTime = Math.abs(currentDate.getTime() - nextDate.getTime());
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-            if (diffDays === 1) {
-                streak++;
-            } else {
-                break;
-            }
-        }
-
-        return streak;
-    });
-};
-
-/**
- * Get longest streak count
- */
-export const getLongestStreak = async (): Promise<number> => {
-    return await withDatabase(async (database) => {
-        // Get all unique entry dates ordered by date ascending
-        const result = await database.getAllAsync<{ entry_date: string }>(`
-            SELECT DISTINCT DATE(created_at, 'localtime') as entry_date
-            FROM journal_entries
-            ORDER BY entry_date ASC
-        `);
-
-        if (result.length === 0) return 0;
-
-        let maxStreak = 1;
-        let currentStreak = 1;
-
-        for (let i = 0; i < result.length - 1; i++) {
-            const currentDate = parseLocalDateString(result[i].entry_date);
-            const nextDate = parseLocalDateString(result[i + 1].entry_date);
-
-            const diffTime = Math.abs(nextDate.getTime() - currentDate.getTime());
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-            if (diffDays === 1) {
-                currentStreak++;
-            } else {
-                currentStreak = 1;
-            }
-
-            if (currentStreak > maxStreak) {
-                maxStreak = currentStreak;
-            }
-        }
-
-        return maxStreak;
-    });
-};
-
-/**
- * Get entry counts for the last 365 days for the contribution graph
- */
-export const getYearlyEntryCounts = async (): Promise<Record<string, number>> => {
-    const today = new Date();
-    const oneYearAgo = new Date(today);
-    oneYearAgo.setDate(oneYearAgo.getDate() - 365);
-
-    const startDate = formatDateToLocalString(oneYearAgo);
-    const endDate = formatDateToLocalString(today);
-
-    return await getDailyEntryCounts(startDate, endDate);
-};
 
 /**
  * Get the date of the very first journal entry

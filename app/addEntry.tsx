@@ -5,7 +5,7 @@ import { Typography } from '@/src/theme/typography';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, KeyboardAvoidingView, LayoutAnimation, Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Alert, KeyboardAvoidingView, LayoutAnimation, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BookPicker } from '../src/components/BookPicker';
 import { ChapterPicker } from '../src/components/ChapterPicker';
 import { ReflectionAnswers, ReflectionForm } from '../src/components/ReflectionForm';
@@ -210,23 +210,10 @@ export default function MeditationSessionScreen() {
 
     useAutoSave(reflectionAnswers, selectedBook, selectedChapters, verseRange, currentStep, isEditMode);
 
-    const scrollViewRef = useRef<ScrollView>(null);
-    const { width: screenWidth } = useWindowDimensions();
-
-    const steps: Step[] = useMemo(() => ['book', 'chapter', 'reflection', 'summary'], []);
-
     const scrollToStep = useCallback((step: Step) => {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setCurrentStep(step);
     }, []);
-
-    // Sync scroll with currentStep on mount/update (e.g. when loading draft)
-    useEffect(() => {
-        if (!isLoading) {
-            // No longer need to scroll, just set the step
-            // currentStep is already set by loadData
-        }
-    }, [isLoading]);
 
     const changeStep = useCallback((step: Step) => {
         scrollToStep(step);
@@ -632,13 +619,6 @@ const styles = StyleSheet.create({
     contentArea: {
         flex: 1,
         minHeight: 200,
-    },
-    readingLabel: {
-        fontSize: Typography.size.sm,
-        fontWeight: Typography.weight.semibold,
-        letterSpacing: Typography.letterSpacing.wider,
-        textTransform: 'uppercase',
-        marginBottom: Spacing.sm,
     },
     navigationContainer: {
         flexDirection: 'row',

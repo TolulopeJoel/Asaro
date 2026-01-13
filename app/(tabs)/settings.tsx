@@ -1,7 +1,7 @@
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
-import { getAllScheduledNotifications } from '@/src/utils/notifications';
+import { getAllScheduledNotifications, setupDailyNotifications, sendTestNotification } from '@/src/utils/notifications';
 import { exportJournalEntriesToJson, importJournalEntriesFromJson } from '@/src/data/database';
 import Constants from 'expo-constants';
 import * as DocumentPicker from 'expo-document-picker';
@@ -32,6 +32,32 @@ export default function Settings() {
             if (!isLoadingNotifications && scheduledNotifications.length === 0) {
                 loadScheduledNotifications();
             }
+        }
+    };
+
+    const handleTestNotification = async () => {
+        try {
+            await sendTestNotification();
+        } catch (error) {
+            console.error('Failed to send test notification:', error);
+            Alert.alert('Error', 'Failed to send test notification.');
+        }
+    };
+
+    const handleForceReschedule = async () => {
+        setIsLoadingNotifications(true);
+        try {
+            const success = await setupDailyNotifications(false);
+            if (success) {
+                await loadScheduledNotifications();
+                Alert.alert('Success', 'Notifications have been rescheduled.');
+            } else {
+                Alert.alert('Error', 'Failed to reschedule notifications.');
+            }
+        } catch (error) {
+            console.error('Failed to reschedule notifications:', error);
+        } finally {
+            setIsLoadingNotifications(false);
         }
     };
 
@@ -243,17 +269,37 @@ export default function Settings() {
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
                             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Notifications</Text>
-                            <TouchableOpacity
-                                onPress={loadScheduledNotifications}
-                                disabled={isLoadingNotifications}
-                                style={styles.refreshButton}
-                            >
-                                {isLoadingNotifications ? (
-                                    <ActivityIndicator color={colors.textSecondary} size="small" />
-                                ) : (
-                                    <Ionicons name="refresh" size={16} color={colors.textSecondary} />
-                                )}
-                            </TouchableOpacity>
+                            <View style={styles.headerActions}>
+                                <TouchableOpacity
+                                    onPress={handleTestNotification}
+                                    disabled={isLoadingNotifications}
+                                    style={styles.refreshButton}
+                                >
+                                    <Ionicons name="notifications-outline" size={16} color={colors.textSecondary} />
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={handleForceReschedule}
+                                    disabled={isLoadingNotifications}
+                                    style={styles.refreshButton}
+                                >
+                                    {isLoadingNotifications ? (
+                                        <ActivityIndicator color={colors.textSecondary} size="small" />
+                                    ) : (
+                                        <Ionicons name="calendar" size={16} color={colors.textSecondary} />
+                                    )}
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={loadScheduledNotifications}
+                                    disabled={isLoadingNotifications}
+                                    style={styles.refreshButton}
+                                >
+                                    {isLoadingNotifications ? (
+                                        <ActivityIndicator color={colors.textSecondary} size="small" />
+                                    ) : (
+                                        <Ionicons name="refresh" size={16} color={colors.textSecondary} />
+                                    )}
+                                </TouchableOpacity>
+                            </View>
                         </View>
 
                         {scheduledNotifications.length > 0 ? (
@@ -322,6 +368,10 @@ const styles = StyleSheet.create({
     },
     refreshButton: {
         padding: Spacing.xs,
+    },
+    headerActions: {
+        flexDirection: 'row',
+        gap: Spacing.md,
     },
     themeSelector: {
         flexDirection: 'row',

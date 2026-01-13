@@ -1,6 +1,6 @@
 import { Flashback } from '@/src/components/Flashback';
 import { WeeklyStreak } from '@/src/components/WeeklyStreak';
-import { getComebackDaysCount, getMissedDaysCount, getTotalEntryCount, JournalEntry } from "@/src/data/database";
+import { getMissedDaysCount, getTotalEntryCount, JournalEntry } from "@/src/data/database";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { Spacing } from "@/src/theme/spacing";
 import { Typography } from "@/src/theme/typography";
@@ -57,18 +57,16 @@ const QuickStats = React.memo(() => {
     const [stats, setStats] = useState({
         totalEntries: 0,
         missedDays: 0,
-        comebackDays: 0,
     });
 
     const loadStats = useCallback(async () => {
         const currentMonth = new Date().toISOString().slice(0, 7);
-        const [totalEntries, missedDays, comebackDays] = await Promise.all([
+        const [totalEntries, missedDays] = await Promise.all([
             getTotalEntryCount(currentMonth),
             getMissedDaysCount(currentMonth),
-            getComebackDaysCount(),
         ]);
 
-        setStats({ totalEntries, missedDays, comebackDays });
+        setStats({ totalEntries, missedDays });
     }, []);
 
     // Load stats on mount
@@ -83,7 +81,7 @@ const QuickStats = React.memo(() => {
         }, [loadStats])
     );
 
-    const { totalEntries, missedDays, comebackDays } = stats;
+    const { totalEntries, missedDays } = stats;
 
     return (
         <View style={styles.statsContainer}>

@@ -77,8 +77,6 @@ export default function RootLayout() {
           return;
         }
 
-        // If we have permissions, ensure notifications are scheduled
-        await setupDailyNotifications();
 
       } catch (error) {
         console.error('Initialization error:', error);
@@ -117,7 +115,6 @@ export default function RootLayout() {
 
       // 3. Check Permissions
       const hasPermissions = await hasNotificationPermissions();
-      const inAuthGroup = segments[0] === 'permissions' || segments[0] === 'battery-optimization';
 
       if (!hasPermissions) {
         if (segments[0] !== 'permissions') {
@@ -137,6 +134,12 @@ export default function RootLayout() {
 
       // If everything is good and we are on a blocking screen (onboarding or permissions), go home
       const isOnboarding = segments[0] === 'onboarding' || segments[0] === 'permissions' || segments[0] === 'battery-optimization';
+
+      // Ensure notifications are scheduled once all requirements are met
+      if (hasPermissions && isBatteryOk && userName && sleepTime) {
+        await setupDailyNotifications();
+      }
+
       if (isOnboarding) {
         router.replace('/');
       }

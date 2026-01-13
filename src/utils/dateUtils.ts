@@ -15,18 +15,6 @@ export const getTodayDateString = (): string => {
 };
 
 /**
- * Get yesterday's date as a string in YYYY-MM-DD format (local timezone)
- */
-export const getYesterdayDateString = (): string => {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const year = yesterday.getFullYear();
-    const month = String(yesterday.getMonth() + 1).padStart(2, '0');
-    const day = String(yesterday.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-};
-
-/**
  * Format a Date object to YYYY-MM-DD string (local timezone)
  * This matches SQLite's DATE(created_at, 'localtime') format
  */
@@ -71,6 +59,3 @@ export const getDaysDifference = (date1: Date, date2: Date): number => {
     const diffTime = Math.abs(d1.getTime() - d2.getTime());
     return Math.floor(diffTime / (1000 * 60 * 60 * 24));
 };
-
-
-

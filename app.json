@@ -70,6 +70,9 @@
       "url": "https://u.expo.dev/3eab02f1-b324-49fc-ae59-6d1bf4813176",
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 0
+    },
+    "ios": {
+      "bundleIdentifier": "com.asaro.meditation"
     }
   }
 }

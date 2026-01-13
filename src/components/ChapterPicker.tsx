@@ -327,15 +327,6 @@ const styles = StyleSheet.create({
         flex: 1,
         minHeight: 250,
     },
-    emptyContainer: {
-        paddingVertical: Spacing.xxxl,
-        alignItems: 'center',
-    },
-    emptyText: {
-        fontSize: Typography.size.md,
-        fontWeight: Typography.weight.regular,
-        letterSpacing: 0.3,
-    },
     header: {
         marginBottom: Spacing.lg,
     },

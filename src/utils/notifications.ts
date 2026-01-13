@@ -3,6 +3,9 @@ import { Alert, Linking, Platform } from 'react-native';
 import * as Device from 'expo-device';
 import * as IntentLauncher from 'expo-intent-launcher';
 import * as Battery from 'expo-battery';
+import { getTodayDateString } from './dateUtils';
+
+let isScheduling = false;
 
 // Configure how notifications should be handled when app is in foreground
 Notifications.setNotificationHandler({
@@ -30,28 +33,38 @@ function createNotificationContent(title: string, body: string) {
 // Initialize notification channel (Android only) - call this once on app start
 export async function initializeNotificationChannel(): Promise<void> {
   if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('asaro-reminders', {
-      name: 'Àṣàrò Reminders',
-      importance: Notifications.AndroidImportance.HIGH,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#8b7355',
-      sound: 'default',
-      enableVibrate: true,
-      enableLights: true,
-      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-    });
+    try {
+      await Notifications.setNotificationChannelAsync('asaro-reminders', {
+        name: 'Àṣàrò Reminders',
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#E18F43',
+        sound: 'default',
+        enableVibrate: true,
+        enableLights: true,
+        lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+        showBadge: true,
+      });
+    } catch (error) {
+      console.error('Failed to initialize notification channel:', error);
+    }
   }
 }
 
 // Check if notification permissions are granted (no UI, just status check)
 export async function hasNotificationPermissions(): Promise<boolean> {
   if (!Device.isDevice) {
-
     return false;
   }
 
-  const { status } = await Notifications.getPermissionsAsync();
-  return status === 'granted';
+  const { status, canAskAgain, expires, granted } = await Notifications.getPermissionsAsync();
+
+  // On Android 13+, we also need to check for POST_NOTIFICATIONS specifically if status is not granted
+  if (status === 'granted' || granted) {
+    return true;
+  }
+
+  return false;
 }
 
 // Check if battery optimization is disabled for the app
@@ -229,12 +242,16 @@ export async function cancelRemainingNotificationsForToday(): Promise<void> {
 
 
   for (const notification of existingNotifications) {
-    if (notification.trigger && typeof notification.trigger === 'object' && 'date' in notification.trigger) {
-      const triggerDate = new Date(notification.trigger.date as number);
+    const trigger = notification.trigger as any;
+    if (trigger && typeof trigger === 'object') {
+      const triggerValue = trigger.date || trigger.value;
+      if (triggerValue) {
+        const triggerDate = new Date(triggerValue);
 
-      // Cancel if it's scheduled for today and hasn't fired yet
-      if (isToday(triggerDate) && triggerDate > now) {
-        await Notifications.cancelScheduledNotificationAsync(notification.identifier);
+        // Cancel if it's scheduled for today and hasn't fired yet
+        if (isToday(triggerDate) && triggerDate > now) {
+          await Notifications.cancelScheduledNotificationAsync(notification.identifier);
+        }
       }
     }
   }
@@ -255,10 +272,14 @@ export async function addNotificationsForNewDay(): Promise<void> {
     let furthestDate = new Date();
 
     for (const notification of existingNotifications) {
-      if (notification.trigger && typeof notification.trigger === 'object' && 'date' in notification.trigger) {
-        const triggerDate = new Date(notification.trigger.date as number);
-        if (triggerDate > furthestDate) {
-          furthestDate = triggerDate;
+      const trigger = notification.trigger as any;
+      if (trigger && typeof trigger === 'object') {
+        const triggerValue = trigger.date || trigger.value;
+        if (triggerValue) {
+          const triggerDate = new Date(triggerValue);
+          if (triggerDate > furthestDate) {
+            furthestDate = triggerDate;
+          }
         }
       }
     }
@@ -319,9 +340,13 @@ export async function setupDailyNotifications(startFromTomorrow: boolean = false
     // Count how many future date-based notifications we have
     const now = new Date();
     const futureDateNotifications = existingNotifications.filter(n => {
-      if (n.trigger && typeof n.trigger === 'object' && 'date' in n.trigger) {
-        const triggerDate = new Date(n.trigger.date as number);
-        return triggerDate > now;
+      const trigger = n.trigger as any;
+      if (trigger && typeof trigger === 'object') {
+        const triggerValue = trigger.date || trigger.value;
+        if (triggerValue) {
+          const triggerDate = new Date(triggerValue);
+          return triggerDate > now;
+        }
       }
       return false;
     });
@@ -332,6 +357,11 @@ export async function setupDailyNotifications(startFromTomorrow: boolean = false
 
       return true;
     }
+
+    if (isScheduling) {
+      return false;
+    }
+    isScheduling = true;
 
     // Cancel all existing scheduled notifications to start fresh
     await cancelAllScheduledNotifications();
@@ -396,6 +426,8 @@ export async function setupDailyNotifications(startFromTomorrow: boolean = false
   } catch (error) {
     console.error('Error scheduling notifications:', error);
     return false;
+  } finally {
+    isScheduling = false;
   }
 }
 

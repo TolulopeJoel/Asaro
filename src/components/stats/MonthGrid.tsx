@@ -177,9 +177,4 @@ const styles = StyleSheet.create({
     dayNumber: {
         fontSize: 13,
     },
-    dot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-    },
 });

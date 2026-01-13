@@ -252,9 +252,6 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 2,
     },
-    searchResultCard: {
-        paddingTop: Spacing.sm,
-    },
     bookAbbreviation: {
         fontSize: 15, // Keeping slightly custom for specific card fit
         fontWeight: Typography.weight.medium,

@@ -1,15 +1,13 @@
 import { isBatteryOptimizationDisabled } from '@/src/utils/notifications';
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
-import { AppState, Text, View, StyleSheet, TouchableOpacity, Platform, Linking, Dimensions } from 'react-native';
+import { AppState, Text, View, StyleSheet, TouchableOpacity, Platform, Linking } from 'react-native';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as IntentLauncher from 'expo-intent-launcher';
-
-const { width } = Dimensions.get('window');
 
 export default function BatteryOptimizationScreen() {
     const router = useRouter();
