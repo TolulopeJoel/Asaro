@@ -29,6 +29,8 @@ const REFLECTION_QUESTIONS = [
     'How can I use these verses to help others?',
 ];
 
+const ACTION_QUESTION_INDEX = 2;
+
 export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
     entry,
     onEdit,
@@ -141,7 +143,22 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
             ];
 
             reflections.forEach((reflection, index) => {
-                if (reflection && reflection.trim()) {
+                if (index === ACTION_QUESTION_INDEX) {
+                    // Format action items
+                    if (entry.action_items && entry.action_items.length > 0) {
+                        content += `Q${index + 1}. ${REFLECTION_QUESTIONS[index]} \n\n`;
+                        entry.action_items.forEach((item) => {
+                            if (item.action.trim()) {
+                                content += `→ ${item.action.trim()}`;
+                                if (item.motivation.trim()) {
+                                    content += ` (motivated by: ${item.motivation.trim()})`;
+                                }
+                                content += '\n';
+                            }
+                        });
+                        content += '\n';
+                    }
+                } else if (reflection && reflection.trim()) {
                     content += `Q${index + 1}. ${REFLECTION_QUESTIONS[index]} \n\n`;
                     content += `${reflection.trim()} \n\n`;
                 }
@@ -165,6 +182,37 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
     };
 
     const renderReflection = (reflection: string | undefined, questionIndex: number) => {
+        // For Q3, render action items instead
+        if (questionIndex === ACTION_QUESTION_INDEX) {
+            if (!entry.action_items || entry.action_items.length === 0) return null;
+            const hasContent = entry.action_items.some(item => item.action.trim() || item.motivation.trim());
+            if (!hasContent) return null;
+
+            return (
+                <View key={questionIndex} style={[styles.reflectionCard, { borderLeftColor: colors.accentSecondary }]}>
+                    <Text style={[styles.questionText, { color: colors.accent }]}>{REFLECTION_QUESTIONS[questionIndex]}</Text>
+                    <View style={styles.answerContainer}>
+                        {entry.action_items.map((item, i) => (
+                            (item.action.trim() || item.motivation.trim()) ? (
+                                <View key={i} style={[styles.actionItemCard, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
+                                    {item.action.trim() ? (
+                                        <Text style={[styles.actionText, { color: colors.textPrimary }]}>
+                                            → {item.action.trim()}
+                                        </Text>
+                                    ) : null}
+                                    {item.motivation.trim() ? (
+                                        <Text style={[styles.motivationText, { color: colors.textSecondary }]}>
+                                            {item.motivation.trim()}
+                                        </Text>
+                                    ) : null}
+                                </View>
+                            ) : null
+                        ))}
+                    </View>
+                </View>
+            );
+        }
+
         if (!reflection || !reflection.trim()) return null;
 
         const paragraphs = reflection.trim().split('\n\n').filter(p => p.trim());
@@ -187,14 +235,17 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
         );
     };
 
-    const getAnsweredReflections = () => [
-        entry.reflection_1,
-        entry.reflection_2,
-        entry.reflection_3,
-        entry.reflection_4,
-    ].filter(r => r && r.trim().length > 0);
-
-    const hasReflections = getAnsweredReflections().length > 0;
+    const hasReflections = (() => {
+        const textReflections = [
+            entry.reflection_1,
+            entry.reflection_2,
+            entry.reflection_4,
+        ].filter(r => r && r.trim().length > 0);
+        const hasActions = entry.action_items && entry.action_items.some(
+            item => item.action.trim() || item.motivation.trim()
+        );
+        return textReflections.length > 0 || !!hasActions;
+    })();
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -375,6 +426,25 @@ const styles = StyleSheet.create({
     },
     answerParagraph: {
         marginTop: 0,
+    },
+    actionItemCard: {
+        borderRadius: Spacing.borderRadius.md,
+        borderWidth: 1,
+        padding: Spacing.md,
+    },
+    actionText: {
+        fontSize: Typography.size.lg - 1,
+        lineHeight: Typography.lineHeight.xl,
+        fontWeight: Typography.weight.medium,
+        letterSpacing: Typography.letterSpacing.normal,
+    },
+    motivationText: {
+        fontSize: Typography.size.md,
+        lineHeight: Typography.lineHeight.lg,
+        fontWeight: Typography.weight.regular,
+        letterSpacing: Typography.letterSpacing.normal,
+        marginTop: Spacing.xs,
+        fontStyle: 'italic',
     },
     emptyState: {
         paddingVertical: Spacing.xxxl + Spacing.xxl,

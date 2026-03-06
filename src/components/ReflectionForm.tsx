@@ -11,11 +11,12 @@ import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
 import { ScalePressable } from './ScalePressable';
 import { TextArea } from './TextArea';
+import { ActionItemPair, ActionItemsInput } from './ActionItemsInput';
 
 export interface ReflectionAnswers {
   reflection1: string;
   reflection2: string;
-  reflection3: string;
+  actionItems: ActionItemPair[];
   reflection4: string;
   notes: string;
 }
@@ -39,7 +40,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
   const [answers, setAnswers] = useState<ReflectionAnswers>({
     reflection1: initialAnswers?.reflection1 || '',
     reflection2: initialAnswers?.reflection2 || '',
-    reflection3: initialAnswers?.reflection3 || '',
+    actionItems: initialAnswers?.actionItems || [{ action: '', motivation: '' }],
     reflection4: initialAnswers?.reflection4 || '',
     notes: initialAnswers?.notes || '',
   });
@@ -96,7 +97,12 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
     }));
   };
 
-  const hasContent = Object.values(answers).some(answer => answer.trim().length > 0);
+  const hasContent = (() => {
+    const { actionItems, ...textAnswers } = answers;
+    const hasText = Object.values(textAnswers).some(answer => typeof answer === 'string' && answer.trim().length > 0);
+    const hasActions = actionItems.some(item => item.action.trim().length > 0 || item.motivation.trim().length > 0);
+    return hasText || hasActions;
+  })();
 
   // Animate save button based on content presence
   useEffect(() => {
@@ -140,10 +146,10 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
           text: 'Clear All',
           style: 'destructive',
           onPress: () => {
-            const emptyAnswers = {
+            const emptyAnswers: ReflectionAnswers = {
               reflection1: '',
               reflection2: '',
-              reflection3: '',
+              actionItems: [{ action: '', motivation: '' }],
               reflection4: '',
               notes: '',
             };
@@ -155,8 +161,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
   };
 
   const renderQuestion = (questionData: ReflectionQuestion, index: number) => {
-    const { id, question, placeholder } = questionData;
-    const value = answers[id];
+    const { id, question, placeholder, isActionList } = questionData;
     const anim = questionAnims[index];
 
     return (
@@ -184,14 +189,22 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
           </View>
         </View>
 
-        <TextArea
-          label={question}
-          value={value}
-          placeholder={placeholder}
-          onChange={(text) => updateAnswer(id, text)}
-          disabled={disabled}
-          isAnswered={value.trim().length > 0}
-        />
+        {isActionList ? (
+          <ActionItemsInput
+            items={answers.actionItems}
+            onChange={(items) => setAnswers(prev => ({ ...prev, actionItems: items }))}
+            disabled={disabled}
+          />
+        ) : (
+          <TextArea
+            label={question}
+            value={answers[id as keyof ReflectionAnswers] as string}
+            placeholder={placeholder}
+            onChange={(text) => updateAnswer(id as keyof ReflectionAnswers, text)}
+            disabled={disabled}
+            isAnswered={(answers[id as keyof ReflectionAnswers] as string).trim().length > 0}
+          />
+        )}
       </Animated.View>
     );
   };
@@ -252,9 +265,10 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
 ReflectionForm.displayName = 'ReflectionForm';
 
 interface ReflectionQuestion {
-  id: keyof ReflectionAnswers;
+  id: string;
   question: string;
   placeholder: string;
+  isActionList?: boolean;
 }
 
 const REFLECTION_QUESTIONS: ReflectionQuestion[] = [
@@ -271,7 +285,8 @@ const REFLECTION_QUESTIONS: ReflectionQuestion[] = [
   {
     id: 'reflection3',
     question: 'How can I realistically apply this in my life?',
-    placeholder: 'Think of specific, practical applications...',
+    placeholder: '',
+    isActionList: true,
   },
   {
     id: 'reflection4',

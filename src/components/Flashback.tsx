@@ -98,10 +98,22 @@ export const Flashback: React.FC<FlashbackProps> = React.memo(({ onEntryPress })
     const getPreviewText = () => {
         if (!flashbackData) return '';
         const { entry } = flashbackData;
-        const reflections = [entry.reflection_1, entry.reflection_2, entry.reflection_3, entry.reflection_4]
+        const reflections = [entry.reflection_1, entry.reflection_2, entry.reflection_4]
             .filter(r => r && r.trim().length > 0);
 
-        const text = reflections[0] || entry.notes || "No content";
+        let text = reflections[0] || "";
+
+        if (!text && entry.action_items && entry.action_items.length > 0) {
+            const firstAction = entry.action_items.find(i => i.action.trim());
+            if (firstAction) {
+                text = `→ ${firstAction.action.trim()}`;
+            }
+        }
+
+        if (!text) {
+            text = entry.notes || "No content";
+        }
+
         return text.length > 100 ? text.substring(0, 100) + '...' : text;
     };
 

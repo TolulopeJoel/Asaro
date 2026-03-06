@@ -174,7 +174,9 @@ export default function MeditationSessionScreen() {
                     setReflectionAnswers({
                         reflection1: entry.reflection_1 || "",
                         reflection2: entry.reflection_2 || "",
-                        reflection3: entry.reflection_3 || "",
+                        actionItems: entry.action_items && entry.action_items.length > 0
+                            ? entry.action_items.map(item => ({ action: item.action, motivation: item.motivation }))
+                            : [{ action: '', motivation: '' }],
                         reflection4: entry.reflection_4 || "",
                         notes: entry.notes || ""
                     });
@@ -258,10 +260,13 @@ export default function MeditationSessionScreen() {
                 reflections: [
                     answers.reflection1,
                     answers.reflection2,
-                    answers.reflection3,
+                    '',
                     answers.reflection4,
                 ],
                 notes: answers.notes,
+                actionItems: answers.actionItems.filter(
+                    item => item.action.trim() || item.motivation.trim()
+                ),
             };
 
             // Batch notification operations

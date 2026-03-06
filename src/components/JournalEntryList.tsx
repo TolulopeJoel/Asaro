@@ -242,8 +242,13 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
     }, []);
 
     const getAnswerCount = useCallback((entry: JournalEntry): number => {
-        return [entry.reflection_1, entry.reflection_2, entry.reflection_3, entry.reflection_4]
+        let count = [entry.reflection_1, entry.reflection_2, entry.reflection_4]
             .filter(r => (r ?? '').trim().length > 0).length;
+        // Count action items as Q3
+        if (entry.action_items && entry.action_items.some(item => item.action.trim() || item.motivation.trim())) {
+            count++;
+        }
+        return count;
     }, []);
 
     const formatDate = useCallback((dateString?: string): string => {
@@ -257,7 +262,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
     }, []);
 
     const getPreviewText = useCallback((entry: JournalEntry): string => {
-        const reflections = [entry.reflection_1, entry.reflection_2, entry.reflection_3, entry.reflection_4]
+        const reflections = [entry.reflection_1, entry.reflection_2, entry.reflection_4]
             .filter(r => r && r.trim().length > 0);
 
         const substantialReflection = reflections.sort((a, b) => (b?.length || 0) - (a?.length || 0))[0];
@@ -266,6 +271,15 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
             return substantialReflection.length > 80
                 ? substantialReflection.substring(0, 80) + '...'
                 : substantialReflection;
+        }
+
+        // Show action items preview
+        if (entry.action_items && entry.action_items.length > 0) {
+            const firstAction = entry.action_items.find(i => i.action.trim());
+            if (firstAction) {
+                const text = `→ ${firstAction.action.trim()}`;
+                return text.length > 80 ? text.substring(0, 80) + '...' : text;
+            }
         }
 
         if (entry.notes?.trim()) {

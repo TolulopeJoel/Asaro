@@ -1,6 +1,14 @@
 import * as SQLite from 'expo-sqlite';
 import { formatDateToLocalString, getTodayDateString } from '../utils/dateUtils';
 
+export interface ActionItem {
+    id?: number;
+    entry_id?: number;
+    action: string;
+    motivation: string;
+    sort_order: number;
+}
+
 export interface JournalEntry {
     id?: number;
     book_name: string;
@@ -15,6 +23,7 @@ export interface JournalEntry {
     notes?: string;
     created_at: string;
     updated_at?: string;
+    action_items?: ActionItem[];
 }
 
 export interface JournalEntryInput {
@@ -25,11 +34,12 @@ export interface JournalEntryInput {
     verseEnd?: string;
     reflections: string[];
     notes?: string;
+    actionItems?: { action: string; motivation: string }[];
 }
 
 let db: SQLite.SQLiteDatabase | null = null;
 
-const CURRENT_DB_VERSION = 2;
+const CURRENT_DB_VERSION = 3;
 
 const getDb = async () => {
     if (!db) {
@@ -149,6 +159,32 @@ export const initializeDatabase = async () => {
                 };
             };
 
+            if (currentVersion < 3) {
+                // Migration to v3: Create action_items table
+                await database.execAsync(`
+                    CREATE TABLE IF NOT EXISTS action_items (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        entry_id INTEGER NOT NULL REFERENCES journal_entries(id) ON DELETE CASCADE,
+                        action TEXT NOT NULL DEFAULT '',
+                        motivation TEXT DEFAULT '',
+                        sort_order INTEGER NOT NULL DEFAULT 0
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_action_items_entry ON action_items(entry_id);
+                `);
+
+                // Migrate existing reflection_3 data into action_items
+                const entriesWithR3 = await database.getAllAsync<{ id: number; reflection_3: string }>(
+                    `SELECT id, reflection_3 FROM journal_entries WHERE reflection_3 IS NOT NULL AND reflection_3 != ''`
+                );
+
+                for (const entry of entriesWithR3) {
+                    await database.runAsync(
+                        `INSERT INTO action_items (entry_id, action, motivation, sort_order) VALUES (?, ?, '', 0)`,
+                        [entry.id, entry.reflection_3]
+                    );
+                }
+            };
+
             // Set to current version
             await setDbVersion(database, CURRENT_DB_VERSION);
 
@@ -169,7 +205,23 @@ export const createJournalEntry = async (data: JournalEntryInput) => {
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [data.bookName, data.chapterStart ?? null, data.chapterEnd ?? null, data.verseStart ?? null, data.verseEnd ?? null, ...reflections, data.notes ?? null]
         );
-        return result.lastInsertRowId;
+
+        const entryId = result.lastInsertRowId;
+
+        // Insert action items
+        if (data.actionItems && data.actionItems.length > 0) {
+            for (let i = 0; i < data.actionItems.length; i++) {
+                const item = data.actionItems[i];
+                if (item.action.trim() || item.motivation.trim()) {
+                    await database.runAsync(
+                        `INSERT INTO action_items (entry_id, action, motivation, sort_order) VALUES (?, ?, ?, ?)`,
+                        [entryId, item.action, item.motivation, i]
+                    );
+                }
+            }
+        }
+
+        return entryId;
     });
 };
 
@@ -183,12 +235,54 @@ export const updateJournalEntry = async (id: number, data: JournalEntryInput) =>
              WHERE id = ?`,
             [data.bookName, data.chapterStart ?? null, data.chapterEnd ?? null, data.verseStart ?? null, data.verseEnd ?? null, ...reflections, data.notes ?? null, id]
         );
+
+        // Replace action items: delete old, insert new
+        await database.runAsync(`DELETE FROM action_items WHERE entry_id = ?`, [id]);
+        if (data.actionItems && data.actionItems.length > 0) {
+            for (let i = 0; i < data.actionItems.length; i++) {
+                const item = data.actionItems[i];
+                if (item.action.trim() || item.motivation.trim()) {
+                    await database.runAsync(
+                        `INSERT INTO action_items (entry_id, action, motivation, sort_order) VALUES (?, ?, ?, ?)`,
+                        [id, item.action, item.motivation, i]
+                    );
+                }
+            }
+        }
     });
+};
+
+/**
+ * Helper: fetch action items for a list of entries and attach them
+ */
+const attachActionItems = async (database: SQLite.SQLiteDatabase, entries: JournalEntry[]): Promise<JournalEntry[]> => {
+    if (entries.length === 0) return entries;
+
+    const ids = entries.map(e => e.id).filter((id): id is number => id != null);
+    if (ids.length === 0) return entries;
+
+    const placeholders = ids.map(() => '?').join(',');
+    const actionItems = await database.getAllAsync<ActionItem>(
+        `SELECT * FROM action_items WHERE entry_id IN (${placeholders}) ORDER BY sort_order ASC`,
+        ids
+    );
+
+    const itemsByEntry = new Map<number, ActionItem[]>();
+    for (const item of actionItems) {
+        const list = itemsByEntry.get(item.entry_id!) || [];
+        list.push(item);
+        itemsByEntry.set(item.entry_id!, list);
+    }
+
+    return entries.map(entry => ({
+        ...entry,
+        action_items: itemsByEntry.get(entry.id!) || [],
+    }));
 };
 
 export const getJournalEntries = async (limit = 50, offset = 0): Promise<JournalEntry[]> => {
     return await withDatabase(async (database) => {
-        return await database.getAllAsync(`
+        const entries = await database.getAllAsync<JournalEntry>(`
             SELECT 
                 *,
                 datetime(created_at, 'localtime') as created_at,
@@ -197,12 +291,16 @@ export const getJournalEntries = async (limit = 50, offset = 0): Promise<Journal
             ORDER BY created_at DESC 
             LIMIT ? OFFSET ?
         `, [limit, offset]);
+        return await attachActionItems(database, entries);
     });
 };
 
 export const getEntriesByBook = async (bookName: string): Promise<JournalEntry[]> => {
     return await withDatabase(async (database) => {
-        return await database.getAllAsync(`SELECT * FROM journal_entries WHERE book_name = ? ORDER BY chapter_start ASC`, [bookName]);
+        const entries = await database.getAllAsync<JournalEntry>(
+            `SELECT * FROM journal_entries WHERE book_name = ? ORDER BY chapter_start ASC`, [bookName]
+        );
+        return await attachActionItems(database, entries);
     });
 };
 
@@ -213,24 +311,38 @@ export const searchEntries = async (term: string): Promise<JournalEntry[]> => {
     const pattern = `%${term}%`;
 
     return await withDatabase(async (database) => {
-        return await database.getAllAsync(
-            `SELECT * FROM journal_entries 
-             WHERE reflection_1 LIKE ? OR reflection_2 LIKE ? OR reflection_3 LIKE ? OR reflection_4 LIKE ? OR notes LIKE ? 
-             ORDER BY created_at DESC 
+        const entries = await database.getAllAsync<JournalEntry>(
+            `SELECT je.* FROM journal_entries je
+             LEFT JOIN action_items ai ON ai.entry_id = je.id
+             WHERE je.reflection_1 LIKE ? OR je.reflection_2 LIKE ? OR je.reflection_3 LIKE ? 
+             OR je.reflection_4 LIKE ? OR je.notes LIKE ?
+             OR ai.action LIKE ? OR ai.motivation LIKE ?
+             GROUP BY je.id
+             ORDER BY je.created_at DESC 
              LIMIT 100`,
-            [pattern, pattern, pattern, pattern, pattern]
+            [pattern, pattern, pattern, pattern, pattern, pattern, pattern]
         );
+        return await attachActionItems(database, entries);
     });
 };
 
 export const getEntryById = async (id: number): Promise<JournalEntry | null> => {
     return await withDatabase(async (database) => {
-        return await database.getFirstAsync(`SELECT * FROM journal_entries WHERE id = ?`, [id]) ?? null;
+        const entry = await database.getFirstAsync<JournalEntry>(
+            `SELECT * FROM journal_entries WHERE id = ?`, [id]
+        ) ?? null;
+        if (!entry) return null;
+
+        const items = await database.getAllAsync<ActionItem>(
+            `SELECT * FROM action_items WHERE entry_id = ? ORDER BY sort_order ASC`, [id]
+        );
+        return { ...entry, action_items: items };
     });
 };
 
 export const deleteJournalEntry = async (id: number) => {
     await withDatabase(async (database) => {
+        await database.runAsync(`DELETE FROM action_items WHERE entry_id = ?`, [id]);
         await database.runAsync(`DELETE FROM journal_entries WHERE id = ?`, [id]);
     });
 };
@@ -324,9 +436,9 @@ export const getMissedDaysCount = async (month?: string): Promise<number> => {
  * Export all journal entries as a JSON string
  * The JSON format is:
  * {
- *   "version": 1,
+ *   "version": 2,
  *   "exportedAt": string,
- *   "entries": JournalEntry[]
+ *   "entries": JournalEntry[] (with action_items)
  * }
  */
 export const exportJournalEntriesToJson = async (): Promise<string> => {
@@ -350,10 +462,12 @@ export const exportJournalEntriesToJson = async (): Promise<string> => {
             ORDER BY created_at ASC
         `);
 
+        const entriesWithItems = await attachActionItems(database, entries);
+
         const payload = {
-            version: 1,
+            version: 2,
             exportedAt: new Date().toISOString(),
-            entries,
+            entries: entriesWithItems,
         };
 
         return JSON.stringify(payload, null, 2);
@@ -382,6 +496,7 @@ export const importJournalEntriesFromJson = async (json: string): Promise<{ impo
         await database.execAsync('BEGIN TRANSACTION');
         try {
             // Clear existing entries so this acts as a restore
+            await database.execAsync('DELETE FROM action_items');
             await database.execAsync('DELETE FROM journal_entries');
 
             for (const entry of entries) {
@@ -395,7 +510,7 @@ export const importJournalEntriesFromJson = async (json: string): Promise<{ impo
                     entry.reflection_4 ?? '',
                 ];
 
-                await database.runAsync(
+                const result = await database.runAsync(
                     `INSERT INTO journal_entries (
                         book_name,
                         chapter_start,
@@ -422,6 +537,18 @@ export const importJournalEntriesFromJson = async (json: string): Promise<{ impo
                         entry.updated_at ?? new Date().toISOString(),
                     ]
                 );
+
+                // Import action items if present
+                if (entry.action_items && entry.action_items.length > 0) {
+                    const newEntryId = result.lastInsertRowId;
+                    for (let i = 0; i < entry.action_items.length; i++) {
+                        const item = entry.action_items[i];
+                        await database.runAsync(
+                            `INSERT INTO action_items (entry_id, action, motivation, sort_order) VALUES (?, ?, ?, ?)`,
+                            [newEntryId, item.action ?? '', item.motivation ?? '', item.sort_order ?? i]
+                        );
+                    }
+                }
             }
 
             await database.execAsync('COMMIT');
@@ -496,7 +623,10 @@ export const getFlashbackEntry = async (excludeIds: number[] = []): Promise<{ en
             ORDER BY RANDOM() LIMIT 1
         `, [oneYearStr]);
 
-        if (yearEntry) return { entry: yearEntry, type: 'year' };
+        if (yearEntry) {
+            const [withItems] = await attachActionItems(database, [yearEntry]);
+            return { entry: withItems, type: 'year' };
+        }
 
         // 2. Check for 1 month ago
         const oneMonthAgo = new Date();
@@ -510,7 +640,10 @@ export const getFlashbackEntry = async (excludeIds: number[] = []): Promise<{ en
             ORDER BY RANDOM() LIMIT 1
         `, [oneMonthStr]);
 
-        if (monthEntry) return { entry: monthEntry, type: 'month' };
+        if (monthEntry) {
+            const [withItems] = await attachActionItems(database, [monthEntry]);
+            return { entry: withItems, type: 'month' };
+        }
 
         // 3. Random entry older than 30 days (excluding recently shown)
         const thirtyDaysAgo = new Date();
@@ -530,7 +663,10 @@ export const getFlashbackEntry = async (excludeIds: number[] = []): Promise<{ en
                 ORDER BY RANDOM() LIMIT 1
             `, [thirtyDaysStr, ...excludeIds]);
 
-            if (randomEntry) return { entry: randomEntry, type: 'random' };
+            if (randomEntry) {
+                const [withItems] = await attachActionItems(database, [randomEntry]);
+                return { entry: withItems, type: 'random' };
+            }
         }
 
         // If all entries have been shown or no excludeIds, just get any random old entry
@@ -541,7 +677,10 @@ export const getFlashbackEntry = async (excludeIds: number[] = []): Promise<{ en
             ORDER BY RANDOM() LIMIT 1
         `, [thirtyDaysStr]);
 
-        if (randomEntry) return { entry: randomEntry, type: 'random' };
+        if (randomEntry) {
+            const [withItems] = await attachActionItems(database, [randomEntry]);
+            return { entry: withItems, type: 'random' };
+        }
 
         return null;
     });
