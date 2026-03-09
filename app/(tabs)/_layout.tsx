@@ -6,6 +6,7 @@ import { StyleSheet, View } from 'react-native';
 import PagerView from 'react-native-pager-view';
 import { useRef, useState } from 'react';
 import Index from './index';
+import Plan from './plan';
 import Browse from './browse';
 import Settings from './settings';
 import { ScalePressable } from '@/src/components/ScalePressable';
@@ -20,6 +21,7 @@ export default function TabLayout() {
 
     const tabs = [
         { name: 'Home', icon: 'prism-outline' as const, component: Index },
+        { name: 'Plan', icon: 'book-outline' as const, component: Plan },
         { name: 'Library', icon: 'square-outline' as const, component: Browse },
         { name: 'Settings', icon: 'ellipse-outline' as const, component: Settings },
     ];

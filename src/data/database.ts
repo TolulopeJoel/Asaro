@@ -39,7 +39,7 @@ export interface JournalEntryInput {
 
 let db: SQLite.SQLiteDatabase | null = null;
 
-const CURRENT_DB_VERSION = 3;
+const CURRENT_DB_VERSION = 4;
 
 const getDb = async () => {
     if (!db) {
@@ -183,6 +183,16 @@ export const initializeDatabase = async () => {
                         [entry.id, entry.reflection_3]
                     );
                 }
+            };
+
+            if (currentVersion < 4) {
+                // Migration to v4: Create reading_progress table
+                await database.execAsync(`
+                    CREATE TABLE IF NOT EXISTS reading_progress (
+                        item_id INTEGER PRIMARY KEY,
+                        completed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    );
+                `);
             };
 
             // Set to current version
@@ -683,5 +693,40 @@ export const getFlashbackEntry = async (excludeIds: number[] = []): Promise<{ en
         }
 
         return null;
+    });
+};
+
+/**
+ * READING PLAN PROGRESS FUNCTIONS
+ */
+
+export const getReadingProgress = async (): Promise<number[]> => {
+    return await withDatabase(async (database) => {
+        const result = await database.getAllAsync<{ item_id: number }>(
+            `SELECT item_id FROM reading_progress`
+        );
+        return result.map(row => row.item_id);
+    });
+};
+
+export const toggleReadingItem = async (itemId: number, completed: boolean) => {
+    await withDatabase(async (database) => {
+        if (completed) {
+            await database.runAsync(
+                `INSERT OR IGNORE INTO reading_progress (item_id) VALUES (?)`,
+                [itemId]
+            );
+        } else {
+            await database.runAsync(
+                `DELETE FROM reading_progress WHERE item_id = ?`,
+                [itemId]
+            );
+        }
+    });
+};
+
+export const clearReadingProgress = async () => {
+    await withDatabase(async (database) => {
+        await database.runAsync(`DELETE FROM reading_progress`);
     });
 };

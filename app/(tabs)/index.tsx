@@ -1,6 +1,7 @@
 import { Flashback } from '@/src/components/Flashback';
 import { WeeklyStreak } from '@/src/components/WeeklyStreak';
-import { getMissedDaysCount, getTotalEntryCount, JournalEntry } from "@/src/data/database";
+import { getMissedDaysCount, getTotalEntryCount, JournalEntry, getReadingProgress } from "@/src/data/database";
+import { READING_PLAN_DATA, ReadingItem } from "@/src/data/readingPlanData";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { Spacing } from "@/src/theme/spacing";
 import { Typography } from "@/src/theme/typography";
@@ -88,6 +89,58 @@ const QuickStats = React.memo(() => {
             <StatCard icon="flame-outline" value={totalEntries} />
             <StatCard icon="rainy-outline" value={missedDays} />
         </View>
+    );
+});
+
+const NextReading = React.memo(() => {
+    const { colors } = useTheme();
+    const [nextItem, setNextItem] = useState<ReadingItem | null>(null);
+    const scaleAnim = useRef(new Animated.Value(0.95)).current;
+
+    const loadNextReading = useCallback(async () => {
+        const completedIds = await getReadingProgress();
+        const completedSet = new Set(completedIds);
+        const firstUncompleted = READING_PLAN_DATA.find(item => !completedSet.has(item.id));
+        setNextItem(firstUncompleted || null);
+    }, []);
+
+    useFocusEffect(
+        useCallback(() => {
+            loadNextReading();
+            Animated.spring(scaleAnim, {
+                toValue: 1,
+                tension: 40,
+                friction: 7,
+                useNativeDriver: true,
+            }).start();
+        }, [loadNextReading, scaleAnim])
+    );
+
+    if (!nextItem) return null;
+
+    return (
+        <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+            <View style={[styles.nextReadingCard, { backgroundColor: colors.accent }]}>
+                <View style={styles.nextReadingHeader}>
+                    <View style={styles.nextReadingLabelContainer}>
+                        <Ionicons name="book" size={12} color={colors.background} />
+                        <Text style={[styles.nextReadingLabel, { color: colors.background }]}>NEXT READING</Text>
+                    </View>
+                    <Text style={[styles.nextReadingSection, { color: colors.background, opacity: 0.8 }]}>
+                        {nextItem.section}
+                    </Text>
+                </View>
+
+                <View style={styles.nextReadingContent}>
+                    <Text style={[styles.nextReadingText, { color: colors.background }]}>
+                        {nextItem.book} {nextItem.chapters}
+                    </Text>
+                    <View style={[styles.nextReadingGo, { backgroundColor: colors.background }]}>
+                        <Ionicons name="arrow-forward" size={16} color={colors.accent} />
+                    </View>
+                </View>
+            </View>
+        </Animated.View>
     );
 });
 
@@ -248,6 +301,7 @@ export default function Index() {
             >
                 <QuickStats />
                 <UpdateCard />
+                <NextReading />
                 <WeeklyStreak />
                 <Flashback
                     onEntryPress={useCallback((entry) => {
@@ -416,5 +470,48 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.15,
         shadowRadius: 12,
         elevation: 4,
+    },
+    /* Next Reading */
+    nextReadingCard: {
+        borderRadius: Spacing.borderRadius.md,
+        padding: Spacing.layout.cardPadding,
+        gap: Spacing.sm,
+    },
+    nextReadingHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    nextReadingLabelContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    nextReadingLabel: {
+        fontSize: Typography.size.xs,
+        fontWeight: Typography.weight.bold,
+        letterSpacing: 1,
+    },
+    nextReadingSection: {
+        fontSize: Typography.size.xs,
+        fontWeight: Typography.weight.medium,
+    },
+    nextReadingContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginTop: 4,
+    },
+    nextReadingText: {
+        fontSize: Typography.size.xl,
+        fontWeight: Typography.weight.bold,
+        letterSpacing: 0.5,
+    },
+    nextReadingGo: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 });
