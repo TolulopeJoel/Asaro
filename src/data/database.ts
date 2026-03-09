@@ -35,6 +35,7 @@ export interface JournalEntryInput {
     reflections: string[];
     notes?: string;
     actionItems?: { action: string; motivation: string }[];
+    readingItemId?: number;
 }
 
 let db: SQLite.SQLiteDatabase | null = null;
@@ -229,6 +230,14 @@ export const createJournalEntry = async (data: JournalEntryInput) => {
                     );
                 }
             }
+        }
+
+        // Mark reading item as completed if provided
+        if (data.readingItemId) {
+            await database.runAsync(
+                `INSERT OR IGNORE INTO reading_progress (item_id) VALUES (?)`,
+                [data.readingItemId]
+            );
         }
 
         return entryId;

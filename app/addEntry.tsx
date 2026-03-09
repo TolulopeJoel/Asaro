@@ -13,8 +13,6 @@ import { ScalePressable } from '../src/components/ScalePressable';
 import { BibleBook, getBookByName } from '../src/data/bibleBooks';
 import { setupDailyNotifications } from '../src/utils/notifications';
 
-
-
 interface ChapterRange {
     start: number;
     end?: number;
@@ -30,6 +28,7 @@ interface DraftData {
     selectedChapters?: ChapterRange;
     verseRange?: VerseRange | null;
     reflectionAnswers?: ReflectionAnswers;
+    readingItemId?: number;
 }
 
 type Step = 'book' | 'chapter' | 'reflection' | 'summary';
@@ -198,17 +197,29 @@ export default function MeditationSessionScreen() {
                             setReflectionAnswers(draft.reflectionAnswers);
                         }
                         setCurrentStep('reflection');
+                    } else if (params.readingItemId) {
+                        // Pre-fill from reading plan
+                        const book = getBookByName(params.bookName as string);
+                        setSelectedBook(book);
+
+                        const chaptersStr = params.chapters as string;
+                        if (chaptersStr) {
+                            const [start, end] = chaptersStr.split('-').map(Number);
+                            setSelectedChapters({ start, end: end || start });
+                        }
+
+                        setCurrentStep('reflection');
                     }
                 }
             } catch (error) {
-                console.error('Error loading draft:', error);
+                console.error('Error loading data:', error);
             } finally {
                 setIsLoading(false);
             }
         };
 
         loadData();
-    }, []);
+    }, [isEditMode, entryId, params.readingItemId, params.bookName, params.chapters]);
 
     useAutoSave(reflectionAnswers, selectedBook, selectedChapters, verseRange, currentStep, isEditMode);
 
@@ -267,6 +278,7 @@ export default function MeditationSessionScreen() {
                 actionItems: answers.actionItems.filter(
                     item => item.action.trim() || item.motivation.trim()
                 ),
+                readingItemId: params.readingItemId ? Number(params.readingItemId) : undefined,
             };
 
             // Batch notification operations
@@ -296,7 +308,7 @@ export default function MeditationSessionScreen() {
             console.error('Error saving entry:', error);
             Alert.alert('Error', `Failed to ${isEditMode ? 'update' : 'save'} your entry. Please try again.`);
         }
-    }, [selectedBook, selectedChapters, verseRange, isEditMode, entryId, router, changeStep]);
+    }, [selectedBook, selectedChapters, verseRange, isEditMode, entryId, router, changeStep, params.readingItemId]);
 
     const handleDone = useCallback(() => {
         if (createdEntryId) {

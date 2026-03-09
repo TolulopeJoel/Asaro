@@ -94,6 +94,7 @@ const QuickStats = React.memo(() => {
 
 const NextReading = React.memo(() => {
     const { colors } = useTheme();
+    const router = useRouter();
     const [nextItem, setNextItem] = useState<ReadingItem | null>(null);
     const scaleAnim = useRef(new Animated.Value(0.95)).current;
 
@@ -116,30 +117,44 @@ const NextReading = React.memo(() => {
         }, [loadNextReading, scaleAnim])
     );
 
+    const handlePress = useCallback(() => {
+        if (!nextItem) return;
+        router.push({
+            pathname: '/addEntry',
+            params: {
+                readingItemId: nextItem.id,
+                bookName: nextItem.book,
+                chapters: nextItem.chapters
+            }
+        });
+    }, [nextItem, router]);
+
     if (!nextItem) return null;
 
     return (
         <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-            <View style={[styles.nextReadingCard, { backgroundColor: colors.accent }]}>
-                <View style={styles.nextReadingHeader}>
-                    <View style={styles.nextReadingLabelContainer}>
-                        <Ionicons name="book" size={12} color={colors.background} />
-                        <Text style={[styles.nextReadingLabel, { color: colors.background }]}>NEXT READING</Text>
+            <ScalePressable onPress={handlePress}>
+                <View style={[styles.nextReadingCard, { backgroundColor: colors.accent }]}>
+                    <View style={styles.nextReadingHeader}>
+                        <View style={styles.nextReadingLabelContainer}>
+                            <Ionicons name="book" size={12} color={colors.background} />
+                            <Text style={[styles.nextReadingLabel, { color: colors.background }]}>NEXT READING</Text>
+                        </View>
+                        <Text style={[styles.nextReadingSection, { color: colors.background, opacity: 0.8 }]}>
+                            {nextItem.section}
+                        </Text>
                     </View>
-                    <Text style={[styles.nextReadingSection, { color: colors.background, opacity: 0.8 }]}>
-                        {nextItem.section}
-                    </Text>
-                </View>
 
-                <View style={styles.nextReadingContent}>
-                    <Text style={[styles.nextReadingText, { color: colors.background }]}>
-                        {nextItem.book} {nextItem.chapters}
-                    </Text>
-                    <View style={[styles.nextReadingGo, { backgroundColor: colors.background }]}>
-                        <Ionicons name="arrow-forward" size={16} color={colors.accent} />
+                    <View style={styles.nextReadingContent}>
+                        <Text style={[styles.nextReadingText, { color: colors.background }]}>
+                            {nextItem.book} {nextItem.chapters}
+                        </Text>
+                        <View style={[styles.nextReadingGo, { backgroundColor: colors.background }]}>
+                            <Ionicons name="arrow-forward" size={16} color={colors.accent} />
+                        </View>
                     </View>
                 </View>
-            </View>
+            </ScalePressable>
         </Animated.View>
     );
 });

@@ -159,10 +159,10 @@ export default function Settings() {
 
             Alert.alert(
                 'Import complete',
-                `Imported ${imported} journal entries from backup.`,
+                `Imported ${imported} entries from backup.`,
             );
         } catch (error: any) {
-            console.error('Failed to import journal entries:', error);
+            console.error('Failed to import entries:', error);
             Alert.alert('Import failed', error?.message || 'Something went wrong while importing your backup.');
         } finally {
             setIsImporting(false);

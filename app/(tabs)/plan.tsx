@@ -8,8 +8,9 @@ import { Typography } from '@/src/theme/typography';
 import { Ionicons } from '@expo/vector-icons';
 import { READING_PLAN_DATA, ReadingItem } from '@/src/data/readingPlanData';
 import { getReadingProgress, toggleReadingItem } from '@/src/data/database';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { ScalePressable } from '@/src/components/ScalePressable';
+import { Alert } from 'react-native';
 
 const SectionHeader = ({ title }: { title: string }) => {
     const { colors } = useTheme();
@@ -75,6 +76,7 @@ const ReadingCard = ({
 
 export default function PlanScreen() {
     const { colors } = useTheme();
+    const router = useRouter();
     const [completedItems, setCompletedItems] = useState<Set<number>>(new Set());
     const [progress, setProgress] = useState(0);
 
@@ -91,15 +93,40 @@ export default function PlanScreen() {
     );
 
     const handleToggle = async (id: number, completed: boolean) => {
-        await toggleReadingItem(id, completed);
-        const newCompleted = new Set(completedItems);
         if (completed) {
-            newCompleted.add(id);
+            // If they are trying to mark it as completed, redirect to entry form
+            const item = READING_PLAN_DATA.find(i => i.id === id);
+            if (!item) return;
+
+            router.push({
+                pathname: '/addEntry',
+                params: {
+                    readingItemId: id,
+                    bookName: item.book,
+                    chapters: item.chapters
+                }
+            });
         } else {
-            newCompleted.delete(id);
+            // If they are trying to UN-mark it, we allow it (delete from progress table)
+            Alert.alert(
+                'Remove Progress?',
+                'This will only uncheck. Your entry will remain.',
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                        text: 'Remove',
+                        style: 'destructive',
+                        onPress: async () => {
+                            await toggleReadingItem(id, false);
+                            const newCompleted = new Set(completedItems);
+                            newCompleted.delete(id);
+                            setCompletedItems(newCompleted);
+                            setProgress(Math.round((newCompleted.size / READING_PLAN_DATA.length) * 100));
+                        }
+                    }
+                ]
+            );
         }
-        setCompletedItems(newCompleted);
-        setProgress(Math.round((newCompleted.size / READING_PLAN_DATA.length) * 100));
     };
 
     const renderItem = ({ item, index }: { item: ReadingItem; index: number }) => {
