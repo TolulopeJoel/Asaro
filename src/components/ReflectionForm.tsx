@@ -191,6 +191,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
 
         {isActionList ? (
           <ActionItemsInput
+            label={question}
             items={answers.actionItems}
             onChange={(items) => setAnswers(prev => ({ ...prev, actionItems: items }))}
             disabled={disabled}
