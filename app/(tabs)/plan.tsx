@@ -8,7 +8,7 @@ import { Typography } from '@/src/theme/typography';
 import { Ionicons } from '@expo/vector-icons';
 import { READING_PLAN_DATA, ReadingItem } from '@/src/data/readingPlanData';
 import { getReadingProgress, toggleReadingItem, checkEntryExists } from '@/src/data/database';
-import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect, useRouter, useGlobalSearchParams } from 'expo-router';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { Alert } from 'react-native';
 
@@ -108,7 +108,7 @@ const ReadingCard = ({
 export default function PlanScreen() {
     const { colors } = useTheme();
     const router = useRouter();
-    const { scrollToId } = useLocalSearchParams<{ scrollToId?: string }>();
+    const { scrollToId } = useGlobalSearchParams<{ scrollToId?: string }>();
     const [completedItems, setCompletedItems] = useState<Set<number>>(new Set());
     const [progress, setProgress] = useState(0);
     const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());

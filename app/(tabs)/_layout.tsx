@@ -10,34 +10,48 @@ import Plan from './plan';
 import Browse from './browse';
 import Settings from './settings';
 import { ScalePressable } from '@/src/components/ScalePressable';
-import { useLocalSearchParams } from 'expo-router';
-import { useEffect } from 'react';
+import { useLocalSearchParams, useGlobalSearchParams, usePathname, useRouter } from 'expo-router';
+import { useEffect, useMemo } from 'react';
 
 export default function TabLayout() {
     const { colors } = useTheme();
+    const router = useRouter();
+    const pathname = usePathname();
     const insets = useSafeAreaInsets();
     const barHeight = 60 + insets.bottom;
     const waveHeight = 18;
     const pagerRef = useRef<PagerView>(null);
-    const [currentPage, setCurrentPage] = useState(0);
-    const { scrollToId } = useLocalSearchParams<{ scrollToId?: string }>();
-
-    useEffect(() => {
-        if (scrollToId) {
-            // Plan tab is at index 2
-            pagerRef.current?.setPage(2);
-        }
-    }, [scrollToId]);
+    const { scrollToId } = useGlobalSearchParams<{ scrollToId?: string }>();
 
     const tabs = [
-        { name: 'Home', icon: 'prism-outline' as const, component: Index },
-        { name: 'Library', icon: 'square-outline' as const, component: Browse },
-        { name: 'Plan', icon: 'book-outline' as const, component: Plan },
-        { name: 'Settings', icon: 'ellipse-outline' as const, component: Settings },
+        { name: 'Home', path: '/', icon: 'prism-outline' as const, component: Index },
+        { name: 'Library', path: '/browse', icon: 'square-outline' as const, component: Browse },
+        { name: 'Plan', path: '/plan', icon: 'book-outline' as const, component: Plan },
+        { name: 'Settings', path: '/settings', icon: 'ellipse-outline' as const, component: Settings },
     ];
 
+    const activeIndex = useMemo(() => {
+        const index = tabs.findIndex(tab =>
+            tab.path === '/' ? (pathname === '/' || pathname === '/(tabs)') : pathname.includes(tab.path)
+        );
+        return index === -1 ? 0 : index;
+    }, [pathname]);
+
+    // Sync PagerView with route
+    useEffect(() => {
+        pagerRef.current?.setPage(activeIndex);
+    }, [activeIndex]);
+
+    useEffect(() => {
+        if (scrollToId && activeIndex !== 2) {
+            // Only redirect if we aren't already on the Plan tab's route
+            router.replace({ pathname: '/plan' as any, params: { scrollToId } });
+        }
+    }, [scrollToId, activeIndex, router]);
+
     const handleTabPress = (index: number) => {
-        pagerRef.current?.setPage(index);
+        const targetPath = tabs[index].path;
+        router.replace(targetPath as any);
     };
 
     return (
@@ -46,9 +60,8 @@ export default function TabLayout() {
             <PagerView
                 ref={pagerRef}
                 style={styles.pager}
-                initialPage={0}
+                initialPage={activeIndex}
                 scrollEnabled={false}
-                onPageSelected={(e) => setCurrentPage(e.nativeEvent.position)}
             >
                 {tabs.map((tab, index) => (
                     <View key={index} style={styles.page}>
@@ -89,7 +102,7 @@ export default function TabLayout() {
                             <Ionicons
                                 name={tab.icon}
                                 size={24}
-                                color={currentPage === index ? colors.accent : colors.textTertiary}
+                                color={activeIndex === index ? colors.accent : colors.textTertiary}
                             />
                         </ScalePressable>
                     ))}

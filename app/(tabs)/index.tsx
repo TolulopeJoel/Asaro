@@ -7,7 +7,7 @@ import { Spacing } from "@/src/theme/spacing";
 import { Typography } from "@/src/theme/typography";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Link, useFocusEffect, useRouter } from 'expo-router';
+import { Link, useFocusEffect, useRouter, useGlobalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, ScrollView, StyleSheet, Text, View, Alert } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -120,7 +120,7 @@ const NextReading = React.memo(() => {
     const handlePress = useCallback(() => {
         if (!nextItem) return;
         router.push({
-            pathname: '/',
+            pathname: '/plan' as any,
             params: { scrollToId: nextItem.id }
         });
     }, [nextItem, router]);
@@ -272,8 +272,6 @@ const DraftBar = React.memo(() => {
         </Animated.View>
     );
 });
-
-
 
 export default function Index() {
     const [draftExists, setDraftExists] = useState(false);
