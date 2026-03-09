@@ -327,7 +327,7 @@ const styles = StyleSheet.create({
         lineHeight: Typography.lineHeight.lg,
         letterSpacing: 0.1,
         paddingVertical: Spacing.xs,
-        minHeight: 36,
+        minHeight: 100,
     },
     dashedDivider: {
         borderBottomWidth: 1,

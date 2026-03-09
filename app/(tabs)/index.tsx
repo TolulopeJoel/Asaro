@@ -117,30 +117,13 @@ const NextReading = React.memo(() => {
         }, [loadNextReading, scaleAnim])
     );
 
-    const handlePress = useCallback(async () => {
+    const handlePress = useCallback(() => {
         if (!nextItem) return;
-
-        const [startStr, endStr] = nextItem.chapters.split('-').map(s => s.trim());
-        const start = Number(startStr);
-        const end = endStr ? Number(endStr) : start;
-
-        const existingEntryId = await checkEntryExists(nextItem.book, start, end === start ? undefined : end);
-
-        if (existingEntryId) {
-            // If entry exists, just tick it immediately and refresh
-            await toggleReadingItem(nextItem.id, true);
-            loadNextReading();
-        } else {
-            router.push({
-                pathname: '/addEntry',
-                params: {
-                    readingItemId: nextItem.id,
-                    bookName: nextItem.book,
-                    chapters: nextItem.chapters
-                }
-            });
-        }
-    }, [nextItem, router, loadNextReading]);
+        router.push({
+            pathname: '/',
+            params: { scrollToId: nextItem.id }
+        });
+    }, [nextItem, router]);
 
     if (!nextItem) return null;
 
@@ -151,7 +134,7 @@ const NextReading = React.memo(() => {
                     <View style={styles.nextReadingHeader}>
                         <View style={styles.nextReadingLabelContainer}>
                             <Ionicons name="book" size={12} color={colors.background} />
-                            <Text style={[styles.nextReadingLabel, { color: colors.background }]}>NEXT READING</Text>
+                            <Text style={[styles.nextReadingLabel, { color: colors.background }]}>NEXT ENTRY</Text>
                         </View>
                         <Text style={[styles.nextReadingSection, { color: colors.background, opacity: 0.8 }]}>
                             {nextItem.section}
@@ -328,7 +311,7 @@ export default function Index() {
                 showsVerticalScrollIndicator={false}
             >
                 <QuickStats />
-                <UpdateCard />
+                {/* <UpdateCard /> */}
                 <NextReading />
                 <WeeklyStreak />
                 <Flashback

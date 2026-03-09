@@ -10,6 +10,8 @@ import Plan from './plan';
 import Browse from './browse';
 import Settings from './settings';
 import { ScalePressable } from '@/src/components/ScalePressable';
+import { useLocalSearchParams } from 'expo-router';
+import { useEffect } from 'react';
 
 export default function TabLayout() {
     const { colors } = useTheme();
@@ -18,11 +20,19 @@ export default function TabLayout() {
     const waveHeight = 18;
     const pagerRef = useRef<PagerView>(null);
     const [currentPage, setCurrentPage] = useState(0);
+    const { scrollToId } = useLocalSearchParams<{ scrollToId?: string }>();
+
+    useEffect(() => {
+        if (scrollToId) {
+            // Plan tab is at index 2
+            pagerRef.current?.setPage(2);
+        }
+    }, [scrollToId]);
 
     const tabs = [
         { name: 'Home', icon: 'prism-outline' as const, component: Index },
-        { name: 'Plan', icon: 'book-outline' as const, component: Plan },
         { name: 'Library', icon: 'square-outline' as const, component: Browse },
+        { name: 'Plan', icon: 'book-outline' as const, component: Plan },
         { name: 'Settings', icon: 'ellipse-outline' as const, component: Settings },
     ];
 
