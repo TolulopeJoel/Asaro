@@ -7,7 +7,7 @@ import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { Ionicons } from '@expo/vector-icons';
 import { READING_PLAN_DATA, ReadingItem } from '@/src/data/readingPlanData';
-import { getReadingProgress, toggleReadingItem } from '@/src/data/database';
+import { getReadingProgress, toggleReadingItem, checkEntryExists } from '@/src/data/database';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { Alert } from 'react-native';
@@ -94,18 +94,33 @@ export default function PlanScreen() {
 
     const handleToggle = async (id: number, completed: boolean) => {
         if (completed) {
-            // If they are trying to mark it as completed, redirect to entry form
+            // If they are trying to mark it as completed, check if entry exists
             const item = READING_PLAN_DATA.find(i => i.id === id);
             if (!item) return;
 
-            router.push({
-                pathname: '/addEntry',
-                params: {
-                    readingItemId: id,
-                    bookName: item.book,
-                    chapters: item.chapters
-                }
-            });
+            const [startStr, endStr] = item.chapters.split('-').map(s => s.trim());
+            const start = Number(startStr);
+            const end = endStr ? Number(endStr) : start;
+
+            const existingEntryId = await checkEntryExists(item.book, start, end === start ? undefined : end);
+
+            if (existingEntryId) {
+                // If entry exists, just tick it immediately for a smoother experience
+                await toggleReadingItem(id, true);
+                const newCompleted = new Set(completedItems);
+                newCompleted.add(id);
+                setCompletedItems(newCompleted);
+                setProgress(Math.round((newCompleted.size / READING_PLAN_DATA.length) * 100));
+            } else {
+                router.push({
+                    pathname: '/addEntry',
+                    params: {
+                        readingItemId: id,
+                        bookName: item.book,
+                        chapters: item.chapters
+                    }
+                });
+            }
         } else {
             // If they are trying to UN-mark it, we allow it (delete from progress table)
             Alert.alert(

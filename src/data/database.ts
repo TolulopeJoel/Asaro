@@ -739,3 +739,15 @@ export const clearReadingProgress = async () => {
         await database.runAsync(`DELETE FROM reading_progress`);
     });
 };
+
+export const checkEntryExists = async (bookName: string, chapterStart: number, chapterEnd?: number): Promise<number | null> => {
+    return await withDatabase(async (database) => {
+        const result = await database.getFirstAsync<{ id: number }>(
+            `SELECT id FROM journal_entries 
+             WHERE book_name = ? AND chapter_start = ? AND (chapter_end IS ? OR (chapter_end IS NULL AND ? IS NULL))
+             LIMIT 1`,
+            [bookName, chapterStart, chapterEnd ?? null, chapterEnd ?? null]
+        );
+        return result?.id ?? null;
+    });
+};

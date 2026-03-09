@@ -1,6 +1,6 @@
 import { Flashback } from '@/src/components/Flashback';
 import { WeeklyStreak } from '@/src/components/WeeklyStreak';
-import { getMissedDaysCount, getTotalEntryCount, JournalEntry, getReadingProgress } from "@/src/data/database";
+import { getMissedDaysCount, getTotalEntryCount, JournalEntry, getReadingProgress, checkEntryExists, toggleReadingItem } from "@/src/data/database";
 import { READING_PLAN_DATA, ReadingItem } from "@/src/data/readingPlanData";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { Spacing } from "@/src/theme/spacing";
@@ -9,7 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Link, useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Animated, ScrollView, StyleSheet, Text, View, Alert } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { JournalEntryDetail } from '@/src/components/JournalEntryDetail';
 import { WavyAddIcon } from '@/src/components/WavyAddIcon';
@@ -117,17 +117,30 @@ const NextReading = React.memo(() => {
         }, [loadNextReading, scaleAnim])
     );
 
-    const handlePress = useCallback(() => {
+    const handlePress = useCallback(async () => {
         if (!nextItem) return;
-        router.push({
-            pathname: '/addEntry',
-            params: {
-                readingItemId: nextItem.id,
-                bookName: nextItem.book,
-                chapters: nextItem.chapters
-            }
-        });
-    }, [nextItem, router]);
+
+        const [startStr, endStr] = nextItem.chapters.split('-').map(s => s.trim());
+        const start = Number(startStr);
+        const end = endStr ? Number(endStr) : start;
+
+        const existingEntryId = await checkEntryExists(nextItem.book, start, end === start ? undefined : end);
+
+        if (existingEntryId) {
+            // If entry exists, just tick it immediately and refresh
+            await toggleReadingItem(nextItem.id, true);
+            loadNextReading();
+        } else {
+            router.push({
+                pathname: '/addEntry',
+                params: {
+                    readingItemId: nextItem.id,
+                    bookName: nextItem.book,
+                    chapters: nextItem.chapters
+                }
+            });
+        }
+    }, [nextItem, router, loadNextReading]);
 
     if (!nextItem) return null;
 
