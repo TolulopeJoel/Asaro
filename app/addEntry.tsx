@@ -33,7 +33,7 @@ interface DraftData {
 
 type Step = 'book' | 'chapter' | 'reflection' | 'summary';
 
-export function useAutoSave(reflectionAnswers: any, selectedBook: any, selectedChapters: any, verseRange: any, currentStep: Step, isEditMode: boolean) {
+export function useAutoSave(reflectionAnswers: any, selectedBook: any, selectedChapters: any, verseRange: any, currentStep: Step, isEditMode: boolean, readingItemId?: number) {
     const lastSaveTime = useRef<number>(0);
     const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isMountedRef = useRef(true);
@@ -77,6 +77,7 @@ export function useAutoSave(reflectionAnswers: any, selectedBook: any, selectedC
                     selectedChapters,
                     verseRange,
                     reflectionAnswers,
+                    readingItemId,
                 };
                 await AsyncStorage.setItem(
                     "reflection_draft",
@@ -124,7 +125,7 @@ export function useAutoSave(reflectionAnswers: any, selectedBook: any, selectedC
                 clearTimeout(debounceTimer.current);
             }
         };
-    }, [reflectionAnswers, selectedBook, selectedChapters, verseRange, currentStep, isEditMode]);
+    }, [reflectionAnswers, selectedBook, selectedChapters, verseRange, currentStep, isEditMode, readingItemId]);
 }
 
 export default function MeditationSessionScreen() {
@@ -142,6 +143,8 @@ export default function MeditationSessionScreen() {
     const [reflectionAnswers, setReflectionAnswers] = useState<ReflectionAnswers>();
     const [isLoading, setIsLoading] = useState(true);
     const [createdEntryId, setCreatedEntryId] = useState<number | null>(null);
+
+    const readingItemId = params.readingItemId ? Number(params.readingItemId) : undefined;
 
     // Load data immediately without waiting
     useEffect(() => {
@@ -180,7 +183,34 @@ export default function MeditationSessionScreen() {
                         notes: entry.notes || ""
                     });
                     setCurrentStep('reflection');
+                } else if (params.readingItemId) {
+                    // CASE 2: Reading Plan Item explicitly selected
+                    const rId = Number(params.readingItemId);
+
+                    // Always set book/chapters from params (Priority)
+                    const book = getBookByName(params.bookName as string);
+                    setSelectedBook(book);
+
+                    const chaptersStr = params.chapters as string;
+                    if (chaptersStr) {
+                        const [start, end] = chaptersStr.split('-').map(Number);
+                        setSelectedChapters({ start, end: end || start });
+                    }
+
+                    // Now check if there's a draft for THIS specific reading item
+                    const draftJson = await AsyncStorage.getItem("reflection_draft");
+                    if (draftJson) {
+                        const draft: DraftData = JSON.parse(draftJson);
+                        if (draft.readingItemId === rId) {
+                            // If it matches, we can restore reflections and verse range
+                            if (draft.verseRange) setVerseRange(draft.verseRange);
+                            if (draft.reflectionAnswers) setReflectionAnswers(draft.reflectionAnswers);
+                        }
+                    }
+
+                    setCurrentStep('reflection');
                 } else {
+                    // CASE 3: No specific item or edit mode, just load generic draft if it exists
                     const draftJson = await AsyncStorage.getItem("reflection_draft");
                     if (draftJson) {
                         const draft: DraftData = JSON.parse(draftJson);
@@ -197,18 +227,6 @@ export default function MeditationSessionScreen() {
                             setReflectionAnswers(draft.reflectionAnswers);
                         }
                         setCurrentStep('reflection');
-                    } else if (params.readingItemId) {
-                        // Pre-fill from reading plan
-                        const book = getBookByName(params.bookName as string);
-                        setSelectedBook(book);
-
-                        const chaptersStr = params.chapters as string;
-                        if (chaptersStr) {
-                            const [start, end] = chaptersStr.split('-').map(Number);
-                            setSelectedChapters({ start, end: end || start });
-                        }
-
-                        setCurrentStep('reflection');
                     }
                 }
             } catch (error) {
@@ -221,7 +239,7 @@ export default function MeditationSessionScreen() {
         loadData();
     }, [isEditMode, entryId, params.readingItemId, params.bookName, params.chapters]);
 
-    useAutoSave(reflectionAnswers, selectedBook, selectedChapters, verseRange, currentStep, isEditMode);
+    useAutoSave(reflectionAnswers, selectedBook, selectedChapters, verseRange, currentStep, isEditMode, readingItemId);
 
     const scrollToStep = useCallback((step: Step) => {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
