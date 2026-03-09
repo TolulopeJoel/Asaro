@@ -117,13 +117,28 @@ const NextReading = React.memo(() => {
         }, [loadNextReading, scaleAnim])
     );
 
-    const handlePress = useCallback(() => {
+    const handlePress = useCallback(async () => {
         if (!nextItem) return;
-        router.push({
-            pathname: '/plan' as any,
-            params: { scrollToId: nextItem.id }
-        });
-    }, [nextItem, router]);
+
+        const [start, end] = nextItem.chapters.split('-').map(c => parseInt(c.trim()));
+        const existingEntryId = await checkEntryExists(nextItem.book, start, end === start ? undefined : end);
+
+        if (existingEntryId) {
+            // If entry exists, mark as completed and reload
+            await toggleReadingItem(nextItem.id, true);
+            loadNextReading();
+        } else {
+            // Otherwise, go to add entry screen
+            router.push({
+                pathname: '/addEntry' as any,
+                params: {
+                    readingItemId: nextItem.id,
+                    bookName: nextItem.book,
+                    chapters: nextItem.chapters
+                }
+            });
+        }
+    }, [nextItem, router, loadNextReading]);
 
     if (!nextItem) return null;
 
@@ -309,8 +324,8 @@ export default function Index() {
                 showsVerticalScrollIndicator={false}
             >
                 <QuickStats />
-                {/* <UpdateCard /> */}
                 <NextReading />
+                {/* <UpdateCard /> */}
                 <WeeklyStreak />
                 <Flashback
                     onEntryPress={useCallback((entry) => {

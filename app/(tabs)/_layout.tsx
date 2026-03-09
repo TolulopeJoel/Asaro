@@ -10,7 +10,7 @@ import Plan from './plan';
 import Browse from './browse';
 import Settings from './settings';
 import { ScalePressable } from '@/src/components/ScalePressable';
-import { useLocalSearchParams, useGlobalSearchParams, usePathname, useRouter } from 'expo-router';
+import { usePathname, useRouter } from 'expo-router';
 import { useEffect, useMemo } from 'react';
 
 export default function TabLayout() {
@@ -21,7 +21,6 @@ export default function TabLayout() {
     const barHeight = 60 + insets.bottom;
     const waveHeight = 18;
     const pagerRef = useRef<PagerView>(null);
-    const { scrollToId } = useGlobalSearchParams<{ scrollToId?: string }>();
 
     const tabs = [
         { name: 'Home', path: '/', icon: 'prism-outline' as const, component: Index },
@@ -42,12 +41,6 @@ export default function TabLayout() {
         pagerRef.current?.setPage(activeIndex);
     }, [activeIndex]);
 
-    useEffect(() => {
-        if (scrollToId && activeIndex !== 2) {
-            // Only redirect if we aren't already on the Plan tab's route
-            router.replace({ pathname: '/plan' as any, params: { scrollToId } });
-        }
-    }, [scrollToId, activeIndex, router]);
 
     const handleTabPress = (index: number) => {
         const targetPath = tabs[index].path;

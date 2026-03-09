@@ -8,7 +8,7 @@ import { Typography } from '@/src/theme/typography';
 import { Ionicons } from '@expo/vector-icons';
 import { READING_PLAN_DATA, ReadingItem } from '@/src/data/readingPlanData';
 import { getReadingProgress, toggleReadingItem, checkEntryExists } from '@/src/data/database';
-import { useFocusEffect, useRouter, useGlobalSearchParams } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { Alert } from 'react-native';
 
@@ -108,12 +108,10 @@ const ReadingCard = ({
 export default function PlanScreen() {
     const { colors } = useTheme();
     const router = useRouter();
-    const { scrollToId } = useGlobalSearchParams<{ scrollToId?: string }>();
     const [completedItems, setCompletedItems] = useState<Set<number>>(new Set());
     const [progress, setProgress] = useState(0);
     const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
     const [isInitialLoad, setIsInitialLoad] = useState(true);
-    const flatListRef = React.useRef<FlatList>(null);
 
     // Group items by section for easier progress calculation
     const sectionData = React.useMemo(() => {
@@ -132,45 +130,17 @@ export default function PlanScreen() {
         setCompletedItems(completedSet);
         setProgress(Math.round((progressIds.length / READING_PLAN_DATA.length) * 100));
 
-        // Focus Mode logic: find the first uncompleted item and expand its section
-        // OR if we have a scrollToId, focus that item
-        if (isInitialLoad || scrollToId) {
-            const idToFocus = scrollToId ? Number(scrollToId) : null;
-            const targetItem = idToFocus
-                ? READING_PLAN_DATA.find(item => item.id === idToFocus)
-                : READING_PLAN_DATA.find(item => !completedSet.has(item.id));
-
-            if (targetItem) {
+        // Smart Focus: on initial load, expand only the section with the next uncompleted item
+        if (isInitialLoad) {
+            const nextItem = READING_PLAN_DATA.find(item => !completedSet.has(item.id));
+            if (nextItem) {
                 const allSections = Array.from(new Set(READING_PLAN_DATA.map(i => i.section)));
-                const collapsed = new Set(allSections.filter(s => s !== targetItem.section));
+                const collapsed = new Set(allSections.filter(s => s !== nextItem.section));
                 setCollapsedSections(collapsed);
-
-                // If specific id requested, scroll to it
-                if (idToFocus) {
-                    const index = READING_PLAN_DATA.findIndex(item => item.id === idToFocus);
-                    if (index !== -1) {
-                        // Small delay to ensure state updates and render
-                        setTimeout(() => {
-                            flatListRef.current?.scrollToIndex({
-                                index,
-                                animated: true,
-                                viewPosition: 0.3 // Center it a bit
-                            });
-                        }, 100);
-                    }
-                }
             }
             setIsInitialLoad(false);
         }
-    }, [isInitialLoad, scrollToId]);
-
-    useEffect(() => {
-        if (scrollToId) {
-            loadProgress();
-            // Clear param to avoid re-triggering
-            router.setParams({ scrollToId: undefined });
-        }
-    }, [scrollToId, loadProgress, router]);
+    }, [isInitialLoad]);
 
     useFocusEffect(
         useCallback(() => {
@@ -208,25 +178,12 @@ export default function PlanScreen() {
                 });
             }
         } else {
-            // If they are trying to UN-mark it, we allow it (delete from progress table)
-            Alert.alert(
-                'Remove Progress?',
-                'This will only uncheck. Your entry will remain.',
-                [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                        text: 'Remove',
-                        style: 'destructive',
-                        onPress: async () => {
-                            await toggleReadingItem(id, false);
-                            const newCompleted = new Set(completedItems);
-                            newCompleted.delete(id);
-                            setCompletedItems(newCompleted);
-                            setProgress(Math.round((newCompleted.size / READING_PLAN_DATA.length) * 100));
-                        }
-                    }
-                ]
-            );
+            // If they are trying to UN-mark it, we allow it immediately (delete from progress table)
+            await toggleReadingItem(id, false);
+            const newCompleted = new Set(completedItems);
+            newCompleted.delete(id);
+            setCompletedItems(newCompleted);
+            setProgress(Math.round((newCompleted.size / READING_PLAN_DATA.length) * 100));
         }
     };
 
@@ -280,19 +237,11 @@ export default function PlanScreen() {
             </View>
 
             <FlatList
-                ref={flatListRef}
                 data={READING_PLAN_DATA}
                 renderItem={renderItem}
                 keyExtractor={(item) => item.id.toString()}
                 contentContainerStyle={styles.listContent}
                 showsVerticalScrollIndicator={false}
-                onScrollToIndexFailed={(info) => {
-                    // Fallback scroll if index fails due to item not being measured
-                    flatListRef.current?.scrollToOffset({
-                        offset: info.averageItemLength * info.index,
-                        animated: true,
-                    });
-                }}
             />
         </SafeAreaView>
     );
