@@ -2,9 +2,7 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StyleSheet, View } from 'react-native';
-import PagerView from 'react-native-pager-view';
-import { useRef, useState } from 'react';
+import { Animated, Dimensions, StyleSheet, View } from 'react-native';
 import Index from './index';
 import Plan from './plan';
 import Browse from './browse';
@@ -12,7 +10,9 @@ import Settings from './settings';
 import Groups from './groups/index';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { usePathname, useRouter } from 'expo-router';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
 
 export default function TabLayout() {
     const { colors } = useTheme();
@@ -21,7 +21,6 @@ export default function TabLayout() {
     const insets = useSafeAreaInsets();
     const barHeight = 60 + insets.bottom;
     const waveHeight = 18;
-    const pagerRef = useRef<PagerView>(null);
 
     const tabs = [
         { name: 'Home', path: '/', icon: 'prism-outline' as const, component: Index },
@@ -38,11 +37,28 @@ export default function TabLayout() {
         return index === -1 ? 0 : index;
     }, [pathname]);
 
-    // Sync PagerView with route
-    useEffect(() => {
-        pagerRef.current?.setPage(activeIndex);
-    }, [activeIndex]);
+    const [visibleIndex, setVisibleIndex] = useState(activeIndex);
+    const [prevVisible, setPrevVisible] = useState<number | null>(null);
+    const incomingAnim = useRef(new Animated.Value(0)).current;
+    const outgoingAnim = useRef(new Animated.Value(0)).current;
 
+    useEffect(() => {
+        if (activeIndex === visibleIndex) return;
+
+        const direction = activeIndex > visibleIndex ? 1 : -1;
+
+        incomingAnim.setValue(direction * SCREEN_WIDTH);
+        outgoingAnim.setValue(0);
+        setPrevVisible(visibleIndex);
+        setVisibleIndex(activeIndex);
+
+        Animated.parallel([
+            Animated.timing(incomingAnim, { toValue: 0, duration: 220, useNativeDriver: true }),
+            Animated.timing(outgoingAnim, { toValue: -direction * SCREEN_WIDTH, duration: 220, useNativeDriver: true }),
+        ]).start(() => {
+            setPrevVisible(null);
+        });
+    }, [activeIndex]);
 
     const handleTabPress = (index: number) => {
         const targetPath = tabs[index].path;
@@ -52,18 +68,27 @@ export default function TabLayout() {
     return (
         <View style={styles.container}>
             {/* Tab Content */}
-            <PagerView
-                ref={pagerRef}
-                style={styles.pager}
-                initialPage={activeIndex}
-                scrollEnabled={false}
-            >
-                {tabs.map((tab, index) => (
-                    <View key={index} style={styles.page}>
-                        <tab.component />
-                    </View>
-                ))}
-            </PagerView>
+            <View style={styles.pager}>
+                {tabs.map((tab, index) => {
+                    const isActive = index === visibleIndex;
+                    const isPrev = index === prevVisible;
+
+                    if (!isActive && !isPrev) return null;
+
+                    return (
+                        <Animated.View
+                            key={index}
+                            style={[
+                                styles.page,
+                                StyleSheet.absoluteFillObject,
+                                { transform: [{ translateX: isActive ? incomingAnim : outgoingAnim }] }
+                            ]}
+                        >
+                            <tab.component />
+                        </Animated.View>
+                    );
+                })}
+            </View>
 
             {/* Custom Tab Bar */}
             <View style={[styles.tabBarContainer, { height: barHeight }]}>
@@ -108,44 +133,12 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    pager: {
-        flex: 1,
-    },
-    page: {
-        flex: 1,
-    },
-    tabBarContainer: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-    },
-    tabBarBackground: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        top: 0,
-    },
-    wave: {
-        position: 'absolute',
-        top: -18,
-        left: 0,
-        right: 0,
-    },
-    tabBar: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        alignItems: 'center',
-        flex: 1,
-    },
-    tabButton: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 12,
-    },
+    container: { flex: 1 },
+    pager: { flex: 1 },
+    page: { flex: 1 },
+    tabBarContainer: { position: 'absolute', bottom: 0, left: 0, right: 0 },
+    tabBarBackground: { position: 'absolute', bottom: 0, left: 0, right: 0, top: 0 },
+    wave: { position: 'absolute', top: -18, left: 0, right: 0 },
+    tabBar: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', flex: 1 },
+    tabButton: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
 });
