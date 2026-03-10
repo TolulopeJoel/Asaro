@@ -8,9 +8,9 @@ import {
     StyleSheet,
     Text,
     TextInput,
-    TouchableOpacity,
     View,
 } from 'react-native';
+import { Button } from './Button';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
@@ -144,13 +144,13 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
             <View style={styles.pairContainer}>
                 {/* Remove button */}
                 {showRemove(index, currentItems) && (
-                    <TouchableOpacity
-                        style={styles.removeButton}
+                    <Button
+                        variant="ghost"
                         onPress={() => handleRemove(index, isModal)}
-                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                    >
-                        <Text style={[styles.removeText, { color: colors.textTertiary }]}>×</Text>
-                    </TouchableOpacity>
+                        style={styles.removeButton}
+                        labelStyle={[styles.removeText, { color: colors.textTertiary }]}
+                        label="×"
+                    />
                 )}
 
                 {/* Action field */}
@@ -203,33 +203,25 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
 
                 {/* Expand button */}
                 {!disabled && (
-                    <TouchableOpacity
-                        style={[styles.expandButton, { backgroundColor: colors.background, borderColor: colors.border }]}
+                    <Button
+                        variant="secondary"
                         onPress={handleExpand}
-                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                        activeOpacity={0.7}
-                    >
-                        <View style={styles.expandIcon}>
-                            <View style={[styles.expandIconInner, { borderColor: colors.textSecondary }]} />
-                        </View>
-                    </TouchableOpacity>
+                        style={styles.expandButton}
+                        icon="expand-outline"
+                        size="sm"
+                    />
                 )}
             </View>
 
             {/* Add button */}
             {!disabled && (
-                <TouchableOpacity
-                    style={[styles.addButton, { borderColor: colors.border }]}
+                <Button
+                    label="add action"
+                    variant="outline"
                     onPress={() => handleAdd(false)}
-                    activeOpacity={0.7}
-                >
-                    <View style={[styles.addIcon, { borderColor: colors.primary }]}>
-                        <Text style={[styles.addIconText, { color: colors.primary }]}>+</Text>
-                    </View>
-                    <Text style={[styles.addLabel, { color: colors.textTertiary }]}>
-                        add action
-                    </Text>
-                </TouchableOpacity>
+                    icon="add-outline"
+                    style={styles.addButton}
+                />
             )}
 
             {/* Full-screen Modal */}
@@ -247,19 +239,19 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                         keyboardVerticalOffset={0}
                     >
                         <View style={fullScreenStyles.header}>
-                            <TouchableOpacity
+                            <Button
+                                label="Don't Save"
+                                variant="ghost"
                                 onPress={handleCancelExpansion}
-                                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-                            >
-                                <Text style={[fullScreenStyles.cancelText, { color: colors.textTertiary }]}>Don&apos;t Save</Text>
-                            </TouchableOpacity>
+                                labelStyle={[fullScreenStyles.cancelText, { color: colors.textTertiary }]}
+                            />
 
-                            <TouchableOpacity
+                            <Button
+                                label="Save"
+                                variant="ghost"
                                 onPress={handleSaveExpansion}
-                                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-                            >
-                                <Text style={[fullScreenStyles.saveText, { color: colors.textSecondary }]}>Save</Text>
-                            </TouchableOpacity>
+                                labelStyle={[fullScreenStyles.saveText, { color: colors.textSecondary }]}
+                            />
                         </View>
 
                         <ScrollView style={fullScreenStyles.content} showsVerticalScrollIndicator={false}>
@@ -273,18 +265,13 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                                 {tempItems.map((item, index) => renderActionItemPair(item, index, true, tempItems))}
                             </View>
 
-                            <TouchableOpacity
-                                style={[styles.addButton, { borderColor: colors.border, marginBottom: Spacing.xxl }]}
+                            <Button
+                                label="add action"
+                                variant="outline"
                                 onPress={() => handleAdd(true)}
-                                activeOpacity={0.7}
-                            >
-                                <View style={[styles.addIcon, { borderColor: colors.primary }]}>
-                                    <Text style={[styles.addIconText, { color: colors.primary }]}>+</Text>
-                                </View>
-                                <Text style={[styles.addLabel, { color: colors.textTertiary }]}>
-                                    add action
-                                </Text>
-                            </TouchableOpacity>
+                                icon="add-outline"
+                                style={[styles.addButton, { marginBottom: Spacing.xxl }]}
+                            />
                         </ScrollView>
                     </KeyboardAvoidingView>
                 </SafeAreaView>

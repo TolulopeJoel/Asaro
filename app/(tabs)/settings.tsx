@@ -12,6 +12,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { Button } from '@/src/components/Button';
 
 export default function Settings() {
     const { colors, theme, setTheme } = useTheme();
@@ -182,28 +183,17 @@ export default function Settings() {
                     <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Appearance</Text>
                     <View style={styles.themeSelector}>
                         {(['light', 'dark', 'system'] as const).map((mode) => (
-                            <TouchableOpacity
+                            <Button
                                 key={mode}
-                                style={[
-                                    styles.themeOption,
-                                    {
-                                        backgroundColor: theme === mode ? colors.accent : colors.cardBackground,
-                                        borderColor: theme === mode ? colors.accent : colors.cardBorder,
-                                    }
-                                ]}
+                                variant={theme === mode ? 'primary' : 'secondary'}
                                 onPress={() => setTheme(mode)}
-                                activeOpacity={0.7}
-                            >
-                                <Ionicons
-                                    name={
-                                        mode === 'light' ? 'sunny' :
-                                            mode === 'dark' ? 'moon' :
-                                                'phone-portrait'
-                                    }
-                                    size={24}
-                                    color={theme === mode ? colors.buttonPrimaryText : colors.textSecondary}
-                                />
-                            </TouchableOpacity>
+                                style={styles.themeOption}
+                                icon={
+                                    mode === 'light' ? 'sunny' :
+                                        mode === 'dark' ? 'moon' :
+                                            'phone-portrait'
+                                }
+                            />
                         ))}
                     </View>
                 </View>
@@ -212,42 +202,20 @@ export default function Settings() {
                 <View style={styles.section}>
                     <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Backup & Restore</Text>
                     <View style={styles.buttonGroup}>
-                        <TouchableOpacity
-                            style={[
-                                styles.actionButton,
-                                {
-                                    backgroundColor: colors.cardBackground,
-                                    borderColor: colors.cardBorder,
-                                },
-                            ]}
+                        <Button
+                            variant="secondary"
                             onPress={handleExport}
-                            disabled={isExporting}
-                            activeOpacity={0.7}
-                        >
-                            {isExporting ? (
-                                <ActivityIndicator color={colors.accent} />
-                            ) : (
-                                <Ionicons name="download" size={24} color={colors.accent} />
-                            )}
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[
-                                styles.actionButton,
-                                {
-                                    backgroundColor: colors.cardBackground,
-                                    borderColor: colors.cardBorder,
-                                },
-                            ]}
+                            loading={isExporting}
+                            icon="download"
+                            style={styles.actionButton}
+                        />
+                        <Button
+                            variant="secondary"
                             onPress={handleImport}
-                            disabled={isImporting}
-                            activeOpacity={0.7}
-                        >
-                            {isImporting ? (
-                                <ActivityIndicator color={colors.accent} />
-                            ) : (
-                                <Ionicons name="cloud-upload" size={24} color={colors.accent} />
-                            )}
-                        </TouchableOpacity>
+                            loading={isImporting}
+                            icon="cloud-upload"
+                            style={styles.actionButton}
+                        />
                     </View>
                 </View>
 
@@ -270,35 +238,29 @@ export default function Settings() {
                         <View style={styles.sectionHeader}>
                             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Notifications</Text>
                             <View style={styles.headerActions}>
-                                <TouchableOpacity
+                                <Button
+                                    variant="ghost"
                                     onPress={handleTestNotification}
                                     disabled={isLoadingNotifications}
-                                    style={styles.refreshButton}
-                                >
-                                    <Ionicons name="notifications-outline" size={16} color={colors.textSecondary} />
-                                </TouchableOpacity>
-                                <TouchableOpacity
+                                    icon="notifications-outline"
+                                    size="sm"
+                                />
+                                <Button
+                                    variant="ghost"
                                     onPress={handleForceReschedule}
                                     disabled={isLoadingNotifications}
-                                    style={styles.refreshButton}
-                                >
-                                    {isLoadingNotifications ? (
-                                        <ActivityIndicator color={colors.textSecondary} size="small" />
-                                    ) : (
-                                        <Ionicons name="calendar" size={16} color={colors.textSecondary} />
-                                    )}
-                                </TouchableOpacity>
-                                <TouchableOpacity
+                                    loading={isLoadingNotifications}
+                                    icon="calendar"
+                                    size="sm"
+                                />
+                                <Button
+                                    variant="ghost"
                                     onPress={loadScheduledNotifications}
                                     disabled={isLoadingNotifications}
-                                    style={styles.refreshButton}
-                                >
-                                    {isLoadingNotifications ? (
-                                        <ActivityIndicator color={colors.textSecondary} size="small" />
-                                    ) : (
-                                        <Ionicons name="refresh" size={16} color={colors.textSecondary} />
-                                    )}
-                                </TouchableOpacity>
+                                    loading={isLoadingNotifications}
+                                    icon="refresh"
+                                    size="sm"
+                                />
                             </View>
                         </View>
 

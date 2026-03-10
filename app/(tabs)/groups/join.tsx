@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Alert, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Alert, ScrollView } from 'react-native';
 import firestore from '@react-native-firebase/firestore';
 import { useAuth } from '@/src/context/AuthContext';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
-import { ScalePressable } from '@/src/components/ScalePressable';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { Button } from '@/src/components/Button';
 
 // In a real app, this might be a dynamic code or fetched from a config
 
@@ -102,15 +102,14 @@ export default function JoinGroupScreen() {
                             maxLength={10}
                         />
 
-                        <ScalePressable
-                            style={[styles.primaryButton, { backgroundColor: colors.accent, opacity: loading || !code.trim() ? 0.7 : 1 }]}
+                        <Button
+                            label={loading ? 'Joining Group...' : 'Continue to Group'}
+                            variant="primary"
                             onPress={handleJoin}
                             disabled={loading || !code.trim()}
-                        >
-                            <Text style={[styles.buttonText, { color: colors.background }]}>
-                                {loading ? 'Joining Group...' : 'Continue to Group'}
-                            </Text>
-                        </ScalePressable>
+                            loading={loading}
+                            fullWidth
+                        />
                     </View>
                 </View>
             </ScrollView>
@@ -168,20 +167,5 @@ const styles = StyleSheet.create({
         letterSpacing: 4,
         fontWeight: Typography.weight.bold,
         marginBottom: Spacing.md,
-    },
-    primaryButton: {
-        paddingVertical: 18,
-        borderRadius: Spacing.borderRadius.md,
-        alignItems: 'center',
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 2,
-    },
-    buttonText: {
-        fontSize: Typography.size.md,
-        fontWeight: Typography.weight.bold,
-        letterSpacing: 1,
     },
 });

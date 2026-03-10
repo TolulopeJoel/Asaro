@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import firestore from '@react-native-firebase/firestore';
+import { Button } from '@/src/components/Button';
 
 export default function GroupsScreen() {
     const { user, loading, displayName } = useAuth();
@@ -77,12 +78,12 @@ export default function GroupsScreen() {
                     </Text>
 
                     <View style={styles.actionContainer}>
-                        <ScalePressable
-                            style={[styles.primaryButton, { backgroundColor: colors.accent }]}
+                        <Button
+                            label="Sign in to Join"
+                            variant="primary"
                             onPress={() => router.push('/(tabs)/groups/auth' as any)}
-                        >
-                            <Text style={[styles.buttonText, { color: colors.background }]}>Sign in to Join</Text>
-                        </ScalePressable>
+                            fullWidth
+                        />
                     </View>
                 </View>
             </SafeAreaView>
@@ -141,12 +142,12 @@ export default function GroupsScreen() {
                     <Ionicons name="add-circle-outline" size={32} color={colors.textTertiary} />
                     <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Enter the secret code to join friends growing in the Word.</Text>
 
-                    <ScalePressable
-                        style={[styles.secondaryButton, { borderColor: colors.accent }]}
+                    <Button
+                        label="Enter Group Code"
+                        variant="outline"
                         onPress={() => router.push('/(tabs)/groups/join' as any)}
-                    >
-                        <Text style={[styles.secondaryButtonText, { color: colors.accent }]}>Enter Group Code</Text>
-                    </ScalePressable>
+                        style={{ marginTop: Spacing.sm }}
+                    />
                 </View>
             </ScrollView>
         </SafeAreaView>
@@ -200,16 +201,6 @@ const styles = StyleSheet.create({
         width: '100%',
         marginTop: Spacing.xl,
     },
-    primaryButton: {
-        paddingVertical: 18,
-        borderRadius: Spacing.borderRadius.md,
-        alignItems: 'center',
-    },
-    buttonText: {
-        fontSize: Typography.size.md,
-        fontWeight: Typography.weight.bold,
-        letterSpacing: 1,
-    },
     emptyState: {
         borderWidth: 2,
         borderStyle: 'dashed',
@@ -223,17 +214,6 @@ const styles = StyleSheet.create({
         fontSize: Typography.size.md,
         textAlign: 'center',
         lineHeight: 22,
-    },
-    secondaryButton: {
-        borderWidth: 1,
-        paddingVertical: 12,
-        paddingHorizontal: 24,
-        borderRadius: Spacing.borderRadius.md,
-        marginTop: Spacing.sm,
-    },
-    secondaryButtonText: {
-        fontSize: Typography.size.sm,
-        fontWeight: Typography.weight.semibold,
     },
     titleRow: {
         flexDirection: 'row',

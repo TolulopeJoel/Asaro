@@ -8,9 +8,9 @@ import {
 import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
-import { ScalePressable } from './ScalePressable';
 import { TextArea } from './TextArea';
 import { ActionItemPair, ActionItemsInput } from './ActionItemsInput';
+import { Button } from './Button';
 
 export interface ReflectionAnswers {
   reflection1: string;
@@ -174,23 +174,22 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
 
       {!disabled && (
         <View style={styles.actionsContainer}>
-          <ScalePressable
-            style={[styles.clearButton, { borderColor: colors.border }]}
+          <Button
+            label="Start Over"
+            variant="secondary"
             onPress={handleClear}
-          >
-            <Text style={[styles.clearButtonText, { color: colors.textSecondary }]}>Start Over</Text>
-          </ScalePressable>
+            fullWidth={false}
+            style={{ flex: 1 }}
+          />
 
           {hasContent && (
-            <View style={{ flex: 1 }}>
-              <ScalePressable
-                style={[styles.saveButton, { backgroundColor: colors.primary }]}
-                onPress={handleSave}
-                disabled={!hasContent}
-              >
-                <Text style={[styles.saveButtonText, { color: colors.buttonPrimaryText }]}>{saveButtonText}</Text>
-              </ScalePressable>
-            </View>
+            <Button
+              label={saveButtonText}
+              variant="primary"
+              onPress={handleSave}
+              disabled={!hasContent}
+              style={{ flex: 1 }}
+            />
           )}
         </View>
       )}
@@ -291,36 +290,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingVertical: Spacing.xxl,
     gap: Spacing.md,
-  },
-  clearButton: {
-    flex: 1,
-    paddingVertical: 18,
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderRadius: Spacing.borderRadius.lg,
-    alignItems: 'center',
-  },
-  clearButtonText: {
-    fontSize: Typography.size.md,
-    fontWeight: Typography.weight.medium,
-    letterSpacing: 0.3,
-  },
-  saveButton: {
-    width: '100%', // Ensure it fills the Animated.View
-    paddingVertical: 18,
-    borderRadius: Spacing.borderRadius.lg,
-    alignItems: 'center',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  saveButtonText: {
-    fontSize: Typography.size.md,
-    fontWeight: Typography.weight.semibold,
-    letterSpacing: 0.3,
   },
 });

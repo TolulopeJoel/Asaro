@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Alert, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
-import auth from '@react-native-firebase/auth';
-import { useTheme } from '@/src/theme/ThemeContext';
-import { Spacing } from '@/src/theme/spacing';
-import { Typography } from '@/src/theme/typography';
-import { ScalePressable } from '@/src/components/ScalePressable';
+import { View, Text, StyleSheet, TextInput, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import auth from '@react-native-firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTheme } from '@/src/theme/ThemeContext';
+import { Spacing } from '@/src/theme/spacing';
+import { Typography } from '@/src/theme/typography';
+import { Button } from '@/src/components/Button';
 
 export default function AuthScreen() {
     const [email, setEmail] = useState('');
@@ -108,27 +108,21 @@ export default function AuthScreen() {
                             </View>
                         )}
 
-                        <ScalePressable
-                            style={[styles.primaryButton, { backgroundColor: colors.accent, opacity: loading ? 0.7 : 1 }]}
+                        <Button
+                            label={isSignUp ? 'Create Account' : 'Sign In'}
+                            variant="primary"
                             onPress={handleAuth}
-                            disabled={loading}
-                        >
-                            <Text style={[styles.buttonText, { color: colors.background }]}>
-                                {loading ? 'Processing...' : (isSignUp ? 'Sign Up' : 'Sign In')}
-                            </Text>
-                        </ScalePressable>
+                            loading={loading}
+                            fullWidth
+                            style={{ marginVertical: Spacing.md }}
+                        />
 
-                        <TouchableOpacity
+                        <Button
+                            label={isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
+                            variant="ghost"
                             onPress={() => setIsSignUp(!isSignUp)}
-                            style={styles.toggleButton}
-                        >
-                            <Text style={[styles.toggleText, { color: colors.textSecondary }]}>
-                                {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
-                                <Text style={{ color: colors.accent, fontWeight: Typography.weight.bold }}>
-                                    {isSignUp ? 'Sign In' : 'Sign Up'}
-                                </Text>
-                            </Text>
-                        </TouchableOpacity>
+                            fullWidth
+                        />
                     </View>
                 </View>
             </KeyboardAvoidingView>
@@ -174,28 +168,5 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: Typography.size.md,
         height: 50,
-    },
-    primaryButton: {
-        paddingVertical: 18,
-        borderRadius: Spacing.borderRadius.md,
-        alignItems: 'center',
-        marginTop: Spacing.xl,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 2,
-    },
-    buttonText: {
-        fontSize: Typography.size.md,
-        fontWeight: Typography.weight.bold,
-        letterSpacing: 1,
-    },
-    toggleButton: {
-        alignItems: 'center',
-        marginTop: Spacing.md,
-    },
-    toggleText: {
-        fontSize: Typography.size.sm,
     },
 });
