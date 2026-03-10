@@ -1,6 +1,5 @@
 import React, { useRef, useState } from 'react';
 import {
-    Animated,
     KeyboardAvoidingView,
     Modal,
     Platform,
@@ -236,7 +235,7 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
             {/* Full-screen Modal */}
             <Modal
                 visible={isExpanded}
-                animationType="slide"
+                animationType="none"
                 presentationStyle="fullScreen"
                 statusBarTranslucent={true}
             >

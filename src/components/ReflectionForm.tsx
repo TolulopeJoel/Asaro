@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
-  Animated,
   StyleSheet,
   Text,
   View
@@ -45,11 +44,6 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
     notes: initialAnswers?.notes || '',
   });
 
-  // Animation values
-  const saveButtonScale = useRef(new Animated.Value(0)).current;
-  const saveButtonOpacity = useRef(new Animated.Value(0)).current;
-  const questionAnims = useRef(REFLECTION_QUESTIONS.map(() => new Animated.Value(0))).current;
-
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -70,25 +64,6 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
     }
   }, [answers, onAnswersChange]);
 
-  // Staggered entrance animation for questions
-  useEffect(() => {
-    const animations = questionAnims.map((anim, index) => {
-      return Animated.timing(anim, {
-        toValue: 1,
-        duration: 400,
-        delay: index * 100,
-        useNativeDriver: true,
-      });
-    });
-
-    const staggerAnimation = Animated.stagger(100, animations);
-    staggerAnimation.start();
-
-    return () => {
-      staggerAnimation.stop();
-      animations.forEach(anim => anim.stop());
-    };
-  }, [questionAnims]);
 
   const updateAnswer = (questionId: keyof ReflectionAnswers, value: string) => {
     setAnswers(prev => ({
@@ -104,27 +79,6 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
     return hasText || hasActions;
   })();
 
-  // Animate save button based on content presence
-  useEffect(() => {
-    const animation = Animated.parallel([
-      Animated.spring(saveButtonScale, {
-        toValue: hasContent ? 1 : 0,
-        useNativeDriver: true,
-        friction: 6,
-        tension: 50,
-      }),
-      Animated.timing(saveButtonOpacity, {
-        toValue: hasContent ? 1 : 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]);
-    animation.start();
-
-    return () => {
-      animation.stop();
-    };
-  }, [hasContent, saveButtonScale, saveButtonOpacity]);
 
   const handleSave = () => {
     if (!hasContent) return;
@@ -162,25 +116,10 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
 
   const renderQuestion = (questionData: ReflectionQuestion, index: number) => {
     const { id, question, placeholder, isActionList } = questionData;
-    const anim = questionAnims[index];
-
     return (
-      <Animated.View
+      <View
         key={id}
-        style={[
-          styles.questionContainer,
-          {
-            opacity: anim,
-            transform: [
-              {
-                translateY: anim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [20, 0],
-                }),
-              },
-            ],
-          },
-        ]}
+        style={styles.questionContainer}
       >
         <View style={styles.questionHeader}>
           <Text style={[styles.questionNumber, { backgroundColor: colors.badge, color: colors.primary }]}>{index + 1}</Text>
@@ -206,7 +145,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
             isAnswered={(answers[id as keyof ReflectionAnswers] as string).trim().length > 0}
           />
         )}
-      </Animated.View>
+      </View>
     );
   };
 
@@ -242,21 +181,17 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
             <Text style={[styles.clearButtonText, { color: colors.textSecondary }]}>Start Over</Text>
           </ScalePressable>
 
-          <Animated.View
-            style={{
-              flex: 1,
-              transform: [{ scale: saveButtonScale }],
-              opacity: saveButtonOpacity,
-            }}
-          >
-            <ScalePressable
-              style={[styles.saveButton, { backgroundColor: colors.primary }]}
-              onPress={handleSave}
-              disabled={!hasContent}
-            >
-              <Text style={[styles.saveButtonText, { color: colors.buttonPrimaryText }]}>{saveButtonText}</Text>
-            </ScalePressable>
-          </Animated.View>
+          {hasContent && (
+            <View style={{ flex: 1 }}>
+              <ScalePressable
+                style={[styles.saveButton, { backgroundColor: colors.primary }]}
+                onPress={handleSave}
+                disabled={!hasContent}
+              >
+                <Text style={[styles.saveButtonText, { color: colors.buttonPrimaryText }]}>{saveButtonText}</Text>
+              </ScalePressable>
+            </View>
+          )}
         </View>
       )}
     </View>

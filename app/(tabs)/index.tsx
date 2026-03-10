@@ -9,7 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Link, useFocusEffect, useRouter, useGlobalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, ScrollView, StyleSheet, Text, View, Alert } from "react-native";
+import { ScrollView, StyleSheet, Text, View, Alert } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { JournalEntryDetail } from '@/src/components/JournalEntryDetail';
 import { WavyAddIcon } from '@/src/components/WavyAddIcon';
@@ -96,7 +96,6 @@ const NextReading = React.memo(() => {
     const { colors } = useTheme();
     const router = useRouter();
     const [nextItem, setNextItem] = useState<ReadingItem | null>(null);
-    const scaleAnim = useRef(new Animated.Value(0.95)).current;
 
     const loadNextReading = useCallback(async () => {
         const completedIds = await getReadingProgress();
@@ -108,13 +107,7 @@ const NextReading = React.memo(() => {
     useFocusEffect(
         useCallback(() => {
             loadNextReading();
-            Animated.spring(scaleAnim, {
-                toValue: 1,
-                tension: 40,
-                friction: 7,
-                useNativeDriver: true,
-            }).start();
-        }, [loadNextReading, scaleAnim])
+        }, [loadNextReading])
     );
 
     const handlePress = useCallback(async () => {
@@ -143,7 +136,7 @@ const NextReading = React.memo(() => {
     if (!nextItem) return null;
 
     return (
-        <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+        <View>
             <ScalePressable onPress={handlePress}>
                 <View style={[styles.nextReadingCard, { backgroundColor: colors.accent }]}>
                     <View style={styles.nextReadingHeader}>
@@ -166,31 +159,14 @@ const NextReading = React.memo(() => {
                     </View>
                 </View>
             </ScalePressable>
-        </Animated.View>
+        </View>
     );
 });
 
 const UpdateCard = React.memo(() => {
-    const scaleAnim = useRef(new Animated.Value(0.9)).current;
     const { colors } = useTheme();
-
-    useEffect(() => {
-        const animation = Animated.spring(scaleAnim, {
-            toValue: 1,
-            tension: 40,
-            friction: 7,
-            delay: 200,
-            useNativeDriver: true,
-        });
-        animation.start();
-
-        return () => {
-            animation.stop();
-        };
-    }, [scaleAnim]);
-
     return (
-        <Animated.View style={[styles.updateCardWrapper, { transform: [{ scale: scaleAnim }] }]}>
+        <View style={styles.updateCardWrapper}>
             <View style={[styles.updateCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
                 <View style={styles.updateHeader}>
                     <View style={[styles.updateBadge, { backgroundColor: colors.accentSecondaryLight, borderColor: colors.accentSecondary }]}>
@@ -209,7 +185,7 @@ const UpdateCard = React.memo(() => {
                     We're building a smarter feature with reminders to help you revisit topics from your readings.
                 </Text>
             </View>
-        </Animated.View>
+        </View>
     );
 });
 
@@ -235,32 +211,16 @@ const FloatingActionButton = React.memo(() => {
 });
 
 const DraftBar = React.memo(() => {
-    const slideAnim = useRef(new Animated.Value(100)).current;
     const { colors } = useTheme();
     const insets = useSafeAreaInsets();
     // Tab bar height (60) + bottom inset + extra spacing
     const bottomPosition = 60 + insets.bottom + Spacing.xl;
 
-    useEffect(() => {
-        const animation = Animated.spring(slideAnim, {
-            toValue: 0,
-            tension: 50,
-            friction: 8,
-            useNativeDriver: true,
-        });
-        animation.start();
-
-        return () => {
-            animation.stop();
-        };
-    }, [slideAnim]);
-
     return (
-        <Animated.View
+        <View
             style={[
                 styles.draftBar,
                 {
-                    transform: [{ translateY: slideAnim }],
                     backgroundColor: colors.draftBar,
                     borderColor: colors.draftBarBorder,
                     shadowColor: colors.accent,
@@ -284,7 +244,7 @@ const DraftBar = React.memo(() => {
                     </View>
                 </ScalePressable>
             </Link>
-        </Animated.View>
+        </View>
     );
 });
 

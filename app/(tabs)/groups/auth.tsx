@@ -60,12 +60,6 @@ export default function AuthScreen() {
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={{ flex: 1 }}
             >
-                <View style={styles.header}>
-                    <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                        <Ionicons name="chevron-back" size={28} color={colors.textPrimary} />
-                    </TouchableOpacity>
-                </View>
-
                 <View style={styles.content}>
                     <Text style={[styles.title, { color: colors.textPrimary }]}>
                         {isSignUp ? 'Create Account' : 'Welcome Back'}
@@ -145,12 +139,6 @@ export default function AuthScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-    },
-    header: {
-        padding: Spacing.md,
-    },
-    backButton: {
-        padding: Spacing.sm,
     },
     content: {
         flex: 1,

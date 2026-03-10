@@ -3,14 +3,11 @@ import { getLocalMidnight, isSameDay } from '@/src/utils/dateUtils';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    Animated,
     FlatList,
-    LayoutAnimation,
     Platform,
     StyleSheet,
     Text,
     TextInput,
-
     View,
 } from 'react-native';
 import { ALL_BIBLE_BOOKS, BibleBook } from '../data/bibleBooks';
@@ -52,7 +49,6 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
     const [bookEntries, setBookEntries] = useState<JournalEntry[]>([]);
     const [filteredEntries, setFilteredEntries] = useState<JournalEntry[]>([]);
     const [availableBooks, setAvailableBooks] = useState<BibleBook[]>([]);
-    const [tabAnimation] = useState(new Animated.Value(0));
     const [tabContainerWidth, setTabContainerWidth] = useState(0);
     const searchTimeoutRef = useRef<any>(null);
 
@@ -80,23 +76,6 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         }
     }, [refreshTrigger, viewMode, selectedBook]);
 
-    // Trigger layout animation only when entries count changes (not on every render)
-    const prevEntriesLength = useRef(0);
-    const prevFilteredLength = useRef(0);
-    const prevBookEntriesLength = useRef(0);
-
-    useEffect(() => {
-        const entriesChanged = entries.length !== prevEntriesLength.current;
-        const filteredChanged = filteredEntries.length !== prevFilteredLength.current;
-        const bookEntriesChanged = bookEntries.length !== prevBookEntriesLength.current;
-
-        if (entriesChanged || filteredChanged || bookEntriesChanged) {
-            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-            prevEntriesLength.current = entries.length;
-            prevFilteredLength.current = filteredEntries.length;
-            prevBookEntriesLength.current = bookEntries.length;
-        }
-    }, [entries.length, filteredEntries.length, bookEntries.length]);
 
     // Debounce search query
     useEffect(() => {
@@ -126,22 +105,6 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         }
     }, [selectedBook, debouncedSearchQuery, viewMode]);
 
-    useEffect(() => {
-        if (tabContainerWidth === 0) return; // Wait for layout
-
-        const toValue = viewMode === 'recent' ? 0 : tabContainerWidth * 0.5; // 50% of container width
-        const animation = Animated.spring(tabAnimation, {
-            toValue,
-            useNativeDriver: true,
-            tension: 100,
-            friction: 8,
-        });
-        animation.start();
-
-        return () => {
-            animation.stop();
-        };
-    }, [viewMode, tabAnimation, tabContainerWidth]);
 
     const loadEntries = async () => {
         try {
@@ -542,12 +505,12 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                             }
                         }}
                     >
-                        <Animated.View
+                        <View
                             style={[
                                 styles.tabIndicator,
                                 {
                                     backgroundColor: colors.accent,
-                                    transform: [{ translateX: tabAnimation }],
+                                    left: viewMode === 'recent' ? 0 : '50%',
                                 }
                             ]}
                         />

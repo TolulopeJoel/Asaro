@@ -10,8 +10,16 @@ import firestore from '@react-native-firebase/firestore';
 import { useAuth } from '@/src/context/AuthContext';
 
 const AVATAR_COLORS = [
-    '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8',
-    '#F06292', '#AED581', '#FFD54F', '#4DB6AC', '#7986CB'
+    '#FF2D55', // vivid red
+    '#FF9500', // vivid orange
+    '#FFCC00', // vivid yellow
+    '#34C759', // vivid green
+    '#00C7BE', // vivid teal
+    '#007AFF', // vivid blue
+    '#5856D6', // vivid indigo
+    '#AF52DE', // vivid purple
+    '#FF375F', // vivid pink
+    '#A2845E', // vivid brown
 ];
 
 const getAvatarColor = (userId: string) => {
@@ -92,12 +100,6 @@ export default function GroupDetailScreen() {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-            <View style={styles.minimalHeader}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <Ionicons name="chevron-back" size={28} color={colors.textPrimary} />
-                </TouchableOpacity>
-            </View>
-
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <Text style={[styles.headerTitle, { color: colors.textPrimary, marginBottom: Spacing.xl }]}>{groupName}</Text>
 
@@ -160,16 +162,6 @@ export default function GroupDetailScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-    },
-    minimalHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: Spacing.md,
-        paddingTop: Spacing.sm,
-    },
-    backButton: {
-        padding: Spacing.sm,
-        marginLeft: -Spacing.sm,
     },
     headerTitle: {
         fontSize: Typography.size.xxxl,

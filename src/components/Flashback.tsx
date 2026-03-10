@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { ScalePressable } from './ScalePressable';
 
 interface FlashbackProps {
@@ -14,7 +14,6 @@ interface FlashbackProps {
 export const Flashback: React.FC<FlashbackProps> = React.memo(({ onEntryPress }) => {
     const { colors } = useTheme();
     const [flashbackData, setFlashbackData] = useState<{ entry: JournalEntry, type: 'year' | 'month' | 'random' } | null>(null);
-    const scaleAnim = useRef(new Animated.Value(0.9)).current;
 
     const loadFlashback = useCallback(async () => {
         const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
@@ -69,22 +68,6 @@ export const Flashback: React.FC<FlashbackProps> = React.memo(({ onEntryPress })
         }, [loadFlashback])
     );
 
-    useEffect(() => {
-        if (flashbackData) {
-            const animation = Animated.spring(scaleAnim, {
-                toValue: 1,
-                tension: 40,
-                friction: 7,
-                delay: 300,
-                useNativeDriver: true,
-            });
-            animation.start();
-
-            return () => {
-                animation.stop();
-            };
-        }
-    }, [flashbackData, scaleAnim]);
 
     const getTitle = () => {
         if (!flashbackData) return '';
@@ -120,7 +103,7 @@ export const Flashback: React.FC<FlashbackProps> = React.memo(({ onEntryPress })
     if (!flashbackData) return null;
 
     return (
-        <Animated.View style={[styles.cardWrapper, { transform: [{ scale: scaleAnim }] }]}>
+        <View style={styles.cardWrapper}>
             <ScalePressable
                 onPress={() => onEntryPress(flashbackData.entry)}
                 style={[styles.card, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
@@ -146,7 +129,7 @@ export const Flashback: React.FC<FlashbackProps> = React.memo(({ onEntryPress })
                     </Text>
                 </View>
             </ScalePressable>
-        </Animated.View>
+        </View>
     );
 });
 
