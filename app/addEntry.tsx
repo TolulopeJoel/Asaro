@@ -5,13 +5,14 @@ import { Typography } from '@/src/theme/typography';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, KeyboardAvoidingView, LayoutAnimation, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, AppState, KeyboardAvoidingView, LayoutAnimation, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BookPicker } from '../src/components/BookPicker';
 import { ChapterPicker } from '../src/components/ChapterPicker';
 import { ReflectionAnswers, ReflectionForm } from '../src/components/ReflectionForm';
 import { ScalePressable } from '../src/components/ScalePressable';
 import { BibleBook, getBookByName } from '../src/data/bibleBooks';
 import { setupDailyNotifications } from '../src/utils/notifications';
+import { syncPendingActivities } from '../src/utils/syncActivities';
 
 interface ChapterRange {
     start: number;
@@ -143,8 +144,19 @@ export default function MeditationSessionScreen() {
     const [reflectionAnswers, setReflectionAnswers] = useState<ReflectionAnswers>();
     const [isLoading, setIsLoading] = useState(true);
     const [createdEntryId, setCreatedEntryId] = useState<number | null>(null);
+    const isSaving = useRef(false);
 
     const readingItemId = params.readingItemId ? Number(params.readingItemId) : undefined;
+
+    // Flush any queued Firestore activities when the app comes back to the foreground
+    useEffect(() => {
+        const subscription = AppState.addEventListener('change', (nextState) => {
+            if (nextState === 'active') {
+                syncPendingActivities();
+            }
+        });
+        return () => subscription.remove();
+    }, []);
 
     // Load data immediately without waiting
     useEffect(() => {
@@ -279,6 +291,10 @@ export default function MeditationSessionScreen() {
             return;
         }
 
+        // Prevent double-saves from rapid taps (especially relevant when offline)
+        if (isSaving.current) return;
+        isSaving.current = true;
+
         try {
             const entryData: JournalEntryInput = {
                 bookName: selectedBook.name,
@@ -325,6 +341,8 @@ export default function MeditationSessionScreen() {
         } catch (error) {
             console.error('Error saving entry:', error);
             Alert.alert('Error', `Failed to ${isEditMode ? 'update' : 'save'} your entry. Please try again.`);
+        } finally {
+            isSaving.current = false;
         }
     }, [selectedBook, selectedChapters, verseRange, isEditMode, entryId, router, changeStep, params.readingItemId]);
 

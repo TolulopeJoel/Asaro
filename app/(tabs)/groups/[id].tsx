@@ -101,9 +101,11 @@ export default function GroupDetailScreen() {
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             <ScrollView contentContainerStyle={styles.scrollContent}>
-                <Text style={[styles.headerTitle, { color: colors.textPrimary, marginBottom: Spacing.xl }]}>{groupName}</Text>
-
                 {/* Members Section */}
+                <View style={styles.sectionHeader}>
+                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>PEOPLE</Text>
+                </View>
+
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.memberList}>
                     {members.map((member) => (
                         <View key={member.id} style={styles.memberItem}>

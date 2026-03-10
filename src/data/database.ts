@@ -3,6 +3,7 @@ import { formatDateToLocalString, getTodayDateString } from '../utils/dateUtils'
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { queueActivity, syncPendingActivities } from '../utils/syncActivities';
 
 export interface ActionItem {
     id?: number;
@@ -214,6 +215,7 @@ export const createJournalEntry = async (data: JournalEntryInput) => {
     const reflections = [...data.reflections, '', '', '', ''].slice(0, 4);
 
     return await withDatabase(async (database) => {
+        // ── 1. Local SQLite write (always completes, even offline) ──────────
         const result = await database.runAsync(
             `INSERT INTO journal_entries (book_name, chapter_start, chapter_end, verse_start, verse_end, reflection_1, reflection_2, reflection_3, reflection_4, notes)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -221,37 +223,6 @@ export const createJournalEntry = async (data: JournalEntryInput) => {
         );
 
         const entryId = result.lastInsertRowId;
-
-        // Push activity to Firestore if user is in a group
-        const user = auth().currentUser;
-        if (user) {
-            try {
-                const userDoc = await firestore().collection('users').doc(user.uid).get();
-                const userData = userDoc.data();
-                if (userData && userData.groupIds && userData.groupIds.length > 0) {
-                    const localName = await AsyncStorage.getItem('user_name');
-                    const chapters = data.chapterEnd && data.chapterEnd !== data.chapterStart
-                        ? `${data.chapterStart}-${data.chapterEnd}`
-                        : `${data.chapterStart}`;
-
-                    await firestore()
-                        .collection('groups')
-                        .doc('official-accountability-group')
-                        .collection('activities')
-                        .add({
-                            userId: user.uid,
-                            userName: localName || user.displayName || 'Reader',
-                            bookName: data.bookName,
-                            chapters: chapters,
-                            timestamp: firestore.FieldValue.serverTimestamp(),
-                            type: 'reading_completed'
-                        });
-                }
-            } catch (error) {
-                console.error('Error pushing activity to Firestore:', error);
-                // We don't want to block the local save if Firestore fails
-            }
-        }
 
         // Insert action items
         if (data.actionItems && data.actionItems.length > 0) {
@@ -273,6 +244,52 @@ export const createJournalEntry = async (data: JournalEntryInput) => {
                 [data.readingItemId]
             );
         }
+
+        // ── 2. Firestore group-activity push (fire-and-forget) ──────────────
+        // Runs in the background so it never blocks navigation.
+        // If offline, the payload is queued in AsyncStorage and retried later.
+        void (async () => {
+            try {
+                const user = auth().currentUser;
+                if (!user) return;
+
+                const userDoc = await firestore().collection('users').doc(user.uid).get();
+                const userData = userDoc.data();
+                if (!userData?.groupIds?.length) return;
+
+                const localName = await AsyncStorage.getItem('user_name');
+                const chapters = data.chapterEnd && data.chapterEnd !== data.chapterStart
+                    ? `${data.chapterStart}-${data.chapterEnd}`
+                    : `${data.chapterStart}`;
+
+                const activity = {
+                    userId: user.uid,
+                    userName: localName || user.displayName || 'Reader',
+                    bookName: data.bookName,
+                    chapters,
+                    type: 'reading_completed' as const,
+                    queuedAt: new Date().toISOString(),
+                };
+
+                try {
+                    await firestore()
+                        .collection('groups')
+                        .doc('official-accountability-group')
+                        .collection('activities')
+                        .add({
+                            ...activity,
+                            timestamp: firestore.FieldValue.serverTimestamp(),
+                        });
+                    // Also flush any previously queued activities now that we're online
+                    syncPendingActivities();
+                } catch {
+                    // Offline or transient error — queue for later retry
+                    await queueActivity(activity);
+                }
+            } catch (error) {
+                console.error('[createJournalEntry] Background Firestore sync error:', error);
+            }
+        })();
 
         return entryId;
     });
