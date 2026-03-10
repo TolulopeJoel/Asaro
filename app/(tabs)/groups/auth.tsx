@@ -13,6 +13,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export default function AuthScreen() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [isSignUp, setIsSignUp] = useState(false);
     const [loading, setLoading] = useState(false);
     const { colors } = useTheme();
@@ -21,6 +22,11 @@ export default function AuthScreen() {
     const handleAuth = async () => {
         if (!email || !password) {
             Alert.alert('Error', 'Please enter email and password');
+            return;
+        }
+
+        if (isSignUp && password !== confirmPassword) {
+            Alert.alert('Error', 'Passwords do not match');
             return;
         }
 
@@ -93,6 +99,20 @@ export default function AuthScreen() {
                                 secureTextEntry
                             />
                         </View>
+
+                        {isSignUp && (
+                            <View style={styles.inputContainer}>
+                                <Ionicons name="lock-closed-outline" size={20} color={colors.textTertiary} style={styles.inputIcon} />
+                                <TextInput
+                                    style={[styles.input, { color: colors.textPrimary }]}
+                                    placeholder="Confirm Password"
+                                    placeholderTextColor={colors.textMuted}
+                                    value={confirmPassword}
+                                    onChangeText={setConfirmPassword}
+                                    secureTextEntry
+                                />
+                            </View>
+                        )}
 
                         <ScalePressable
                             style={[styles.primaryButton, { backgroundColor: colors.accent, opacity: loading ? 0.7 : 1 }]}

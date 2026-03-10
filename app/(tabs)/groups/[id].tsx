@@ -100,20 +100,6 @@ export default function GroupDetailScreen() {
 
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <Text style={[styles.headerTitle, { color: colors.textPrimary, marginBottom: Spacing.xl }]}>{groupName}</Text>
-                {/* Stats Summary */}
-                <View style={styles.statsRow}>
-                    <View style={[styles.statItem, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
-                        <Ionicons name="people" size={20} color={colors.accent} />
-                        <Text style={[styles.statNum, { color: colors.textPrimary }]}>{members.length}</Text>
-                        <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Members</Text>
-                    </View>
-                    <View style={[styles.statItem, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
-                        <Ionicons name="flash" size={20} color={colors.accent} />
-                        <Text style={[styles.statNum, { color: colors.textPrimary }]}>{activities.length}</Text>
-                        <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Reads</Text>
-                    </View>
-                </View>
-
                 {/* Members Section */}
                 <View style={styles.sectionHeader}>
                     <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>PEOPLE</Text>
