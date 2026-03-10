@@ -56,7 +56,7 @@ export default function AuthScreen() {
             >
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                        <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+                        <Ionicons name="chevron-back" size={28} color={colors.textPrimary} />
                     </TouchableOpacity>
                 </View>
 
@@ -69,11 +69,11 @@ export default function AuthScreen() {
                     </Text>
 
                     <View style={styles.form}>
-                        <View style={[styles.inputGroup]}>
-                            <Text style={[styles.label, { color: colors.textTertiary }]}>EMAIL</Text>
+                        <View style={styles.inputContainer}>
+                            <Ionicons name="mail-outline" size={20} color={colors.textTertiary} style={styles.inputIcon} />
                             <TextInput
-                                style={[styles.input, { color: colors.textPrimary, borderBottomColor: colors.border }]}
-                                placeholder="you@example.com"
+                                style={[styles.input, { color: colors.textPrimary }]}
+                                placeholder="Email Address"
                                 placeholderTextColor={colors.textMuted}
                                 value={email}
                                 onChangeText={setEmail}
@@ -82,11 +82,11 @@ export default function AuthScreen() {
                             />
                         </View>
 
-                        <View style={[styles.inputGroup]}>
-                            <Text style={[styles.label, { color: colors.textTertiary }]}>PASSWORD</Text>
+                        <View style={styles.inputContainer}>
+                            <Ionicons name="lock-closed-outline" size={20} color={colors.textTertiary} style={styles.inputIcon} />
                             <TextInput
-                                style={[styles.input, { color: colors.textPrimary, borderBottomColor: colors.border }]}
-                                placeholder="min 6 characters"
+                                style={[styles.input, { color: colors.textPrimary }]}
+                                placeholder="Password"
                                 placeholderTextColor={colors.textMuted}
                                 value={password}
                                 onChangeText={setPassword}
@@ -108,8 +108,11 @@ export default function AuthScreen() {
                             onPress={() => setIsSignUp(!isSignUp)}
                             style={styles.toggleButton}
                         >
-                            <Text style={[styles.toggleText, { color: colors.accent }]}>
-                                {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
+                            <Text style={[styles.toggleText, { color: colors.textSecondary }]}>
+                                {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
+                                <Text style={{ color: colors.accent, fontWeight: Typography.weight.bold }}>
+                                    {isSignUp ? 'Sign In' : 'Sign Up'}
+                                </Text>
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -144,30 +147,41 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.xxxl,
     },
     form: {
-        gap: Spacing.xxl,
+        gap: Spacing.lg,
     },
-    inputGroup: {
-        gap: Spacing.xs,
+    inputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: Spacing.md,
+        paddingVertical: Platform.OS === 'ios' ? Spacing.md : 0,
+        borderRadius: Spacing.borderRadius.md,
+        backgroundColor: '#f5f5f5', // TODO: use theme gray
+        borderWidth: 1,
+        borderColor: 'transparent',
     },
-    label: {
-        fontSize: Typography.size.xs,
-        fontWeight: Typography.weight.bold,
-        letterSpacing: 1,
+    inputIcon: {
+        marginRight: Spacing.sm,
     },
     input: {
-        fontSize: Typography.size.lg,
-        paddingVertical: Spacing.sm,
-        borderBottomWidth: 1,
+        flex: 1,
+        fontSize: Typography.size.md,
+        height: 50,
     },
     primaryButton: {
         paddingVertical: 18,
         borderRadius: Spacing.borderRadius.md,
         alignItems: 'center',
-        marginTop: Spacing.lg,
+        marginTop: Spacing.xl,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 2,
     },
     buttonText: {
         fontSize: Typography.size.md,
         fontWeight: Typography.weight.bold,
+        letterSpacing: 1,
     },
     toggleButton: {
         alignItems: 'center',
@@ -175,6 +189,5 @@ const styles = StyleSheet.create({
     },
     toggleText: {
         fontSize: Typography.size.sm,
-        fontWeight: Typography.weight.medium,
     },
 });

@@ -9,7 +9,7 @@ import Index from './index';
 import Plan from './plan';
 import Browse from './browse';
 import Settings from './settings';
-import Groups from '../groups/index';
+import Groups from './groups/index';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { usePathname, useRouter } from 'expo-router';
 import { useEffect, useMemo } from 'react';
