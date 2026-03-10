@@ -100,10 +100,8 @@ export default function GroupDetailScreen() {
 
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <Text style={[styles.headerTitle, { color: colors.textPrimary, marginBottom: Spacing.xl }]}>{groupName}</Text>
+
                 {/* Members Section */}
-                <View style={styles.sectionHeader}>
-                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>PEOPLE</Text>
-                </View>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.memberList}>
                     {members.map((member) => (
                         <View key={member.id} style={styles.memberItem}>
@@ -181,29 +179,6 @@ const styles = StyleSheet.create({
     scrollContent: {
         padding: Spacing.layout.screenPadding,
         paddingTop: Spacing.xs,
-    },
-    statsRow: {
-        flexDirection: 'row',
-        gap: Spacing.md,
-        marginBottom: Spacing.xl,
-    },
-    statItem: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: Spacing.md,
-        borderRadius: Spacing.borderRadius.md,
-        borderWidth: 1,
-        gap: 2,
-    },
-    statNum: {
-        fontSize: Typography.size.lg,
-        fontWeight: Typography.weight.bold,
-        marginTop: 4,
-    },
-    statLabel: {
-        fontSize: Typography.size.xs,
-        fontWeight: Typography.weight.medium,
     },
     sectionHeader: {
         marginTop: Spacing.lg,
