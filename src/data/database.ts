@@ -1,5 +1,8 @@
 import * as SQLite from 'expo-sqlite';
 import { formatDateToLocalString, getTodayDateString } from '../utils/dateUtils';
+import auth from '@react-native-firebase/auth';
+import firestore from '@react-native-firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface ActionItem {
     id?: number;
@@ -218,6 +221,37 @@ export const createJournalEntry = async (data: JournalEntryInput) => {
         );
 
         const entryId = result.lastInsertRowId;
+
+        // Push activity to Firestore if user is in a group
+        const user = auth().currentUser;
+        if (user) {
+            try {
+                const userDoc = await firestore().collection('users').doc(user.uid).get();
+                const userData = userDoc.data();
+                if (userData && userData.groupIds && userData.groupIds.length > 0) {
+                    const localName = await AsyncStorage.getItem('user_name');
+                    const chapters = data.chapterEnd && data.chapterEnd !== data.chapterStart
+                        ? `${data.chapterStart}-${data.chapterEnd}`
+                        : `${data.chapterStart}`;
+
+                    await firestore()
+                        .collection('groups')
+                        .doc('official-accountability-group')
+                        .collection('activities')
+                        .add({
+                            userId: user.uid,
+                            userName: localName || user.displayName || 'Reader',
+                            bookName: data.bookName,
+                            chapters: chapters,
+                            timestamp: firestore.FieldValue.serverTimestamp(),
+                            type: 'reading_completed'
+                        });
+                }
+            } catch (error) {
+                console.error('Error pushing activity to Firestore:', error);
+                // We don't want to block the local save if Firestore fails
+            }
+        }
 
         // Insert action items
         if (data.actionItems && data.actionItems.length > 0) {

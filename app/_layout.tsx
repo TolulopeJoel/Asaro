@@ -13,6 +13,7 @@ import { Text, View } from 'react-native';
 
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '@/src/theme/ThemeContext';
+import { AuthProvider } from '@/src/context/AuthContext';
 
 function StackNavigator() {
   const { colors } = useTheme();
@@ -158,10 +159,12 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <ThemeProvider>
-        <StackNavigator />
-        <StatusBar hidden={true} />
-      </ThemeProvider>
+      <AuthProvider>
+        <ThemeProvider>
+          <StackNavigator />
+          <StatusBar hidden={true} />
+        </ThemeProvider>
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }
