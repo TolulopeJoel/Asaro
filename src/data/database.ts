@@ -269,21 +269,8 @@ export const createJournalEntry = async (data: JournalEntryInput) => {
                     queuedAt: new Date().toISOString(),
                 };
 
-                try {
-                    await firestore()
-                        .collection('groups')
-                        .doc('official-accountability-group')
-                        .collection('activities')
-                        .add({
-                            ...activity,
-                            timestamp: firestore.FieldValue.serverTimestamp(),
-                        });
-                    // Also flush any previously queued activities now that we're online
-                    syncPendingActivities();
-                } catch {
-                    // Offline or transient error — queue for later retry
-                    await queueActivity(activity);
-                }
+                await queueActivity(activity);
+                await syncPendingActivities();
             } catch (error) {
                 console.error('[createJournalEntry] Background Firestore sync error:', error);
             }

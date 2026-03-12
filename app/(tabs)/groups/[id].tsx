@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
@@ -32,16 +32,45 @@ const getAvatarColor = (id: string | undefined | null, name?: string) => {
     return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 };
 
-/** Format a Firestore Timestamp or Date-like object into a short time string, or return null. */
-const formatTimestamp = (ts: any): string | null => {
+/** Format a Date object to YYYY-MM-DD string */
+const getTodayDateString = (): string => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+/** Format a timestamp into relative time ("2h ago") or short string ("Yesterday", "Mar 12") */
+const formatRelativeTime = (ts: any): string | null => {
     if (!ts) return null;
     try {
         const date = ts.toDate ? ts.toDate() : new Date(ts);
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const now = new Date();
+        const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+        if (diffInSeconds < 60) return 'Just now';
+
+        const diffInMinutes = Math.floor(diffInSeconds / 60);
+        if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+
+        const diffInHours = Math.floor(diffInMinutes / 60);
+        if (diffInHours < 24 && now.getDate() === date.getDate()) {
+            return `${diffInHours}h ago`;
+        }
+
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        if (date.getDate() === yesterday.getDate() && date.getMonth() === yesterday.getMonth() && date.getFullYear() === yesterday.getFullYear()) {
+            return `Yesterday at ${date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+        }
+
+        return date.toLocaleDateString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
     } catch {
         return null;
     }
 };
+
 
 export default function GroupDetailScreen() {
     const { id: groupId } = useLocalSearchParams<{ id: string }>();
@@ -62,6 +91,7 @@ export default function GroupDetailScreen() {
             setLoading(false);
         }
     };
+
 
     React.useEffect(() => {
         if (!groupId) return;
@@ -166,18 +196,36 @@ export default function GroupDetailScreen() {
 
                 {members.length > 0 ? (
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.memberList}>
-                        {members.map((member) => (
-                            <View key={member.id} style={styles.memberItem}>
-                                <View style={[styles.memberAvatar, { backgroundColor: getAvatarColor(member.userId || member.id, member.displayName) }]}>
-                                    <Text style={[styles.memberInitial, { color: 'white' }]}>
-                                        {member.displayName?.charAt(0).toUpperCase()}
-                                    </Text>
+                        {members.map((member) => {
+                            const readToday = member.lastReadDate === getTodayDateString();
+                            const streak = member.streak || 0;
+                            return (
+                                <View key={member.id} style={styles.memberItem}>
+                                    <View style={styles.avatarContainer}>
+                                        <View style={[styles.memberAvatar, { backgroundColor: getAvatarColor(member.userId || member.id, member.displayName) }]}>
+                                            <Text style={[styles.memberInitial, { color: 'white' }]}>
+                                                {member.displayName?.charAt(0).toUpperCase()}
+                                            </Text>
+                                        </View>
+                                        {readToday && (
+                                            <View style={[styles.onlineBadge, { borderColor: colors.background, backgroundColor: colors.indicatorActive }]}>
+                                                <Ionicons name="checkmark" size={10} color="white" />
+                                            </View>
+                                        )}
+                                    </View>
+                                    <View style={styles.nameRow}>
+                                        <Text style={[styles.memberName, { color: colors.textSecondary }]} numberOfLines={1}>
+                                            {member.displayName}
+                                        </Text>
+                                    </View>
+                                    {streak > 0 && (
+                                        <View style={[styles.streakBadge, { backgroundColor: colors.accentSecondaryLight }]}>
+                                            <Text style={[styles.streakText, { color: colors.textPrimary }]}>🔥 {streak}</Text>
+                                        </View>
+                                    )}
                                 </View>
-                                <Text style={[styles.memberName, { color: colors.textSecondary }]} numberOfLines={1}>
-                                    {member.displayName}
-                                </Text>
-                            </View>
-                        ))}
+                            );
+                        })}
                     </ScrollView>
                 ) : (
                     <Text style={[styles.emptyFeedText, { color: colors.textTertiary, marginBottom: Spacing.xl }]}>
@@ -192,7 +240,8 @@ export default function GroupDetailScreen() {
 
                 {activities.length > 0 ? (
                     activities.map((activity) => {
-                        const timeStr = formatTimestamp(activity.timestamp);
+                        const timeStr = formatRelativeTime(activity.timestamp);
+
                         return (
                             <View key={activity.id} style={[styles.activityCard, { borderColor: colors.border }]}>
                                 <View style={[styles.userBadge, { backgroundColor: getAvatarColor(activity.userId, activity.userName) }]}>
@@ -275,7 +324,12 @@ const styles = StyleSheet.create({
     memberItem: {
         alignItems: 'center',
         marginRight: Spacing.lg,
-        width: 60,
+        width: 64,
+        paddingBottom: Spacing.sm,
+    },
+    avatarContainer: {
+        position: 'relative',
+        marginBottom: Spacing.xs,
     },
     memberAvatar: {
         width: 50,
@@ -283,15 +337,43 @@ const styles = StyleSheet.create({
         borderRadius: 25,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: Spacing.xs,
+    },
+    onlineBadge: {
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+        width: 16,
+        height: 16,
+        borderRadius: 8,
+        borderWidth: 2,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     memberInitial: {
         fontSize: Typography.size.lg,
         fontWeight: Typography.weight.bold,
     },
+    nameRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '100%',
+        marginBottom: 2,
+    },
     memberName: {
         fontSize: Typography.size.xs,
         textAlign: 'center',
+        fontFamily: Typography.fontFamily.medium,
+    },
+    streakBadge: {
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 8,
+        marginTop: 2,
+    },
+    streakText: {
+        fontSize: 10,
+        fontWeight: Typography.weight.bold,
     },
     activityCard: {
         flexDirection: 'row',
@@ -330,8 +412,9 @@ const styles = StyleSheet.create({
         fontSize: Typography.size.xs,
     },
     activityText: {
-        fontSize: Typography.size.xs,
-        lineHeight: 16,
+        fontSize: Typography.size.sm,
+        lineHeight: 20,
+        marginTop: 2,
     },
     activityIcon: {
         marginLeft: Spacing.xs,
