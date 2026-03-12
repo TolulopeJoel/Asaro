@@ -161,6 +161,7 @@ export default function GroupDetailScreen() {
                 (doc) => {
                     setIsOffline(false);
                     setGroupData(doc.data() || null);
+                    resolvedRef.current.group = true;
                     checkAllResolved();
 
                     // Trigger inactivity check once after loading
@@ -289,7 +290,7 @@ export default function GroupDetailScreen() {
                 {/* Members Section */}
                 <View style={styles.sectionHeader}>
                     <View style={styles.sectionTitleRow}>
-                        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>MEMBERS</Text>
+                        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>LADIES & GENTLEMEN</Text>
                         {totalMembers > 0 && (
                             <View style={[styles.readTodayChip, {
                                 backgroundColor: readTodayCount > 0 ? colors.indicatorActive + '22' : colors.border,

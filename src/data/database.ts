@@ -266,9 +266,10 @@ export const createJournalEntry = async (data: JournalEntryInput) => {
                     ? firstReflection.slice(0, 80) + (firstReflection.length > 80 ? '…' : '')
                     : undefined;
 
+                const resolvedName = user.displayName || user.email?.split('@')[0] || 'Reader';
                 const activity = {
                     userId: user.uid,
-                    userName: user.displayName || 'Reader',
+                    userName: resolvedName,
                     bookName: data.bookName,
                     chapters,
                     type: 'journal_entry' as any, // Changed from reading_completed

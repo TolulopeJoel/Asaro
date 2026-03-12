@@ -78,13 +78,19 @@ export default function JoinGroupScreen() {
                 }, { merge: true });
 
             // 5. Success - Trigger joined activity
+            // Source of truth priority:
+            // 1. displayName from context (Reactive)
+            // 2. user.displayName from Auth profile (Direct)
+            // 3. user.email prefix (Fallback)
+            const resolvedName = displayName || user.displayName || user.email?.split('@')[0] || 'User';
+
             await firestore()
                 .collection('groups')
                 .doc(groupId)
                 .collection('activities')
                 .add({
                     userId: user.uid,
-                    userName: displayName || 'New Reader',
+                    userName: resolvedName,
                     type: 'member_joined',
                     timestamp: firestore.FieldValue.serverTimestamp(),
                 });

@@ -231,7 +231,7 @@ export const syncPendingActivities = async (): Promise<void> => {
                     const activityRef = groupRef.collection('activities').doc();
                     const activityDataToSet: any = {
                         userId: activity.userId,
-                        userName: activity.userName || displayName,
+                        userName: activity.userName || displayName || 'Reader',
                         timestamp: firestore.FieldValue.serverTimestamp(),
                         type: activity.type,
                     };

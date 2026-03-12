@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
+import firestore from '@react-native-firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface AuthContextType {
@@ -31,13 +32,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         loadLocalName();
 
-        const unsubscribe = auth().onAuthStateChanged(async (user) => {
-            setUser(user);
+        const unsubscribe = auth().onAuthStateChanged(async (firebaseUser) => {
+            setUser(firebaseUser);
             setLoading(false);
 
-            if (user && !displayName) {
-                // If user is logged in but we don't have a display name locally, check Firebase
-                setDisplayName(user.displayName);
+            if (firebaseUser) {
+                if (firebaseUser.displayName) {
+                    setDisplayName(firebaseUser.displayName);
+                    await AsyncStorage.setItem('user_name', firebaseUser.displayName);
+                    // Ensure Firestore has the latest name
+                    await firestore().collection('users').doc(firebaseUser.uid).set({
+                        displayName: firebaseUser.displayName,
+                        lastModified: firestore.FieldValue.serverTimestamp(),
+                    }, { merge: true });
+                } else {
+                    const localName = await AsyncStorage.getItem('user_name');
+                    if (localName) setDisplayName(localName);
+                }
+            } else {
+                setDisplayName(null);
             }
         });
 
