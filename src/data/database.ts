@@ -2,7 +2,6 @@ import * as SQLite from 'expo-sqlite';
 import { formatDateToLocalString, getTodayDateString } from '../utils/dateUtils';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { queueActivity, syncPendingActivities } from '../utils/syncActivities';
 
 export interface ActionItem {
@@ -257,14 +256,13 @@ export const createJournalEntry = async (data: JournalEntryInput) => {
                 const userData = userDoc.data();
                 if (!userData?.groupIds?.length) return;
 
-                const localName = await AsyncStorage.getItem('user_name');
                 const chapters = data.chapterEnd && data.chapterEnd !== data.chapterStart
                     ? `${data.chapterStart}-${data.chapterEnd}`
                     : `${data.chapterStart}`;
 
                 const activity = {
                     userId: user.uid,
-                    userName: localName || user.displayName || 'Reader',
+                    userName: user.displayName || 'Reader',
                     bookName: data.bookName,
                     chapters,
                     type: 'reading_completed' as const,

@@ -6,11 +6,10 @@ const PENDING_ACTIVITIES_KEY = 'pending_firestore_activities';
 
 export interface PendingActivity {
     userId: string;
-    userName: string;
     bookName: string;
     chapters: string;
     type: 'reading_completed';
-    /** ISO timestamp recorded at queue time, used as fallback if serverTimestamp fails */
+    /** ISO timestamp recorded at queue time */
     queuedAt: string;
 }
 
@@ -45,6 +44,9 @@ export const syncPendingActivities = async (): Promise<void> => {
         const user = auth().currentUser;
         if (!user) return; // Not signed in — leave the queue intact
 
+        // Resolve the display name once from the authoritative source
+        const displayName = user.displayName || 'Reader';
+
         const remaining: PendingActivity[] = [];
 
         for (const activity of queue) {
@@ -55,7 +57,7 @@ export const syncPendingActivities = async (): Promise<void> => {
                     .collection('activities')
                     .add({
                         userId: activity.userId,
-                        userName: activity.userName,
+                        userName: displayName,
                         bookName: activity.bookName,
                         chapters: activity.chapters,
                         timestamp: firestore.FieldValue.serverTimestamp(),

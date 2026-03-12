@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import auth from '@react-native-firebase/auth';
+import firestore from '@react-native-firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
@@ -35,10 +36,16 @@ export default function AuthScreen() {
             if (isSignUp) {
                 const userCredential = await auth().createUserWithEmailAndPassword(email, password);
 
-                // Update display name if we have a local one
+                // Update display name from the locally stored onboarding name
                 const localName = await AsyncStorage.getItem('user_name');
                 if (localName && userCredential.user) {
+                    // 1. Set it on the Firebase Auth profile
                     await userCredential.user.updateProfile({ displayName: localName });
+                    // 2. Write it to Firestore as the single source of truth
+                    await firestore()
+                        .collection('users')
+                        .doc(userCredential.user.uid)
+                        .set({ displayName: localName }, { merge: true });
                 }
 
                 Alert.alert('Success', 'Account created successfully!');
