@@ -77,6 +77,18 @@ export default function JoinGroupScreen() {
                     lastModified: firestore.FieldValue.serverTimestamp(),
                 }, { merge: true });
 
+            // 5. Success - Trigger joined activity
+            await firestore()
+                .collection('groups')
+                .doc(groupId)
+                .collection('activities')
+                .add({
+                    userId: user.uid,
+                    userName: displayName || 'New Reader',
+                    type: 'member_joined',
+                    timestamp: firestore.FieldValue.serverTimestamp(),
+                });
+
             Alert.alert('Welcome!', `You have joined "${groupData.name}".`);
             router.replace('/(tabs)/groups' as any);
         } catch (error: any) {

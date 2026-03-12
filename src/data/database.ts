@@ -271,7 +271,7 @@ export const createJournalEntry = async (data: JournalEntryInput) => {
                     userName: user.displayName || 'Reader',
                     bookName: data.bookName,
                     chapters,
-                    type: 'reading_completed' as const,
+                    type: 'journal_entry' as any, // Changed from reading_completed
                     queuedAt: new Date().toISOString(),
                     reflectionPreview,
                 };

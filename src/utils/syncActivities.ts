@@ -7,12 +7,13 @@ const PENDING_ACTIVITIES_KEY = 'pending_firestore_activities';
 
 export interface PendingActivity {
     userId: string;
-    bookName: string;
-    chapters: string;
-    type: 'reading_completed';
+    userName?: string;
+    bookName?: string;
+    chapters?: string;
+    type: 'journal_entry' | 'member_joined' | 'member_absent' | 'member_removed';
     /** ISO timestamp recorded at queue time */
     queuedAt: string;
-    /** Short reflection preview (first 80 chars of reflection_1), if present */
+    /** Short reflection preview, if present */
     reflectionPreview?: string;
 }
 
@@ -228,52 +229,43 @@ export const syncPendingActivities = async (): Promise<void> => {
 
                     // 1. Activity entry
                     const activityRef = groupRef.collection('activities').doc();
-                    batch.set(activityRef, {
+                    const activityDataToSet: any = {
                         userId: activity.userId,
-                        userName: displayName,
-                        bookName: activity.bookName,
-                        chapters: activity.chapters,
+                        userName: activity.userName || displayName,
                         timestamp: firestore.FieldValue.serverTimestamp(),
-                        type: 'reading_completed',
-                    });
+                        type: activity.type,
+                    };
 
-                    // 2. Optional reflection activity
-                    if (activity.reflectionPreview) {
-                        const reflectionRef = groupRef.collection('activities').doc();
-                        batch.set(reflectionRef, {
-                            userId: activity.userId,
-                            userName: displayName,
-                            bookName: activity.bookName,
-                            chapters: activity.chapters,
-                            timestamp: firestore.FieldValue.serverTimestamp(),
-                            type: 'reflection_shared',
-                            preview: activity.reflectionPreview,
-                        });
-                    }
+                    if (activity.bookName) activityDataToSet.bookName = activity.bookName;
+                    if (activity.chapters) activityDataToSet.chapters = activity.chapters;
+                    if (activity.reflectionPreview) activityDataToSet.preview = activity.reflectionPreview;
 
-                    // 3. Member doc update (only update lastReadDate if this activity is newer)
-                    if (!lastReadDateStr || activityLocalDateStr >= lastReadDateStr) {
-                        batch.set(memberRef, {
-                            userId: activity.userId,
-                            displayName,
-                            lastReadDate: activityLocalDateStr,
-                            streak,
-                            weeklyActivity,
-                            weeklyActivityWeek,
+                    batch.set(activityRef, activityDataToSet);
+
+                    // 2. Member/Group updates (only for journal entries)
+                    if (activity.type === 'journal_entry') {
+                        if (!lastReadDateStr || activityLocalDateStr >= lastReadDateStr) {
+                            batch.set(memberRef, {
+                                userId: activity.userId,
+                                displayName,
+                                lastReadDate: activityLocalDateStr,
+                                streak,
+                                weeklyActivity,
+                                weeklyActivityWeek,
+                            }, { merge: true });
+                        } else {
+                            // Still update heatmap even if date is not newer
+                            batch.set(memberRef, { weeklyActivity, weeklyActivityWeek }, { merge: true });
+                        }
+
+                        batch.set(groupRef, {
+                            groupStreak,
+                            groupStreakLastDate,
+                            readTodayCount,
+                            readTodayDate: todayDateStr,
+                            memberCount,
                         }, { merge: true });
-                    } else {
-                        // Still update heatmap even if date is not newer
-                        batch.set(memberRef, { weeklyActivity, weeklyActivityWeek }, { merge: true });
                     }
-
-                    // 4. Group doc update (streak + readTodayCount)
-                    batch.set(groupRef, {
-                        groupStreak,
-                        groupStreakLastDate,
-                        readTodayCount,
-                        readTodayDate: todayDateStr,
-                        memberCount,
-                    }, { merge: true });
 
                     await batch.commit();
 
@@ -295,5 +287,65 @@ export const syncPendingActivities = async (): Promise<void> => {
         }
     } catch (error) {
         console.error('[syncActivities] Sync failed:', error);
+    }
+};
+
+/**
+ * Checks for inactive members in a group and segments alerts for 7-day and 30-day absences.
+ * Uses lastReadDate for simplicity as requested.
+ */
+export const checkInactiveMembers = async (groupId: string): Promise<void> => {
+    try {
+        const groupRef = firestore().collection('groups').doc(groupId);
+        const membersSnapshot = await groupRef.collection('members').get();
+        const activitiesRef = groupRef.collection('activities');
+
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+
+        for (const doc of membersSnapshot.docs) {
+            const member = doc.data();
+            if (!member.lastReadDate) continue;
+
+            const lastRead = parseLocalDateString(member.lastReadDate);
+            const diff = getDaysDifference(lastRead, today);
+
+            if (diff >= 7) {
+                const threshold = diff >= 30 ? 30 : 7;
+
+                // Check if we've already alerted for this user recently to avoid spam
+                // We'll search for 'member_absent' activities for this user
+                const recentAlerts = await activitiesRef
+                    .where('userId', '==', doc.id)
+                    .where('type', '==', 'member_absent')
+                    .orderBy('timestamp', 'desc')
+                    .limit(1)
+                    .get();
+
+                let shouldPost = true;
+                if (!recentAlerts.empty) {
+                    const lastAlert = recentAlerts.docs[0].data();
+                    const lastAlertDate = lastAlert.timestamp?.toDate() || new Date(0);
+                    const daysSinceAlert = getDaysDifference(lastAlertDate, today);
+
+                    // Only post once every 7 days
+                    if (daysSinceAlert < 7) {
+                        shouldPost = false;
+                    }
+                }
+
+                if (shouldPost) {
+                    await activitiesRef.add({
+                        userId: doc.id,
+                        userName: member.displayName || 'Reader',
+                        type: 'member_absent',
+                        timestamp: firestore.FieldValue.serverTimestamp(),
+                        threshold, // 7 or 30
+                    });
+                }
+            }
+        }
+    } catch (error) {
+        console.error('[checkInactiveMembers] Error:', error);
     }
 };

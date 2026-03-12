@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import firestore from '@react-native-firebase/firestore';
 import { useAuth } from '@/src/context/AuthContext';
+import { checkInactiveMembers } from '@/src/utils/syncActivities';
 
 const AVATAR_COLORS = [
     '#FF2D55', // vivid red
@@ -160,8 +161,12 @@ export default function GroupDetailScreen() {
                 (doc) => {
                     setIsOffline(false);
                     setGroupData(doc.data() || null);
-                    resolvedRef.current.group = true;
                     checkAllResolved();
+
+                    // Trigger inactivity check once after loading
+                    if (doc.exists()) {
+                        checkInactiveMembers(groupId);
+                    }
                 },
                 (error) => {
                     console.error('[GroupDetail] group snapshot error:', error);
@@ -184,6 +189,9 @@ export default function GroupDetailScreen() {
                         id: doc.id,
                         ...doc.data()
                     }));
+                    if (activities.length > 0) {
+                        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                    }
                     setActivities(feed);
                     resolvedRef.current.activities = true;
                     checkAllResolved();
@@ -354,7 +362,10 @@ export default function GroupDetailScreen() {
                 {activities.length > 0 ? (
                     activities.map((activity) => {
                         const timeStr = formatRelativeTime(activity.timestamp);
-                        const isReflection = activity.type === 'reflection_shared';
+                        const isEntry = activity.type === 'journal_entry' || activity.type === 'reflection_shared';
+                        const isAbsent = activity.type === 'member_absent';
+                        const isJoined = activity.type === 'member_joined';
+                        const isRemoved = activity.type === 'member_removed';
 
                         return (
                             <View
@@ -362,8 +373,11 @@ export default function GroupDetailScreen() {
                                 style={[
                                     styles.activityCard,
                                     {
-                                        borderColor: isReflection ? colors.accentSecondaryLight : colors.border,
-                                        backgroundColor: isReflection ? colors.accentSecondaryLight + '33' : 'transparent',
+                                        borderColor: isEntry ? colors.accentSecondaryLight : (isJoined ? colors.indicatorActive : colors.border),
+                                        backgroundColor: isEntry ? colors.accentSecondaryLight + '22'
+                                            : isJoined ? colors.indicatorActive + '11'
+                                                : isAbsent ? colors.accentLight + '11'
+                                                    : 'transparent',
                                     }
                                 ]}
                             >
@@ -381,10 +395,11 @@ export default function GroupDetailScreen() {
                                             <Text style={[styles.timestamp, { color: colors.textTertiary }]}>Syncing…</Text>
                                         )}
                                     </View>
-                                    {isReflection ? (
+
+                                    {isEntry && (
                                         <>
                                             <Text style={[styles.activityText, { color: colors.textSecondary }]}>
-                                                shared a reflection on {activity.bookName} {activity.chapters}
+                                                shared an entry on {activity.bookName} {activity.chapters}
                                             </Text>
                                             {activity.preview ? (
                                                 <Text style={[styles.reflectionPreview, { color: colors.textTertiary }]}>
@@ -392,7 +407,29 @@ export default function GroupDetailScreen() {
                                                 </Text>
                                             ) : null}
                                         </>
-                                    ) : (
+                                    )}
+
+                                    {isJoined && (
+                                        <Text style={[styles.activityText, { color: colors.textSecondary, fontWeight: '500' }]}>
+                                            Welcome to the group! Let's grow together. 🎉
+                                        </Text>
+                                    )}
+
+                                    {isAbsent && (
+                                        <Text style={[styles.activityText, { color: colors.textSecondary }]}>
+                                            {activity.threshold === 30
+                                                ? `has been away for a month. We miss your insights! 🫂`
+                                                : `hasn't been seen in a week. Drop a message to encourage them! 🕊️`}
+                                        </Text>
+                                    )}
+
+                                    {isRemoved && (
+                                        <Text style={[styles.activityText, { color: colors.textTertiary, fontStyle: 'italic' }]}>
+                                            has left the group.
+                                        </Text>
+                                    )}
+
+                                    {!isEntry && !isJoined && !isAbsent && !isRemoved && (
                                         <Text style={[styles.activityText, { color: colors.textSecondary }]}>
                                             just finished reading {activity.bookName} {activity.chapters}
                                         </Text>
@@ -400,9 +437,20 @@ export default function GroupDetailScreen() {
                                 </View>
                                 <View style={styles.activityIcon}>
                                     <Ionicons
-                                        name={isReflection ? 'chatbubble-ellipses' : 'checkmark-circle'}
+                                        name={
+                                            isEntry ? 'book-outline'
+                                                : isJoined ? 'person-add'
+                                                    : isAbsent ? 'notifications-outline'
+                                                        : isRemoved ? 'exit-outline'
+                                                            : 'checkmark-circle'
+                                        }
                                         size={20}
-                                        color={isReflection ? colors.accentSecondary : colors.accent}
+                                        color={
+                                            isEntry ? colors.accentSecondary
+                                                : isJoined ? colors.indicatorActive
+                                                    : isAbsent ? colors.accent
+                                                        : colors.textTertiary
+                                        }
                                     />
                                 </View>
                             </View>
@@ -612,3 +660,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
 });
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+}
