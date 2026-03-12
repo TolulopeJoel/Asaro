@@ -92,6 +92,109 @@ const formatLastRead = (dateStr: string | undefined, today: string): string => {
     } catch { return dateStr; }
 };
 
+// ─── Feed processing helpers ──────────────────────────────────────────────────
+
+/** Extract a YYYY-MM-DD string from a Firestore activity's timestamp */
+const getActivityDateStr = (activity: any): string | null => {
+    if (!activity.timestamp) return null;
+    try {
+        const d = activity.timestamp.toDate ? activity.timestamp.toDate() : new Date(activity.timestamp);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    } catch { return null; }
+};
+
+/** Returns a human-friendly date label for a section separator */
+const formatDateLabel = (dateStr: string | null, today: string): string => {
+    if (!dateStr) return '';
+    if (dateStr === today) return 'Today';
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+    if (dateStr === yStr) return 'Yesterday';
+    try {
+        return new Date(dateStr + 'T12:00:00').toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
+    } catch { return dateStr; }
+};
+
+interface Separator { type: 'separator'; id: string; label: string; }
+interface ReadingDigest { type: 'reading_digest'; id: string; dateStr: string; names: string[]; extraCount: number; timestamp: any; }
+type FeedItem = any | Separator | ReadingDigest;
+
+/**
+ * Processes the raw activity list (desc order) into a decorated list:
+ * - group_milestones are extracted; only the most recent is returned as pinnedMilestone
+ * - consecutive journal_entry items on the same day from 3+ unique users → reading_digest
+ * - date separators are inserted between date groups
+ */
+const buildProcessedFeed = (
+    rawActivities: any[],
+    today: string,
+): { pinnedMilestone: any | null; feedItems: FeedItem[] } => {
+    // 1. Separate group milestones (pin most recent one)
+    const groupMilestones = rawActivities.filter(a => a.type === 'group_milestone');
+    const normalActivities = rawActivities.filter(a => a.type !== 'group_milestone');
+    const pinnedMilestone = groupMilestones.length > 0 ? groupMilestones[0] : null;
+
+    // 2. Build date-keyed map of journal_entry items to find digest candidates
+    const journalByDate: Record<string, any[]> = {};
+    for (const a of normalActivities) {
+        if (a.type !== 'journal_entry') continue;
+        const d = getActivityDateStr(a);
+        if (!d) continue;
+        if (!journalByDate[d]) journalByDate[d] = [];
+        journalByDate[d].push(a);
+    }
+    // Dates with 3+ unique users → collapse into digest
+    const digestDates = new Set<string>();
+    const digestMap: Record<string, ReadingDigest> = {};
+    for (const [dateStr, entries] of Object.entries(journalByDate)) {
+        const unique = [...new Map(entries.map((e: any) => [e.userId, e])).values()];
+        if (unique.length >= 3) {
+            digestDates.add(dateStr);
+            const names = unique.slice(0, 2).map((e: any) => e.userName || '?');
+            const extraCount = unique.length - 2;
+            digestMap[dateStr] = {
+                type: 'reading_digest',
+                id: `digest-${dateStr}`,
+                dateStr,
+                names,
+                extraCount: Math.max(0, extraCount),
+                timestamp: entries[0].timestamp,
+            };
+        }
+    }
+
+    // 3. Walk through normalActivities (desc), insert separators + digest substitution
+    const feedItems: FeedItem[] = [];
+    let lastDateLabel: string | null = null;
+    const digestInserted = new Set<string>();
+
+    for (const activity of normalActivities) {
+        const dateStr = getActivityDateStr(activity);
+        const dateLabel = formatDateLabel(dateStr, today);
+
+        // Insert separator when date changes
+        if (dateLabel !== lastDateLabel) {
+            feedItems.push({ type: 'separator', id: `sep-${dateStr}`, label: dateLabel });
+            lastDateLabel = dateLabel;
+        }
+
+        // Collapse digest candidate
+        if (activity.type === 'journal_entry' && dateStr && digestDates.has(dateStr)) {
+            if (!digestInserted.has(dateStr)) {
+                feedItems.push(digestMap[dateStr]);
+                digestInserted.add(dateStr);
+            }
+            // Skip individual entry
+            continue;
+        }
+
+        feedItems.push(activity);
+    }
+
+    return { pinnedMilestone, feedItems };
+};
+
 // ─── Member Profile Sheet ─────────────────────────────────────────────────────
 
 const MemberProfileSheet = ({
@@ -494,6 +597,8 @@ export default function GroupDetailScreen() {
         return groupStreakLastDate === today || groupStreakLastDate === yStr;
     })();
 
+    const { pinnedMilestone, feedItems } = buildProcessedFeed(activities, today);
+
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             {isOffline && (
@@ -594,39 +699,78 @@ export default function GroupDetailScreen() {
                     <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>LIVE FEED</Text>
                 </View>
 
-                {activities.length > 0 ? (
-                    activities.map((activity) => {
+                {/* Pinned group milestone hero card */}
+                {pinnedMilestone && (
+                    <View style={[styles.milestoneHero, { borderColor: '#FFCC00', backgroundColor: '#FFCC0015' }]}>
+                        <View style={styles.milestoneHeroTop}>
+                            <Text style={styles.milestoneHeroBadge}>{pinnedMilestone.badgeEmoji}</Text>
+                            <View style={styles.milestoneHeroConfetti}>
+                                <Text style={styles.milestoneHeroLabel}>
+                                    {pinnedMilestone.badgeLabel.toUpperCase()}
+                                </Text>
+                            </View>
+                        </View>
+                        <Text style={[styles.milestoneHeroDesc, { color: colors.textSecondary }]}>
+                            {pinnedMilestone.badgeDesc}
+                        </Text>
+                        {formatRelativeTime(pinnedMilestone.timestamp) && (
+                            <Text style={[styles.milestoneHeroTime, { color: colors.textTertiary }]}>
+                                {formatRelativeTime(pinnedMilestone.timestamp)}
+                            </Text>
+                        )}
+                    </View>
+                )}
+
+                {feedItems.length > 0 ? (
+                    feedItems.map((item: FeedItem) => {
+                        // ── Date separator ──
+                        if (item.type === 'separator') {
+                            const sep = item as Separator;
+                            return (
+                                <View key={sep.id} style={styles.dateSeparator}>
+                                    <View style={[styles.dateSeparatorLine, { backgroundColor: colors.border }]} />
+                                    <Text style={[styles.dateSeparatorLabel, { color: colors.textTertiary, backgroundColor: colors.background }]}>
+                                        {sep.label}
+                                    </Text>
+                                    <View style={[styles.dateSeparatorLine, { backgroundColor: colors.border }]} />
+                                </View>
+                            );
+                        }
+
+                        // ── Reading digest ──
+                        if (item.type === 'reading_digest') {
+                            const digest = item as ReadingDigest;
+                            const nameStr = digest.extraCount > 0
+                                ? `${digest.names.join(', ')} +${digest.extraCount} more`
+                                : digest.names.join(' & ');
+                            return (
+                                <View key={digest.id} style={[styles.digestCard, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
+                                    <View style={[styles.digestIconWrap, { backgroundColor: colors.accentSecondaryLight }]}>
+                                        <Ionicons name="book-outline" size={18} color={colors.accent} />
+                                    </View>
+                                    <View style={styles.digestContent}>
+                                        <Text style={[styles.digestLine, { color: colors.textPrimary }]}>
+                                            📖 {nameStr}
+                                        </Text>
+                                        <Text style={[styles.digestSub, { color: colors.textTertiary }]}>
+                                            all read today
+                                        </Text>
+                                    </View>
+                                    <Text style={[styles.timestamp, { color: colors.textTertiary }]}>
+                                        {formatRelativeTime(digest.timestamp)}
+                                    </Text>
+                                </View>
+                            );
+                        }
+
+                        // ── Regular activity card ──
+                        const activity = item;
                         const timeStr = formatRelativeTime(activity.timestamp);
                         const isEntry = activity.type === 'journal_entry' || activity.type === 'reflection_shared';
                         const isAbsent = activity.type === 'member_absent';
                         const isJoined = activity.type === 'member_joined';
                         const isRemoved = activity.type === 'member_removed';
                         const isMilestone = activity.type === 'milestone_earned';
-                        const isGroupMilestone = activity.type === 'group_milestone';
-
-                        // Group milestone — full-width celebration banner
-                        if (isGroupMilestone) {
-                            return (
-                                <View
-                                    key={activity.id}
-                                    style={[styles.groupMilestoneCard, { borderColor: '#FFCC00', backgroundColor: '#FFCC0018' }]}
-                                >
-                                    <Text style={styles.groupMilestoneEmoji}>{activity.badgeEmoji}</Text>
-                                    <View style={styles.groupMilestoneText}>
-                                        <Text style={[styles.groupMilestoneLabel, { color: colors.textPrimary }]}>
-                                            {activity.badgeLabel}
-                                        </Text>
-                                        <Text style={[styles.groupMilestoneDesc, { color: colors.textSecondary }]}>
-                                            {activity.badgeDesc}
-                                        </Text>
-                                    </View>
-                                    {timeStr && (
-                                        <Text style={[styles.timestamp, { color: colors.textTertiary }]}>{timeStr}</Text>
-                                    )}
-                                </View>
-                            );
-                        }
-
                         return (
                             <View
                                 key={activity.id}
@@ -823,4 +967,73 @@ const styles = StyleSheet.create({
     groupMilestoneDesc: { fontSize: Typography.size.xs, lineHeight: 16 },
     emptyFeed: { paddingVertical: Spacing.xxl * 2, alignItems: 'center', gap: Spacing.md },
     emptyFeedText: { fontSize: Typography.size.sm, fontStyle: 'italic', textAlign: 'center' },
+    // Date separator
+    dateSeparator: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginVertical: Spacing.md,
+        gap: Spacing.sm,
+    },
+    dateSeparatorLine: {
+        flex: 1,
+        height: 1,
+    },
+    dateSeparatorLabel: {
+        fontSize: Typography.size.xs,
+        fontWeight: Typography.weight.semibold,
+        letterSpacing: 0.5,
+        paddingHorizontal: Spacing.xs,
+    },
+    // Reading digest
+    digestCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: Spacing.md,
+        borderRadius: Spacing.borderRadius.md,
+        borderWidth: 1,
+        marginBottom: Spacing.md,
+        gap: Spacing.md,
+    },
+    digestIconWrap: {
+        width: 36,
+        height: 36,
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+        flexShrink: 0,
+    },
+    digestContent: { flex: 1, gap: 2 },
+    digestLine: { fontSize: Typography.size.sm, fontWeight: Typography.weight.semibold },
+    digestSub: { fontSize: Typography.size.xs },
+    // Pinned milestone hero
+    milestoneHero: {
+        borderWidth: 2,
+        borderRadius: Spacing.borderRadius.lg,
+        padding: Spacing.lg,
+        marginBottom: Spacing.lg,
+        gap: Spacing.sm,
+    },
+    milestoneHeroTop: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.md,
+    },
+    milestoneHeroBadge: {
+        fontSize: 40,
+    },
+    milestoneHeroConfetti: { flex: 1 },
+    milestoneHeroLabel: {
+        fontSize: Typography.size.lg,
+        fontWeight: Typography.weight.bold,
+        letterSpacing: -0.3,
+        color: '#B8860B',
+    },
+    milestoneHeroDesc: {
+        fontSize: Typography.size.sm,
+        lineHeight: 20,
+    },
+    milestoneHeroTime: {
+        fontSize: Typography.size.xs,
+        marginTop: 2,
+    },
 });
