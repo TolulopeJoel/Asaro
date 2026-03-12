@@ -17,6 +17,7 @@ export default function GroupsScreen() {
     const router = useRouter();
     const [joinedGroups, setJoinedGroups] = React.useState<any[]>([]);
     const [checkingGroups, setCheckingGroups] = React.useState(true);
+    const [isOffline, setIsOffline] = React.useState(false);
 
     React.useEffect(() => {
         if (!user) {
@@ -28,31 +29,42 @@ export default function GroupsScreen() {
         const unsubscribeUser = firestore()
             .collection('users')
             .doc(user.uid)
-            .onSnapshot(async (doc) => {
-                const userData = doc.data();
-                const groupIds = userData?.groupIds || [];
+            .onSnapshot(
+                { includeMetadataChanges: false },
+                async (doc) => {
+                    setIsOffline(false);
+                    const userData = doc.data();
+                    const groupIds: string[] = userData?.groupIds || [];
 
-                if (groupIds.length > 0) {
-                    try {
-                        // Fetch basic info for each group
-                        const groupsData = await Promise.all(
-                            groupIds.map(async (id: string) => {
-                                const groupDoc = await firestore().collection('groups').doc(id).get();
-                                return { id: groupDoc.id, ...groupDoc.data() };
-                            })
-                        );
-                        setJoinedGroups(groupsData);
-                    } catch (error) {
-                        console.error('Error fetching group metadata:', error);
+                    if (groupIds.length > 0) {
+                        try {
+                            // Fetch basic info for each group — Firestore cache serves these offline
+                            const groupsData = await Promise.all(
+                                groupIds.map(async (id: string) => {
+                                    const groupDoc = await firestore()
+                                        .collection('groups')
+                                        .doc(id)
+                                        .get({ source: 'default' }); // uses cache when offline
+                                    return { id: groupDoc.id, ...groupDoc.data() };
+                                })
+                            );
+                            setJoinedGroups(groupsData);
+                        } catch (error) {
+                            console.error('Error fetching group metadata:', error);
+                            // Don't clear existing groups — keep showing whatever we have
+                            setIsOffline(true);
+                        }
+                    } else {
+                        setJoinedGroups([]);
                     }
-                } else {
-                    setJoinedGroups([]);
+                    setCheckingGroups(false);
+                },
+                (error) => {
+                    console.error('Error fetching user groups:', error);
+                    setIsOffline(true);
+                    setCheckingGroups(false);
                 }
-                setCheckingGroups(false);
-            }, (error) => {
-                console.error('Error fetching user groups:', error);
-                setCheckingGroups(false);
-            });
+            );
 
         return unsubscribeUser;
     }, [user]);
@@ -94,6 +106,14 @@ export default function GroupsScreen() {
     if (joinedGroups.length > 0) {
         return (
             <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+                {isOffline && (
+                    <View style={[styles.offlineBanner, { backgroundColor: colors.border }]}>
+                        <Ionicons name="cloud-offline-outline" size={14} color={colors.textSecondary} />
+                        <Text style={[styles.offlineBannerText, { color: colors.textSecondary }]}>
+                            You're offline — showing cached groups
+                        </Text>
+                    </View>
+                )}
                 <ScrollView contentContainerStyle={styles.scrollContent}>
                     <View style={styles.titleRow}>
                         <Text style={[styles.title, { color: colors.textPrimary }]}>My Groups</Text>
@@ -126,6 +146,14 @@ export default function GroupsScreen() {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+            {isOffline && (
+                <View style={[styles.offlineBanner, { backgroundColor: colors.border }]}>
+                    <Ionicons name="cloud-offline-outline" size={14} color={colors.textSecondary} />
+                    <Text style={[styles.offlineBannerText, { color: colors.textSecondary }]}>
+                        You're offline
+                    </Text>
+                </View>
+            )}
             <View style={styles.headerRow}>
                 <Text style={[styles.title, { color: colors.textPrimary }]}>Your Groups</Text>
                 <Ionicons name="people-outline" size={24} color={colors.textSecondary} />
@@ -157,6 +185,19 @@ export default function GroupsScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+    },
+    offlineBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: Spacing.xs,
+        paddingVertical: Spacing.xs,
+        paddingHorizontal: Spacing.md,
+    },
+    offlineBannerText: {
+        fontSize: Typography.size.xs,
+        fontWeight: Typography.weight.medium,
+        letterSpacing: 0.3,
     },
     authContainer: {
         flex: 1,

@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
@@ -30,16 +30,37 @@ const getAvatarColor = (userId: string) => {
     return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 };
 
+/** Format a Firestore Timestamp or Date-like object into a short time string, or return null. */
+const formatTimestamp = (ts: any): string | null => {
+    if (!ts) return null;
+    try {
+        const date = ts.toDate ? ts.toDate() : new Date(ts);
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch {
+        return null;
+    }
+};
+
 export default function GroupDetailScreen() {
     const { id: groupId } = useLocalSearchParams<{ id: string }>();
     const { colors } = useTheme();
-    const router = useRouter();
     const { user } = useAuth();
 
-    const [groupName, setGroupName] = React.useState('Loading group...');
+    const [groupName, setGroupName] = React.useState('');
     const [activities, setActivities] = React.useState<any[]>([]);
     const [members, setMembers] = React.useState<any[]>([]);
     const [loading, setLoading] = React.useState(true);
+    const [isOffline, setIsOffline] = React.useState(false);
+
+    // Track which sub-listeners have resolved so we only clear loading once all have
+    const resolvedRef = React.useRef({ group: false, activities: false, members: false });
+
+    const checkAllResolved = () => {
+        const { group, activities, members } = resolvedRef.current;
+        if (group && activities && members) {
+            setLoading(false);
+        }
+    };
 
     React.useEffect(() => {
         if (!groupId) return;
@@ -48,12 +69,22 @@ export default function GroupDetailScreen() {
         const unsubscribeGroup = firestore()
             .collection('groups')
             .doc(groupId)
-            .onSnapshot(doc => {
-                if (doc && doc.exists()) {
-                    setGroupName(doc.data()?.name || 'Group');
+            .onSnapshot(
+                (doc) => {
+                    if (doc && doc.exists()) {
+                        setGroupName(doc.data()?.name || 'Group');
+                    }
+                    setIsOffline(false);
+                    resolvedRef.current.group = true;
+                    checkAllResolved();
+                },
+                (error) => {
+                    console.error('[GroupDetail] group snapshot error:', error);
+                    setIsOffline(true);
+                    resolvedRef.current.group = true;
+                    checkAllResolved();
                 }
-                setLoading(false);
-            });
+            );
 
         // Listen for activities
         const unsubscribeActivities = firestore()
@@ -62,26 +93,46 @@ export default function GroupDetailScreen() {
             .collection('activities')
             .orderBy('timestamp', 'desc')
             .limit(30)
-            .onSnapshot((querySnapshot) => {
-                const feed = querySnapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
-                setActivities(feed);
-            });
+            .onSnapshot(
+                (querySnapshot) => {
+                    const feed = querySnapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    }));
+                    setActivities(feed);
+                    resolvedRef.current.activities = true;
+                    checkAllResolved();
+                },
+                (error) => {
+                    console.error('[GroupDetail] activities snapshot error:', error);
+                    // Keep whatever activities we already have cached
+                    resolvedRef.current.activities = true;
+                    checkAllResolved();
+                }
+            );
 
         // Listen for members
         const unsubscribeMembers = firestore()
             .collection('groups')
             .doc(groupId)
             .collection('members')
-            .onSnapshot((querySnapshot) => {
-                const memberList = querySnapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
-                setMembers(memberList);
-            });
+            .onSnapshot(
+                (querySnapshot) => {
+                    const memberList = querySnapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    }));
+                    setMembers(memberList);
+                    resolvedRef.current.members = true;
+                    checkAllResolved();
+                },
+                (error) => {
+                    console.error('[GroupDetail] members snapshot error:', error);
+                    // Keep whatever members we already have cached
+                    resolvedRef.current.members = true;
+                    checkAllResolved();
+                }
+            );
 
         return () => {
             unsubscribeGroup();
@@ -100,27 +151,41 @@ export default function GroupDetailScreen() {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+            {isOffline && (
+                <View style={[styles.offlineBanner, { backgroundColor: colors.border }]}>
+                    <Ionicons name="cloud-offline-outline" size={14} color={colors.textSecondary} />
+                    <Text style={[styles.offlineBannerText, { color: colors.textSecondary }]}>
+                        You're offline — showing cached data
+                    </Text>
+                </View>
+            )}
+
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 {/* Members Section */}
                 <View style={styles.sectionHeader}>
                     <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>PEOPLE</Text>
                 </View>
 
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.memberList}>
-                    {members.map((member) => (
-                        <View key={member.id} style={styles.memberItem}>
-                            <View style={[styles.memberAvatar, { backgroundColor: getAvatarColor(member.userId || member.id) }]}>
-                                <Text style={[styles.memberInitial, { color: 'white' }]}>
-                                    {member.displayName?.charAt(0).toUpperCase()}
+                {members.length > 0 ? (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.memberList}>
+                        {members.map((member) => (
+                            <View key={member.id} style={styles.memberItem}>
+                                <View style={[styles.memberAvatar, { backgroundColor: getAvatarColor(member.userId || member.id) }]}>
+                                    <Text style={[styles.memberInitial, { color: 'white' }]}>
+                                        {member.displayName?.charAt(0).toUpperCase()}
+                                    </Text>
+                                </View>
+                                <Text style={[styles.memberName, { color: colors.textSecondary }]} numberOfLines={1}>
+                                    {member.displayName}
                                 </Text>
-                                <View style={[styles.onlineDot, { backgroundColor: '#4CAF50', borderColor: colors.background }]} />
                             </View>
-                            <Text style={[styles.memberName, { color: colors.textSecondary }]} numberOfLines={1}>
-                                {member.displayName}
-                            </Text>
-                        </View>
-                    ))}
-                </ScrollView>
+                        ))}
+                    </ScrollView>
+                ) : (
+                    <Text style={[styles.emptyFeedText, { color: colors.textTertiary, marginBottom: Spacing.xl }]}>
+                        {isOffline ? 'Member list unavailable offline.' : 'No members yet.'}
+                    </Text>
+                )}
 
                 {/* Activity Feed */}
                 <View style={styles.sectionHeader}>
@@ -128,32 +193,46 @@ export default function GroupDetailScreen() {
                 </View>
 
                 {activities.length > 0 ? (
-                    activities.map((activity) => (
-                        <View key={activity.id} style={[styles.activityCard, { borderColor: colors.border }]}>
-                            <View style={[styles.userBadge, { backgroundColor: getAvatarColor(activity.userId) }]}>
-                                <Text style={[styles.userInitial, { color: 'white' }]}>
-                                    {activity.userName?.charAt(0).toUpperCase() || '?'}
-                                </Text>
-                            </View>
-                            <View style={styles.activityContent}>
-                                <View style={styles.activityHeader}>
-                                    <Text style={[styles.userName, { color: colors.textPrimary }]}>{activity.userName}</Text>
-                                    <Text style={[styles.timestamp, { color: colors.textTertiary }]}>
-                                        {activity.timestamp?.toDate ? activity.timestamp.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                    activities.map((activity) => {
+                        const timeStr = formatTimestamp(activity.timestamp);
+                        return (
+                            <View key={activity.id} style={[styles.activityCard, { borderColor: colors.border }]}>
+                                <View style={[styles.userBadge, { backgroundColor: getAvatarColor(activity.userId) }]}>
+                                    <Text style={[styles.userInitial, { color: 'white' }]}>
+                                        {activity.userName?.charAt(0).toUpperCase() || '?'}
                                     </Text>
                                 </View>
-                                <Text style={[styles.activityText, { color: colors.textSecondary }]}>
-                                    just finished reading {activity.bookName} {activity.chapters}
-                                </Text>
+                                <View style={styles.activityContent}>
+                                    <View style={styles.activityHeader}>
+                                        <Text style={[styles.userName, { color: colors.textPrimary }]}>{activity.userName}</Text>
+                                        {timeStr ? (
+                                            <Text style={[styles.timestamp, { color: colors.textTertiary }]}>{timeStr}</Text>
+                                        ) : (
+                                            <Text style={[styles.timestamp, { color: colors.textTertiary }]}>Syncing…</Text>
+                                        )}
+                                    </View>
+                                    <Text style={[styles.activityText, { color: colors.textSecondary }]}>
+                                        just finished reading {activity.bookName} {activity.chapters}
+                                    </Text>
+                                </View>
+                                <View style={styles.activityIcon}>
+                                    <Ionicons name="checkmark-circle" size={20} color={colors.accent} />
+                                </View>
                             </View>
-                            <View style={styles.activityIcon}>
-                                <Ionicons name="checkmark-circle" size={20} color={colors.accent} />
-                            </View>
-                        </View>
-                    ))
+                        );
+                    })
                 ) : (
                     <View style={styles.emptyFeed}>
-                        <Text style={[styles.emptyFeedText, { color: colors.textTertiary }]}>No activity yet today. Be the first!</Text>
+                        <Ionicons
+                            name={isOffline ? 'cloud-offline-outline' : 'sunny-outline'}
+                            size={28}
+                            color={colors.textTertiary}
+                        />
+                        <Text style={[styles.emptyFeedText, { color: colors.textTertiary }]}>
+                            {isOffline
+                                ? 'Feed unavailable offline. Check back when connected.'
+                                : 'No activity yet. Be the first!'}
+                        </Text>
                     </View>
                 )}
             </ScrollView>
@@ -165,10 +244,18 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
-    headerTitle: {
-        fontSize: Typography.size.xxxl,
-        fontWeight: Typography.weight.bold,
-        letterSpacing: -0.5,
+    offlineBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: Spacing.xs,
+        paddingVertical: Spacing.xs,
+        paddingHorizontal: Spacing.md,
+    },
+    offlineBannerText: {
+        fontSize: Typography.size.xs,
+        fontWeight: Typography.weight.medium,
+        letterSpacing: 0.3,
     },
     scrollContent: {
         padding: Spacing.layout.screenPadding,
@@ -199,7 +286,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: Spacing.xs,
-        position: 'relative',
     },
     memberInitial: {
         fontSize: Typography.size.lg,
@@ -208,15 +294,6 @@ const styles = StyleSheet.create({
     memberName: {
         fontSize: Typography.size.xs,
         textAlign: 'center',
-    },
-    onlineDot: {
-        position: 'absolute',
-        bottom: 2,
-        right: 2,
-        width: 12,
-        height: 12,
-        borderRadius: 6,
-        borderWidth: 2,
     },
     activityCard: {
         flexDirection: 'row',
@@ -262,11 +339,13 @@ const styles = StyleSheet.create({
         marginLeft: Spacing.xs,
     },
     emptyFeed: {
-        padding: Spacing.xxl * 2,
+        paddingVertical: Spacing.xxl * 2,
         alignItems: 'center',
+        gap: Spacing.md,
     },
     emptyFeedText: {
         fontSize: Typography.size.sm,
         fontStyle: 'italic',
+        textAlign: 'center',
     },
 });
