@@ -48,7 +48,6 @@ export default function GroupDetailScreen() {
     const { colors } = useTheme();
     const { user } = useAuth();
 
-    const [groupName, setGroupName] = React.useState('');
     const [activities, setActivities] = React.useState<any[]>([]);
     const [members, setMembers] = React.useState<any[]>([]);
     const [loading, setLoading] = React.useState(true);
@@ -73,9 +72,6 @@ export default function GroupDetailScreen() {
             .doc(groupId)
             .onSnapshot(
                 (doc) => {
-                    if (doc && doc.exists()) {
-                        setGroupName(doc.data()?.name || 'Group');
-                    }
                     setIsOffline(false);
                     resolvedRef.current.group = true;
                     checkAllResolved();
@@ -165,7 +161,7 @@ export default function GroupDetailScreen() {
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 {/* Members Section */}
                 <View style={styles.sectionHeader}>
-                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>PEOPLE</Text>
+                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>GENTLEMEN</Text>
                 </View>
 
                 {members.length > 0 ? (
