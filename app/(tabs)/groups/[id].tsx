@@ -22,10 +22,12 @@ const AVATAR_COLORS = [
     '#A2845E', // vivid brown
 ];
 
-const getAvatarColor = (userId: string) => {
+const getAvatarColor = (id: string | undefined | null, name?: string) => {
+    const seed = (id || name || 'Guest').toString();
     let hash = 0;
-    for (let i = 0; i < userId.length; i++) {
-        hash = userId.charCodeAt(i) + ((hash << 5) - hash);
+    for (let i = 0; i < seed.length; i++) {
+        hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+        hash |= 0; // Convert to 32bit integer
     }
     return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 };
@@ -170,7 +172,7 @@ export default function GroupDetailScreen() {
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.memberList}>
                         {members.map((member) => (
                             <View key={member.id} style={styles.memberItem}>
-                                <View style={[styles.memberAvatar, { backgroundColor: getAvatarColor(member.userId || member.id) }]}>
+                                <View style={[styles.memberAvatar, { backgroundColor: getAvatarColor(member.userId || member.id, member.displayName) }]}>
                                     <Text style={[styles.memberInitial, { color: 'white' }]}>
                                         {member.displayName?.charAt(0).toUpperCase()}
                                     </Text>
@@ -197,7 +199,7 @@ export default function GroupDetailScreen() {
                         const timeStr = formatTimestamp(activity.timestamp);
                         return (
                             <View key={activity.id} style={[styles.activityCard, { borderColor: colors.border }]}>
-                                <View style={[styles.userBadge, { backgroundColor: getAvatarColor(activity.userId) }]}>
+                                <View style={[styles.userBadge, { backgroundColor: getAvatarColor(activity.userId, activity.userName) }]}>
                                     <Text style={[styles.userInitial, { color: 'white' }]}>
                                         {activity.userName?.charAt(0).toUpperCase() || '?'}
                                     </Text>
