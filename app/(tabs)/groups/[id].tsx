@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import firestore from '@react-native-firebase/firestore';
 import { useAuth } from '@/src/context/AuthContext';
 import { checkInactiveMembers } from '@/src/utils/syncActivities';
+import { getBadgeById } from '@/src/utils/badges';
 
 const AVATAR_COLORS = [
     '#FF2D55', // vivid red
@@ -340,6 +341,22 @@ export default function GroupDetailScreen() {
                                         accentColor={colors.accent}
                                         inactiveColor={colors.border}
                                     />
+                                    {/* Earned badge icons */}
+                                    {Array.isArray(member.badges) && member.badges.length > 0 && (
+                                        <View style={styles.memberBadgesRow}>
+                                            {(member.badges as string[])
+                                                .map(id => getBadgeById(id))
+                                                .filter(Boolean)
+                                                .sort((a, b) => a!.order - b!.order)
+                                                .slice(0, 3) // max 3 icons to avoid overflow
+                                                .map(badge => (
+                                                    <Text key={badge!.id} style={styles.memberBadgeEmoji}>
+                                                        {badge!.emoji}
+                                                    </Text>
+                                                ))
+                                            }
+                                        </View>
+                                    )}
                                     {streak > 0 && (
                                         <View style={[styles.streakBadge, { backgroundColor: colors.accentSecondaryLight }]}>
                                             <Text style={[styles.streakText, { color: colors.textPrimary }]}>🔥 {streak}</Text>
@@ -367,6 +384,31 @@ export default function GroupDetailScreen() {
                         const isAbsent = activity.type === 'member_absent';
                         const isJoined = activity.type === 'member_joined';
                         const isRemoved = activity.type === 'member_removed';
+                        const isMilestone = activity.type === 'milestone_earned';
+                        const isGroupMilestone = activity.type === 'group_milestone';
+
+                        // Group milestone: full-width celebration card
+                        if (isGroupMilestone) {
+                            return (
+                                <View
+                                    key={activity.id}
+                                    style={[styles.groupMilestoneCard, { borderColor: '#FFCC00', backgroundColor: '#FFCC0018' }]}
+                                >
+                                    <Text style={styles.groupMilestoneEmoji}>{activity.badgeEmoji}</Text>
+                                    <View style={styles.groupMilestoneText}>
+                                        <Text style={[styles.groupMilestoneLabel, { color: colors.textPrimary }]}>
+                                            {activity.badgeLabel}
+                                        </Text>
+                                        <Text style={[styles.groupMilestoneDesc, { color: colors.textSecondary }]}>
+                                            {activity.badgeDesc}
+                                        </Text>
+                                    </View>
+                                    {timeStr && (
+                                        <Text style={[styles.timestamp, { color: colors.textTertiary }]}>{timeStr}</Text>
+                                    )}
+                                </View>
+                            );
+                        }
 
                         return (
                             <View
@@ -374,11 +416,14 @@ export default function GroupDetailScreen() {
                                 style={[
                                     styles.activityCard,
                                     {
-                                        borderColor: isEntry ? colors.accentSecondaryLight : (isJoined ? colors.indicatorActive : colors.border),
-                                        backgroundColor: isEntry ? colors.accentSecondaryLight + '22'
-                                            : isJoined ? colors.indicatorActive + '11'
-                                                : isAbsent ? colors.accentLight + '11'
-                                                    : 'transparent',
+                                        borderColor: isMilestone ? colors.accent
+                                            : isEntry ? colors.accentSecondaryLight
+                                                : (isJoined ? colors.indicatorActive : colors.border),
+                                        backgroundColor: isMilestone ? colors.accent + '14'
+                                            : isEntry ? colors.accentSecondaryLight + '22'
+                                                : isJoined ? colors.indicatorActive + '11'
+                                                    : isAbsent ? colors.accentLight + '11'
+                                                        : 'transparent',
                                     }
                                 ]}
                             >
@@ -396,6 +441,15 @@ export default function GroupDetailScreen() {
                                             <Text style={[styles.timestamp, { color: colors.textTertiary }]}>Syncing…</Text>
                                         )}
                                     </View>
+
+                                    {isMilestone && (
+                                        <View style={styles.milestoneRow}>
+                                            <Text style={styles.milestoneEmoji}>{activity.badgeEmoji}</Text>
+                                            <Text style={[styles.activityText, { color: colors.textSecondary }]}>
+                                                earned the <Text style={{ fontWeight: Typography.weight.bold, color: colors.textPrimary }}>{activity.badgeLabel}</Text> badge — {activity.badgeDesc}
+                                            </Text>
+                                        </View>
+                                    )}
 
                                     {isEntry && (
                                         <>
@@ -430,7 +484,7 @@ export default function GroupDetailScreen() {
                                         </Text>
                                     )}
 
-                                    {!isEntry && !isJoined && !isAbsent && !isRemoved && (
+                                    {!isEntry && !isJoined && !isAbsent && !isRemoved && !isMilestone && (
                                         <Text style={[styles.activityText, { color: colors.textSecondary }]}>
                                             just finished reading {activity.bookName} {activity.chapters}
                                         </Text>
@@ -439,18 +493,20 @@ export default function GroupDetailScreen() {
                                 <View style={styles.activityIcon}>
                                     <Ionicons
                                         name={
-                                            isEntry ? 'book-outline'
-                                                : isJoined ? 'person-add'
-                                                    : isAbsent ? 'notifications-outline'
-                                                        : isRemoved ? 'exit-outline'
-                                                            : 'checkmark-circle'
+                                            isMilestone ? 'star'
+                                                : isEntry ? 'book-outline'
+                                                    : isJoined ? 'person-add'
+                                                        : isAbsent ? 'notifications-outline'
+                                                            : isRemoved ? 'exit-outline'
+                                                                : 'checkmark-circle'
                                         }
                                         size={20}
                                         color={
-                                            isEntry ? colors.accentSecondary
-                                                : isJoined ? colors.indicatorActive
-                                                    : isAbsent ? colors.accent
-                                                        : colors.textTertiary
+                                            isMilestone ? colors.accent
+                                                : isEntry ? colors.accentSecondary
+                                                    : isJoined ? colors.indicatorActive
+                                                        : isAbsent ? colors.accent
+                                                            : colors.textTertiary
                                         }
                                     />
                                 </View>
@@ -659,6 +715,54 @@ const styles = StyleSheet.create({
         fontSize: Typography.size.sm,
         fontStyle: 'italic',
         textAlign: 'center',
+    },
+    // Member badge icon row
+    memberBadgesRow: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: 2,
+        marginTop: 3,
+    },
+    memberBadgeEmoji: {
+        fontSize: 11,
+    },
+    // Milestone feed card
+    milestoneRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: Spacing.xs,
+        marginTop: 2,
+        flexWrap: 'wrap',
+    },
+    milestoneEmoji: {
+        fontSize: 18,
+        lineHeight: 22,
+    },
+    // Group milestone card
+    groupMilestoneCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: Spacing.md,
+        borderRadius: Spacing.borderRadius.md,
+        borderWidth: 1.5,
+        marginBottom: Spacing.md,
+        gap: Spacing.sm,
+    },
+    groupMilestoneEmoji: {
+        fontSize: 28,
+        flexShrink: 0,
+    },
+    groupMilestoneText: {
+        flex: 1,
+        gap: 2,
+    },
+    groupMilestoneLabel: {
+        fontSize: Typography.size.sm,
+        fontWeight: Typography.weight.bold,
+    },
+    groupMilestoneDesc: {
+        fontSize: Typography.size.xs,
+        lineHeight: 16,
     },
 });
 
