@@ -12,7 +12,84 @@ export interface PendingActivity {
     type: 'reading_completed';
     /** ISO timestamp recorded at queue time */
     queuedAt: string;
+    /** Short reflection preview (first 80 chars of reflection_1), if present */
+    reflectionPreview?: string;
 }
+
+// ─── Weekly Heatmap Helpers ───────────────────────────────────────────────────
+
+/**
+ * Returns the ISO week string for a given date, e.g. "2026-W10".
+ * Week starts on Monday (ISO-8601).
+ */
+export const getISOWeekString = (date: Date): string => {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    // ISO week: Thursday of the current week determines the year
+    d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
+    const week1 = new Date(d.getFullYear(), 0, 4);
+    const weekNum = 1 + Math.round(((d.getTime() - week1.getTime()) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7);
+    return `${d.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+};
+
+/**
+ * Returns the 0-indexed day-of-week for a date, where 0=Monday … 6=Sunday.
+ */
+const getMondayBasedDayIndex = (date: Date): number => {
+    return (date.getDay() + 6) % 7; // Sun=0 in JS, we want Mon=0
+};
+
+/**
+ * Given existing weeklyActivity (7-element bool array) and its week string,
+ * returns the updated array for activityDate. Resets if the week has rolled.
+ */
+export const computeWeeklyActivity = (
+    existing: boolean[] | undefined,
+    existingWeek: string | undefined,
+    activityDate: Date
+): { weeklyActivity: boolean[]; weeklyActivityWeek: string } => {
+    const currentWeek = getISOWeekString(activityDate);
+    const base: boolean[] = (existingWeek === currentWeek && Array.isArray(existing) && existing.length === 7)
+        ? [...existing]
+        : [false, false, false, false, false, false, false];
+    base[getMondayBasedDayIndex(activityDate)] = true;
+    return { weeklyActivity: base, weeklyActivityWeek: currentWeek };
+};
+
+// ─── Group Streak Helper ──────────────────────────────────────────────────────
+
+/**
+ * Computes the updated group streak given the current state on the group doc
+ * and the date of the new activity.
+ */
+const computeGroupStreak = (
+    existingStreak: number,
+    lastDateStr: string | undefined,
+    activityDateStr: string
+): { groupStreak: number; groupStreakLastDate: string } => {
+    if (!lastDateStr) {
+        return { groupStreak: 1, groupStreakLastDate: activityDateStr };
+    }
+    try {
+        const last = parseLocalDateString(lastDateStr);
+        const current = parseLocalDateString(activityDateStr);
+        const diff = getDaysDifference(last, current);
+        if (diff === 0) {
+            // Same day — no change
+            return { groupStreak: existingStreak, groupStreakLastDate: lastDateStr };
+        } else if (diff === 1) {
+            // Consecutive day
+            return { groupStreak: existingStreak + 1, groupStreakLastDate: activityDateStr };
+        } else {
+            // Streak broken
+            return { groupStreak: 1, groupStreakLastDate: activityDateStr };
+        }
+    } catch {
+        return { groupStreak: 1, groupStreakLastDate: activityDateStr };
+    }
+};
+
+// ─── Queue ────────────────────────────────────────────────────────────────────
 
 /**
  * Append one activity to the offline queue.
@@ -28,6 +105,8 @@ export const queueActivity = async (activity: PendingActivity): Promise<void> =>
         console.error('[syncActivities] Failed to queue activity:', error);
     }
 };
+
+// ─── Sync ─────────────────────────────────────────────────────────────────────
 
 /**
  * Attempt to push all queued activities to Firestore.
@@ -69,38 +148,25 @@ export const syncPendingActivities = async (): Promise<void> => {
             const activityMonth = String(activityDate.getMonth() + 1).padStart(2, '0');
             const activityDay = String(activityDate.getDate()).padStart(2, '0');
             const activityLocalDateStr = `${activityYear}-${activityMonth}-${activityDay}`;
+            const todayDateStr = activityLocalDateStr; // same: derived from queue time
 
             for (const groupId of groupIds) {
                 try {
-                    const batch = firestore().batch();
+                    // ── Fetch current member + group state ──────────────────
+                    const groupRef = firestore().collection('groups').doc(groupId);
+                    const memberRef = groupRef.collection('members').doc(activity.userId);
 
-                    // 1. Add Activity
-                    const activityRef = firestore()
-                        .collection('groups')
-                        .doc(groupId)
-                        .collection('activities')
-                        .doc(); // Auto-gen ID
+                    const [memberDoc, groupDoc] = await Promise.all([
+                        memberRef.get(),
+                        groupRef.get(),
+                    ]);
 
-                    batch.set(activityRef, {
-                        userId: activity.userId,
-                        userName: displayName,
-                        bookName: activity.bookName,
-                        chapters: activity.chapters,
-                        timestamp: firestore.FieldValue.serverTimestamp(),
-                        type: activity.type,
-                    });
-
-                    // 2. Update Member Streak & Date
-                    const memberRef = firestore()
-                        .collection('groups')
-                        .doc(groupId)
-                        .collection('members')
-                        .doc(activity.userId);
-
-                    const memberDoc = await memberRef.get();
                     const memberData = memberDoc.data() || {};
+                    const groupData = groupDoc.data() || {};
+
+                    // ── Member streak ───────────────────────────────────────
                     let streak = memberData.streak || 0;
-                    const lastReadDateStr = memberData.lastReadDate;
+                    const lastReadDateStr: string | undefined = memberData.lastReadDate;
 
                     if (lastReadDateStr) {
                         try {
@@ -109,29 +175,105 @@ export const syncPendingActivities = async (): Promise<void> => {
                             const diff = getDaysDifference(lastRead, current);
 
                             if (diff === 1) {
-                                streak += 1; // Read consecutive day
+                                streak += 1;
                             } else if (diff > 1) {
-                                streak = 1; // Missed a day, reset
+                                streak = 1;
                             }
-                            // if diff === 0, same day, streak unchanged
-                            // if diff < 0, queued activity is older than lastReadDate, don't change streak
+                            // diff === 0 → same day, leave streak unchanged
+                            // diff < 0  → older queued activity, skip
                         } catch {
                             streak += 1;
                         }
                     } else {
-                        // First time reading
                         streak = 1;
                     }
 
-                    // Only update lastReadDate if this activity is newer or same as what's there
+                    // ── Weekly heatmap ──────────────────────────────────────
+                    const { weeklyActivity, weeklyActivityWeek } = computeWeeklyActivity(
+                        memberData.weeklyActivity,
+                        memberData.weeklyActivityWeek,
+                        activityDate
+                    );
+
+                    // ── Group streak ────────────────────────────────────────
+                    const { groupStreak, groupStreakLastDate } = computeGroupStreak(
+                        groupData.groupStreak || 0,
+                        groupData.groupStreakLastDate,
+                        activityLocalDateStr
+                    );
+
+                    // ── readTodayCount on group doc ─────────────────────────
+                    // Reset count if the stored date is not today
+                    const storedReadTodayDate: string | undefined = groupData.readTodayDate;
+                    let readTodayCount: number = (storedReadTodayDate === todayDateStr)
+                        ? (groupData.readTodayCount || 0)
+                        : 0;
+
+                    // Only increment if this member hasn't already been counted today
+                    const memberAlreadyCountedToday =
+                        storedReadTodayDate === todayDateStr &&
+                        lastReadDateStr === todayDateStr;
+
+                    if (!memberAlreadyCountedToday) {
+                        readTodayCount += 1;
+                    }
+
+                    // ── Member count ────────────────────────────────────────
+                    // Keep memberCount accurate (use subcollection size from groupData if available,
+                    // otherwise rely on the group doc's denormalized field)
+                    const memberCount = groupData.memberCount || 1;
+
+                    // ── Commit batch ────────────────────────────────────────
+                    const batch = firestore().batch();
+
+                    // 1. Activity entry
+                    const activityRef = groupRef.collection('activities').doc();
+                    batch.set(activityRef, {
+                        userId: activity.userId,
+                        userName: displayName,
+                        bookName: activity.bookName,
+                        chapters: activity.chapters,
+                        timestamp: firestore.FieldValue.serverTimestamp(),
+                        type: 'reading_completed',
+                    });
+
+                    // 2. Optional reflection activity
+                    if (activity.reflectionPreview) {
+                        const reflectionRef = groupRef.collection('activities').doc();
+                        batch.set(reflectionRef, {
+                            userId: activity.userId,
+                            userName: displayName,
+                            bookName: activity.bookName,
+                            chapters: activity.chapters,
+                            timestamp: firestore.FieldValue.serverTimestamp(),
+                            type: 'reflection_shared',
+                            preview: activity.reflectionPreview,
+                        });
+                    }
+
+                    // 3. Member doc update (only update lastReadDate if this activity is newer)
                     if (!lastReadDateStr || activityLocalDateStr >= lastReadDateStr) {
                         batch.set(memberRef, {
                             userId: activity.userId,
-                            displayName: displayName,
+                            displayName,
                             lastReadDate: activityLocalDateStr,
-                            streak: streak,
+                            streak,
+                            weeklyActivity,
+                            weeklyActivityWeek,
                         }, { merge: true });
+                    } else {
+                        // Still update heatmap even if date is not newer
+                        batch.set(memberRef, { weeklyActivity, weeklyActivityWeek }, { merge: true });
                     }
+
+                    // 4. Group doc update (streak + readTodayCount)
+                    batch.set(groupRef, {
+                        groupStreak,
+                        groupStreakLastDate,
+                        readTodayCount,
+                        readTodayDate: todayDateStr,
+                        memberCount,
+                    }, { merge: true });
 
                     await batch.commit();
 

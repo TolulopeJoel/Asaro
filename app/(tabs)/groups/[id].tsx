@@ -19,7 +19,6 @@ const AVATAR_COLORS = [
     '#5856D6', // vivid indigo
     '#AF52DE', // vivid purple
     '#FF375F', // vivid pink
-    '#A2845E', // vivid brown
 ];
 
 const getAvatarColor = (id: string | undefined | null, name?: string) => {
@@ -27,7 +26,7 @@ const getAvatarColor = (id: string | undefined | null, name?: string) => {
     let hash = 0;
     for (let i = 0; i < seed.length; i++) {
         hash = ((hash << 5) - hash) + seed.charCodeAt(i);
-        hash |= 0; // Convert to 32bit integer
+        hash |= 0;
     }
     return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 };
@@ -61,7 +60,11 @@ const formatRelativeTime = (ts: any): string | null => {
 
         const yesterday = new Date(now);
         yesterday.setDate(yesterday.getDate() - 1);
-        if (date.getDate() === yesterday.getDate() && date.getMonth() === yesterday.getMonth() && date.getFullYear() === yesterday.getFullYear()) {
+        if (
+            date.getDate() === yesterday.getDate() &&
+            date.getMonth() === yesterday.getMonth() &&
+            date.getFullYear() === yesterday.getFullYear()
+        ) {
             return `Yesterday at ${date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
         }
 
@@ -71,6 +74,59 @@ const formatRelativeTime = (ts: any): string | null => {
     }
 };
 
+/** 7 tiny dots representing Mon–Sun activity for the current week */
+const WeeklyHeatmap = ({
+    weeklyActivity,
+    weeklyActivityWeek,
+    accentColor,
+    inactiveColor,
+}: {
+    weeklyActivity?: boolean[];
+    weeklyActivityWeek?: string;
+    accentColor: string;
+    inactiveColor: string;
+}) => {
+    // Check if the stored week matches the current ISO week
+    const now = new Date();
+    const d = new Date(now);
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
+    const week1 = new Date(d.getFullYear(), 0, 4);
+    const weekNum = 1 + Math.round(((d.getTime() - week1.getTime()) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7);
+    const currentWeekStr = `${d.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+
+    const isCurrentWeek = weeklyActivityWeek === currentWeekStr;
+    const dots: boolean[] = (isCurrentWeek && Array.isArray(weeklyActivity) && weeklyActivity.length === 7)
+        ? weeklyActivity
+        : [false, false, false, false, false, false, false];
+
+    return (
+        <View style={heatmapStyles.row}>
+            {dots.map((active, i) => (
+                <View
+                    key={i}
+                    style={[
+                        heatmapStyles.dot,
+                        { backgroundColor: active ? accentColor : inactiveColor },
+                    ]}
+                />
+            ))}
+        </View>
+    );
+};
+
+const heatmapStyles = StyleSheet.create({
+    row: {
+        flexDirection: 'row',
+        gap: 3,
+        marginTop: 4,
+    },
+    dot: {
+        width: 5,
+        height: 5,
+        borderRadius: 3,
+    },
+});
 
 export default function GroupDetailScreen() {
     const { id: groupId } = useLocalSearchParams<{ id: string }>();
@@ -79,6 +135,7 @@ export default function GroupDetailScreen() {
 
     const [activities, setActivities] = React.useState<any[]>([]);
     const [members, setMembers] = React.useState<any[]>([]);
+    const [groupData, setGroupData] = React.useState<any>(null);
     const [loading, setLoading] = React.useState(true);
     const [isOffline, setIsOffline] = React.useState(false);
 
@@ -92,7 +149,6 @@ export default function GroupDetailScreen() {
         }
     };
 
-
     React.useEffect(() => {
         if (!groupId) return;
 
@@ -103,6 +159,7 @@ export default function GroupDetailScreen() {
             .onSnapshot(
                 (doc) => {
                     setIsOffline(false);
+                    setGroupData(doc.data() || null);
                     resolvedRef.current.group = true;
                     checkAllResolved();
                 },
@@ -133,7 +190,6 @@ export default function GroupDetailScreen() {
                 },
                 (error) => {
                     console.error('[GroupDetail] activities snapshot error:', error);
-                    // Keep whatever activities we already have cached
                     resolvedRef.current.activities = true;
                     checkAllResolved();
                 }
@@ -156,7 +212,6 @@ export default function GroupDetailScreen() {
                 },
                 (error) => {
                     console.error('[GroupDetail] members snapshot error:', error);
-                    // Keep whatever members we already have cached
                     resolvedRef.current.members = true;
                     checkAllResolved();
                 }
@@ -177,6 +232,31 @@ export default function GroupDetailScreen() {
         );
     }
 
+    const today = getTodayDateString();
+
+    // Sort members: read today first, then by streak desc
+    const sortedMembers = [...members].sort((a, b) => {
+        const aToday = a.lastReadDate === today ? 1 : 0;
+        const bToday = b.lastReadDate === today ? 1 : 0;
+        if (bToday !== aToday) return bToday - aToday;
+        return (b.streak || 0) - (a.streak || 0);
+    });
+
+    const readTodayCount = sortedMembers.filter(m => m.lastReadDate === today).length;
+    const totalMembers = sortedMembers.length;
+
+    // Group streak from group doc
+    const groupStreak: number = groupData?.groupStreak || 0;
+    const groupStreakLastDate: string | undefined = groupData?.groupStreakLastDate;
+    // Only show if the streak includes today or yesterday (still active/recent)
+    const isGroupStreakActive = groupStreak >= 2 && groupStreakLastDate &&
+        (groupStreakLastDate === today || (() => {
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+            return groupStreakLastDate === yStr;
+        })());
+
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             {isOffline && (
@@ -188,21 +268,48 @@ export default function GroupDetailScreen() {
                 </View>
             )}
 
+            {/* Group streak pill */}
+            {isGroupStreakActive && (
+                <View style={[styles.streakPill, { backgroundColor: colors.accentSecondaryLight, borderColor: colors.border }]}>
+                    <Text style={[styles.streakPillText, { color: colors.textPrimary }]}>
+                        🔥 Group on fire — {groupStreak} days in a row
+                    </Text>
+                </View>
+            )}
+
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 {/* Members Section */}
                 <View style={styles.sectionHeader}>
-                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>GENTLEMEN</Text>
+                    <View style={styles.sectionTitleRow}>
+                        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>MEMBERS</Text>
+                        {totalMembers > 0 && (
+                            <View style={[styles.readTodayChip, {
+                                backgroundColor: readTodayCount > 0 ? colors.indicatorActive + '22' : colors.border,
+                                borderColor: readTodayCount > 0 ? colors.indicatorActive : colors.border,
+                            }]}>
+                                <Text style={[styles.readTodayChipText, {
+                                    color: readTodayCount > 0 ? colors.indicatorActive : colors.textTertiary,
+                                }]}>
+                                    {readTodayCount > 0 ? `✓ ${readTodayCount} of ${totalMembers} read today` : `0 of ${totalMembers} read today`}
+                                </Text>
+                            </View>
+                        )}
+                    </View>
                 </View>
 
-                {members.length > 0 ? (
+                {sortedMembers.length > 0 ? (
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.memberList}>
-                        {members.map((member) => {
-                            const readToday = member.lastReadDate === getTodayDateString();
+                        {sortedMembers.map((member) => {
+                            const readToday = member.lastReadDate === today;
                             const streak = member.streak || 0;
                             return (
                                 <View key={member.id} style={styles.memberItem}>
                                     <View style={styles.avatarContainer}>
-                                        <View style={[styles.memberAvatar, { backgroundColor: getAvatarColor(member.userId || member.id, member.displayName) }]}>
+                                        <View style={[styles.memberAvatar, {
+                                            backgroundColor: getAvatarColor(member.userId || member.id, member.displayName),
+                                            borderWidth: readToday ? 2 : 0,
+                                            borderColor: colors.indicatorActive,
+                                        }]}>
                                             <Text style={[styles.memberInitial, { color: 'white' }]}>
                                                 {member.displayName?.charAt(0).toUpperCase()}
                                             </Text>
@@ -218,6 +325,12 @@ export default function GroupDetailScreen() {
                                             {member.displayName}
                                         </Text>
                                     </View>
+                                    <WeeklyHeatmap
+                                        weeklyActivity={member.weeklyActivity}
+                                        weeklyActivityWeek={member.weeklyActivityWeek}
+                                        accentColor={colors.accent}
+                                        inactiveColor={colors.border}
+                                    />
                                     {streak > 0 && (
                                         <View style={[styles.streakBadge, { backgroundColor: colors.accentSecondaryLight }]}>
                                             <Text style={[styles.streakText, { color: colors.textPrimary }]}>🔥 {streak}</Text>
@@ -234,16 +347,26 @@ export default function GroupDetailScreen() {
                 )}
 
                 {/* Activity Feed */}
-                <View style={styles.sectionHeader}>
+                <View style={[styles.sectionHeader, { marginTop: Spacing.md }]}>
                     <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>LIVE FEED</Text>
                 </View>
 
                 {activities.length > 0 ? (
                     activities.map((activity) => {
                         const timeStr = formatRelativeTime(activity.timestamp);
+                        const isReflection = activity.type === 'reflection_shared';
 
                         return (
-                            <View key={activity.id} style={[styles.activityCard, { borderColor: colors.border }]}>
+                            <View
+                                key={activity.id}
+                                style={[
+                                    styles.activityCard,
+                                    {
+                                        borderColor: isReflection ? colors.accentSecondaryLight : colors.border,
+                                        backgroundColor: isReflection ? colors.accentSecondaryLight + '33' : 'transparent',
+                                    }
+                                ]}
+                            >
                                 <View style={[styles.userBadge, { backgroundColor: getAvatarColor(activity.userId, activity.userName) }]}>
                                     <Text style={[styles.userInitial, { color: 'white' }]}>
                                         {activity.userName?.charAt(0).toUpperCase() || '?'}
@@ -258,12 +381,29 @@ export default function GroupDetailScreen() {
                                             <Text style={[styles.timestamp, { color: colors.textTertiary }]}>Syncing…</Text>
                                         )}
                                     </View>
-                                    <Text style={[styles.activityText, { color: colors.textSecondary }]}>
-                                        just finished reading {activity.bookName} {activity.chapters}
-                                    </Text>
+                                    {isReflection ? (
+                                        <>
+                                            <Text style={[styles.activityText, { color: colors.textSecondary }]}>
+                                                shared a reflection on {activity.bookName} {activity.chapters}
+                                            </Text>
+                                            {activity.preview ? (
+                                                <Text style={[styles.reflectionPreview, { color: colors.textTertiary }]}>
+                                                    "{activity.preview}"
+                                                </Text>
+                                            ) : null}
+                                        </>
+                                    ) : (
+                                        <Text style={[styles.activityText, { color: colors.textSecondary }]}>
+                                            just finished reading {activity.bookName} {activity.chapters}
+                                        </Text>
+                                    )}
                                 </View>
                                 <View style={styles.activityIcon}>
-                                    <Ionicons name="checkmark-circle" size={20} color={colors.accent} />
+                                    <Ionicons
+                                        name={isReflection ? 'chatbubble-ellipses' : 'checkmark-circle'}
+                                        size={20}
+                                        color={isReflection ? colors.accentSecondary : colors.accent}
+                                    />
                                 </View>
                             </View>
                         );
@@ -304,19 +444,52 @@ const styles = StyleSheet.create({
         fontWeight: Typography.weight.medium,
         letterSpacing: 0.3,
     },
+    streakPill: {
+        marginHorizontal: Spacing.layout.screenPadding,
+        marginTop: Spacing.sm,
+        marginBottom: 0,
+        paddingVertical: Spacing.xs,
+        paddingHorizontal: Spacing.md,
+        borderRadius: Spacing.borderRadius.round,
+        borderWidth: 1,
+        alignSelf: 'flex-start',
+    },
+    streakPillText: {
+        fontSize: Typography.size.xs,
+        fontWeight: Typography.weight.semibold,
+        letterSpacing: 0.3,
+    },
     scrollContent: {
         padding: Spacing.layout.screenPadding,
-        paddingTop: Spacing.xs,
+        paddingTop: Spacing.sm,
     },
     sectionHeader: {
         marginTop: Spacing.lg,
         marginBottom: Spacing.md,
+    },
+    sectionTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: Spacing.sm,
     },
     sectionTitle: {
         fontSize: Typography.size.xs,
         fontWeight: Typography.weight.bold,
         letterSpacing: 2,
         opacity: 0.6,
+    },
+    readTodayChip: {
+        paddingHorizontal: Spacing.sm,
+        paddingVertical: 3,
+        borderRadius: Spacing.borderRadius.round,
+        borderWidth: 1,
+    },
+    readTodayChipText: {
+        fontSize: Typography.size.xs,
+        fontWeight: Typography.weight.semibold,
+        letterSpacing: 0.2,
     },
     memberList: {
         marginBottom: Spacing.xl,
@@ -369,7 +542,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 6,
         paddingVertical: 2,
         borderRadius: 8,
-        marginTop: 2,
+        marginTop: 4,
     },
     streakText: {
         fontSize: 10,
@@ -381,7 +554,7 @@ const styles = StyleSheet.create({
         borderRadius: Spacing.borderRadius.md,
         borderWidth: 1,
         marginBottom: Spacing.md,
-        alignItems: 'center',
+        alignItems: 'flex-start',
         gap: Spacing.md,
     },
     userBadge: {
@@ -390,6 +563,7 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         justifyContent: 'center',
         alignItems: 'center',
+        flexShrink: 0,
     },
     userInitial: {
         fontSize: Typography.size.md,
@@ -416,8 +590,16 @@ const styles = StyleSheet.create({
         lineHeight: 20,
         marginTop: 2,
     },
+    reflectionPreview: {
+        fontSize: Typography.size.xs,
+        lineHeight: 18,
+        fontStyle: 'italic',
+        marginTop: 4,
+    },
     activityIcon: {
         marginLeft: Spacing.xs,
+        paddingTop: 2,
+        flexShrink: 0,
     },
     emptyFeed: {
         paddingVertical: Spacing.xxl * 2,

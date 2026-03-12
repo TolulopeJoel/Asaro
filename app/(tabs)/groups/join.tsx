@@ -45,17 +45,28 @@ export default function JoinGroupScreen() {
             const groupData = groupDoc.data();
 
             // Add user to the members subcollection of the group
-            await firestore()
+            const memberRef = firestore()
                 .collection('groups')
                 .doc(groupId)
                 .collection('members')
-                .doc(user.uid)
-                .set({
-                    userId: user.uid,
-                    displayName: displayName || user.email?.split('@')[0] || 'User',
-                    joinedAt: firestore.FieldValue.serverTimestamp(),
-                    lastActive: firestore.FieldValue.serverTimestamp(),
-                });
+                .doc(user.uid);
+
+            const existingMember = await memberRef.get();
+
+            await memberRef.set({
+                userId: user.uid,
+                displayName: displayName || user.email?.split('@')[0] || 'User',
+                joinedAt: firestore.FieldValue.serverTimestamp(),
+                lastActive: firestore.FieldValue.serverTimestamp(),
+            });
+
+            // Keep memberCount accurate on the group doc (only increment for new members)
+            if (!existingMember.exists) {
+                await firestore()
+                    .collection('groups')
+                    .doc(groupId)
+                    .set({ memberCount: firestore.FieldValue.increment(1) }, { merge: true });
+            }
 
             // Also keep track of groups the user is in at the user level
             await firestore()

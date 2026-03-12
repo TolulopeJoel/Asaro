@@ -121,24 +121,37 @@ export default function GroupsScreen() {
                             <Ionicons name="add-circle-outline" size={28} color={colors.accent} />
                         </TouchableOpacity>
                     </View>
-                    {joinedGroups.map((group) => (
-                        <ScalePressable
-                            key={group.id}
-                            style={[styles.groupCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
-                            onPress={() => router.push(`/(tabs)/groups/${group.id}` as any)}
-                        >
-                            <View style={[styles.groupIcon, { backgroundColor: colors.accentSecondaryLight }]}>
-                                <Ionicons name="people" size={24} color={colors.accent} />
-                            </View>
-                            <View style={styles.groupInfo}>
-                                <Text style={[styles.groupName, { color: colors.textPrimary }]}>{group.name}</Text>
-                                <Text style={[styles.groupDesc, { color: colors.textSecondary }]} numberOfLines={1}>
-                                    {group.description || 'No description available.'}
-                                </Text>
-                            </View>
-                            <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-                        </ScalePressable>
-                    ))}
+                    {joinedGroups.map((group) => {
+                        const today = new Date();
+                        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                        const readTodayCount = group.readTodayDate === todayStr ? (group.readTodayCount || 0) : 0;
+                        return (
+                            <ScalePressable
+                                key={group.id}
+                                style={[styles.groupCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
+                                onPress={() => router.push(`/(tabs)/groups/${group.id}` as any)}
+                            >
+                                <View style={[styles.groupIcon, { backgroundColor: colors.accentSecondaryLight }]}>
+                                    <Ionicons name="people" size={24} color={colors.accent} />
+                                </View>
+                                <View style={styles.groupInfo}>
+                                    <Text style={[styles.groupName, { color: colors.textPrimary }]}>{group.name}</Text>
+                                    <Text style={[styles.groupDesc, { color: colors.textSecondary }]} numberOfLines={1}>
+                                        {group.description || 'No description available.'}
+                                    </Text>
+                                    {readTodayCount > 0 && (
+                                        <View style={styles.activeTodayRow}>
+                                            <View style={[styles.activeDot, { backgroundColor: colors.indicatorActive }]} />
+                                            <Text style={[styles.activeTodayText, { color: colors.indicatorActive }]}>
+                                                {readTodayCount} active today
+                                            </Text>
+                                        </View>
+                                    )}
+                                </View>
+                                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+                            </ScalePressable>
+                        );
+                    })}
                 </ScrollView>
             </SafeAreaView>
         );
@@ -297,5 +310,20 @@ const styles = StyleSheet.create({
     groupDesc: {
         fontSize: Typography.size.sm,
         opacity: 0.7,
+    },
+    activeTodayRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginTop: 3,
+    },
+    activeDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+    },
+    activeTodayText: {
+        fontSize: Typography.size.xs,
+        fontWeight: Typography.weight.semibold,
     },
 });

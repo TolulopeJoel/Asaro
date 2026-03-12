@@ -260,6 +260,12 @@ export const createJournalEntry = async (data: JournalEntryInput) => {
                     ? `${data.chapterStart}-${data.chapterEnd}`
                     : `${data.chapterStart}`;
 
+                // Build a short reflection preview (first 80 chars of the first reflection)
+                const firstReflection = data.reflections?.[0]?.trim();
+                const reflectionPreview = firstReflection && firstReflection.length > 0
+                    ? firstReflection.slice(0, 80) + (firstReflection.length > 80 ? '…' : '')
+                    : undefined;
+
                 const activity = {
                     userId: user.uid,
                     userName: user.displayName || 'Reader',
@@ -267,6 +273,7 @@ export const createJournalEntry = async (data: JournalEntryInput) => {
                     chapters,
                     type: 'reading_completed' as const,
                     queuedAt: new Date().toISOString(),
+                    reflectionPreview,
                 };
 
                 await queueActivity(activity);
