@@ -299,11 +299,6 @@ const MemberProfileSheet = ({
                     </View>
                     <View style={[sheetStyles.statDivider, { backgroundColor: colors.border }]} />
                     <View style={sheetStyles.stat}>
-                        <Text style={[sheetStyles.statValue, { color: colors.textPrimary }]}>{earnedBadges.length}</Text>
-                        <Text style={[sheetStyles.statLabel, { color: colors.textTertiary }]}>Badges</Text>
-                    </View>
-                    <View style={[sheetStyles.statDivider, { backgroundColor: colors.border }]} />
-                    <View style={sheetStyles.stat}>
                         <Text style={[sheetStyles.statValue, { color: colors.textPrimary }]}>
                             {dots.filter(Boolean).length}
                         </Text>
