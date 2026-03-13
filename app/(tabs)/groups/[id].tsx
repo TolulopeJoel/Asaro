@@ -117,7 +117,15 @@ const formatDateLabel = (dateStr: string | null, today: string): string => {
 };
 
 interface Separator { type: 'separator'; id: string; label: string; }
-interface ReadingDigest { type: 'reading_digest'; id: string; dateStr: string; names: string[]; extraCount: number; timestamp: any; }
+interface ReadingDigest {
+    type: 'reading_digest';
+    id: string;
+    dateStr: string;
+    names: string[];
+    extraCount: number;
+    timestamp: any;
+    entries: any[]; // individual journal_entry activities (one per unique user)
+}
 type FeedItem = any | Separator | ReadingDigest;
 
 /**
@@ -160,6 +168,7 @@ const buildProcessedFeed = (
                 names,
                 extraCount: Math.max(0, extraCount),
                 timestamp: entries[0].timestamp,
+                entries: unique, // keep full entries for expanded view
             };
         }
     }
@@ -494,6 +503,7 @@ export default function GroupDetailScreen() {
     const [loading, setLoading] = React.useState(true);
     const [isOffline, setIsOffline] = React.useState(false);
     const [selectedMember, setSelectedMember] = React.useState<any>(null);
+    const [expandedDigests, setExpandedDigests] = React.useState<Set<string>>(new Set());
 
     const resolvedRef = React.useRef({ group: false, activities: false, members: false });
 
@@ -585,9 +595,6 @@ export default function GroupDetailScreen() {
         return (b.streak || 0) - (a.streak || 0);
     });
 
-    const readTodayCount = sortedMembers.filter(m => m.lastReadDate === today).length;
-    const totalMembers = sortedMembers.length;
-
     const groupStreak: number = groupData?.groupStreak || 0;
     const groupStreakLastDate: string | undefined = groupData?.groupStreakLastDate;
     const isGroupStreakActive = groupStreak >= 2 && groupStreakLastDate && (() => {
@@ -625,18 +632,6 @@ export default function GroupDetailScreen() {
                 <View style={styles.sectionHeader}>
                     <View style={styles.sectionTitleRow}>
                         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>LADIES & GENTLEMEN</Text>
-                        {totalMembers > 0 && (
-                            <View style={[styles.readTodayChip, {
-                                backgroundColor: readTodayCount > 0 ? colors.indicatorActive + '22' : colors.border,
-                                borderColor: readTodayCount > 0 ? colors.indicatorActive : colors.border,
-                            }]}>
-                                <Text style={[styles.readTodayChipText, {
-                                    color: readTodayCount > 0 ? colors.indicatorActive : colors.textTertiary,
-                                }]}>
-                                    {readTodayCount > 0 ? `✓ ${readTodayCount} of ${totalMembers} read today` : `0 of ${totalMembers} read today`}
-                                </Text>
-                            </View>
-                        )}
                     </View>
                 </View>
 
@@ -644,7 +639,6 @@ export default function GroupDetailScreen() {
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.memberList}>
                         {sortedMembers.map((member) => {
                             const readToday = member.lastReadDate === today;
-                            const hasBadges = Array.isArray(member.badges) && member.badges.length > 0;
                             return (
                                 <TouchableOpacity
                                     key={member.id}
@@ -655,7 +649,6 @@ export default function GroupDetailScreen() {
                                     <View style={styles.avatarContainer}>
                                         <View style={[styles.memberAvatar, {
                                             backgroundColor: getAvatarColor(member.userId || member.id, member.displayName),
-                                            borderWidth: readToday ? 2.5 : 0,
                                             borderColor: colors.indicatorActive,
                                         }]}>
                                             <Text style={[styles.memberInitial, { color: 'white' }]}>
@@ -667,23 +660,10 @@ export default function GroupDetailScreen() {
                                                 <Ionicons name="checkmark" size={10} color="white" />
                                             </View>
                                         )}
-                                        {/* Top badge indicator */}
-                                        {hasBadges && !readToday && (
-                                            <View style={[styles.topBadgeIndicator, { borderColor: colors.background, backgroundColor: colors.cardBackground }]}>
-                                                <Text style={{ fontSize: 8 }}>
-                                                    {getBadgeById((member.badges as string[])[0])?.emoji ?? '✨'}
-                                                </Text>
-                                            </View>
-                                        )}
                                     </View>
                                     <Text style={[styles.memberName, { color: colors.textSecondary }]} numberOfLines={1}>
                                         {member.displayName}
                                     </Text>
-                                    {(member.streak || 0) > 0 && (
-                                        <Text style={[styles.memberStreakText, { color: colors.textTertiary }]}>
-                                            🔥 {member.streak}
-                                        </Text>
-                                    )}
                                 </TouchableOpacity>
                             );
                         })}
@@ -740,25 +720,82 @@ export default function GroupDetailScreen() {
                         // ── Reading digest ──
                         if (item.type === 'reading_digest') {
                             const digest = item as ReadingDigest;
+                            const isExpanded = expandedDigests.has(digest.id);
+                            const totalCount = digest.entries.length;
                             const nameStr = digest.extraCount > 0
                                 ? `${digest.names.join(', ')} +${digest.extraCount} more`
                                 : digest.names.join(' & ');
+
+                            const toggleDigest = () => {
+                                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                                setExpandedDigests(prev => {
+                                    const next = new Set(prev);
+                                    if (next.has(digest.id)) next.delete(digest.id);
+                                    else next.add(digest.id);
+                                    return next;
+                                });
+                            };
+
                             return (
-                                <View key={digest.id} style={[styles.digestCard, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
-                                    <View style={[styles.digestIconWrap, { backgroundColor: colors.accentSecondaryLight }]}>
-                                        <Ionicons name="book-outline" size={18} color={colors.accent} />
-                                    </View>
-                                    <View style={styles.digestContent}>
-                                        <Text style={[styles.digestLine, { color: colors.textPrimary }]}>
-                                            📖 {nameStr}
-                                        </Text>
-                                        <Text style={[styles.digestSub, { color: colors.textTertiary }]}>
-                                            all read today
-                                        </Text>
-                                    </View>
-                                    <Text style={[styles.timestamp, { color: colors.textTertiary }]}>
-                                        {formatRelativeTime(digest.timestamp)}
-                                    </Text>
+                                <View key={digest.id} style={[styles.digestCard, {
+                                    backgroundColor: colors.cardBackground,
+                                    borderColor: isExpanded ? colors.accent : colors.border,
+                                }]}>
+                                    {/* Header row — always visible */}
+                                    <TouchableOpacity
+                                        style={styles.digestHeader}
+                                        onPress={toggleDigest}
+                                        activeOpacity={0.7}
+                                    >
+                                        <View style={[styles.digestIconWrap, { backgroundColor: colors.accentSecondaryLight }]}>
+                                            <Ionicons name="book-outline" size={18} color={colors.accent} />
+                                        </View>
+                                        <View style={styles.digestContent}>
+                                            <Text style={[styles.digestLine, { color: colors.textPrimary }]}>
+                                                📖 {nameStr}
+                                            </Text>
+                                            <Text style={[styles.digestSub, { color: colors.textTertiary }]}>
+                                                {totalCount} members read · {formatRelativeTime(digest.timestamp)}
+                                            </Text>
+                                        </View>
+                                        <Ionicons
+                                            name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                                            size={16}
+                                            color={colors.textTertiary}
+                                        />
+                                    </TouchableOpacity>
+
+                                    {/* Expanded entries */}
+                                    {isExpanded && (
+                                        <View style={[styles.digestEntries, { borderTopColor: colors.border }]}>
+                                            {digest.entries.map((entry: any, i: number) => (
+                                                <View
+                                                    key={entry.id || `${digest.id}-${i}`}
+                                                    style={[styles.digestEntry, {
+                                                        borderBottomColor: colors.border,
+                                                        borderBottomWidth: i < digest.entries.length - 1 ? 1 : 0,
+                                                    }]}
+                                                >
+                                                    <View style={[styles.digestEntryAvatar, { backgroundColor: getAvatarColor(entry.userId, entry.userName) }]}>
+                                                        <Text style={styles.digestEntryInitial}>
+                                                            {entry.userName?.charAt(0).toUpperCase() || '?'}
+                                                        </Text>
+                                                    </View>
+                                                    <View style={styles.digestEntryText}>
+                                                        <Text style={[styles.digestEntryName, { color: colors.textPrimary }]}>
+                                                            {entry.userName}
+                                                        </Text>
+                                                        <Text style={[styles.digestEntrySub, { color: colors.textTertiary }]}>
+                                                            {entry.bookName} {entry.chapters}
+                                                        </Text>
+                                                    </View>
+                                                    <Text style={[styles.timestamp, { color: colors.textTertiary }]}>
+                                                        {formatRelativeTime(entry.timestamp)}
+                                                    </Text>
+                                                </View>
+                                            ))}
+                                        </View>
+                                    )}
                                 </View>
                             );
                         }
@@ -808,14 +845,14 @@ export default function GroupDetailScreen() {
                                         <View style={styles.milestoneRow}>
                                             <Text style={styles.milestoneEmoji}>{activity.badgeEmoji}</Text>
                                             <Text style={[styles.activityText, { color: colors.textSecondary, flex: 1 }]}>
-                                                earned the <Text style={{ fontWeight: Typography.weight.bold, color: colors.textPrimary }}>{activity.badgeLabel}</Text> badge — {activity.badgeDesc}
+                                                {activity.badgeDesc}
                                             </Text>
                                         </View>
                                     )}
                                     {isEntry && (
                                         <>
                                             <Text style={[styles.activityText, { color: colors.textSecondary }]}>
-                                                shared an entry on {activity.bookName} {activity.chapters}
+                                                read {activity.bookName} {activity.chapters}
                                             </Text>
                                             {activity.preview ? (
                                                 <Text style={[styles.reflectionPreview, { color: colors.textTertiary }]}>
@@ -839,11 +876,6 @@ export default function GroupDetailScreen() {
                                     {isRemoved && (
                                         <Text style={[styles.activityText, { color: colors.textTertiary, fontStyle: 'italic' }]}>
                                             has left the group.
-                                        </Text>
-                                    )}
-                                    {!isEntry && !isJoined && !isAbsent && !isRemoved && !isMilestone && (
-                                        <Text style={[styles.activityText, { color: colors.textSecondary }]}>
-                                            just finished reading {activity.bookName} {activity.chapters}
                                         </Text>
                                     )}
                                 </View>
@@ -921,8 +953,6 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between', flexWrap: 'wrap', gap: Spacing.sm,
     },
     sectionTitle: { fontSize: Typography.size.xs, fontWeight: Typography.weight.bold, letterSpacing: 2, opacity: 0.6 },
-    readTodayChip: { paddingHorizontal: Spacing.sm, paddingVertical: 3, borderRadius: Spacing.borderRadius.round, borderWidth: 1 },
-    readTodayChipText: { fontSize: Typography.size.xs, fontWeight: Typography.weight.semibold, letterSpacing: 0.2 },
     memberList: { marginBottom: Spacing.xl },
     memberItem: { alignItems: 'center', marginRight: Spacing.lg, width: 60, paddingBottom: Spacing.sm },
     avatarContainer: { position: 'relative', marginBottom: Spacing.xs },
@@ -932,14 +962,8 @@ const styles = StyleSheet.create({
         width: 16, height: 16, borderRadius: 8, borderWidth: 2,
         justifyContent: 'center', alignItems: 'center',
     },
-    topBadgeIndicator: {
-        position: 'absolute', top: -2, right: -2,
-        width: 16, height: 16, borderRadius: 8, borderWidth: 1.5,
-        justifyContent: 'center', alignItems: 'center',
-    },
     memberInitial: { fontSize: Typography.size.lg, fontWeight: Typography.weight.bold },
     memberName: { fontSize: Typography.size.xs, textAlign: 'center', fontFamily: Typography.fontFamily.medium },
-    memberStreakText: { fontSize: 10, marginTop: 2 },
     activityCard: {
         flexDirection: 'row', padding: Spacing.md,
         borderRadius: Spacing.borderRadius.md, borderWidth: 1,
@@ -986,12 +1010,15 @@ const styles = StyleSheet.create({
     },
     // Reading digest
     digestCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: Spacing.md,
         borderRadius: Spacing.borderRadius.md,
         borderWidth: 1,
         marginBottom: Spacing.md,
+        overflow: 'hidden',
+    },
+    digestHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: Spacing.md,
         gap: Spacing.md,
     },
     digestIconWrap: {
@@ -1005,6 +1032,32 @@ const styles = StyleSheet.create({
     digestContent: { flex: 1, gap: 2 },
     digestLine: { fontSize: Typography.size.sm, fontWeight: Typography.weight.semibold },
     digestSub: { fontSize: Typography.size.xs },
+    digestEntries: {
+        borderTopWidth: 1,
+    },
+    digestEntry: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: Spacing.sm,
+        paddingHorizontal: Spacing.md,
+        gap: Spacing.sm,
+    },
+    digestEntryAvatar: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        justifyContent: 'center',
+        alignItems: 'center',
+        flexShrink: 0,
+    },
+    digestEntryInitial: {
+        fontSize: 11,
+        fontWeight: Typography.weight.bold,
+        color: 'white',
+    },
+    digestEntryText: { flex: 1, gap: 1 },
+    digestEntryName: { fontSize: Typography.size.xs, fontWeight: Typography.weight.semibold },
+    digestEntrySub: { fontSize: Typography.size.xs },
     // Pinned milestone hero
     milestoneHero: {
         borderWidth: 2,

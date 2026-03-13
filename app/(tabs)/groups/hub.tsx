@@ -181,7 +181,7 @@ export default function GroupsScreen() {
 
                 <View style={[styles.emptyState, { borderColor: colors.border }]}>
                     <Ionicons name="add-circle-outline" size={32} color={colors.textTertiary} />
-                    <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Enter the secret code to join friends growing in the Word.</Text>
+                    <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Enter the secret code to join friends.</Text>
 
                     <Button
                         label="Enter Group Code"
