@@ -316,10 +316,15 @@ export const createJournalEntry = async (data: JournalEntryInput) => {
                     ? `${data.chapterStart}-${data.chapterEnd}`
                     : `${data.chapterStart}`;
 
-                // Build a short reflection preview (first 80 chars of the first reflection)
-                const firstReflection = data.reflections?.[0]?.trim();
-                const reflectionPreview = firstReflection && firstReflection.length > 0
-                    ? firstReflection.slice(0, 80) + (firstReflection.length > 80 ? '…' : '')
+                // Build a short preview from the first non-empty field:
+                // reflections → notes → first action item
+                const previewText = (
+                    data.reflections?.find(r => r?.trim().length > 0)?.trim() ||
+                    data.notes?.trim() ||
+                    data.actionItems?.find(a => a?.action?.trim().length > 0)?.action?.trim()
+                );
+                const reflectionPreview = previewText
+                    ? previewText.slice(0, 45) + (previewText.length > 45 ? '…' : '')
                     : undefined;
 
                 const resolvedName = user.displayName || user.email?.split('@')[0] || 'Reader';
