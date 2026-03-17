@@ -1,6 +1,6 @@
 import { Flashback } from '@/src/components/Flashback';
 import { WeeklyStreak } from '@/src/components/WeeklyStreak';
-import { getMissedDaysCount, getTotalEntryCount, JournalEntry, getReadingProgress, checkEntryCoversChapters, toggleReadingItem } from "@/src/data/database";
+import { getMissedDaysCount, getTotalEntryCount, JournalEntry, getReadingProgress, getLastCompletedReadingItemId, checkEntryCoversChapters, toggleReadingItem } from "@/src/data/database";
 import { READING_PLAN_DATA, ReadingItem } from "@/src/data/readingPlanData";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { Spacing } from "@/src/theme/spacing";
@@ -98,27 +98,26 @@ const NextReading = React.memo(() => {
     const [nextItem, setNextItem] = useState<ReadingItem | null>(null);
 
     const loadNextReading = useCallback(async () => {
-        const completedIds = await getReadingProgress();
+        const [completedIds, lastCompletedId] = await Promise.all([
+            getReadingProgress(),
+            getLastCompletedReadingItemId(),
+        ]);
         const completedSet = new Set(completedIds);
 
-        // Find the furthest index in the plan that has been completed
-        let furthestCompletedIndex = -1;
-        for (let i = READING_PLAN_DATA.length - 1; i >= 0; i--) {
-            if (completedSet.has(READING_PLAN_DATA[i].id)) {
-                furthestCompletedIndex = i;
-                break;
+        let nextItem: ReadingItem | undefined;
+
+        if (lastCompletedId != null) {
+            // Find where the last-completed item sits in the plan
+            const lastIndex = READING_PLAN_DATA.findIndex(item => item.id === lastCompletedId);
+            if (lastIndex >= 0) {
+                // First uncompleted item after the one you read last
+                nextItem = READING_PLAN_DATA
+                    .slice(lastIndex + 1)
+                    .find(item => !completedSet.has(item.id));
             }
         }
 
-        // Look for the first uncompleted item AFTER the furthest completed point
-        let nextItem: ReadingItem | undefined;
-        if (furthestCompletedIndex >= 0) {
-            nextItem = READING_PLAN_DATA
-                .slice(furthestCompletedIndex + 1)
-                .find(item => !completedSet.has(item.id));
-        }
-
-        // Fall back to the first uncompleted item anywhere in the plan
+        // Fall back: first uncompleted item anywhere in the plan
         if (!nextItem) {
             nextItem = READING_PLAN_DATA.find(item => !completedSet.has(item.id));
         }
