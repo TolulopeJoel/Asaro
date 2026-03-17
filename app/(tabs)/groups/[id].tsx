@@ -87,7 +87,7 @@ const formatLastRead = (dateStr: string | undefined, today: string): string => {
         const now = new Date(today);
         const diff = Math.round((now.getTime() - d.getTime()) / 86400000);
         if (diff === 1) return 'Read yesterday';
-        if (diff < 7) return `${diff} days ago`;
+        if (diff < 14) return `${diff} days ago`;
         return `Last read ${d.toLocaleDateString([], { month: 'short', day: 'numeric' })}`;
     } catch { return dateStr; }
 };
@@ -851,7 +851,6 @@ export default function GroupDetailScreen() {
 
                                         {isMilestone && (
                                             <View style={styles.milestoneRow}>
-                                                <Text style={styles.milestoneEmoji}>{activity.badgeEmoji}</Text>
                                                 <Text style={[styles.activityText, { color: colors.textSecondary, flex: 1 }]}>
                                                     {activity.badgeDesc}
                                                 </Text>
@@ -888,24 +887,26 @@ export default function GroupDetailScreen() {
                                         )}
                                     </View>
                                     <View style={styles.activityIcon}>
-                                        <Ionicons
-                                            name={
-                                                isMilestone ? 'ribbon'
-                                                    : isEntry ? 'journal-outline'
+                                        {isMilestone ? (
+                                            <Text style={{ fontSize: 18, marginTop: -2 }}>{activity.badgeEmoji}</Text>
+                                        ) : (
+                                            <Ionicons
+                                                name={
+                                                    isEntry ? 'journal-outline'
                                                         : isJoined ? 'person-add-outline'
                                                             : isAbsent ? 'moon-outline'
                                                                 : isRemoved ? 'exit-outline'
                                                                     : 'checkmark-circle'
-                                            }
-                                            size={20}
-                                            color={
-                                                isMilestone ? colors.accent
-                                                    : isEntry ? colors.accentSecondary
+                                                }
+                                                size={20}
+                                                color={
+                                                    isEntry ? colors.accentSecondary
                                                         : isJoined ? colors.indicatorActive
                                                             : isAbsent ? colors.accent
                                                                 : colors.textTertiary
-                                            }
-                                        />
+                                                }
+                                            />
+                                        )}
                                     </View>
                                 </View>
                             );
@@ -1018,7 +1019,6 @@ const getStyles = (colors: any) => StyleSheet.create({
     },
     activityIcon: { marginLeft: Spacing.xs, paddingTop: 4, flexShrink: 0 },
     milestoneRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.xs, marginTop: 2, flexWrap: 'wrap' },
-    milestoneEmoji: { fontSize: 18, lineHeight: 22 },
     groupMilestoneCard: {
         flexDirection: 'row', alignItems: 'center',
         padding: Spacing.md, borderRadius: Spacing.borderRadius.md,
