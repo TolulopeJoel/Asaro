@@ -851,3 +851,31 @@ export const checkEntryExists = async (bookName: string, chapterStart: number, c
         return result?.id ?? null;
     });
 };
+
+/**
+ * Check whether any journal entry exists that fully covers a plan item's chapter range.
+ * "Fully covers" means: entry.chapter_start <= planStart AND entry.chapter_end >= planEnd
+ * (mirrors the matching condition used in findMatchingReadingPlanItems).
+ *
+ * Used by the plan toggle so that tapping a plan item opens the add-entry screen only
+ * when no existing entry covers it, even if the entry spans a wider chapter range.
+ *
+ * Returns the matching entry id, or null if none found.
+ */
+export const checkEntryCoversChapters = async (
+    bookName: string,
+    planChapterStart: number,
+    planChapterEnd: number
+): Promise<number | null> => {
+    return await withDatabase(async (database) => {
+        const result = await database.getFirstAsync<{ id: number }>(
+            `SELECT id FROM journal_entries
+             WHERE book_name = ?
+               AND chapter_start <= ?
+               AND COALESCE(chapter_end, chapter_start) >= ?
+             LIMIT 1`,
+            [bookName, planChapterStart, planChapterEnd]
+        );
+        return result?.id ?? null;
+    });
+};

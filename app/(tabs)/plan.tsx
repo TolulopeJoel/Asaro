@@ -7,7 +7,7 @@ import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { Ionicons } from '@expo/vector-icons';
 import { READING_PLAN_DATA, ReadingItem } from '@/src/data/readingPlanData';
-import { getReadingProgress, toggleReadingItem, checkEntryExists } from '@/src/data/database';
+import { getReadingProgress, toggleReadingItem, checkEntryCoversChapters } from '@/src/data/database';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { Alert } from 'react-native';
@@ -150,24 +150,38 @@ export default function PlanScreen() {
 
     const handleToggle = async (id: number, completed: boolean) => {
         if (completed) {
-            // If they are trying to mark it as completed, check if entry exists
             const item = READING_PLAN_DATA.find(i => i.id === id);
             if (!item) return;
 
-            const [startStr, endStr] = item.chapters.split('-').map(s => s.trim());
-            const start = Number(startStr);
-            const end = endStr ? Number(endStr) : start;
+            // Parse the plan item's chapter range, stripping verse notation (e.g. "119:64-176")
+            const parts = item.chapters.split('-');
+            const planStart = parseInt(parts[0].split(':')[0], 10);
+            const planEnd = parts.length > 1
+                ? parseInt(parts[parts.length - 1].split(':')[0], 10)
+                : planStart;
 
-            const existingEntryId = await checkEntryExists(item.book, start, end === start ? undefined : end);
+            if (isNaN(planStart)) {
+                // Can't determine chapters (e.g. combined books with empty chapters), just toggle
+                await toggleReadingItem(id, true);
+                const newCompleted = new Set(completedItems);
+                newCompleted.add(id);
+                setCompletedItems(newCompleted);
+                setProgress(Math.round((newCompleted.size / READING_PLAN_DATA.length) * 100));
+                return;
+            }
+
+            // Check if any existing journal entry fully covers this plan item's chapter range
+            const existingEntryId = await checkEntryCoversChapters(item.book, planStart, planEnd);
 
             if (existingEntryId) {
-                // If entry exists, just tick it immediately for a smoother experience
+                // Entry already covers it — just tick it off
                 await toggleReadingItem(id, true);
                 const newCompleted = new Set(completedItems);
                 newCompleted.add(id);
                 setCompletedItems(newCompleted);
                 setProgress(Math.round((newCompleted.size / READING_PLAN_DATA.length) * 100));
             } else {
+                // No entry yet — go write one
                 router.push({
                     pathname: '/addEntry',
                     params: {
@@ -178,7 +192,7 @@ export default function PlanScreen() {
                 });
             }
         } else {
-            // If they are trying to UN-mark it, we allow it immediately (delete from progress table)
+            // Un-mark: delete from progress table immediately
             await toggleReadingItem(id, false);
             const newCompleted = new Set(completedItems);
             newCompleted.delete(id);
