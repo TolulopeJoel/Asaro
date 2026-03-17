@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TextInput, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Alert, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,12 +10,91 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { Button } from '@/src/components/Button';
+import Animated, {
+    useAnimatedStyle,
+    withSpring,
+    withTiming,
+    interpolateColor,
+    useSharedValue
+} from 'react-native-reanimated';
+import React from 'react';
+
+const GenderOption = ({
+    selected,
+    onPress,
+    label,
+    icon,
+    colors
+}: {
+    selected: boolean;
+    onPress: () => void;
+    label: string;
+    icon: any;
+    colors: any;
+}) => {
+    const scale = useSharedValue(1);
+    const progress = useSharedValue(selected ? 1 : 0);
+
+    React.useEffect(() => {
+        scale.value = withSpring(selected ? 1.05 : 1);
+        progress.value = withTiming(selected ? 1 : 0, { duration: 250 });
+    }, [selected]);
+
+    const animatedStyle = useAnimatedStyle(() => {
+        const backgroundColor = interpolateColor(
+            progress.value,
+            [0, 1],
+            [colors.cardBackground, colors.accentSecondaryLight]
+        );
+        const borderColor = interpolateColor(
+            progress.value,
+            [0, 1],
+            [colors.borderSubtle, colors.accent]
+        );
+
+        return {
+            backgroundColor,
+            borderColor,
+            transform: [{ scale: scale.value }],
+        };
+    });
+
+    return (
+        <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={onPress}
+            style={{ flex: 1 }}
+        >
+            <Animated.View style={[styles.genderOption, animatedStyle]}>
+                <View style={styles.genderIconContainer}>
+                    <Ionicons
+                        name={icon}
+                        size={22}
+                        color={selected ? colors.accent : colors.textTertiary}
+                    />
+                    {selected && (
+                        <Animated.View style={styles.checkIndicator}>
+                            <Ionicons name="checkmark-circle" size={14} color={colors.accent} />
+                        </Animated.View>
+                    )}
+                </View>
+                <Text style={[
+                    styles.genderLabel,
+                    { color: selected ? colors.textPrimary : colors.textSecondary }
+                ]}>
+                    {label}
+                </Text>
+            </Animated.View>
+        </TouchableOpacity>
+    );
+};
 
 export default function AuthScreen() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [isSignUp, setIsSignUp] = useState(false);
+    const [gender, setGender] = useState<'m' | 'f' | null>(null);
     const [loading, setLoading] = useState(false);
     const { colors } = useTheme();
     const router = useRouter();
@@ -26,8 +105,9 @@ export default function AuthScreen() {
             return;
         }
 
-        if (isSignUp && password !== confirmPassword) {
-            Alert.alert('Error', 'Passwords do not match');
+        if (isSignUp && (!gender || password !== confirmPassword)) {
+            if (!gender) Alert.alert('Error', 'Please select if you are a Gentleman or a Lady');
+            else Alert.alert('Error', 'Passwords do not match');
             return;
         }
 
@@ -36,16 +116,29 @@ export default function AuthScreen() {
             if (isSignUp) {
                 const userCredential = await auth().createUserWithEmailAndPassword(email, password);
 
-                // Update display name from the locally stored onboarding name
+                // Update profile from local onboarding data
                 const localName = await AsyncStorage.getItem('user_name');
-                if (localName && userCredential.user) {
-                    // 1. Set it on the Firebase Auth profile
-                    await userCredential.user.updateProfile({ displayName: localName });
-                    // 2. Write it to Firestore as the single source of truth
-                    await firestore()
-                        .collection('users')
-                        .doc(userCredential.user.uid)
-                        .set({ displayName: localName }, { merge: true });
+                const localGender = await AsyncStorage.getItem('user_gender');
+
+                if (userCredential.user) {
+                    const profileUpdates: any = {};
+                    if (localName) {
+                        await userCredential.user.updateProfile({ displayName: localName });
+                        profileUpdates.displayName = localName;
+                    }
+
+                    // Use the gender selected on the sign up form
+                    const finalGender = gender || localGender;
+                    if (finalGender) {
+                        profileUpdates.gender = finalGender;
+                    }
+
+                    if (Object.keys(profileUpdates).length > 0) {
+                        await firestore()
+                            .collection('users')
+                            .doc(userCredential.user.uid)
+                            .set(profileUpdates, { merge: true });
+                    }
                 }
 
                 Alert.alert('Success', 'Account created successfully!');
@@ -102,17 +195,36 @@ export default function AuthScreen() {
                         </View>
 
                         {isSignUp && (
-                            <View style={styles.inputContainer}>
-                                <Ionicons name="lock-closed-outline" size={20} color={colors.textTertiary} style={styles.inputIcon} />
-                                <TextInput
-                                    style={[styles.input, { color: colors.textPrimary }]}
-                                    placeholder="Confirm Password"
-                                    placeholderTextColor={colors.textMuted}
-                                    value={confirmPassword}
-                                    onChangeText={setConfirmPassword}
-                                    secureTextEntry
-                                />
-                            </View>
+                            <>
+                                <View style={styles.inputContainer}>
+                                    <Ionicons name="lock-closed-outline" size={20} color={colors.textTertiary} style={styles.inputIcon} />
+                                    <TextInput
+                                        style={[styles.input, { color: colors.textPrimary }]}
+                                        placeholder="Confirm Password"
+                                        placeholderTextColor={colors.textMuted}
+                                        value={confirmPassword}
+                                        onChangeText={setConfirmPassword}
+                                        secureTextEntry
+                                    />
+                                </View>
+
+                                <View style={styles.genderContainer}>
+                                    <GenderOption
+                                        selected={gender === 'm'}
+                                        onPress={() => setGender('m')}
+                                        label="Gentleman"
+                                        icon="man-outline"
+                                        colors={colors}
+                                    />
+                                    <GenderOption
+                                        selected={gender === 'f'}
+                                        onPress={() => setGender('f')}
+                                        label="Lady"
+                                        icon="woman-outline"
+                                        colors={colors}
+                                    />
+                                </View>
+                            </>
                         )}
 
                         <Button
@@ -175,5 +287,33 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: Typography.size.md,
         height: 50,
+    },
+    genderContainer: {
+        flexDirection: 'row',
+        gap: Spacing.md,
+        marginTop: Spacing.xs,
+    },
+    genderOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: Spacing.sm,
+        paddingVertical: Spacing.md,
+        borderRadius: Spacing.borderRadius.md,
+        borderWidth: 1.5,
+    },
+    genderIconContainer: {
+        position: 'relative',
+    },
+    checkIndicator: {
+        position: 'absolute',
+        top: -8,
+        right: -8,
+        backgroundColor: 'white',
+        borderRadius: 10,
+    },
+    genderLabel: {
+        fontSize: Typography.size.sm,
+        fontWeight: Typography.weight.semibold,
     },
 });

@@ -129,7 +129,9 @@ export const syncPendingActivities = async (): Promise<void> => {
         const displayName = user.displayName || 'Reader';
 
         const userDoc = await firestore().collection('users').doc(user.uid).get();
-        const groupIds: string[] = userDoc.data()?.groupIds || [];
+        const userData = userDoc.data() || {};
+        const groupIds: string[] = userData.groupIds || [];
+        const userGender = userData.gender;
 
         if (groupIds.length === 0) {
             // User is not in any groups. No need to keep these queued.
@@ -282,6 +284,7 @@ export const syncPendingActivities = async (): Promise<void> => {
                             batch.set(memberRef, {
                                 userId: activity.userId,
                                 displayName,
+                                gender: userGender,
                                 lastReadDate: activityLocalDateStr,
                                 streak,
                                 weeklyActivity,

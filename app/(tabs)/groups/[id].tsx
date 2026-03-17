@@ -500,6 +500,8 @@ export default function GroupDetailScreen() {
     const [selectedMember, setSelectedMember] = React.useState<any>(null);
     const [expandedDigests, setExpandedDigests] = React.useState<Set<string>>(new Set());
 
+    const styles = React.useMemo(() => getStyles(colors), [colors]);
+
     const resolvedRef = React.useRef({ group: false, activities: false, members: false });
 
     const checkAllResolved = () => {
@@ -599,6 +601,22 @@ export default function GroupDetailScreen() {
         return groupStreakLastDate === today || groupStreakLastDate === yStr;
     })();
 
+    const getPronoun = (userId: string, type: 'subject' | 'object' | 'possessive' = 'object') => {
+        const member = members.find(m => m.userId === userId || m.id === userId);
+        const gender = member?.gender;
+
+        // Ladies first 😉
+        if (gender === 'f') {
+            if (type === 'subject') return 'she';
+            if (type === 'possessive') return 'her';
+            return 'her';
+        }
+
+        if (type === 'subject') return 'he';
+        if (type === 'possessive') return 'his';
+        return 'him';
+    };
+
     const { pinnedMilestone, feedItems } = buildProcessedFeed(activities, today);
 
     return (
@@ -676,11 +694,11 @@ export default function GroupDetailScreen() {
 
                 {/* Pinned group milestone hero card */}
                 {pinnedMilestone && (
-                    <View style={[styles.milestoneHero, { borderColor: '#FFCC00', backgroundColor: '#FFCC0015' }]}>
+                    <View style={[styles.milestoneHero, { borderColor: colors.accent, backgroundColor: colors.accent + '10' }]}>
                         <View style={styles.milestoneHeroTop}>
                             <Text style={styles.milestoneHeroBadge}>{pinnedMilestone.badgeEmoji}</Text>
                             <View style={styles.milestoneHeroConfetti}>
-                                <Text style={styles.milestoneHeroLabel}>
+                                <Text style={[styles.milestoneHeroLabel, { color: colors.accent }]}>
                                     {pinnedMilestone.badgeLabel.toUpperCase()}
                                 </Text>
                             </View>
@@ -732,30 +750,30 @@ export default function GroupDetailScreen() {
                             };
 
                             return (
-                                <View key={digest.id} style={[styles.digestCard, {
-                                    backgroundColor: colors.cardBackground,
-                                    borderColor: isExpanded ? colors.accent : colors.border,
-                                }]}>
+                                <View key={digest.id} style={styles.digestCard}>
+                                    {/* Accent line for digest */}
+                                    <View style={[styles.activityAccent, { backgroundColor: colors.accent }]} />
+
                                     {/* Header row — always visible */}
                                     <TouchableOpacity
                                         style={styles.digestHeader}
                                         onPress={toggleDigest}
                                         activeOpacity={0.7}
                                     >
-                                        <View style={[styles.digestIconWrap, { backgroundColor: colors.accentSecondaryLight }]}>
-                                            <Ionicons name="book-outline" size={18} color={colors.accent} />
+                                        <View style={[styles.digestIconWrap, { backgroundColor: colors.accentSecondaryLight + '40' }]}>
+                                            <Ionicons name="journal-outline" size={20} color={colors.accent} />
                                         </View>
                                         <View style={styles.digestContent}>
                                             <Text style={[styles.digestLine, { color: colors.textPrimary }]}>
-                                                📖 {nameStr}
+                                                {nameStr}
                                             </Text>
-                                            <Text style={[styles.digestSub, { color: colors.textTertiary }]}>
-                                                {totalCount} members read · {formatRelativeTime(digest.timestamp)}
+                                            <Text style={[styles.digestSub, { color: colors.textSecondary }]}>
+                                                {totalCount} people read · {formatRelativeTime(digest.timestamp)}
                                             </Text>
                                         </View>
                                         <Ionicons
                                             name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                                            size={16}
+                                            size={18}
                                             color={colors.textTertiary}
                                         />
                                     </TouchableOpacity>
@@ -804,23 +822,17 @@ export default function GroupDetailScreen() {
                         const isRemoved = activity.type === 'member_removed';
                         const isMilestone = activity.type === 'milestone_earned';
                         return (
-                            <View
-                                key={activity.id}
-                                style={[
-                                    styles.activityCard,
+                            <View key={activity.id} style={styles.activityCard}>
+                                <View style={[
+                                    styles.activityAccent,
                                     {
-                                        borderColor: isMilestone ? colors.accent
-                                            : isEntry ? colors.accentSecondaryLight
+                                        backgroundColor: isMilestone ? colors.accent
+                                            : isEntry ? colors.accentSecondary
                                                 : isJoined ? colors.indicatorActive
                                                     : colors.border,
-                                        backgroundColor: isMilestone ? colors.accent + '14'
-                                            : isEntry ? colors.accentSecondaryLight + '22'
-                                                : isJoined ? colors.indicatorActive + '11'
-                                                    : isAbsent ? colors.accentLight + '11'
-                                                        : 'transparent',
                                     }
-                                ]}
-                            >
+                                ]} />
+
                                 <View style={[styles.userBadge, { backgroundColor: getAvatarColor(activity.userId, activity.userName) }]}>
                                     <Text style={[styles.userInitial, { color: 'white' }]}>
                                         {activity.userName?.charAt(0).toUpperCase() || '?'}
@@ -828,7 +840,9 @@ export default function GroupDetailScreen() {
                                 </View>
                                 <View style={styles.activityContent}>
                                     <View style={styles.activityHeader}>
-                                        <Text style={[styles.userName, { color: colors.textPrimary }]}>{activity.userName}</Text>
+                                        <Text style={[styles.userName, { color: colors.textPrimary }]}>
+                                            {isAbsent ? `Where is ${activity.userName}? 🥹` : activity.userName}
+                                        </Text>
                                         {timeStr ? (
                                             <Text style={[styles.timestamp, { color: colors.textTertiary }]}>{timeStr}</Text>
                                         ) : (
@@ -850,7 +864,7 @@ export default function GroupDetailScreen() {
                                                 read {activity.bookName} {activity.chapters}
                                             </Text>
                                             {activity.preview ? (
-                                                <Text style={[styles.reflectionPreview, { color: colors.textTertiary }]}>
+                                                <Text style={[styles.reflectionPreview, { color: colors.textTertiary, borderLeftColor: colors.accentSecondaryLight }]}>
                                                     "{activity.preview}"
                                                 </Text>
                                             ) : null}
@@ -864,8 +878,8 @@ export default function GroupDetailScreen() {
                                     {isAbsent && (
                                         <Text style={[styles.activityText, { color: colors.textSecondary }]}>
                                             {activity.threshold === 30
-                                                ? `has been away for a month. We miss your insights! 🫂`
-                                                : `hasn't been seen in a week. Drop a message to encourage them! 🕊️`}
+                                                ? `${getPronoun(activity.userId, 'subject').charAt(0).toUpperCase() + getPronoun(activity.userId, 'subject').slice(1)} has been away for a month. We miss ${getPronoun(activity.userId, 'possessive')} insights! 🫂`
+                                                : `We haven't seen ${getPronoun(activity.userId, 'object')} in a week. Drop a message to encourage ${getPronoun(activity.userId, 'object')}!`}
                                         </Text>
                                     )}
                                     {isRemoved && (
@@ -877,10 +891,10 @@ export default function GroupDetailScreen() {
                                 <View style={styles.activityIcon}>
                                     <Ionicons
                                         name={
-                                            isMilestone ? 'star'
-                                                : isEntry ? 'book-outline'
-                                                    : isJoined ? 'person-add'
-                                                        : isAbsent ? 'notifications-outline'
+                                            isMilestone ? 'ribbon'
+                                                : isEntry ? 'journal-outline'
+                                                    : isJoined ? 'person-add-outline'
+                                                        : isAbsent ? 'moon-outline'
                                                             : isRemoved ? 'exit-outline'
                                                                 : 'checkmark-circle'
                                         }
@@ -928,7 +942,7 @@ export default function GroupDetailScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any) => StyleSheet.create({
     container: { flex: 1 },
     offlineBanner: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
@@ -951,7 +965,14 @@ const styles = StyleSheet.create({
     memberList: { marginBottom: Spacing.xl },
     memberItem: { alignItems: 'center', marginRight: Spacing.lg, width: 60, paddingBottom: Spacing.sm },
     avatarContainer: { position: 'relative', marginBottom: Spacing.xs },
-    memberAvatar: { width: 52, height: 52, borderRadius: 26, justifyContent: 'center', alignItems: 'center' },
+    memberAvatar: {
+        width: 52, height: 52, borderRadius: 26, justifyContent: 'center', alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+    },
     onlineBadge: {
         position: 'absolute', bottom: 0, right: 0,
         width: 16, height: 16, borderRadius: 8, borderWidth: 2,
@@ -960,19 +981,43 @@ const styles = StyleSheet.create({
     memberInitial: { fontSize: Typography.size.lg, fontWeight: Typography.weight.bold },
     memberName: { fontSize: Typography.size.xs, textAlign: 'center', fontFamily: Typography.fontFamily.medium },
     activityCard: {
-        flexDirection: 'row', padding: Spacing.md,
-        borderRadius: Spacing.borderRadius.md, borderWidth: 1,
+        flexDirection: 'row', padding: Spacing.lg,
+        borderRadius: Spacing.borderRadius.lg,
+        backgroundColor: colors.backgroundElevated,
         marginBottom: Spacing.md, alignItems: 'flex-start', gap: Spacing.md,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.04,
+        shadowRadius: 12,
+        elevation: 3,
+        borderWidth: 1,
+        borderColor: colors.borderSubtle,
+        position: 'relative',
+        overflow: 'hidden',
     },
-    userBadge: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+    activityAccent: {
+        position: 'absolute',
+        left: 0,
+        top: 0,
+        bottom: 0,
+        width: 4,
+    },
+    userBadge: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
     userInitial: { fontSize: Typography.size.md, fontWeight: Typography.weight.bold },
-    activityContent: { flex: 1, gap: 2 },
-    activityHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    userName: { fontSize: Typography.size.sm, fontWeight: Typography.weight.semibold },
-    timestamp: { fontSize: Typography.size.xs },
-    activityText: { fontSize: Typography.size.sm, lineHeight: 20, marginTop: 2 },
-    reflectionPreview: { fontSize: Typography.size.xs, lineHeight: 18, fontStyle: 'italic', marginTop: 4 },
-    activityIcon: { marginLeft: Spacing.xs, paddingTop: 2, flexShrink: 0 },
+    activityContent: { flex: 1, gap: 4 },
+    activityHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
+    userName: { fontSize: Typography.size.sm, fontWeight: Typography.weight.bold, letterSpacing: -0.2 },
+    timestamp: { fontSize: Typography.size.xs, opacity: 0.8 },
+    activityText: { fontSize: Typography.size.sm, lineHeight: 22, marginTop: 0 },
+    reflectionPreview: {
+        fontSize: Typography.size.sm,
+        lineHeight: 20,
+        fontStyle: 'italic',
+        marginTop: Spacing.xs,
+        paddingLeft: Spacing.sm,
+        borderLeftWidth: 2,
+    },
+    activityIcon: { marginLeft: Spacing.xs, paddingTop: 4, flexShrink: 0 },
     milestoneRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.xs, marginTop: 2, flexWrap: 'wrap' },
     milestoneEmoji: { fontSize: 18, lineHeight: 22 },
     groupMilestoneCard: {
@@ -996,6 +1041,7 @@ const styles = StyleSheet.create({
     dateSeparatorLine: {
         flex: 1,
         height: 1,
+        opacity: 0.4,
     },
     dateSeparatorLabel: {
         fontSize: Typography.size.xs,
@@ -1005,42 +1051,49 @@ const styles = StyleSheet.create({
     },
     // Reading digest
     digestCard: {
-        borderRadius: Spacing.borderRadius.md,
-        borderWidth: 1,
+        borderRadius: Spacing.borderRadius.lg,
+        backgroundColor: colors.backgroundElevated,
         marginBottom: Spacing.md,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.04,
+        shadowRadius: 10,
+        elevation: 2,
+        borderWidth: 1,
+        borderColor: colors.borderSubtle,
         overflow: 'hidden',
     },
     digestHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: Spacing.md,
+        padding: Spacing.lg,
         gap: Spacing.md,
     },
     digestIconWrap: {
-        width: 36,
-        height: 36,
-        borderRadius: 10,
+        width: 40,
+        height: 40,
+        borderRadius: 12,
         justifyContent: 'center',
         alignItems: 'center',
         flexShrink: 0,
     },
-    digestContent: { flex: 1, gap: 2 },
-    digestLine: { fontSize: Typography.size.sm, fontWeight: Typography.weight.semibold },
-    digestSub: { fontSize: Typography.size.xs },
+    digestContent: { flex: 1, gap: 3 },
+    digestLine: { fontSize: Typography.size.sm, fontWeight: Typography.weight.bold, letterSpacing: -0.2 },
+    digestSub: { fontSize: Typography.size.xs, opacity: 0.8 },
     digestEntries: {
         borderTopWidth: 1,
     },
     digestEntry: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: Spacing.sm,
+        paddingVertical: Spacing.xl,
         paddingHorizontal: Spacing.md,
         gap: Spacing.sm,
     },
     digestEntryAvatar: {
         width: 28,
         height: 28,
-        borderRadius: 14,
+        borderRadius: 4,
         justifyContent: 'center',
         alignItems: 'center',
         flexShrink: 0,
@@ -1051,37 +1104,44 @@ const styles = StyleSheet.create({
         color: 'white',
     },
     digestEntryText: { flex: 1, gap: 1 },
-    digestEntryName: { fontSize: Typography.size.xs, fontWeight: Typography.weight.semibold },
-    digestEntrySub: { fontSize: Typography.size.xs },
+    digestEntryName: { fontSize: Typography.size.sm, fontWeight: Typography.weight.semibold },
+    digestEntrySub: { fontSize: Typography.size.sm },
     // Pinned milestone hero
     milestoneHero: {
-        borderWidth: 2,
-        borderRadius: Spacing.borderRadius.lg,
-        padding: Spacing.lg,
-        marginBottom: Spacing.lg,
-        gap: Spacing.sm,
+        borderRadius: 20,
+        padding: Spacing.xl,
+        marginBottom: Spacing.xl,
+        gap: Spacing.md,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.08,
+        shadowRadius: 16,
+        elevation: 4,
+        borderWidth: 1.5,
     },
     milestoneHeroTop: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: Spacing.md,
+        gap: Spacing.lg,
     },
     milestoneHeroBadge: {
-        fontSize: 40,
+        fontSize: 48,
     },
     milestoneHeroConfetti: { flex: 1 },
     milestoneHeroLabel: {
-        fontSize: Typography.size.lg,
+        fontSize: Typography.size.xl,
         fontWeight: Typography.weight.bold,
-        letterSpacing: -0.3,
-        color: '#B8860B',
+        letterSpacing: -0.5,
     },
     milestoneHeroDesc: {
-        fontSize: Typography.size.sm,
-        lineHeight: 20,
+        fontSize: Typography.size.md,
+        lineHeight: 24,
+        fontWeight: Typography.weight.medium,
     },
     milestoneHeroTime: {
         fontSize: Typography.size.xs,
-        marginTop: 2,
+        marginTop: 4,
+        fontWeight: Typography.weight.semibold,
+        opacity: 0.6,
     },
 });

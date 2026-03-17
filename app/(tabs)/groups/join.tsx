@@ -53,9 +53,13 @@ export default function JoinGroupScreen() {
 
             const existingMember = await memberRef.get();
 
+            const userDocData = (await firestore().collection('users').doc(user.uid).get()).data() || {};
+            const userGender = userDocData.gender;
+
             await memberRef.set({
                 userId: user.uid,
                 displayName: displayName || user.email?.split('@')[0] || 'User',
+                gender: userGender || 'm',
                 joinedAt: firestore.FieldValue.serverTimestamp(),
                 lastActive: firestore.FieldValue.serverTimestamp(),
             });
