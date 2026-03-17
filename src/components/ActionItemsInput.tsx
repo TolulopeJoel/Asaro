@@ -8,10 +8,12 @@ import {
     StyleSheet,
     Text,
     TextInput,
+    TouchableOpacity,
     View,
 } from 'react-native';
 import { Button } from './Button';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
@@ -64,6 +66,18 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
         const currentItems = isModal ? tempItems : items;
         const updated = [...currentItems];
         updated[index] = { ...updated[index], motivation: text };
+
+        if (isModal) {
+            setTempItems(updated);
+        } else {
+            onChange(updated);
+        }
+    };
+
+    const clearField = (index: number, field: keyof ActionItemPair, isModal: boolean = false) => {
+        const currentItems = isModal ? tempItems : items;
+        const updated = [...currentItems];
+        updated[index] = { ...updated[index], [field]: '' };
 
         if (isModal) {
             setTempItems(updated);
@@ -142,20 +156,19 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
             )}
 
             <View style={styles.pairContainer}>
-                {/* Remove button */}
-                {showRemove(index, currentItems) && (
-                    <Button
-                        variant="ghost"
-                        onPress={() => handleRemove(index, isModal)}
-                        style={styles.removeButton}
-                        labelStyle={[styles.removeText, { color: colors.textTertiary }]}
-                        label="×"
-                    />
-                )}
-
                 {/* Action field */}
                 <View style={styles.fieldContainer}>
-                    <Text style={[styles.fieldLabel, { color: colors.textTertiary }]}>action</Text>
+                    <View style={styles.fieldHeader}>
+                        <Text style={[styles.fieldLabel, { color: colors.textTertiary }]}>action</Text>
+                        {!disabled && item.action.length > 0 && (
+                            <TouchableOpacity
+                                onPress={() => clearField(index, 'action', isModal)}
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            >
+                                <Ionicons name="close-circle" size={16} color={colors.textTertiary} />
+                            </TouchableOpacity>
+                        )}
+                    </View>
                     <TextInput
                         ref={(ref) => { actionRefs.current[index] = ref; }}
                         style={[styles.fieldInput, { color: colors.text }]}
@@ -176,7 +189,17 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
 
                 {/* Motivation field */}
                 <View style={styles.fieldContainer}>
-                    <Text style={[styles.fieldLabel, { color: colors.textTertiary }]}>motivated by</Text>
+                    <View style={styles.fieldHeader}>
+                        <Text style={[styles.fieldLabel, { color: colors.textTertiary }]}>motivated by</Text>
+                        {!disabled && item.motivation.length > 0 && (
+                            <TouchableOpacity
+                                onPress={() => clearField(index, 'motivation', isModal)}
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            >
+                                <Ionicons name="close-circle" size={16} color={colors.textTertiary} />
+                            </TouchableOpacity>
+                        )}
+                    </View>
                     <TextInput
                         ref={(ref) => { motivationRefs.current[index] = ref; }}
                         style={[styles.fieldInput, { color: colors.text }]}
@@ -191,6 +214,17 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                         multiline={true}
                     />
                 </View>
+
+                {/* Remove whole pair button - moved to bottom right to avoid overlap with expand button */}
+                {showRemove(index, currentItems) && (
+                    <TouchableOpacity
+                        onPress={() => handleRemove(index, isModal)}
+                        style={styles.removeButton}
+                        hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                    >
+                        <Text style={[styles.removeText, { color: colors.textTertiary }]}>Remove this action</Text>
+                    </TouchableOpacity>
+                )}
             </View>
         </View>
     );
@@ -314,6 +348,13 @@ const styles = StyleSheet.create({
         letterSpacing: 0.1,
         paddingVertical: Spacing.xs,
         minHeight: 100,
+        textAlignVertical: 'top',
+    },
+    fieldHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: Spacing.xs,
     },
     dashedDivider: {
         borderBottomWidth: 1,
@@ -321,19 +362,16 @@ const styles = StyleSheet.create({
         marginHorizontal: Spacing.lg,
     },
     removeButton: {
-        position: 'absolute',
-        top: Spacing.sm,
-        right: Spacing.sm,
-        zIndex: 10,
-        width: 24,
-        height: 24,
-        justifyContent: 'center',
-        alignItems: 'center',
+        marginTop: Spacing.sm,
+        marginHorizontal: Spacing.lg,
+        paddingBottom: Spacing.md,
+        alignSelf: 'flex-end',
     },
     removeText: {
-        fontSize: Typography.size.xl,
-        fontWeight: Typography.weight.regular,
-        lineHeight: Typography.size.xl + 4,
+        fontSize: Typography.size.xs,
+        fontWeight: Typography.weight.medium,
+        textDecorationLine: 'underline',
+        opacity: 0.8,
     },
     expandButton: {
         position: 'absolute',

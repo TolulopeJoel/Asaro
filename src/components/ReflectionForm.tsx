@@ -75,13 +75,26 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
   const hasContent = (() => {
     const { actionItems, ...textAnswers } = answers;
     const hasText = Object.values(textAnswers).some(answer => typeof answer === 'string' && answer.trim().length > 0);
-    const hasActions = actionItems.some(item => item.action.trim().length > 0 || item.motivation.trim().length > 0);
+    // An action item only counts if the action itself is filled (motivation alone is not enough)
+    const hasActions = actionItems.some(item => item.action.trim().length > 0);
     return hasText || hasActions;
   })();
 
 
   const handleSave = () => {
     if (!hasContent) return;
+
+    // Check for motivation filled without a corresponding action
+    const incompleteItem = answers.actionItems.find(
+      item => item.motivation.trim().length > 0 && item.action.trim().length === 0
+    );
+    if (incompleteItem) {
+      Alert.alert(
+        'Missing Action',
+        'You\'ve added a "Motivated by" note but haven\'t written the action you want to take. Please add the action, or clear the motivation.'
+      );
+      return;
+    }
 
     if (onSave) {
       onSave(answers);
