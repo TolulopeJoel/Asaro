@@ -1,6 +1,6 @@
 import { Flashback } from '@/src/components/Flashback';
 import { WeeklyStreak } from '@/src/components/WeeklyStreak';
-import { getMissedDaysCount, getTotalEntryCount, JournalEntry, getReadingProgress, checkEntryExists, toggleReadingItem } from "@/src/data/database";
+import { getMissedDaysCount, getTotalEntryCount, JournalEntry, getReadingProgress, checkEntryCoversChapters, toggleReadingItem } from "@/src/data/database";
 import { READING_PLAN_DATA, ReadingItem } from "@/src/data/readingPlanData";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { Spacing } from "@/src/theme/spacing";
@@ -100,8 +100,30 @@ const NextReading = React.memo(() => {
     const loadNextReading = useCallback(async () => {
         const completedIds = await getReadingProgress();
         const completedSet = new Set(completedIds);
-        const firstUncompleted = READING_PLAN_DATA.find(item => !completedSet.has(item.id));
-        setNextItem(firstUncompleted || null);
+
+        // Find the furthest index in the plan that has been completed
+        let furthestCompletedIndex = -1;
+        for (let i = READING_PLAN_DATA.length - 1; i >= 0; i--) {
+            if (completedSet.has(READING_PLAN_DATA[i].id)) {
+                furthestCompletedIndex = i;
+                break;
+            }
+        }
+
+        // Look for the first uncompleted item AFTER the furthest completed point
+        let nextItem: ReadingItem | undefined;
+        if (furthestCompletedIndex >= 0) {
+            nextItem = READING_PLAN_DATA
+                .slice(furthestCompletedIndex + 1)
+                .find(item => !completedSet.has(item.id));
+        }
+
+        // Fall back to the first uncompleted item anywhere in the plan
+        if (!nextItem) {
+            nextItem = READING_PLAN_DATA.find(item => !completedSet.has(item.id));
+        }
+
+        setNextItem(nextItem || null);
     }, []);
 
     useFocusEffect(
@@ -113,15 +135,23 @@ const NextReading = React.memo(() => {
     const handlePress = useCallback(async () => {
         if (!nextItem) return;
 
-        const [start, end] = nextItem.chapters.split('-').map(c => parseInt(c.trim()));
-        const existingEntryId = await checkEntryExists(nextItem.book, start, end === start ? undefined : end);
+        // Parse chapter range, stripping verse notation (e.g. "119:64-176")
+        const parts = nextItem.chapters.split('-');
+        const planStart = parseInt(parts[0].split(':')[0], 10);
+        const planEnd = parts.length > 1
+            ? parseInt(parts[parts.length - 1].split(':')[0], 10)
+            : planStart;
+
+        const existingEntryId = !isNaN(planStart)
+            ? await checkEntryCoversChapters(nextItem.book, planStart, planEnd)
+            : null;
 
         if (existingEntryId) {
-            // If entry exists, mark as completed and reload
+            // Entry already covers this — mark as completed and move on
             await toggleReadingItem(nextItem.id, true);
             loadNextReading();
         } else {
-            // Otherwise, go to add entry screen
+            // No entry yet — go write one
             router.push({
                 pathname: '/addEntry' as any,
                 params: {
