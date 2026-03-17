@@ -594,12 +594,9 @@ export default function GroupDetailScreen() {
 
     const today = getTodayDateString();
 
-    const sortedMembers = [...members].sort((a, b) => {
-        const aToday = a.lastReadDate === today ? 1 : 0;
-        const bToday = b.lastReadDate === today ? 1 : 0;
-        if (bToday !== aToday) return bToday - aToday;
-        return (b.streak || 0) - (a.streak || 0);
-    });
+    const sortedMembers = members
+        .filter(m => m.lastReadDate === today)
+        .sort((a, b) => (b.streak || 0) - (a.streak || 0));
 
     const groupStreak: number = groupData?.groupStreak || 0;
     const groupStreakLastDate: string | undefined = groupData?.groupStreakLastDate;
@@ -700,7 +697,11 @@ export default function GroupDetailScreen() {
                     </ScrollView>
                 ) : (
                     <Text style={[styles.emptyFeedText, { color: colors.textTertiary, marginBottom: Spacing.xl }]}>
-                        {isOffline ? 'Member list unavailable offline.' : 'No members yet.'}
+                        {isOffline
+                            ? 'Member list unavailable offline.'
+                            : members.length > 0
+                                ? 'No one has read today yet. Be the first!'
+                                : 'No members yet.'}
                     </Text>
                 )}
 
