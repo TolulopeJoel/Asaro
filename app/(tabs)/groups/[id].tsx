@@ -626,6 +626,14 @@ export default function GroupDetailScreen() {
         return 'him';
     };
 
+    const formatBadgeDesc = (desc: string, userId: string) => {
+        if (!desc) return desc;
+        return desc
+            .replace(/{subject}/g, getPronoun(userId, 'subject'))
+            .replace(/{object}/g, getPronoun(userId, 'object'))
+            .replace(/{possessive}/g, getPronoun(userId, 'possessive'));
+    };
+
     const { pinnedMilestone, feedItems } = buildProcessedFeed(activities, today);
 
     return (
@@ -698,7 +706,7 @@ export default function GroupDetailScreen() {
 
                 {/* ── Activity Feed ── */}
                 <View style={[styles.sectionHeader, { marginTop: Spacing.md }]}>
-                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>LIVE FEED</Text>
+                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>WHAT HAS BEEN HAPPENING</Text>
                 </View>
 
                 {/* Pinned group milestone hero card */}
@@ -713,7 +721,7 @@ export default function GroupDetailScreen() {
                             </View>
                         </View>
                         <Text style={[styles.milestoneHeroDesc, { color: colors.textSecondary }]}>
-                            {pinnedMilestone.badgeDesc}
+                            {formatBadgeDesc(pinnedMilestone.badgeDesc, pinnedMilestone.userId)}
                         </Text>
                         {formatRelativeTime(pinnedMilestone.timestamp) && (
                             <Text style={[styles.milestoneHeroTime, { color: colors.textTertiary }]}>
@@ -840,7 +848,11 @@ export default function GroupDetailScreen() {
                                     <View style={styles.activityContent}>
                                         <View style={styles.activityHeader}>
                                             <Text style={[styles.userName, { color: colors.textPrimary }]}>
-                                                {isAbsent ? `Where is ${activity.userName}? 🥹` : activity.userName}
+                                                {isAbsent
+                                                    ? `Where is ${activity.userName}? 🥹`
+                                                    : isJoined
+                                                        ? `Hi, ${activity.userName} 🤭`
+                                                        : activity.userName}
                                             </Text>
                                             {timeStr ? (
                                                 <Text style={[styles.timestamp, { color: colors.textTertiary }]}>{timeStr}</Text>
@@ -852,7 +864,7 @@ export default function GroupDetailScreen() {
                                         {isMilestone && (
                                             <View style={styles.milestoneRow}>
                                                 <Text style={[styles.activityText, { color: colors.textSecondary, flex: 1 }]}>
-                                                    {activity.badgeDesc}
+                                                    {formatBadgeDesc(activity.badgeDesc, activity.userId)}
                                                 </Text>
                                             </View>
                                         )}
@@ -870,7 +882,7 @@ export default function GroupDetailScreen() {
                                         )}
                                         {isJoined && (
                                             <Text style={[styles.activityText, { color: colors.textSecondary, fontWeight: '500' }]}>
-                                                Welcome to the group! Let's grow together. 🎉
+                                                Welcome! Let's grow together. 🎉
                                             </Text>
                                         )}
                                         {isAbsent && (
@@ -882,7 +894,7 @@ export default function GroupDetailScreen() {
                                         )}
                                         {isRemoved && (
                                             <Text style={[styles.activityText, { color: colors.textTertiary, fontStyle: 'italic' }]}>
-                                                has left the group.
+                                                has left us.
                                             </Text>
                                         )}
                                     </View>
