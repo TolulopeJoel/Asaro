@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity,
     LayoutAnimation, Platform, UIManager, Modal, Pressable, Dimensions,
@@ -575,6 +575,15 @@ export default function GroupDetailScreen() {
         };
     }, [groupId]);
 
+    const memberSectionTitle = useMemo(() => {
+        const hasLadies = members.some(m => m.gender === 'f');
+        const hasGentlemen = members.some(m => m.gender === 'm' || !m.gender); // Fallback to m if no gender
+        if (hasLadies && hasGentlemen) return 'LADIES & GENTLEMEN';
+        if (hasLadies) return 'LADIES';
+        if (hasGentlemen) return 'GENTLEMEN';
+        return 'MEMBERS';
+    }, [members]);
+
     if (loading) {
         return (
             <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
@@ -644,7 +653,7 @@ export default function GroupDetailScreen() {
                 {/* ── Members Section ── */}
                 <View style={styles.sectionHeader}>
                     <View style={styles.sectionTitleRow}>
-                        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>LADIES & GENTLEMEN</Text>
+                        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{memberSectionTitle}</Text>
                     </View>
                 </View>
 
