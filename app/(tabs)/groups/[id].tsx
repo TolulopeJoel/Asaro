@@ -12,7 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import firestore from '@react-native-firebase/firestore';
 import { useAuth } from '@/src/context/AuthContext';
 import { checkInactiveMembers } from '@/src/utils/syncActivities';
-import { getBadgeById, ALL_BADGES } from '@/src/utils/badges';
+import { ALL_BADGES } from '@/src/utils/badges';
 import Animated, {
     useSharedValue, useAnimatedStyle, withSpring, withTiming,
     runOnJS,
@@ -500,13 +500,13 @@ export default function GroupDetailScreen() {
     const [isOffline, setIsOffline] = React.useState(false);
     const [selectedMember, setSelectedMember] = React.useState<any>(null);
     const [expandedDigests, setExpandedDigests] = React.useState<Set<string>>(new Set());
-    const [activeTab, setActiveTab] = React.useState<'feed' | 'leaderboard' | 'members'>('feed');
+    const [activeTab, setActiveTab] = React.useState<'feed' | 'accountability' | 'members'>('feed');
 
     // Tab Animation
     const tabOffset = useSharedValue(0);
 
     React.useEffect(() => {
-        const target = activeTab === 'feed' ? 0 : activeTab === 'leaderboard' ? 1 : 2;
+        const target = activeTab === 'feed' ? 0 : activeTab === 'accountability' ? 1 : 2;
         tabOffset.value = withSpring(target, { damping: 20, stiffness: 150 });
     }, [activeTab]);
 
@@ -598,46 +598,51 @@ export default function GroupDetailScreen() {
         return 'MEMBERS';
     }, [members]);
 
-    const leaderboardData = useMemo(() => {
+    const accountabilityData = useMemo(() => {
+        const today = getTodayDateString();
         const currentWeek = getISOWeekString(new Date());
+
         const processed = members.map(m => {
             const isCurrentWeek = m.weeklyActivityWeek === currentWeek;
             const dots = (isCurrentWeek && Array.isArray(m.weeklyActivity) && m.weeklyActivity.length === 7)
                 ? m.weeklyActivity
                 : [false, false, false, false, false, false, false];
             const daysThisWeek = dots.filter(Boolean).length;
+            const readToday = m.lastReadDate === today;
 
-            // Status tags
             const streak = m.streak || 0;
             const isOnFire = streak >= 7;
             const isConsistent = daysThisWeek >= 5;
-            const isRising = streak >= 3 && streak < 7;
             const isIronMan = streak >= 30;
 
             return {
                 ...m,
                 daysThisWeek,
                 dots,
+                readToday,
+                streak,
                 isOnFire,
                 isConsistent,
-                isRising,
                 isIronMan,
                 isMe: m.userId === user?.uid || m.id === user?.uid
             };
         });
 
-        const sorted = processed.sort((a, b) => {
-            if ((b.streak || 0) !== (a.streak || 0)) return (b.streak || 0) - (a.streak || 0);
-            return b.daysThisWeek - a.daysThisWeek;
-        });
+        const totalMembers = processed.length;
+        const readTodayCount = processed.filter(m => m.readToday).length;
+        const groupProgressPercent = totalMembers > 0 ? Math.round((readTodayCount / totalMembers) * 100) : 0;
 
-        let currentRank = 1;
-        return sorted.map((member, index) => {
-            if (index > 0 && (member.streak || 0) !== (sorted[index - 1].streak || 0)) {
-                currentRank = index + 1;
-            }
-            return { ...member, rank: currentRank };
-        });
+        // Group members by status
+        const upToDate = processed.filter(m => m.readToday).sort((a, b) => b.streak - a.streak);
+        const needsSupport = processed.filter(m => !m.readToday).sort((a, b) => b.daysThisWeek - a.daysThisWeek);
+
+        return {
+            upToDate,
+            needsSupport,
+            groupProgressPercent,
+            readTodayCount,
+            totalMembers
+        };
     }, [members, user?.uid]);
 
     if (loading) {
@@ -704,7 +709,7 @@ export default function GroupDetailScreen() {
             {isGroupStreakActive && (
                 <View style={[styles.streakPill, { backgroundColor: colors.accentSecondaryLight, borderColor: colors.border }]}>
                     <Text style={[styles.streakPillText, { color: colors.textPrimary }]}>
-                        🔥 Group on fire — {groupStreak} days in a row
+                        🔥 {groupStreak}
                     </Text>
                 </View>
             )}
@@ -781,13 +786,13 @@ export default function GroupDetailScreen() {
 
                         <ScalePressable
                             style={styles.tab}
-                            onPress={() => setActiveTab('leaderboard')}
+                            onPress={() => setActiveTab('accountability')}
                         >
                             <Text style={[
                                 styles.tabText,
                                 { color: colors.textSecondary },
-                                activeTab === 'leaderboard' && { color: colors.textPrimary, fontWeight: '600' }
-                            ]}>Leaderboard</Text>
+                                activeTab === 'accountability' && { color: colors.textPrimary, fontWeight: '600' }
+                            ]}>Accountability</Text>
                         </ScalePressable>
 
                         <ScalePressable
@@ -1042,141 +1047,137 @@ export default function GroupDetailScreen() {
                     </>
                 )}
 
-                {activeTab === 'leaderboard' && (
+                {activeTab === 'accountability' && (
                     <View style={{ marginTop: Spacing.md }}>
                         <View style={styles.sectionHeader}>
-                            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>COMPETITIVE VIEW</Text>
+                            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>GROUP ACCOUNTABILITY</Text>
                         </View>
 
-                        {/* Podium Section */}
-                        {leaderboardData.length > 0 && (
-                            <View style={styles.podiumContainer}>
-                                {leaderboardData.length >= 2 && (
-                                    <View style={[styles.podiumStand, styles.podiumStand2]}>
-                                        <TouchableOpacity onPress={() => setSelectedMember(leaderboardData[1])}>
-                                            <View style={[styles.podiumAvatar, { borderColor: '#A7A7AD', backgroundColor: getAvatarColor(leaderboardData[1].userId || leaderboardData[1].id, leaderboardData[1].displayName) }]}>
-                                                <Text style={styles.podiumInitial}>{leaderboardData[1].displayName?.charAt(0).toUpperCase()}</Text>
-                                            </View>
-                                        </TouchableOpacity>
-                                        <View style={[styles.podiumBase, { backgroundColor: colors.borderSubtle, height: 60 }]}>
-                                            <Text style={[styles.podiumRankText, { color: colors.textSecondary }]}>2</Text>
-                                        </View>
-                                        <Text style={[styles.podiumName, { color: colors.textPrimary }]} numberOfLines={1}>{leaderboardData[1].displayName}</Text>
-                                        <Text style={[styles.podiumStreak, { color: colors.textTertiary }]}>{leaderboardData[1].streak || 0} 🔥</Text>
+                        {/* Group Progress Dashboard */}
+                        <View style={[styles.accountabilityHero, { backgroundColor: colors.accentSecondaryLight + '20', borderColor: colors.accentSecondaryLight + '40' }]}>
+                            <View style={styles.heroTop}>
+                                <View style={styles.heroMain}>
+                                    <View style={styles.heroValRow}>
+                                        <Text style={[styles.heroVal, { color: colors.accentSecondary }]}>{accountabilityData.groupProgressPercent}%</Text>
+                                        <Ionicons name="people" size={20} color={colors.accentSecondary} />
                                     </View>
-                                )}
+                                    <Text style={[styles.heroLabel, { color: colors.textSecondary }]}>Read today</Text>
+                                </View>
+                                <View style={styles.heroStats}>
+                                    <View style={styles.miniStat}>
+                                        <Text style={[styles.miniStatVal, { color: colors.textPrimary }]}>{accountabilityData.readTodayCount}/{accountabilityData.totalMembers}</Text>
+                                        <Text style={[styles.miniStatLabel, { color: colors.textTertiary }]}>Completed</Text>
+                                    </View>
+                                    <View style={styles.miniStat}>
+                                        <Text style={[styles.miniStatVal, { color: colors.accent }]}>🔥 {groupStreak}</Text>
+                                        <Text style={[styles.miniStatLabel, { color: colors.textTertiary }]}>Our streak</Text>
+                                    </View>
+                                </View>
+                            </View>
+                            <View style={[styles.progressTrack, { backgroundColor: colors.borderSubtle }]}>
+                                <Animated.View style={[styles.progressBar, { width: `${accountabilityData.groupProgressPercent}%`, backgroundColor: colors.accentSecondary }]} />
+                            </View>
+                            <Text style={[styles.heroHint, { color: colors.textTertiary }]}>
+                                {accountabilityData.groupProgressPercent === 100
+                                    ? "A good day! Everyone is up to date. 🎉"
+                                    : `Let's encourage the remaining ${accountabilityData.totalMembers - accountabilityData.readTodayCount}`}
+                            </Text>
+                        </View>
 
-                                <View style={[styles.podiumStand, styles.podiumStand1]}>
-                                    <TouchableOpacity onPress={() => setSelectedMember(leaderboardData[0])}>
-                                        <View style={[styles.podiumAvatar, styles.podiumAvatarLarge, { borderColor: '#FFD700', backgroundColor: getAvatarColor(leaderboardData[0].userId || leaderboardData[0].id, leaderboardData[0].displayName) }]}>
-                                            <Text style={[styles.podiumInitial, { fontSize: 24 }]}>{leaderboardData[0].displayName?.charAt(0).toUpperCase()}</Text>
-                                            <View style={styles.crownContainer}>
-                                                <Ionicons name="ribbon" size={20} color="#FFD700" />
+                        {/* Up To Date Section */}
+                        {accountabilityData.upToDate.length > 0 && (
+                            <View style={styles.accountabilitySection}>
+                                <View style={styles.subHeader}>
+                                    <Ionicons name="checkmark-circle" size={16} color="#34C759" />
+                                    <Text style={[styles.subHeaderText, { color: colors.textSecondary }]}>UP TO DATE — {accountabilityData.upToDate.length}</Text>
+                                </View>
+                                {accountabilityData.upToDate.map((member) => (
+                                    <TouchableOpacity
+                                        key={member.id}
+                                        style={[styles.accMemberCard, member.isMe && { backgroundColor: colors.accentSecondaryLight + '10', borderRadius: 12 }]}
+                                        onPress={() => setSelectedMember(member)}
+                                        activeOpacity={0.7}
+                                    >
+                                        <View style={[styles.memberAvatar, { width: 44, height: 44, borderRadius: 12, backgroundColor: getAvatarColor(member.userId || member.id, member.displayName) }]}>
+                                            <Text style={[styles.memberInitial, { fontSize: 18, color: 'white' }]}>{member.displayName?.charAt(0).toUpperCase()}</Text>
+                                        </View>
+                                        <View style={styles.accMemberContent}>
+                                            <View style={styles.accMemberRow}>
+                                                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
+                                                    <Text style={[styles.accMemberName, { color: colors.textPrimary }]} numberOfLines={1}>{member.displayName} {member.isMe && '(You)'}</Text>
+                                                    <View style={styles.statusTags}>
+                                                        {member.isIronMan && (
+                                                            <View style={[styles.tag, { backgroundColor: '#5856D6' }]}>
+                                                                <Text style={styles.tagText}>🛡️ {member.gender === 'f' ? 'IRON WOMAN' : 'IRON MAN'}</Text>
+                                                            </View>
+                                                        )}
+                                                        {member.isOnFire && !member.isIronMan && <View style={[styles.tag, { backgroundColor: '#FF3B30' }]}><Text style={styles.tagText}>🔥 ON FIRE</Text></View>}
+                                                    </View>
+                                                </View>
+                                                <Text style={[styles.accMemberStreak, { color: colors.accent }]}>{member.streak} 🔥</Text>
+                                            </View>
+                                            <View style={styles.accMemberSubRow}>
+                                                <View style={styles.miniHeatmap}>
+                                                    {member.dots.map((active: boolean, i: number) => (
+                                                        <View key={i} style={[styles.miniDot, { backgroundColor: active ? colors.accent : colors.border }]} />
+                                                    ))}
+                                                </View>
+                                                <Text style={[styles.accMemberSubtitle, { color: colors.textTertiary }]}>{member.daysThisWeek}/7 days</Text>
                                             </View>
                                         </View>
                                     </TouchableOpacity>
-                                    <View style={[styles.podiumBase, { backgroundColor: colors.accentSecondaryLight, height: 90 }]}>
-                                        <Text style={[styles.podiumRankText, { color: colors.accentSecondary, fontSize: 28 }]}>1</Text>
-                                    </View>
-                                    <Text style={[styles.podiumName, { color: colors.textPrimary, fontWeight: '700' }]} numberOfLines={1}>{leaderboardData[0].displayName}</Text>
-                                    <Text style={[styles.podiumStreak, { color: colors.accentSecondary, fontWeight: '700' }]}>{leaderboardData[0].streak || 0} 🔥</Text>
-                                </View>
-
-                                {leaderboardData.length >= 3 && (
-                                    <View style={[styles.podiumStand, styles.podiumStand3]}>
-                                        <TouchableOpacity onPress={() => setSelectedMember(leaderboardData[2])}>
-                                            <View style={[styles.podiumAvatar, { borderColor: '#CD7F32', backgroundColor: getAvatarColor(leaderboardData[2].userId || leaderboardData[2].id, leaderboardData[2].displayName) }]}>
-                                                <Text style={styles.podiumInitial}>{leaderboardData[2].displayName?.charAt(0).toUpperCase()}</Text>
-                                            </View>
-                                        </TouchableOpacity>
-                                        <View style={[styles.podiumBase, { backgroundColor: colors.borderSubtle, height: 45, opacity: 0.8 }]}>
-                                            <Text style={[styles.podiumRankText, { color: colors.textSecondary }]}>3</Text>
-                                        </View>
-                                        <Text style={[styles.podiumName, { color: colors.textPrimary }]} numberOfLines={1}>{leaderboardData[2].displayName}</Text>
-                                        <Text style={[styles.podiumStreak, { color: colors.textTertiary }]}>{leaderboardData[2].streak || 0} 🔥</Text>
-                                    </View>
-                                )}
+                                ))}
                             </View>
                         )}
 
-                        {/* Dynamic Leaderboard List */}
-                        <View style={styles.leaderboardList}>
-                            {leaderboardData.map((member, index) => {
-                                const isTop3 = member.rank <= 3;
-                                const showRelativePos = index > 0 && member.isMe;
-                                const aboveMember = showRelativePos ? leaderboardData[index - 1] : null;
-                                const diff = aboveMember ? (aboveMember.streak || 0) - (member.streak || 0) : 0;
+                        {/* Needs Support Section */}
+                        {accountabilityData.needsSupport.length > 0 && (
+                            <View style={[styles.accountabilitySection, { marginTop: Spacing.xl }]}>
+                                <View style={styles.subHeader}>
+                                    <Ionicons name="alert-circle" size={16} color={colors.accent} />
+                                    <Text style={[styles.subHeaderText, { color: colors.textSecondary }]}>NEEDS GINGERING — {accountabilityData.needsSupport.length}</Text>
+                                </View>
+                                {accountabilityData.needsSupport.map((member) => {
+                                    // ginger logic: if member was consistent but missed today
+                                    const isMostConsistent = member.daysThisWeek >= 5;
 
-                                return (
-                                    <View key={member.id}>
-                                        {showRelativePos && diff > 0 && (
-                                            <View style={styles.relativePosContainer}>
-                                                <Text style={[styles.relativePosText, { color: colors.textTertiary }]}>
-                                                    You're {diff} {diff === 1 ? 'day' : 'days'} behind {aboveMember?.displayName}
-                                                </Text>
-                                            </View>
-                                        )}
+                                    return (
                                         <TouchableOpacity
-                                            style={[
-                                                styles.leaderboardItem,
-                                                member.isMe && { backgroundColor: colors.accentSecondaryLight + '15', borderRadius: 12, borderBottomWidth: 0, marginVertical: 4, paddingHorizontal: 8 }
-                                            ]}
+                                            key={member.id}
+                                            style={[styles.accMemberCard, member.isMe && { backgroundColor: colors.accentSecondaryLight + '10', borderRadius: 12 }]}
                                             onPress={() => setSelectedMember(member)}
                                             activeOpacity={0.7}
                                         >
-                                            <View style={styles.rankWrapper}>
-                                                {isTop3 ? (
-                                                    <Ionicons
-                                                        name="trophy"
-                                                        size={16}
-                                                        color={member.rank === 1 ? '#FFD700' : member.rank === 2 ? '#A7A7AD' : '#CD7F32'}
-                                                    />
-                                                ) : (
-                                                    <Text style={[styles.rankText, { color: colors.textTertiary }]}>
-                                                        {member.rank}
-                                                    </Text>
-                                                )}
+                                            <View style={[styles.memberAvatar, { width: 44, height: 44, borderRadius: 12, backgroundColor: getAvatarColor(member.userId || member.id, member.displayName), opacity: 0.7 }]}>
+                                                <Text style={[styles.memberInitial, { fontSize: 18, color: 'white' }]}>{member.displayName?.charAt(0).toUpperCase()}</Text>
                                             </View>
-
-                                            <View style={[styles.memberAvatar, { width: 44, height: 44, borderRadius: 14, backgroundColor: getAvatarColor(member.userId || member.id, member.displayName) }]}>
-                                                <Text style={[styles.memberInitial, { fontSize: 18, color: 'white' }]}>
-                                                    {member.displayName?.charAt(0).toUpperCase()}
-                                                </Text>
-                                            </View>
-
-                                            <View style={styles.leaderboardMainContent}>
-                                                <View style={styles.leaderboardRow}>
-                                                    <Text style={[styles.leaderboardName, { color: colors.textPrimary }]}>
-                                                        {member.displayName} {member.isMe && '(You)'}
-                                                    </Text>
-                                                    <View style={styles.statusTags}>
-                                                        {member.isIronMan && <View style={[styles.tag, { backgroundColor: '#5856D6' }]}><Text style={styles.tagText}>🛡️ IRON MAN</Text></View>}
-                                                        {member.isOnFire && !member.isIronMan && <View style={[styles.tag, { backgroundColor: '#FF3B30' }]}><Text style={styles.tagText}>🔥 ON FIRE</Text></View>}
-                                                        {member.isConsistent && !member.isOnFire && <View style={[styles.tag, { backgroundColor: '#34C759' }]}><Text style={styles.tagText}>⚡ CONSISTENT</Text></View>}
+                                            <View style={styles.accMemberContent}>
+                                                <View style={styles.accMemberRow}>
+                                                    <Text style={[styles.accMemberName, { color: colors.textSecondary }]}>{member.displayName} {member.isMe && '(You)'}</Text>
+                                                    <View style={styles.accNudge}>
+                                                        {member.isMe ? (
+                                                            <Text style={[styles.accNudgeText, { color: colors.accent, fontWeight: '700' }]}>Read now?</Text>
+                                                        ) : (
+                                                            <Text style={[styles.accNudgeText, { color: colors.textTertiary }]}></Text>
+                                                        )}
                                                     </View>
                                                 </View>
-
-                                                <View style={styles.leaderboardStatsRow}>
-                                                    <Text style={[styles.leaderboardSub, { color: colors.textSecondary }]}>
-                                                        {member.daysThisWeek}/7 days this week
-                                                    </Text>
+                                                <View style={styles.accMemberSubRow}>
                                                     <View style={styles.miniHeatmap}>
                                                         {member.dots.map((active: boolean, i: number) => (
                                                             <View key={i} style={[styles.miniDot, { backgroundColor: active ? colors.accent : colors.border }]} />
                                                         ))}
                                                     </View>
+                                                    {isMostConsistent && !member.isMe && (
+                                                        <Text style={[styles.gingerText, { color: colors.accentSecondary }]}>Don't let the streak break! ⚡</Text>
+                                                    )}
                                                 </View>
                                             </View>
-
-                                            <View style={styles.streakInvertedPill}>
-                                                <Text style={[styles.leaderboardStreak, { color: colors.accentSecondary }]}>{member.streak || 0}</Text>
-                                                <Text style={[styles.streakLabel, { color: colors.accentSecondary }]}>DAYS</Text>
-                                            </View>
                                         </TouchableOpacity>
-                                    </View>
-                                );
-                            })}
-                        </View>
+                                    );
+                                })}
+                            </View>
+                        )}
                     </View>
                 )}
 
@@ -1487,88 +1488,71 @@ const getStyles = (colors: any) => StyleSheet.create({
         fontSize: Typography.size.xs,
         opacity: 0.6,
     },
-    // Podium Styles
-    podiumContainer: {
+    // Accountability Styles
+    accountabilityHero: {
+        borderRadius: 20,
+        padding: Spacing.xl,
+        marginBottom: Spacing.xl,
+        borderWidth: 1,
+        gap: Spacing.md,
+    },
+    heroTop: {
         flexDirection: 'row',
-        alignItems: 'flex-end',
-        justifyContent: 'center',
-        marginVertical: Spacing.xl,
-        paddingTop: 40,
-        height: 220,
-    },
-    podiumStand: {
-        alignItems: 'center',
-        width: '30%',
-    },
-    podiumStand1: { zIndex: 3 },
-    podiumStand2: { zIndex: 2, marginRight: -10 },
-    podiumStand3: { zIndex: 1, marginLeft: -10 },
-    podiumBase: {
-        width: '100%',
-        borderTopLeftRadius: 12,
-        borderTopRightRadius: 12,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    podiumAvatar: {
-        width: 54,
-        height: 54,
-        borderRadius: 27,
-        borderWidth: 3,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    podiumAvatarLarge: {
-        width: 74,
-        height: 74,
-        borderRadius: 37,
-        borderWidth: 4,
-    },
-    podiumInitial: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: 'white',
-    },
-    podiumRankText: {
-        fontSize: 22,
-        fontWeight: '900',
-        opacity: 0.9,
-    },
-    podiumName: {
-        fontSize: 12,
-        marginTop: 8,
-        textAlign: 'center',
-        width: '90%',
-    },
-    podiumStreak: {
-        fontSize: 11,
-        marginTop: 2,
-    },
-    crownContainer: {
-        position: 'absolute',
-        top: -18,
-        alignItems: 'center',
-        width: '100%',
-    },
-    // Enhanced Leaderboard Item
-    leaderboardList: {
-        marginTop: Spacing.md,
-    },
-    rankWrapper: {
-        width: 24,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    leaderboardMainContent: {
-        flex: 1,
-        paddingLeft: 4,
-    },
-    leaderboardRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: 4,
+        alignItems: 'center',
+    },
+    heroMain: { gap: 2 },
+    heroValRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+    heroVal: {
+        fontSize: 42,
+        fontWeight: '900',
+        letterSpacing: -1,
+    },
+    heroLabel: {
+        fontSize: Typography.size.sm,
+        fontWeight: '600',
+    },
+    heroStats: { gap: Spacing.sm },
+    miniStat: { alignItems: 'flex-end', gap: 1 },
+    miniStatVal: { fontSize: 13, fontWeight: '700' },
+    miniStatLabel: { fontSize: 9, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+    progressTrack: {
+        height: 8,
+        borderRadius: 4,
+        overflow: 'hidden',
+    },
+    progressBar: {
+        height: '100%',
+        borderRadius: 4,
+    },
+    heroHint: {
+        fontSize: 12,
+        fontStyle: 'italic',
+        lineHeight: 18,
+    },
+    accountabilitySection: { gap: Spacing.md },
+    subHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.xs,
+        marginBottom: Spacing.xs,
+    },
+    subHeaderText: {
+        fontSize: 10,
+        fontWeight: '800',
+        letterSpacing: 1,
+    },
+    accMemberCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: Spacing.md,
+        gap: Spacing.md,
+    },
+    accMemberContent: { flex: 1, gap: 4 },
+    accMemberRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
     },
     statusTags: {
         flexDirection: 'row',
@@ -1585,46 +1569,21 @@ const getStyles = (colors: any) => StyleSheet.create({
         fontWeight: 'bold',
         letterSpacing: 0.5,
     },
-    leaderboardStatsRow: {
+    accMemberName: { fontSize: 14, fontWeight: '600' },
+    accMemberStreak: { fontSize: 13, fontWeight: '700' },
+    accMemberSubRow: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
     },
-    leaderboardSub: {
-        fontSize: 11,
-        fontWeight: '500',
-    },
-    miniHeatmap: {
-        flexDirection: 'row',
-        gap: 3,
-    },
-    miniDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 2,
-    },
-    streakInvertedPill: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        minWidth: 50,
+    accMemberSubtitle: { fontSize: 11, fontWeight: '500' },
+    accNudge: {
         paddingHorizontal: 8,
         paddingVertical: 4,
-        backgroundColor: colors.accentSecondaryLight + '30',
-        borderRadius: 10,
+        borderRadius: 6,
     },
-    streakLabel: {
-        fontSize: 8,
-        fontWeight: 'bold',
-        marginTop: -2,
-    },
-    relativePosContainer: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        alignItems: 'center',
-    },
-    relativePosText: {
-        fontSize: 11,
-        fontWeight: '600',
-        fontStyle: 'italic',
-    },
+    accNudgeText: { fontSize: 10, fontWeight: '600' },
+    gingerText: { fontSize: 10, fontWeight: '600', fontStyle: 'italic' },
+    miniHeatmap: { flexDirection: 'row', gap: 3 },
+    miniDot: { width: 8, height: 8, borderRadius: 2 },
 });
