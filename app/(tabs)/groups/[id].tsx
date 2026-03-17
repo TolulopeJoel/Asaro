@@ -17,6 +17,7 @@ import Animated, {
     useSharedValue, useAnimatedStyle, withSpring, withTiming,
     runOnJS,
 } from 'react-native-reanimated';
+import { ScalePressable } from '@/src/components/ScalePressable';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -501,6 +502,18 @@ export default function GroupDetailScreen() {
     const [expandedDigests, setExpandedDigests] = React.useState<Set<string>>(new Set());
     const [activeTab, setActiveTab] = React.useState<'feed' | 'leaderboard' | 'members'>('feed');
 
+    // Tab Animation
+    const tabOffset = useSharedValue(0);
+
+    React.useEffect(() => {
+        const target = activeTab === 'feed' ? 0 : activeTab === 'leaderboard' ? 1 : 2;
+        tabOffset.value = withSpring(target, { damping: 20, stiffness: 150 });
+    }, [activeTab]);
+
+    const animatedIndicatorStyle = useAnimatedStyle(() => ({
+        left: `${(tabOffset.value * 33.33)}%`,
+    }));
+
     const styles = React.useMemo(() => getStyles(colors), [colors]);
 
     const resolvedRef = React.useRef({ group: false, activities: false, members: false });
@@ -585,6 +598,17 @@ export default function GroupDetailScreen() {
         return 'MEMBERS';
     }, [members]);
 
+    const leaderboardData = useMemo(() => {
+        const sorted = [...members].sort((a, b) => (b.streak || 0) - (a.streak || 0));
+        let currentRank = 1;
+        return sorted.map((member, index) => {
+            if (index > 0 && (member.streak || 0) !== (sorted[index - 1].streak || 0)) {
+                currentRank = index + 1;
+            }
+            return { ...member, rank: currentRank };
+        });
+    }, [members]);
+
     if (loading) {
         return (
             <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
@@ -666,7 +690,6 @@ export default function GroupDetailScreen() {
                 {sortedMembers.length > 0 ? (
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.memberList}>
                         {sortedMembers.map((member) => {
-                            const readToday = member.lastReadDate === today;
                             return (
                                 <TouchableOpacity
                                     key={member.id}
@@ -683,11 +706,6 @@ export default function GroupDetailScreen() {
                                                 {member.displayName?.charAt(0).toUpperCase()}
                                             </Text>
                                         </View>
-                                        {readToday && (
-                                            <View style={[styles.onlineBadge, { borderColor: colors.background, backgroundColor: colors.indicatorActive }]}>
-                                                <Ionicons name="checkmark" size={10} color="white" />
-                                            </View>
-                                        )}
                                     </View>
                                     <Text style={[styles.memberName, { color: colors.textSecondary }]} numberOfLines={1}>
                                         {member.displayName}
@@ -707,25 +725,51 @@ export default function GroupDetailScreen() {
                 )}
 
                 {/* ── Tabs Section ── */}
-                <View style={styles.tabBarContainer}>
-                    <TouchableOpacity
-                        style={[styles.tabItem, activeTab === 'feed' && styles.activeTabItem]}
-                        onPress={() => setActiveTab('feed')}
-                    >
-                        <Text style={[styles.tabText, { color: colors.textSecondary }, activeTab === 'feed' && { color: colors.accent, fontWeight: '700' }]}>Feed</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.tabItem, activeTab === 'leaderboard' && styles.activeTabItem]}
-                        onPress={() => setActiveTab('leaderboard')}
-                    >
-                        <Text style={[styles.tabText, { color: colors.textSecondary }, activeTab === 'leaderboard' && { color: colors.accent, fontWeight: '700' }]}>Leaderboard</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.tabItem, activeTab === 'members' && styles.activeTabItem]}
-                        onPress={() => setActiveTab('members')}
-                    >
-                        <Text style={[styles.tabText, { color: colors.textSecondary }, activeTab === 'members' && { color: colors.accent, fontWeight: '700' }]}>Members</Text>
-                    </TouchableOpacity>
+                <View style={styles.tabContainer}>
+                    <View style={styles.tabBackground}>
+                        <Animated.View
+                            style={[
+                                styles.tabIndicator,
+                                {
+                                    backgroundColor: colors.accent,
+                                    width: '33.33%',
+                                },
+                                animatedIndicatorStyle
+                            ]}
+                        />
+                        <ScalePressable
+                            style={styles.tab}
+                            onPress={() => setActiveTab('feed')}
+                        >
+                            <Text style={[
+                                styles.tabText,
+                                { color: colors.textSecondary },
+                                activeTab === 'feed' && { color: colors.textPrimary, fontWeight: '600' }
+                            ]}>Feed</Text>
+                        </ScalePressable>
+
+                        <ScalePressable
+                            style={styles.tab}
+                            onPress={() => setActiveTab('leaderboard')}
+                        >
+                            <Text style={[
+                                styles.tabText,
+                                { color: colors.textSecondary },
+                                activeTab === 'leaderboard' && { color: colors.textPrimary, fontWeight: '600' }
+                            ]}>Leaderboard</Text>
+                        </ScalePressable>
+
+                        <ScalePressable
+                            style={styles.tab}
+                            onPress={() => setActiveTab('members')}
+                        >
+                            <Text style={[
+                                styles.tabText,
+                                { color: colors.textSecondary },
+                                activeTab === 'members' && { color: colors.textPrimary, fontWeight: '600' }
+                            ]}>Members</Text>
+                        </ScalePressable>
+                    </View>
                 </View>
 
                 {activeTab === 'feed' && (
@@ -972,15 +1016,15 @@ export default function GroupDetailScreen() {
                         <View style={styles.sectionHeader}>
                             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>LEADERBOARD</Text>
                         </View>
-                        {[...members].sort((a, b) => (b.streak || 0) - (a.streak || 0)).map((member, index) => (
+                        {leaderboardData.map((member) => (
                             <TouchableOpacity
                                 key={member.id}
                                 style={styles.leaderboardItem}
                                 onPress={() => setSelectedMember(member)}
                                 activeOpacity={0.7}
                             >
-                                <Text style={[styles.rankText, { color: index < 3 ? colors.accent : colors.textTertiary }]}>
-                                    {index + 1}
+                                <Text style={[styles.rankText, { color: member.rank <= 3 ? colors.accent : colors.textTertiary }]}>
+                                    {member.rank}
                                 </Text>
                                 <View style={[styles.memberAvatar, { width: 40, height: 40, borderRadius: 20, backgroundColor: getAvatarColor(member.userId || member.id, member.displayName) }]}>
                                     <Text style={[styles.memberInitial, { fontSize: 16, color: 'white' }]}>
@@ -1074,11 +1118,6 @@ const getStyles = (colors: any) => StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 4,
         elevation: 2,
-    },
-    onlineBadge: {
-        position: 'absolute', bottom: 0, right: 0,
-        width: 16, height: 16, borderRadius: 8, borderWidth: 2,
-        justifyContent: 'center', alignItems: 'center',
     },
     memberInitial: { fontSize: Typography.size.lg, fontWeight: Typography.weight.bold },
     memberName: { fontSize: Typography.size.xs, textAlign: 'center', fontFamily: Typography.fontFamily.medium },
@@ -1238,38 +1277,39 @@ const getStyles = (colors: any) => StyleSheet.create({
         fontWeight: Typography.weight.semibold,
         opacity: 0.6,
     },
-    tabBarContainer: {
-        flexDirection: 'row',
-        backgroundColor: colors.cardBackground,
-        borderRadius: 12,
-        padding: 4,
+    tabContainer: {
         marginBottom: Spacing.lg,
-        borderWidth: 1,
+    },
+    tabBackground: {
+        flexDirection: 'row',
+        backgroundColor: 'transparent',
+        position: 'relative',
+        borderBottomWidth: 0.5,
         borderColor: colors.border,
     },
-    tabItem: {
-        flex: 1,
-        paddingVertical: 10,
-        alignItems: 'center',
-        borderRadius: 8,
+    tabIndicator: {
+        position: 'absolute',
+        bottom: 0,
+        height: 2.5,
+        borderRadius: 2,
     },
-    activeTabItem: {
-        backgroundColor: colors.background,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
+    tab: {
+        flex: 1,
+        paddingVertical: 14,
+        alignItems: 'center',
+        zIndex: 1,
     },
     tabText: {
-        fontSize: Typography.size.sm,
-        fontWeight: Typography.weight.semibold,
+        fontSize: 15,
+        fontWeight: '400',
+        letterSpacing: 0.2,
     },
     leaderboardItem: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingVertical: Spacing.md,
-        borderBottomWidth: 1,
+        borderBottomWidth: 0.5,
+        borderColor: colors.border,
         gap: Spacing.md,
     },
     rankText: {
@@ -1296,7 +1336,8 @@ const getStyles = (colors: any) => StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         paddingVertical: Spacing.md,
-        borderBottomWidth: 1,
+        borderBottomWidth: 0.5,
+        borderColor: colors.border,
         gap: Spacing.md,
     },
     memberInfo: {
