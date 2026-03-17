@@ -601,6 +601,8 @@ export default function GroupDetailScreen() {
     const accountabilityData = useMemo(() => {
         const today = getTodayDateString();
         const currentWeek = getISOWeekString(new Date());
+        const currentMonth = today.substring(0, 7);
+        const dayOfMonth = new Date(today).getDate();
 
         const processed = members.map(m => {
             const isCurrentWeek = m.weeklyActivityWeek === currentWeek;
@@ -610,19 +612,21 @@ export default function GroupDetailScreen() {
             const daysThisWeek = dots.filter(Boolean).length;
             const readToday = m.lastReadDate === today;
 
-            const streak = m.streak || 0;
-            const isOnFire = streak >= 7;
-            const isConsistent = daysThisWeek >= 5;
-            const isIronMan = streak >= 30;
+            const isCurrentMonth = m.monthlyActivityMonth === currentMonth;
+            const monthlyStreak = isCurrentMonth ? (m.monthlyStreak || 0) : 0;
+            const monthlyCount = isCurrentMonth ? (m.monthlyActivityCount || 0) : 0;
+
+            const isOnFire = monthlyStreak >= 9;
+            const isIronMan = monthlyStreak >= 21;
 
             return {
                 ...m,
                 daysThisWeek,
                 dots,
                 readToday,
-                streak,
+                streak: monthlyStreak,
+                monthlyCount,
                 isOnFire,
-                isConsistent,
                 isIronMan,
                 isMe: m.userId === user?.uid || m.id === user?.uid
             };
@@ -660,13 +664,6 @@ export default function GroupDetailScreen() {
         .sort((a, b) => (b.streak || 0) - (a.streak || 0));
 
     const groupStreak: number = groupData?.groupStreak || 0;
-    const groupStreakLastDate: string | undefined = groupData?.groupStreakLastDate;
-    const isGroupStreakActive = groupStreak >= 2 && groupStreakLastDate && (() => {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
-        return groupStreakLastDate === today || groupStreakLastDate === yStr;
-    })();
 
     const getPronoun = (userId: string, type: 'subject' | 'object' | 'possessive' = 'object') => {
         const member = members.find(m => m.userId === userId || m.id === userId);
@@ -701,15 +698,6 @@ export default function GroupDetailScreen() {
                     <Ionicons name="cloud-offline-outline" size={14} color={colors.textSecondary} />
                     <Text style={[styles.offlineBannerText, { color: colors.textSecondary }]}>
                         You're offline — showing cached data
-                    </Text>
-                </View>
-            )}
-
-            {/* Group streak pill */}
-            {isGroupStreakActive && (
-                <View style={[styles.streakPill, { backgroundColor: colors.accentSecondaryLight, borderColor: colors.border }]}>
-                    <Text style={[styles.streakPillText, { color: colors.textPrimary }]}>
-                        🔥 {groupStreak}
                     </Text>
                 </View>
             )}
@@ -1122,7 +1110,7 @@ export default function GroupDetailScreen() {
                                                         <View key={i} style={[styles.miniDot, { backgroundColor: active ? colors.accent : colors.border }]} />
                                                     ))}
                                                 </View>
-                                                <Text style={[styles.accMemberSubtitle, { color: colors.textTertiary }]}>{member.daysThisWeek}/7 days</Text>
+                                                <Text style={[styles.accMemberSubtitle, { color: colors.textTertiary }]}>{member.monthlyCount}/{new Date().getDate()} days this month</Text>
                                             </View>
                                         </View>
                                     </TouchableOpacity>
@@ -1153,7 +1141,6 @@ export default function GroupDetailScreen() {
                                             </View>
                                             <View style={styles.accMemberContent}>
                                                 <View style={styles.accMemberRow}>
-                                                    <Text style={[styles.accMemberName, { color: colors.textSecondary }]}>{member.displayName} {member.isMe && '(You)'}</Text>
                                                     <View style={styles.accNudge}>
                                                         {member.isMe ? (
                                                             <Text style={[styles.accNudgeText, { color: colors.accent, fontWeight: '700' }]}>Read now?</Text>
@@ -1168,9 +1155,12 @@ export default function GroupDetailScreen() {
                                                             <View key={i} style={[styles.miniDot, { backgroundColor: active ? colors.accent : colors.border }]} />
                                                         ))}
                                                     </View>
-                                                    {isMostConsistent && !member.isMe && (
-                                                        <Text style={[styles.gingerText, { color: colors.accentSecondary }]}>Don't let the streak break! ⚡</Text>
-                                                    )}
+                                                    <View style={{ flex: 1 }}>
+                                                        <Text style={[styles.accMemberSubtitle, { color: colors.textTertiary }]}>{member.monthlyCount}/{new Date().getDate()} days this month</Text>
+                                                        {isMostConsistent && !member.isMe && (
+                                                            <Text style={[styles.gingerText, { color: colors.accentSecondary, marginTop: 2 }]}>Don't let the streak break! ⚡</Text>
+                                                        )}
+                                                    </View>
                                                 </View>
                                             </View>
                                         </TouchableOpacity>
@@ -1236,12 +1226,6 @@ const getStyles = (colors: any) => StyleSheet.create({
         gap: Spacing.xs, paddingVertical: Spacing.xs, paddingHorizontal: Spacing.md,
     },
     offlineBannerText: { fontSize: Typography.size.xs, fontWeight: Typography.weight.medium, letterSpacing: 0.3 },
-    streakPill: {
-        marginHorizontal: Spacing.layout.screenPadding, marginTop: Spacing.sm,
-        paddingVertical: Spacing.xs, paddingHorizontal: Spacing.md,
-        borderRadius: Spacing.borderRadius.round, borderWidth: 1, alignSelf: 'flex-start',
-    },
-    streakPillText: { fontSize: Typography.size.xs, fontWeight: Typography.weight.semibold, letterSpacing: 0.3 },
     scrollContent: { padding: Spacing.layout.screenPadding, paddingTop: Spacing.sm },
     sectionHeader: { marginTop: Spacing.lg, marginBottom: Spacing.md },
     sectionTitleRow: {

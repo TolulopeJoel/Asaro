@@ -229,6 +229,40 @@ export const syncPendingActivities = async (): Promise<void> => {
                         activityDate
                     );
 
+                    // ── Monthly streak & count ──────────────────────────────
+                    const currentMonth = activityLocalDateStr.substring(0, 7); // "YYYY-MM"
+                    let monthlyStreak = memberData.monthlyStreak || 0;
+                    let monthlyActivityCount = memberData.monthlyActivityCount || 0;
+                    const lastMonth = memberData.monthlyActivityMonth;
+
+                    if (lastMonth !== currentMonth) {
+                        // Fresh start for the new month
+                        monthlyStreak = 1;
+                        monthlyActivityCount = 1;
+                    } else {
+                        // Same month logic — only update if this is a new day of reading
+                        const isNewDay = !lastReadDateStr || activityLocalDateStr > lastReadDateStr;
+                        if (isNewDay) {
+                            monthlyActivityCount += 1;
+                            if (lastReadDateStr) {
+                                try {
+                                    const lastRead = parseLocalDateString(lastReadDateStr);
+                                    const current = parseLocalDateString(activityLocalDateStr);
+                                    const diff = getDaysDifference(lastRead, current);
+                                    if (diff === 1) {
+                                        monthlyStreak += 1;
+                                    } else {
+                                        monthlyStreak = 1;
+                                    }
+                                } catch {
+                                    monthlyStreak = 1;
+                                }
+                            } else {
+                                monthlyStreak = 1;
+                            }
+                        }
+                    }
+
                     // ── Group streak ────────────────────────────────────────
                     const { groupStreak, groupStreakLastDate } = computeGroupStreak(
                         groupData.groupStreak || 0,
@@ -287,13 +321,23 @@ export const syncPendingActivities = async (): Promise<void> => {
                                 gender: userGender,
                                 lastReadDate: activityLocalDateStr,
                                 streak,
+                                monthlyStreak,
+                                monthlyActivityMonth: currentMonth,
+                                monthlyActivityCount,
                                 weeklyActivity,
                                 weeklyActivityWeek,
                                 badges: updatedBadgeIds,
                             }, { merge: true });
                         } else {
-                            // Still update heatmap + badges even if date is not newer
-                            batch.set(memberRef, { weeklyActivity, weeklyActivityWeek, badges: updatedBadgeIds }, { merge: true });
+                            // Still update heatmap + badges + monthly stats even if date is not newer
+                            batch.set(memberRef, {
+                                weeklyActivity,
+                                weeklyActivityWeek,
+                                badges: updatedBadgeIds,
+                                monthlyStreak,
+                                monthlyActivityMonth: currentMonth,
+                                monthlyActivityCount
+                            }, { merge: true });
                         }
 
                         // ── Group streak + readToday ────────────────────────
