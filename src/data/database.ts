@@ -3,6 +3,46 @@ import { formatDateToLocalString, getTodayDateString } from '../utils/dateUtils'
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import { queueActivity, syncPendingActivities } from '../utils/syncActivities';
+import { READING_PLAN_DATA } from './readingPlanData';
+
+/**
+ * Given a book name and chapter start/end, find the first matching
+ * reading plan item whose chapter range covers the entry.
+ * Returns the item's id, or null if no match.
+ */
+const findMatchingReadingPlanItem = (
+    bookName: string,
+    chapterStart?: number,
+    chapterEnd?: number
+): number | null => {
+    if (!chapterStart) return null;
+
+    const effectiveEnd = chapterEnd ?? chapterStart;
+
+    for (const item of READING_PLAN_DATA) {
+        if (item.book.toLowerCase() !== bookName.toLowerCase()) continue;
+
+        // Parse the plan item's chapter range (ignore verse suffixes like "119:64-176")
+        const rawChapters = item.chapters;
+        if (!rawChapters) continue;
+
+        // Strip verse notation: "119:64-176" → "119-119", "1-3" → "1-3", "8" → "8"
+        const parts = rawChapters.split('-');
+        const planStart = parseInt(parts[0].split(':')[0], 10);
+        const planEnd = parts.length > 1
+            ? parseInt(parts[parts.length - 1].split(':')[0], 10)
+            : planStart;
+
+        if (isNaN(planStart) || isNaN(planEnd)) continue;
+
+        // Match: the entry's chapter range overlaps or equals the plan range
+        if (chapterStart >= planStart && effectiveEnd <= planEnd) {
+            return item.id;
+        }
+    }
+
+    return null;
+};
 
 export interface ActionItem {
     id?: number;
@@ -236,11 +276,16 @@ export const createJournalEntry = async (data: JournalEntryInput) => {
             }
         }
 
-        // Mark reading item as completed if provided
-        if (data.readingItemId) {
+        // Mark reading item as completed.
+        // If an explicit readingItemId was provided (via the Next Reading button), use it.
+        // Otherwise, try to find a matching item in the reading plan by book + chapter range.
+        const planItemId = data.readingItemId
+            ?? findMatchingReadingPlanItem(data.bookName, data.chapterStart, data.chapterEnd);
+
+        if (planItemId) {
             await database.runAsync(
                 `INSERT OR IGNORE INTO reading_progress (item_id) VALUES (?)`,
-                [data.readingItemId]
+                [planItemId]
             );
         }
 
