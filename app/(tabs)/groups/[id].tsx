@@ -1064,7 +1064,7 @@ export default function GroupDetailScreen() {
                             <Text style={[styles.heroHint, { color: colors.textTertiary }]}>
                                 {accountabilityData.groupProgressPercent === 100
                                     ? "A good day! Everyone is up to date. 🎉"
-                                    : `Let's encourage the remaining ${accountabilityData.totalMembers - accountabilityData.readTodayCount}`}
+                                    : `Encourage the remaining ${accountabilityData.totalMembers - accountabilityData.readTodayCount}`}
                             </Text>
                         </View>
 
@@ -1106,7 +1106,7 @@ export default function GroupDetailScreen() {
                                                         <View key={i} style={[styles.miniDot, { backgroundColor: active ? colors.accent : colors.border }]} />
                                                     ))}
                                                 </View>
-                                                <Text style={[styles.accMemberSubtitle, { color: colors.textTertiary }]}>{member.monthlyCount}/{new Date().getDate()} days this month</Text>
+                                                <Text style={[styles.accMemberSubtitle, { color: colors.textTertiary }]}>{member.daysThisWeek}/7 days</Text>
                                             </View>
                                         </View>
                                     </TouchableOpacity>
@@ -1137,6 +1137,7 @@ export default function GroupDetailScreen() {
                                             </View>
                                             <View style={styles.accMemberContent}>
                                                 <View style={styles.accMemberRow}>
+                                                    <Text style={[styles.accMemberName, { color: colors.textSecondary }]}>{member.displayName} {member.isMe && '(You)'}</Text>
                                                     <View style={styles.accNudge}>
                                                         {member.isMe ? (
                                                             <Text style={[styles.accNudgeText, { color: colors.accent, fontWeight: '700' }]}>Read now?</Text>
@@ -1151,12 +1152,9 @@ export default function GroupDetailScreen() {
                                                             <View key={i} style={[styles.miniDot, { backgroundColor: active ? colors.accent : colors.border }]} />
                                                         ))}
                                                     </View>
-                                                    <View style={{ flex: 1 }}>
-                                                        <Text style={[styles.accMemberSubtitle, { color: colors.textTertiary }]}>{member.monthlyCount}/{new Date().getDate()} days this month</Text>
-                                                        {isMostConsistent && !member.isMe && (
-                                                            <Text style={[styles.gingerText, { color: colors.accentSecondary, marginTop: 2 }]}>Don't let the streak break! ⚡</Text>
-                                                        )}
-                                                    </View>
+                                                    {isMostConsistent && !member.isMe && (
+                                                        <Text style={[styles.gingerText, { color: colors.accentSecondary }]}>Don't let the streak break! ⚡</Text>
+                                                    )}
                                                 </View>
                                             </View>
                                         </TouchableOpacity>
