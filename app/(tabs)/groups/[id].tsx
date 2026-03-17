@@ -1046,16 +1046,12 @@ export default function GroupDetailScreen() {
                             <View style={styles.heroTop}>
                                 <View style={styles.heroMain}>
                                     <View style={styles.heroValRow}>
-                                        <Text style={[styles.heroVal, { color: colors.accentSecondary }]}>{accountabilityData.groupProgressPercent}%</Text>
+                                        <Text style={[styles.heroVal, { color: colors.accentSecondary }]}>{accountabilityData.readTodayCount} / {accountabilityData.totalMembers}</Text>
                                         <Ionicons name="people" size={20} color={colors.accentSecondary} />
                                     </View>
-                                    <Text style={[styles.heroLabel, { color: colors.textSecondary }]}>Read today</Text>
+                                    <Text style={[styles.heroLabel, { color: colors.textSecondary }]}>People read today</Text>
                                 </View>
                                 <View style={styles.heroStats}>
-                                    <View style={styles.miniStat}>
-                                        <Text style={[styles.miniStatVal, { color: colors.textPrimary }]}>{accountabilityData.readTodayCount}/{accountabilityData.totalMembers}</Text>
-                                        <Text style={[styles.miniStatLabel, { color: colors.textTertiary }]}>Completed</Text>
-                                    </View>
                                     <View style={styles.miniStat}>
                                         <Text style={[styles.miniStatVal, { color: colors.accent }]}>🔥 {groupStreak}</Text>
                                         <Text style={[styles.miniStatLabel, { color: colors.textTertiary }]}>Our streak</Text>
