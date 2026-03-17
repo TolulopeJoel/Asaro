@@ -6,18 +6,27 @@ import { queueActivity, syncPendingActivities } from '../utils/syncActivities';
 import { READING_PLAN_DATA } from './readingPlanData';
 
 /**
- * Given a book name and chapter start/end, find the first matching
- * reading plan item whose chapter range covers the entry.
- * Returns the item's id, or null if no match.
+ * Given a book name and chapter start/end, find ALL reading plan items
+ * that are fully covered by the entry's chapter range.
+ *
+ * A plan item is marked only when the entry covers it entirely:
+ *   entryStart <= planStart && entryEnd >= planEnd
+ *
+ * Examples (Exodus, plan: {22-25}, {26-28}, {29-30}):
+ *   Entry 22-25  → marks {22-25}
+ *   Entry 22-26  → marks {22-25}            (only read ch26 of {26-28}, not all of it)
+ *   Entry 22-28  → marks {22-25} and {26-28}
+ *   Entry 24-30  → marks {26-28} and {29-30} (didn't read 22-23, so {22-25} is NOT marked)
  */
-const findMatchingReadingPlanItem = (
+const findMatchingReadingPlanItems = (
     bookName: string,
     chapterStart?: number,
     chapterEnd?: number
-): number | null => {
-    if (!chapterStart) return null;
+): number[] => {
+    if (!chapterStart) return [];
 
     const effectiveEnd = chapterEnd ?? chapterStart;
+    const matched: number[] = [];
 
     for (const item of READING_PLAN_DATA) {
         if (item.book.toLowerCase() !== bookName.toLowerCase()) continue;
@@ -26,7 +35,7 @@ const findMatchingReadingPlanItem = (
         const rawChapters = item.chapters;
         if (!rawChapters) continue;
 
-        // Strip verse notation: "119:64-176" → "119-119", "1-3" → "1-3", "8" → "8"
+        // Strip verse notation: "119:64-176" → start=119, "1-3" → 1-3, "8" → 8-8
         const parts = rawChapters.split('-');
         const planStart = parseInt(parts[0].split(':')[0], 10);
         const planEnd = parts.length > 1
@@ -35,13 +44,13 @@ const findMatchingReadingPlanItem = (
 
         if (isNaN(planStart) || isNaN(planEnd)) continue;
 
-        // Match: the entry's chapter range overlaps or equals the plan range
-        if (chapterStart >= planStart && effectiveEnd <= planEnd) {
-            return item.id;
+        // Mark only if the entry fully covers this plan item
+        if (chapterStart <= planStart && effectiveEnd >= planEnd) {
+            matched.push(item.id);
         }
     }
 
-    return null;
+    return matched;
 };
 
 export interface ActionItem {
@@ -276,13 +285,15 @@ export const createJournalEntry = async (data: JournalEntryInput) => {
             }
         }
 
-        // Mark reading item as completed.
-        // If an explicit readingItemId was provided (via the Next Reading button), use it.
-        // Otherwise, try to find a matching item in the reading plan by book + chapter range.
-        const planItemId = data.readingItemId
-            ?? findMatchingReadingPlanItem(data.bookName, data.chapterStart, data.chapterEnd);
+        // Mark reading plan items as completed.
+        // If an explicit readingItemId was provided (via the Next Reading button), use only that.
+        // Otherwise, find ALL plan items whose chapter range overlaps with the entry's range
+        // (handles cases like entering ch 22-28 across multiple plan items).
+        const planItemIds = data.readingItemId
+            ? [data.readingItemId]
+            : findMatchingReadingPlanItems(data.bookName, data.chapterStart, data.chapterEnd);
 
-        if (planItemId) {
+        for (const planItemId of planItemIds) {
             await database.runAsync(
                 `INSERT OR IGNORE INTO reading_progress (item_id) VALUES (?)`,
                 [planItemId]
