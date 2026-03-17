@@ -499,6 +499,7 @@ export default function GroupDetailScreen() {
     const [isOffline, setIsOffline] = React.useState(false);
     const [selectedMember, setSelectedMember] = React.useState<any>(null);
     const [expandedDigests, setExpandedDigests] = React.useState<Set<string>>(new Set());
+    const [activeTab, setActiveTab] = React.useState<'feed' | 'leaderboard' | 'members'>('feed');
 
     const styles = React.useMemo(() => getStyles(colors), [colors]);
 
@@ -705,252 +706,339 @@ export default function GroupDetailScreen() {
                     </Text>
                 )}
 
-                {/* ── Activity Feed ── */}
-                <View style={[styles.sectionHeader, { marginTop: Spacing.md }]}>
-                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>WHAT HAS BEEN HAPPENING</Text>
+                {/* ── Tabs Section ── */}
+                <View style={styles.tabBarContainer}>
+                    <TouchableOpacity
+                        style={[styles.tabItem, activeTab === 'feed' && styles.activeTabItem]}
+                        onPress={() => setActiveTab('feed')}
+                    >
+                        <Text style={[styles.tabText, { color: colors.textSecondary }, activeTab === 'feed' && { color: colors.accent, fontWeight: '700' }]}>Feed</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.tabItem, activeTab === 'leaderboard' && styles.activeTabItem]}
+                        onPress={() => setActiveTab('leaderboard')}
+                    >
+                        <Text style={[styles.tabText, { color: colors.textSecondary }, activeTab === 'leaderboard' && { color: colors.accent, fontWeight: '700' }]}>Leaderboard</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.tabItem, activeTab === 'members' && styles.activeTabItem]}
+                        onPress={() => setActiveTab('members')}
+                    >
+                        <Text style={[styles.tabText, { color: colors.textSecondary }, activeTab === 'members' && { color: colors.accent, fontWeight: '700' }]}>Members</Text>
+                    </TouchableOpacity>
                 </View>
 
-                {/* Pinned group milestone hero card */}
-                {pinnedMilestone && (
-                    <View style={[styles.milestoneHero, { borderColor: colors.accent, backgroundColor: colors.accent + '10' }]}>
-                        <View style={styles.milestoneHeroTop}>
-                            <Text style={styles.milestoneHeroBadge}>{pinnedMilestone.badgeEmoji}</Text>
-                            <View style={styles.milestoneHeroConfetti}>
-                                <Text style={[styles.milestoneHeroLabel, { color: colors.accent }]}>
-                                    {pinnedMilestone.badgeLabel.toUpperCase()}
-                                </Text>
-                            </View>
+                {activeTab === 'feed' && (
+                    <>
+                        {/* ── Activity Feed ── */}
+                        <View style={[styles.sectionHeader, { marginTop: Spacing.md }]}>
+                            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>WHAT'S BEEN HAPPENING</Text>
                         </View>
-                        <Text style={[styles.milestoneHeroDesc, { color: colors.textSecondary }]}>
-                            {formatBadgeDesc(pinnedMilestone.badgeDesc, pinnedMilestone.userId)}
-                        </Text>
-                        {formatRelativeTime(pinnedMilestone.timestamp) && (
-                            <Text style={[styles.milestoneHeroTime, { color: colors.textTertiary }]}>
-                                {formatRelativeTime(pinnedMilestone.timestamp)}
-                            </Text>
+
+                        {/* Pinned group milestone hero card */}
+                        {pinnedMilestone && (
+                            <View style={[styles.milestoneHero, { borderColor: colors.accent, backgroundColor: colors.accent + '10' }]}>
+                                <View style={styles.milestoneHeroTop}>
+                                    <Text style={styles.milestoneHeroBadge}>{pinnedMilestone.badgeEmoji}</Text>
+                                    <View style={styles.milestoneHeroConfetti}>
+                                        <Text style={[styles.milestoneHeroLabel, { color: colors.accent }]}>
+                                            {pinnedMilestone.badgeLabel.toUpperCase()}
+                                        </Text>
+                                    </View>
+                                </View>
+                                <Text style={[styles.milestoneHeroDesc, { color: colors.textSecondary }]}>
+                                    {formatBadgeDesc(pinnedMilestone.badgeDesc, pinnedMilestone.userId)}
+                                </Text>
+                                {formatRelativeTime(pinnedMilestone.timestamp) && (
+                                    <Text style={[styles.milestoneHeroTime, { color: colors.textTertiary }]}>
+                                        {formatRelativeTime(pinnedMilestone.timestamp)}
+                                    </Text>
+                                )}
+                            </View>
                         )}
+
+                        <View style={styles.feedChainContainer}>
+                            <View style={[styles.feedChainLine, { backgroundColor: colors.border }]} />
+                            {feedItems.length > 0 ? (
+                                feedItems.map((item: FeedItem) => {
+                                    // ── Date separator ──
+                                    if (item.type === 'separator') {
+                                        const sep = item as Separator;
+                                        return (
+                                            <View key={sep.id} style={styles.dateSeparator}>
+                                                <View style={[styles.dateSeparatorLine, { backgroundColor: colors.border }]} />
+                                                <Text style={[styles.dateSeparatorLabel, { color: colors.textTertiary, backgroundColor: colors.background }]}>
+                                                    {sep.label}
+                                                </Text>
+                                                <View style={[styles.dateSeparatorLine, { backgroundColor: colors.border }]} />
+                                            </View>
+                                        );
+                                    }
+
+                                    // ── Reading digest ──
+                                    if (item.type === 'reading_digest') {
+                                        const digest = item as ReadingDigest;
+                                        const isExpanded = expandedDigests.has(digest.id);
+                                        const totalCount = digest.entries.length;
+                                        const nameStr = digest.extraCount > 0
+                                            ? `${digest.names.join(', ')} +${digest.extraCount} more`
+                                            : digest.names.join(' & ');
+
+                                        const toggleDigest = () => {
+                                            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                                            setExpandedDigests(prev => {
+                                                const next = new Set(prev);
+                                                if (next.has(digest.id)) next.delete(digest.id);
+                                                else next.add(digest.id);
+                                                return next;
+                                            });
+                                        };
+
+                                        return (
+                                            <View key={digest.id} style={styles.digestCard}>
+                                                {/* Header row — always visible */}
+                                                <TouchableOpacity
+                                                    style={styles.digestHeader}
+                                                    onPress={toggleDigest}
+                                                    activeOpacity={0.7}
+                                                >
+                                                    <View style={[styles.digestIconWrap, { backgroundColor: colors.accentSecondaryLight + '40' }]}>
+                                                        <Ionicons name="journal-outline" size={20} color={colors.accent} />
+                                                    </View>
+                                                    <View style={styles.digestContent}>
+                                                        <Text style={[styles.digestLine, { color: colors.textPrimary }]}>
+                                                            {nameStr}
+                                                        </Text>
+                                                        <Text style={[styles.digestSub, { color: colors.textSecondary }]}>
+                                                            {totalCount} people read · {formatRelativeTime(digest.timestamp)}
+                                                        </Text>
+                                                    </View>
+                                                    <Ionicons
+                                                        name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                                                        size={18}
+                                                        color={colors.textTertiary}
+                                                    />
+                                                </TouchableOpacity>
+
+                                                {/* Expanded entries */}
+                                                {isExpanded && (
+                                                    <View style={[styles.digestEntries, { borderTopColor: colors.border }]}>
+                                                        {digest.entries.map((entry: any, i: number) => (
+                                                            <View
+                                                                key={entry.id || `${digest.id}-${i}`}
+                                                                style={[styles.digestEntry, {
+                                                                    borderBottomColor: colors.border,
+                                                                    borderBottomWidth: i < digest.entries.length - 1 ? 1 : 0,
+                                                                }]}
+                                                            >
+                                                                <View style={[styles.digestEntryAvatar, { backgroundColor: getAvatarColor(entry.userId, entry.userName) }]}>
+                                                                    <Text style={styles.digestEntryInitial}>
+                                                                        {entry.userName?.charAt(0).toUpperCase() || '?'}
+                                                                    </Text>
+                                                                </View>
+                                                                <View style={styles.digestEntryText}>
+                                                                    <Text style={[styles.digestEntryName, { color: colors.textPrimary }]}>
+                                                                        {entry.userName}
+                                                                    </Text>
+                                                                    <Text style={[styles.digestEntrySub, { color: colors.textTertiary }]}>
+                                                                        {entry.bookName} {entry.chapters}
+                                                                    </Text>
+                                                                </View>
+                                                                <Text style={[styles.timestamp, { color: colors.textTertiary }]}>
+                                                                    {formatRelativeTime(entry.timestamp)}
+                                                                </Text>
+                                                            </View>
+                                                        ))}
+                                                    </View>
+                                                )}
+                                            </View>
+                                        );
+                                    }
+
+                                    // ── Regular activity card ──
+                                    const activity = item;
+                                    const timeStr = formatRelativeTime(activity.timestamp);
+                                    const isEntry = activity.type === 'journal_entry' || activity.type === 'reflection_shared';
+                                    const isAbsent = activity.type === 'member_absent';
+                                    const isJoined = activity.type === 'member_joined';
+                                    const isRemoved = activity.type === 'member_removed';
+                                    const isMilestone = activity.type === 'milestone_earned';
+                                    return (
+                                        <View key={activity.id} style={styles.activityCard}>
+
+                                            <View style={[styles.userBadge, { backgroundColor: getAvatarColor(activity.userId, activity.userName) }]}>
+                                                <Text style={[styles.userInitial, { color: 'white' }]}>
+                                                    {activity.userName?.charAt(0).toUpperCase() || '?'}
+                                                </Text>
+                                            </View>
+                                            <View style={styles.activityContent}>
+                                                <View style={styles.activityHeader}>
+                                                    <Text style={[styles.userName, { color: colors.textPrimary }]}>
+                                                        {isAbsent
+                                                            ? `Where is ${activity.userName}? 🥹`
+                                                            : isJoined
+                                                                ? `Hi, ${activity.userName} 🤭`
+                                                                : activity.userName}
+                                                    </Text>
+                                                    {timeStr ? (
+                                                        <Text style={[styles.timestamp, { color: colors.textTertiary }]}>{timeStr}</Text>
+                                                    ) : (
+                                                        <Text style={[styles.timestamp, { color: colors.textTertiary }]}>Syncing…</Text>
+                                                    )}
+                                                </View>
+
+                                                {isMilestone && (
+                                                    <View style={styles.milestoneRow}>
+                                                        <Text style={[styles.activityText, { color: colors.textSecondary, flex: 1 }]}>
+                                                            {formatBadgeDesc(activity.badgeDesc, activity.userId)}
+                                                        </Text>
+                                                    </View>
+                                                )}
+                                                {isEntry && (
+                                                    <>
+                                                        <Text style={[styles.activityText, { color: colors.textSecondary }]}>
+                                                            read {activity.bookName} {activity.chapters}
+                                                        </Text>
+                                                        {activity.preview ? (
+                                                            <Text style={[styles.reflectionPreview, { color: colors.textTertiary, borderLeftColor: colors.accentSecondaryLight }]}>
+                                                                "{activity.preview}"
+                                                            </Text>
+                                                        ) : null}
+                                                    </>
+                                                )}
+                                                {isJoined && (
+                                                    <Text style={[styles.activityText, { color: colors.textSecondary, fontWeight: '500' }]}>
+                                                        Welcome! Let's grow together. 🎉
+                                                    </Text>
+                                                )}
+                                                {isAbsent && (
+                                                    <Text style={[styles.activityText, { color: colors.textSecondary }]}>
+                                                        {activity.threshold === 30
+                                                            ? `${getPronoun(activity.userId, 'subject').charAt(0).toUpperCase() + getPronoun(activity.userId, 'subject').slice(1)} has been away for a month. We miss ${getPronoun(activity.userId, 'possessive')} insights! 🫂`
+                                                            : `We haven't seen ${getPronoun(activity.userId, 'object')} in a week. Drop a message to encourage ${getPronoun(activity.userId, 'object')}!`}
+                                                    </Text>
+                                                )}
+                                                {isRemoved && (
+                                                    <Text style={[styles.activityText, { color: colors.textTertiary, fontStyle: 'italic' }]}>
+                                                        has left us.
+                                                    </Text>
+                                                )}
+                                            </View>
+                                            <View style={styles.activityIcon}>
+                                                {isMilestone ? (
+                                                    <Text style={{ fontSize: 18, marginTop: -2 }}>{activity.badgeEmoji}</Text>
+                                                ) : (
+                                                    <Ionicons
+                                                        name={
+                                                            isEntry ? 'journal-outline'
+                                                                : isJoined ? 'person-add-outline'
+                                                                    : isAbsent ? 'moon-outline'
+                                                                        : isRemoved ? 'exit-outline'
+                                                                            : 'checkmark-circle'
+                                                        }
+                                                        size={20}
+                                                        color={
+                                                            isEntry ? colors.accentSecondary
+                                                                : isJoined ? colors.indicatorActive
+                                                                    : isAbsent ? colors.accent
+                                                                        : colors.textTertiary
+                                                        }
+                                                    />
+                                                )}
+                                            </View>
+                                        </View>
+                                    );
+                                })
+                            ) : (
+                                <View style={styles.emptyFeed}>
+                                    <Ionicons
+                                        name={isOffline ? 'cloud-offline-outline' : 'sunny-outline'}
+                                        size={28}
+                                        color={colors.textTertiary}
+                                    />
+                                    <Text style={[styles.emptyFeedText, { color: colors.textTertiary }]}>
+                                        {isOffline
+                                            ? 'Feed unavailable offline. Check back when connected.'
+                                            : 'No activity yet. Be the first!'}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+                    </>
+                )}
+
+                {activeTab === 'leaderboard' && (
+                    <View style={{ marginTop: Spacing.md }}>
+                        <View style={styles.sectionHeader}>
+                            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>LEADERBOARD</Text>
+                        </View>
+                        {[...members].sort((a, b) => (b.streak || 0) - (a.streak || 0)).map((member, index) => (
+                            <TouchableOpacity
+                                key={member.id}
+                                style={styles.leaderboardItem}
+                                onPress={() => setSelectedMember(member)}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={[styles.rankText, { color: index < 3 ? colors.accent : colors.textTertiary }]}>
+                                    {index + 1}
+                                </Text>
+                                <View style={[styles.memberAvatar, { width: 40, height: 40, borderRadius: 20, backgroundColor: getAvatarColor(member.userId || member.id, member.displayName) }]}>
+                                    <Text style={[styles.memberInitial, { fontSize: 16, color: 'white' }]}>
+                                        {member.displayName?.charAt(0).toUpperCase()}
+                                    </Text>
+                                </View>
+                                <View style={styles.leaderboardContent}>
+                                    <Text style={[styles.leaderboardName, { color: colors.textPrimary }]}>{member.displayName}</Text>
+                                    <Text style={[styles.leaderboardStreak, { color: colors.accent }]}>{member.streak || 0} 🔥</Text>
+                                </View>
+                            </TouchableOpacity>
+                        ))}
                     </View>
                 )}
 
-                <View style={styles.feedChainContainer}>
-                    <View style={[styles.feedChainLine, { backgroundColor: colors.border }]} />
-                    {feedItems.length > 0 ? (
-                        feedItems.map((item: FeedItem) => {
-                            // ── Date separator ──
-                            if (item.type === 'separator') {
-                                const sep = item as Separator;
-                                return (
-                                    <View key={sep.id} style={styles.dateSeparator}>
-                                        <View style={[styles.dateSeparatorLine, { backgroundColor: colors.border }]} />
-                                        <Text style={[styles.dateSeparatorLabel, { color: colors.textTertiary, backgroundColor: colors.background }]}>
-                                            {sep.label}
-                                        </Text>
-                                        <View style={[styles.dateSeparatorLine, { backgroundColor: colors.border }]} />
-                                    </View>
-                                );
-                            }
-
-                            // ── Reading digest ──
-                            if (item.type === 'reading_digest') {
-                                const digest = item as ReadingDigest;
-                                const isExpanded = expandedDigests.has(digest.id);
-                                const totalCount = digest.entries.length;
-                                const nameStr = digest.extraCount > 0
-                                    ? `${digest.names.join(', ')} +${digest.extraCount} more`
-                                    : digest.names.join(' & ');
-
-                                const toggleDigest = () => {
-                                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                                    setExpandedDigests(prev => {
-                                        const next = new Set(prev);
-                                        if (next.has(digest.id)) next.delete(digest.id);
-                                        else next.add(digest.id);
-                                        return next;
-                                    });
-                                };
-
-                                return (
-                                    <View key={digest.id} style={styles.digestCard}>
-                                        {/* Header row — always visible */}
-                                        <TouchableOpacity
-                                            style={styles.digestHeader}
-                                            onPress={toggleDigest}
-                                            activeOpacity={0.7}
-                                        >
-                                            <View style={[styles.digestIconWrap, { backgroundColor: colors.accentSecondaryLight + '40' }]}>
-                                                <Ionicons name="journal-outline" size={20} color={colors.accent} />
-                                            </View>
-                                            <View style={styles.digestContent}>
-                                                <Text style={[styles.digestLine, { color: colors.textPrimary }]}>
-                                                    {nameStr}
-                                                </Text>
-                                                <Text style={[styles.digestSub, { color: colors.textSecondary }]}>
-                                                    {totalCount} people read · {formatRelativeTime(digest.timestamp)}
-                                                </Text>
-                                            </View>
-                                            <Ionicons
-                                                name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                                                size={18}
-                                                color={colors.textTertiary}
-                                            />
-                                        </TouchableOpacity>
-
-                                        {/* Expanded entries */}
-                                        {isExpanded && (
-                                            <View style={[styles.digestEntries, { borderTopColor: colors.border }]}>
-                                                {digest.entries.map((entry: any, i: number) => (
-                                                    <View
-                                                        key={entry.id || `${digest.id}-${i}`}
-                                                        style={[styles.digestEntry, {
-                                                            borderBottomColor: colors.border,
-                                                            borderBottomWidth: i < digest.entries.length - 1 ? 1 : 0,
-                                                        }]}
-                                                    >
-                                                        <View style={[styles.digestEntryAvatar, { backgroundColor: getAvatarColor(entry.userId, entry.userName) }]}>
-                                                            <Text style={styles.digestEntryInitial}>
-                                                                {entry.userName?.charAt(0).toUpperCase() || '?'}
-                                                            </Text>
-                                                        </View>
-                                                        <View style={styles.digestEntryText}>
-                                                            <Text style={[styles.digestEntryName, { color: colors.textPrimary }]}>
-                                                                {entry.userName}
-                                                            </Text>
-                                                            <Text style={[styles.digestEntrySub, { color: colors.textTertiary }]}>
-                                                                {entry.bookName} {entry.chapters}
-                                                            </Text>
-                                                        </View>
-                                                        <Text style={[styles.timestamp, { color: colors.textTertiary }]}>
-                                                            {formatRelativeTime(entry.timestamp)}
-                                                        </Text>
-                                                    </View>
-                                                ))}
-                                            </View>
-                                        )}
-                                    </View>
-                                );
-                            }
-
-                            // ── Regular activity card ──
-                            const activity = item;
-                            const timeStr = formatRelativeTime(activity.timestamp);
-                            const isEntry = activity.type === 'journal_entry' || activity.type === 'reflection_shared';
-                            const isAbsent = activity.type === 'member_absent';
-                            const isJoined = activity.type === 'member_joined';
-                            const isRemoved = activity.type === 'member_removed';
-                            const isMilestone = activity.type === 'milestone_earned';
-                            return (
-                                <View key={activity.id} style={styles.activityCard}>
-
-                                    <View style={[styles.userBadge, { backgroundColor: getAvatarColor(activity.userId, activity.userName) }]}>
-                                        <Text style={[styles.userInitial, { color: 'white' }]}>
-                                            {activity.userName?.charAt(0).toUpperCase() || '?'}
-                                        </Text>
-                                    </View>
-                                    <View style={styles.activityContent}>
-                                        <View style={styles.activityHeader}>
-                                            <Text style={[styles.userName, { color: colors.textPrimary }]}>
-                                                {isAbsent
-                                                    ? `Where is ${activity.userName}? 🥹`
-                                                    : isJoined
-                                                        ? `Hi, ${activity.userName} 🤭`
-                                                        : activity.userName}
-                                            </Text>
-                                            {timeStr ? (
-                                                <Text style={[styles.timestamp, { color: colors.textTertiary }]}>{timeStr}</Text>
-                                            ) : (
-                                                <Text style={[styles.timestamp, { color: colors.textTertiary }]}>Syncing…</Text>
-                                            )}
-                                        </View>
-
-                                        {isMilestone && (
-                                            <View style={styles.milestoneRow}>
-                                                <Text style={[styles.activityText, { color: colors.textSecondary, flex: 1 }]}>
-                                                    {formatBadgeDesc(activity.badgeDesc, activity.userId)}
-                                                </Text>
-                                            </View>
-                                        )}
-                                        {isEntry && (
-                                            <>
-                                                <Text style={[styles.activityText, { color: colors.textSecondary }]}>
-                                                    read {activity.bookName} {activity.chapters}
-                                                </Text>
-                                                {activity.preview ? (
-                                                    <Text style={[styles.reflectionPreview, { color: colors.textTertiary, borderLeftColor: colors.accentSecondaryLight }]}>
-                                                        "{activity.preview}"
-                                                    </Text>
-                                                ) : null}
-                                            </>
-                                        )}
-                                        {isJoined && (
-                                            <Text style={[styles.activityText, { color: colors.textSecondary, fontWeight: '500' }]}>
-                                                Welcome! Let's grow together. 🎉
-                                            </Text>
-                                        )}
-                                        {isAbsent && (
-                                            <Text style={[styles.activityText, { color: colors.textSecondary }]}>
-                                                {activity.threshold === 30
-                                                    ? `${getPronoun(activity.userId, 'subject').charAt(0).toUpperCase() + getPronoun(activity.userId, 'subject').slice(1)} has been away for a month. We miss ${getPronoun(activity.userId, 'possessive')} insights! 🫂`
-                                                    : `We haven't seen ${getPronoun(activity.userId, 'object')} in a week. Drop a message to encourage ${getPronoun(activity.userId, 'object')}!`}
-                                            </Text>
-                                        )}
-                                        {isRemoved && (
-                                            <Text style={[styles.activityText, { color: colors.textTertiary, fontStyle: 'italic' }]}>
-                                                has left us.
-                                            </Text>
-                                        )}
-                                    </View>
-                                    <View style={styles.activityIcon}>
-                                        {isMilestone ? (
-                                            <Text style={{ fontSize: 18, marginTop: -2 }}>{activity.badgeEmoji}</Text>
-                                        ) : (
-                                            <Ionicons
-                                                name={
-                                                    isEntry ? 'journal-outline'
-                                                        : isJoined ? 'person-add-outline'
-                                                            : isAbsent ? 'moon-outline'
-                                                                : isRemoved ? 'exit-outline'
-                                                                    : 'checkmark-circle'
-                                                }
-                                                size={20}
-                                                color={
-                                                    isEntry ? colors.accentSecondary
-                                                        : isJoined ? colors.indicatorActive
-                                                            : isAbsent ? colors.accent
-                                                                : colors.textTertiary
-                                                }
-                                            />
-                                        )}
-                                    </View>
-                                </View>
-                            );
-                        })
-                    ) : (
-                        <View style={styles.emptyFeed}>
-                            <Ionicons
-                                name={isOffline ? 'cloud-offline-outline' : 'sunny-outline'}
-                                size={28}
-                                color={colors.textTertiary}
-                            />
-                            <Text style={[styles.emptyFeedText, { color: colors.textTertiary }]}>
-                                {isOffline
-                                    ? 'Feed unavailable offline. Check back when connected.'
-                                    : 'No activity yet. Be the first!'}
-                            </Text>
+                {activeTab === 'members' && (
+                    <View style={{ marginTop: Spacing.md }}>
+                        <View style={styles.sectionHeader}>
+                            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>DIRECTORY</Text>
                         </View>
-                    )}
-                </View>
+                        {[...members].sort((a, b) => (a.displayName || '').localeCompare(b.displayName || '')).map((member) => (
+                            <TouchableOpacity
+                                key={member.id}
+                                style={styles.memberCard}
+                                onPress={() => setSelectedMember(member)}
+                                activeOpacity={0.7}
+                            >
+                                <View style={[styles.memberAvatar, { width: 48, height: 48, borderRadius: 24, backgroundColor: getAvatarColor(member.userId || member.id, member.displayName) }]}>
+                                    <Text style={[styles.memberInitial, { fontSize: 20, color: 'white' }]}>
+                                        {member.displayName?.charAt(0).toUpperCase()}
+                                    </Text>
+                                </View>
+                                <View style={styles.memberInfo}>
+                                    <Text style={[styles.leaderboardName, { color: colors.textPrimary }]}>{member.displayName}</Text>
+                                    <Text style={[styles.memberRole, { color: colors.textTertiary }]}>
+                                        {member.role === 'admin' ? 'Admin' : 'Member'}
+                                    </Text>
+                                </View>
+                                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                )}
+
             </ScrollView>
 
             {/* Member Profile Sheet */}
-            {selectedMember && (
-                <MemberProfileSheet
-                    member={selectedMember}
-                    onClose={() => setSelectedMember(null)}
-                    colors={colors}
-                    today={today}
-                />
-            )}
-        </SafeAreaView>
+            {
+                selectedMember && (
+                    <MemberProfileSheet
+                        member={selectedMember}
+                        onClose={() => setSelectedMember(null)}
+                        colors={colors}
+                        today={today}
+                    />
+                )
+            }
+        </SafeAreaView >
     );
 }
 
@@ -1148,6 +1236,74 @@ const getStyles = (colors: any) => StyleSheet.create({
         fontSize: Typography.size.xs,
         marginTop: 4,
         fontWeight: Typography.weight.semibold,
+        opacity: 0.6,
+    },
+    tabBarContainer: {
+        flexDirection: 'row',
+        backgroundColor: colors.cardBackground,
+        borderRadius: 12,
+        padding: 4,
+        marginBottom: Spacing.lg,
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    tabItem: {
+        flex: 1,
+        paddingVertical: 10,
+        alignItems: 'center',
+        borderRadius: 8,
+    },
+    activeTabItem: {
+        backgroundColor: colors.background,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 2,
+    },
+    tabText: {
+        fontSize: Typography.size.sm,
+        fontWeight: Typography.weight.semibold,
+    },
+    leaderboardItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: Spacing.md,
+        borderBottomWidth: 1,
+        gap: Spacing.md,
+    },
+    rankText: {
+        width: 24,
+        fontSize: Typography.size.sm,
+        fontWeight: Typography.weight.bold,
+        textAlign: 'center',
+    },
+    leaderboardContent: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    leaderboardName: {
+        fontSize: Typography.size.sm,
+        fontWeight: Typography.weight.semibold,
+    },
+    leaderboardStreak: {
+        fontSize: Typography.size.sm,
+        fontWeight: Typography.weight.bold,
+    },
+    memberCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: Spacing.md,
+        borderBottomWidth: 1,
+        gap: Spacing.md,
+    },
+    memberInfo: {
+        flex: 1,
+    },
+    memberRole: {
+        fontSize: Typography.size.xs,
         opacity: 0.6,
     },
 });
