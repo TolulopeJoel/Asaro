@@ -599,7 +599,38 @@ export default function GroupDetailScreen() {
     }, [members]);
 
     const leaderboardData = useMemo(() => {
-        const sorted = [...members].sort((a, b) => (b.streak || 0) - (a.streak || 0));
+        const currentWeek = getISOWeekString(new Date());
+        const processed = members.map(m => {
+            const isCurrentWeek = m.weeklyActivityWeek === currentWeek;
+            const dots = (isCurrentWeek && Array.isArray(m.weeklyActivity) && m.weeklyActivity.length === 7)
+                ? m.weeklyActivity
+                : [false, false, false, false, false, false, false];
+            const daysThisWeek = dots.filter(Boolean).length;
+
+            // Status tags
+            const streak = m.streak || 0;
+            const isOnFire = streak >= 7;
+            const isConsistent = daysThisWeek >= 5;
+            const isRising = streak >= 3 && streak < 7;
+            const isIronMan = streak >= 30;
+
+            return {
+                ...m,
+                daysThisWeek,
+                dots,
+                isOnFire,
+                isConsistent,
+                isRising,
+                isIronMan,
+                isMe: m.userId === user?.uid || m.id === user?.uid
+            };
+        });
+
+        const sorted = processed.sort((a, b) => {
+            if ((b.streak || 0) !== (a.streak || 0)) return (b.streak || 0) - (a.streak || 0);
+            return b.daysThisWeek - a.daysThisWeek;
+        });
+
         let currentRank = 1;
         return sorted.map((member, index) => {
             if (index > 0 && (member.streak || 0) !== (sorted[index - 1].streak || 0)) {
@@ -607,7 +638,7 @@ export default function GroupDetailScreen() {
             }
             return { ...member, rank: currentRank };
         });
-    }, [members]);
+    }, [members, user?.uid]);
 
     if (loading) {
         return (
@@ -1014,29 +1045,138 @@ export default function GroupDetailScreen() {
                 {activeTab === 'leaderboard' && (
                     <View style={{ marginTop: Spacing.md }}>
                         <View style={styles.sectionHeader}>
-                            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>LEADERBOARD</Text>
+                            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>COMPETITIVE VIEW</Text>
                         </View>
-                        {leaderboardData.map((member) => (
-                            <TouchableOpacity
-                                key={member.id}
-                                style={styles.leaderboardItem}
-                                onPress={() => setSelectedMember(member)}
-                                activeOpacity={0.7}
-                            >
-                                <Text style={[styles.rankText, { color: member.rank <= 3 ? colors.accent : colors.textTertiary }]}>
-                                    {member.rank}
-                                </Text>
-                                <View style={[styles.memberAvatar, { width: 40, height: 40, borderRadius: 20, backgroundColor: getAvatarColor(member.userId || member.id, member.displayName) }]}>
-                                    <Text style={[styles.memberInitial, { fontSize: 16, color: 'white' }]}>
-                                        {member.displayName?.charAt(0).toUpperCase()}
-                                    </Text>
+
+                        {/* Podium Section */}
+                        {leaderboardData.length > 0 && (
+                            <View style={styles.podiumContainer}>
+                                {leaderboardData.length >= 2 && (
+                                    <View style={[styles.podiumStand, styles.podiumStand2]}>
+                                        <TouchableOpacity onPress={() => setSelectedMember(leaderboardData[1])}>
+                                            <View style={[styles.podiumAvatar, { borderColor: '#A7A7AD', backgroundColor: getAvatarColor(leaderboardData[1].userId || leaderboardData[1].id, leaderboardData[1].displayName) }]}>
+                                                <Text style={styles.podiumInitial}>{leaderboardData[1].displayName?.charAt(0).toUpperCase()}</Text>
+                                            </View>
+                                        </TouchableOpacity>
+                                        <View style={[styles.podiumBase, { backgroundColor: colors.borderSubtle, height: 60 }]}>
+                                            <Text style={[styles.podiumRankText, { color: colors.textSecondary }]}>2</Text>
+                                        </View>
+                                        <Text style={[styles.podiumName, { color: colors.textPrimary }]} numberOfLines={1}>{leaderboardData[1].displayName}</Text>
+                                        <Text style={[styles.podiumStreak, { color: colors.textTertiary }]}>{leaderboardData[1].streak || 0} 🔥</Text>
+                                    </View>
+                                )}
+
+                                <View style={[styles.podiumStand, styles.podiumStand1]}>
+                                    <TouchableOpacity onPress={() => setSelectedMember(leaderboardData[0])}>
+                                        <View style={[styles.podiumAvatar, styles.podiumAvatarLarge, { borderColor: '#FFD700', backgroundColor: getAvatarColor(leaderboardData[0].userId || leaderboardData[0].id, leaderboardData[0].displayName) }]}>
+                                            <Text style={[styles.podiumInitial, { fontSize: 24 }]}>{leaderboardData[0].displayName?.charAt(0).toUpperCase()}</Text>
+                                            <View style={styles.crownContainer}>
+                                                <Ionicons name="ribbon" size={20} color="#FFD700" />
+                                            </View>
+                                        </View>
+                                    </TouchableOpacity>
+                                    <View style={[styles.podiumBase, { backgroundColor: colors.accentSecondaryLight, height: 90 }]}>
+                                        <Text style={[styles.podiumRankText, { color: colors.accentSecondary, fontSize: 28 }]}>1</Text>
+                                    </View>
+                                    <Text style={[styles.podiumName, { color: colors.textPrimary, fontWeight: '700' }]} numberOfLines={1}>{leaderboardData[0].displayName}</Text>
+                                    <Text style={[styles.podiumStreak, { color: colors.accentSecondary, fontWeight: '700' }]}>{leaderboardData[0].streak || 0} 🔥</Text>
                                 </View>
-                                <View style={styles.leaderboardContent}>
-                                    <Text style={[styles.leaderboardName, { color: colors.textPrimary }]}>{member.displayName}</Text>
-                                    <Text style={[styles.leaderboardStreak, { color: colors.accent }]}>{member.streak || 0} 🔥</Text>
-                                </View>
-                            </TouchableOpacity>
-                        ))}
+
+                                {leaderboardData.length >= 3 && (
+                                    <View style={[styles.podiumStand, styles.podiumStand3]}>
+                                        <TouchableOpacity onPress={() => setSelectedMember(leaderboardData[2])}>
+                                            <View style={[styles.podiumAvatar, { borderColor: '#CD7F32', backgroundColor: getAvatarColor(leaderboardData[2].userId || leaderboardData[2].id, leaderboardData[2].displayName) }]}>
+                                                <Text style={styles.podiumInitial}>{leaderboardData[2].displayName?.charAt(0).toUpperCase()}</Text>
+                                            </View>
+                                        </TouchableOpacity>
+                                        <View style={[styles.podiumBase, { backgroundColor: colors.borderSubtle, height: 45, opacity: 0.8 }]}>
+                                            <Text style={[styles.podiumRankText, { color: colors.textSecondary }]}>3</Text>
+                                        </View>
+                                        <Text style={[styles.podiumName, { color: colors.textPrimary }]} numberOfLines={1}>{leaderboardData[2].displayName}</Text>
+                                        <Text style={[styles.podiumStreak, { color: colors.textTertiary }]}>{leaderboardData[2].streak || 0} 🔥</Text>
+                                    </View>
+                                )}
+                            </View>
+                        )}
+
+                        {/* Dynamic Leaderboard List */}
+                        <View style={styles.leaderboardList}>
+                            {leaderboardData.map((member, index) => {
+                                const isTop3 = member.rank <= 3;
+                                const showRelativePos = index > 0 && member.isMe;
+                                const aboveMember = showRelativePos ? leaderboardData[index - 1] : null;
+                                const diff = aboveMember ? (aboveMember.streak || 0) - (member.streak || 0) : 0;
+
+                                return (
+                                    <View key={member.id}>
+                                        {showRelativePos && diff > 0 && (
+                                            <View style={styles.relativePosContainer}>
+                                                <Text style={[styles.relativePosText, { color: colors.textTertiary }]}>
+                                                    You're {diff} {diff === 1 ? 'day' : 'days'} behind {aboveMember?.displayName}
+                                                </Text>
+                                            </View>
+                                        )}
+                                        <TouchableOpacity
+                                            style={[
+                                                styles.leaderboardItem,
+                                                member.isMe && { backgroundColor: colors.accentSecondaryLight + '15', borderRadius: 12, borderBottomWidth: 0, marginVertical: 4, paddingHorizontal: 8 }
+                                            ]}
+                                            onPress={() => setSelectedMember(member)}
+                                            activeOpacity={0.7}
+                                        >
+                                            <View style={styles.rankWrapper}>
+                                                {isTop3 ? (
+                                                    <Ionicons
+                                                        name="trophy"
+                                                        size={16}
+                                                        color={member.rank === 1 ? '#FFD700' : member.rank === 2 ? '#A7A7AD' : '#CD7F32'}
+                                                    />
+                                                ) : (
+                                                    <Text style={[styles.rankText, { color: colors.textTertiary }]}>
+                                                        {member.rank}
+                                                    </Text>
+                                                )}
+                                            </View>
+
+                                            <View style={[styles.memberAvatar, { width: 44, height: 44, borderRadius: 14, backgroundColor: getAvatarColor(member.userId || member.id, member.displayName) }]}>
+                                                <Text style={[styles.memberInitial, { fontSize: 18, color: 'white' }]}>
+                                                    {member.displayName?.charAt(0).toUpperCase()}
+                                                </Text>
+                                            </View>
+
+                                            <View style={styles.leaderboardMainContent}>
+                                                <View style={styles.leaderboardRow}>
+                                                    <Text style={[styles.leaderboardName, { color: colors.textPrimary }]}>
+                                                        {member.displayName} {member.isMe && '(You)'}
+                                                    </Text>
+                                                    <View style={styles.statusTags}>
+                                                        {member.isIronMan && <View style={[styles.tag, { backgroundColor: '#5856D6' }]}><Text style={styles.tagText}>🛡️ IRON MAN</Text></View>}
+                                                        {member.isOnFire && !member.isIronMan && <View style={[styles.tag, { backgroundColor: '#FF3B30' }]}><Text style={styles.tagText}>🔥 ON FIRE</Text></View>}
+                                                        {member.isConsistent && !member.isOnFire && <View style={[styles.tag, { backgroundColor: '#34C759' }]}><Text style={styles.tagText}>⚡ CONSISTENT</Text></View>}
+                                                    </View>
+                                                </View>
+
+                                                <View style={styles.leaderboardStatsRow}>
+                                                    <Text style={[styles.leaderboardSub, { color: colors.textSecondary }]}>
+                                                        {member.daysThisWeek}/7 days this week
+                                                    </Text>
+                                                    <View style={styles.miniHeatmap}>
+                                                        {member.dots.map((active: boolean, i: number) => (
+                                                            <View key={i} style={[styles.miniDot, { backgroundColor: active ? colors.accent : colors.border }]} />
+                                                        ))}
+                                                    </View>
+                                                </View>
+                                            </View>
+
+                                            <View style={styles.streakInvertedPill}>
+                                                <Text style={[styles.leaderboardStreak, { color: colors.accentSecondary }]}>{member.streak || 0}</Text>
+                                                <Text style={[styles.streakLabel, { color: colors.accentSecondary }]}>DAYS</Text>
+                                            </View>
+                                        </TouchableOpacity>
+                                    </View>
+                                );
+                            })}
+                        </View>
                     </View>
                 )}
 
@@ -1346,5 +1486,145 @@ const getStyles = (colors: any) => StyleSheet.create({
     memberRole: {
         fontSize: Typography.size.xs,
         opacity: 0.6,
+    },
+    // Podium Styles
+    podiumContainer: {
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        justifyContent: 'center',
+        marginVertical: Spacing.xl,
+        paddingTop: 40,
+        height: 220,
+    },
+    podiumStand: {
+        alignItems: 'center',
+        width: '30%',
+    },
+    podiumStand1: { zIndex: 3 },
+    podiumStand2: { zIndex: 2, marginRight: -10 },
+    podiumStand3: { zIndex: 1, marginLeft: -10 },
+    podiumBase: {
+        width: '100%',
+        borderTopLeftRadius: 12,
+        borderTopRightRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    podiumAvatar: {
+        width: 54,
+        height: 54,
+        borderRadius: 27,
+        borderWidth: 3,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    podiumAvatarLarge: {
+        width: 74,
+        height: 74,
+        borderRadius: 37,
+        borderWidth: 4,
+    },
+    podiumInitial: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: 'white',
+    },
+    podiumRankText: {
+        fontSize: 22,
+        fontWeight: '900',
+        opacity: 0.9,
+    },
+    podiumName: {
+        fontSize: 12,
+        marginTop: 8,
+        textAlign: 'center',
+        width: '90%',
+    },
+    podiumStreak: {
+        fontSize: 11,
+        marginTop: 2,
+    },
+    crownContainer: {
+        position: 'absolute',
+        top: -18,
+        alignItems: 'center',
+        width: '100%',
+    },
+    // Enhanced Leaderboard Item
+    leaderboardList: {
+        marginTop: Spacing.md,
+    },
+    rankWrapper: {
+        width: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    leaderboardMainContent: {
+        flex: 1,
+        paddingLeft: 4,
+    },
+    leaderboardRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 4,
+    },
+    statusTags: {
+        flexDirection: 'row',
+        gap: 4,
+    },
+    tag: {
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+    },
+    tagText: {
+        color: 'white',
+        fontSize: 8,
+        fontWeight: 'bold',
+        letterSpacing: 0.5,
+    },
+    leaderboardStatsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    leaderboardSub: {
+        fontSize: 11,
+        fontWeight: '500',
+    },
+    miniHeatmap: {
+        flexDirection: 'row',
+        gap: 3,
+    },
+    miniDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 2,
+    },
+    streakInvertedPill: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        minWidth: 50,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        backgroundColor: colors.accentSecondaryLight + '30',
+        borderRadius: 10,
+    },
+    streakLabel: {
+        fontSize: 8,
+        fontWeight: 'bold',
+        marginTop: -2,
+    },
+    relativePosContainer: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        alignItems: 'center',
+    },
+    relativePosText: {
+        fontSize: 11,
+        fontWeight: '600',
+        fontStyle: 'italic',
     },
 });
