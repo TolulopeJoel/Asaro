@@ -810,6 +810,38 @@ export const getFlashbackEntry = async (excludeIds: number[] = []): Promise<{ en
     });
 };
 
+export interface EnhancedActionItem extends ActionItem {
+    book_name: string;
+    chapter_start: number;
+    chapter_end?: number;
+    created_at: string;
+}
+
+/**
+ * Fetch action items from the last X days, joined with their journal entry context.
+ * Used for the "Reminders" section on the home screen.
+ */
+export const getRecentActionItems = async (days: number = 7): Promise<EnhancedActionItem[]> => {
+    return await withDatabase(async (database) => {
+        const query = `
+            SELECT 
+                ai.*, 
+                je.book_name, 
+                je.chapter_start, 
+                je.chapter_end,
+                datetime(je.created_at, 'localtime') as created_at
+            FROM action_items ai
+            JOIN journal_entries je ON ai.entry_id = je.id
+            WHERE DATE(je.created_at, 'localtime') >= DATE('now', 'localtime', ?)
+            AND (ai.action != '' OR ai.motivation != '')
+            ORDER BY je.created_at DESC, ai.sort_order ASC
+        `;
+
+        const daysParam = `-${days} days`;
+        return await database.getAllAsync<EnhancedActionItem>(query, [daysParam]);
+    });
+};
+
 /**
  * READING PLAN PROGRESS FUNCTIONS
  */
@@ -827,12 +859,12 @@ export const toggleReadingItem = async (itemId: number, completed: boolean) => {
     await withDatabase(async (database) => {
         if (completed) {
             await database.runAsync(
-                `INSERT OR REPLACE INTO reading_progress (item_id, completed_at) VALUES (?, CURRENT_TIMESTAMP)`,
+                `INSERT OR REPLACE INTO reading_progress(item_id, completed_at) VALUES(?, CURRENT_TIMESTAMP)`,
                 [itemId]
             );
         } else {
             await database.runAsync(
-                `DELETE FROM reading_progress WHERE item_id = ?`,
+                `DELETE FROM reading_progress WHERE item_id = ? `,
                 [itemId]
             );
         }
@@ -862,7 +894,7 @@ export const checkEntryExists = async (bookName: string, chapterStart: number, c
     return await withDatabase(async (database) => {
         const result = await database.getFirstAsync<{ id: number }>(
             `SELECT id FROM journal_entries 
-             WHERE book_name = ? AND chapter_start = ? AND (chapter_end IS ? OR (chapter_end IS NULL AND ? IS NULL))
+             WHERE book_name = ? AND chapter_start = ? AND(chapter_end IS ? OR(chapter_end IS NULL AND ? IS NULL))
              LIMIT 1`,
             [bookName, chapterStart, chapterEnd ?? null, chapterEnd ?? null]
         );
@@ -889,9 +921,9 @@ export const checkEntryCoversChapters = async (
         const result = await database.getFirstAsync<{ id: number }>(
             `SELECT id FROM journal_entries
              WHERE book_name = ?
-               AND chapter_start <= ?
-               AND COALESCE(chapter_end, chapter_start) >= ?
-             LIMIT 1`,
+    AND chapter_start <= ?
+        AND COALESCE(chapter_end, chapter_start) >= ?
+            LIMIT 1`,
             [bookName, planChapterStart, planChapterEnd]
         );
         return result?.id ?? null;

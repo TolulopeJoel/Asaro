@@ -15,6 +15,8 @@ import { JournalEntryDetail } from '@/src/components/JournalEntryDetail';
 import { WavyAddIcon } from '@/src/components/WavyAddIcon';
 import { AnimatedModal } from '@/src/components/AnimatedModal';
 import { ScalePressable } from '@/src/components/ScalePressable';
+import { ActionReminders } from '@/src/components/ActionReminders';
+
 
 const DRAFT_KEY = "reflection_draft";
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -314,8 +316,9 @@ export default function Index() {
             >
                 <QuickStats />
                 <NextReading />
-                {/* <UpdateCard /> */}
                 <WeeklyStreak />
+                <ActionReminders />
+
                 <Flashback
                     onEntryPress={useCallback((entry) => {
                         setSelectedEntry(entry);
