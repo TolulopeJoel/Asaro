@@ -136,18 +136,30 @@ const NextReading = React.memo(() => {
     const handlePress = useCallback(async () => {
         if (!nextItem) return;
 
-        // Parse chapter range, stripping verse notation (e.g. "119:64-176")
-        const parts = nextItem.chapters.split('-');
+        // Strip verse notation: "119:64-176" → start=119, end=119; "116-119:63" → start=116, end=119
+        const rawChapters = nextItem.chapters;
+        const parts = rawChapters.split('-');
+        const firstHasVerse = parts[0].includes(':');
         const planStart = parseInt(parts[0].split(':')[0], 10);
-        const planEnd = parts.length > 1
-            ? parseInt(parts[parts.length - 1].split(':')[0], 10)
-            : planStart;
 
-        const existingEntryId = !isNaN(planStart)
+        let planEnd: number;
+        if (parts.length > 1) {
+            if (firstHasVerse) {
+                // If the FIRST part has a verse (119:64), the SECOND part is a verse in the same chapter
+                planEnd = planStart;
+            } else {
+                // Example: "116-119:63" -> start is 116, end is 119
+                planEnd = parseInt(parts[parts.length - 1].split(':')[0], 10);
+            }
+        } else {
+            planEnd = planStart;
+        }
+
+        const isCovered = !isNaN(planStart)
             ? await checkEntryCoversChapters(nextItem.book, planStart, planEnd)
-            : null;
+            : false;
 
-        if (existingEntryId) {
+        if (isCovered) {
             // Entry already covers this — mark as completed and move on
             await toggleReadingItem(nextItem.id, true);
             loadNextReading();

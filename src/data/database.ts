@@ -7,22 +7,18 @@ import { READING_PLAN_DATA } from './readingPlanData';
 
 /**
  * Given a book name and chapter start/end, find ALL reading plan items
- * that are fully covered by the entry's chapter range.
- *
- * A plan item is marked only when the entry covers it entirely:
- *   entryStart <= planStart && entryEnd >= planEnd
- *
- * Examples (Exodus, plan: {22-25}, {26-28}, {29-30}):
- *   Entry 22-25  → marks {22-25}
- *   Entry 22-26  → marks {22-25}            (only read ch26 of {26-28}, not all of it)
- *   Entry 22-28  → marks {22-25} and {26-28}
- *   Entry 24-30  → marks {26-28} and {29-30} (didn't read 22-23, so {22-25} is NOT marked)
+ * that are now fully covered by the combination of ALL entries in the database.
+ * 
+ * A plan item is marked only when the entire chapter range is accounted for.
+ * This handles cases where a user completes a plan item using multiple entries
+ * (e.g., Gen 1, Gen 2, and Gen 3 individually covering the Gen 1-3 plan item).
  */
-const findMatchingReadingPlanItems = (
+const findMatchingReadingPlanItems = async (
+    database: SQLite.SQLiteDatabase,
     bookName: string,
     chapterStart?: number,
     chapterEnd?: number
-): number[] => {
+): Promise<number[]> => {
     if (!chapterStart) return [];
 
     const effectiveEnd = chapterEnd ?? chapterStart;
@@ -35,22 +31,66 @@ const findMatchingReadingPlanItems = (
         const rawChapters = item.chapters;
         if (!rawChapters) continue;
 
-        // Strip verse notation: "119:64-176" → start=119, "1-3" → 1-3, "8" → 8-8
+        // Strip verse notation: "119:64-176" → start=119, end=119; "116-119:63" → start=116, end=119
         const parts = rawChapters.split('-');
+        const firstHasVerse = parts[0].includes(':');
         const planStart = parseInt(parts[0].split(':')[0], 10);
-        const planEnd = parts.length > 1
-            ? parseInt(parts[parts.length - 1].split(':')[0], 10)
-            : planStart;
+
+        let planEnd: number;
+        if (parts.length > 1) {
+            if (firstHasVerse) {
+                // If the FIRST part has a verse (119:64), the SECOND part is a verse in the same chapter
+                planEnd = planStart;
+            } else {
+                // Example: "116-119:63" -> start is 116, end is 119
+                planEnd = parseInt(parts[parts.length - 1].split(':')[0], 10);
+            }
+        } else {
+            planEnd = planStart;
+        }
 
         if (isNaN(planStart) || isNaN(planEnd)) continue;
 
-        // Mark only if the entry fully covers this plan item
-        if (chapterStart <= planStart && effectiveEnd >= planEnd) {
+        // Check if the current entry even touches this plan item
+        const overlapsWithCurrentEntry = chapterStart <= planEnd && effectiveEnd >= planStart;
+        if (!overlapsWithCurrentEntry) continue;
+
+        // Check if the entire range for this plan item is now covered by ALL entries
+        const isFullyCovered = await checkRangeCovered(database, bookName, planStart, planEnd);
+        if (isFullyCovered) {
             matched.push(item.id);
         }
     }
 
     return matched;
+};
+
+/**
+ * Internal helper to check if a chapter range is fully covered by the union of entries.
+ */
+const checkRangeCovered = async (
+    database: SQLite.SQLiteDatabase,
+    bookName: string,
+    start: number,
+    end: number
+): Promise<boolean> => {
+    const rangeSize = end - start + 1;
+    const query = `
+        WITH RECURSIVE chapters(n) AS (
+            SELECT ? 
+            UNION ALL
+            SELECT n + 1 FROM chapters WHERE n < ?
+        )
+        SELECT COUNT(*) as coveredCount FROM chapters
+        WHERE EXISTS (
+            SELECT 1 FROM journal_entries
+            WHERE book_name = ?
+              AND chapter_start <= chapters.n
+              AND COALESCE(chapter_end, chapter_start) >= chapters.n
+        )
+    `;
+    const result = await database.getFirstAsync<{ coveredCount: number }>(query, [start, end, bookName]);
+    return (result?.coveredCount ?? 0) === rangeSize;
 };
 
 export interface ActionItem {
@@ -291,7 +331,7 @@ export const createJournalEntry = async (data: JournalEntryInput) => {
         // (handles cases like entering ch 22-28 across multiple plan items).
         const planItemIds = data.readingItemId
             ? [data.readingItemId]
-            : findMatchingReadingPlanItems(data.bookName, data.chapterStart, data.chapterEnd);
+            : await findMatchingReadingPlanItems(database, data.bookName, data.chapterStart, data.chapterEnd);
 
         for (const planItemId of planItemIds) {
             await database.runAsync(
@@ -916,16 +956,8 @@ export const checkEntryCoversChapters = async (
     bookName: string,
     planChapterStart: number,
     planChapterEnd: number
-): Promise<number | null> => {
+): Promise<boolean> => {
     return await withDatabase(async (database) => {
-        const result = await database.getFirstAsync<{ id: number }>(
-            `SELECT id FROM journal_entries
-             WHERE book_name = ?
-    AND chapter_start <= ?
-        AND COALESCE(chapter_end, chapter_start) >= ?
-            LIMIT 1`,
-            [bookName, planChapterStart, planChapterEnd]
-        );
-        return result?.id ?? null;
+        return await checkRangeCovered(database, bookName, planChapterStart, planChapterEnd);
     });
 };

@@ -153,12 +153,24 @@ export default function PlanScreen() {
             const item = READING_PLAN_DATA.find(i => i.id === id);
             if (!item) return;
 
-            // Parse the plan item's chapter range, stripping verse notation (e.g. "119:64-176")
-            const parts = item.chapters.split('-');
+            // Strip verse notation: "119:64-176" → start=119, end=119; "116-119:63" → start=116, end=119
+            const rawChapters = item.chapters;
+            const parts = rawChapters.split('-');
+            const firstHasVerse = parts[0].includes(':');
             const planStart = parseInt(parts[0].split(':')[0], 10);
-            const planEnd = parts.length > 1
-                ? parseInt(parts[parts.length - 1].split(':')[0], 10)
-                : planStart;
+
+            let planEnd: number;
+            if (parts.length > 1) {
+                if (firstHasVerse) {
+                    // If the FIRST part has a verse (119:64), the SECOND part is a verse in the same chapter
+                    planEnd = planStart;
+                } else {
+                    // Example: "116-119:63" -> start is 116, end is 119
+                    planEnd = parseInt(parts[parts.length - 1].split(':')[0], 10);
+                }
+            } else {
+                planEnd = planStart;
+            }
 
             if (isNaN(planStart)) {
                 // Can't determine chapters (e.g. combined books with empty chapters), just toggle
@@ -171,9 +183,9 @@ export default function PlanScreen() {
             }
 
             // Check if any existing journal entry fully covers this plan item's chapter range
-            const existingEntryId = await checkEntryCoversChapters(item.book, planStart, planEnd);
+            const isCovered = await checkEntryCoversChapters(item.book, planStart, planEnd);
 
-            if (existingEntryId) {
+            if (isCovered) {
                 // Entry already covers it — just tick it off
                 await toggleReadingItem(id, true);
                 const newCompleted = new Set(completedItems);
