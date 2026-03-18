@@ -119,14 +119,14 @@ export default function JoinGroupScreen() {
                         </View>
                         <Text style={[styles.title, { color: colors.textPrimary }]}>Access Code</Text>
                         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                            Enter the secret code to join the official accountability group.
+                            Enter the code to join the official accountability group.
                         </Text>
                     </View>
 
                     <View style={styles.form}>
                         <TextInput
                             style={[styles.input, { color: colors.textPrimary, backgroundColor: colors.background, borderColor: colors.border }]}
-                            placeholder="ASAROXXXX"
+                            placeholder="X X X X X X"
                             placeholderTextColor={colors.textMuted}
                             value={code}
                             onChangeText={setCode}
