@@ -640,9 +640,13 @@ export default function GroupDetailScreen() {
         const upToDate = processed.filter(m => m.readToday).sort((a, b) => b.streak - a.streak);
         const needsSupport = processed.filter(m => !m.readToday).sort((a, b) => b.daysThisWeek - a.daysThisWeek);
 
+        // Sort all by consistency for Members tab (least active to most active)
+        const membersByConsistency = [...processed].sort((a, b) => a.monthlyCount - b.monthlyCount);
+
         return {
             upToDate,
             needsSupport,
+            membersByConsistency,
             groupProgressPercent,
             readTodayCount,
             totalMembers
@@ -707,7 +711,7 @@ export default function GroupDetailScreen() {
                 {/* ── Members Section ── */}
                 <View style={styles.sectionHeader}>
                     <View style={styles.sectionTitleRow}>
-                        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{memberSectionTitle}</Text>
+                        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{memberSectionTitle} THAT READ TODAY.</Text>
                     </View>
                 </View>
 
@@ -769,7 +773,7 @@ export default function GroupDetailScreen() {
                                 styles.tabText,
                                 { color: colors.textSecondary },
                                 activeTab === 'feed' && { color: colors.textPrimary, fontWeight: '600' }
-                            ]}>Feed</Text>
+                            ]}>Updates</Text>
                         </ScalePressable>
 
                         <ScalePressable
@@ -780,7 +784,7 @@ export default function GroupDetailScreen() {
                                 styles.tabText,
                                 { color: colors.textSecondary },
                                 activeTab === 'accountability' && { color: colors.textPrimary, fontWeight: '600' }
-                            ]}>Accountability</Text>
+                            ]}>Progress</Text>
                         </ScalePressable>
 
                         <ScalePressable
@@ -791,7 +795,7 @@ export default function GroupDetailScreen() {
                                 styles.tabText,
                                 { color: colors.textSecondary },
                                 activeTab === 'members' && { color: colors.textPrimary, fontWeight: '600' }
-                            ]}>Members</Text>
+                            ]}>Circle</Text>
                         </ScalePressable>
                     </View>
                 </View>
@@ -1038,7 +1042,7 @@ export default function GroupDetailScreen() {
                 {activeTab === 'accountability' && (
                     <View style={{ marginTop: Spacing.md }}>
                         <View style={styles.sectionHeader}>
-                            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>GROUP ACCOUNTABILITY</Text>
+                            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>WHAT YOUR PEERS DO</Text>
                         </View>
 
                         {/* Group Progress Dashboard */}
@@ -1168,27 +1172,32 @@ export default function GroupDetailScreen() {
                 {activeTab === 'members' && (
                     <View style={{ marginTop: Spacing.md }}>
                         <View style={styles.sectionHeader}>
-                            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>DIRECTORY</Text>
+                            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>DISTINGUISHED {memberSectionTitle}</Text>
                         </View>
-                        {[...members].sort((a, b) => (a.displayName || '').localeCompare(b.displayName || '')).map((member) => (
+                        {accountabilityData.membersByConsistency.map((member) => (
                             <TouchableOpacity
                                 key={member.id}
-                                style={styles.memberCard}
+                                style={styles.memberListItem}
                                 onPress={() => setSelectedMember(member)}
                                 activeOpacity={0.7}
                             >
-                                <View style={[styles.memberAvatar, { width: 48, height: 48, borderRadius: 24, backgroundColor: getAvatarColor(member.userId || member.id, member.displayName) }]}>
-                                    <Text style={[styles.memberInitial, { fontSize: 20, color: 'white' }]}>
+                                <View style={[styles.memberAvatar, { width: 52, height: 52, borderRadius: 16, backgroundColor: getAvatarColor(member.userId || member.id, member.displayName) }]}>
+                                    <Text style={[styles.memberInitial, { fontSize: 22, color: 'white' }]}>
                                         {member.displayName?.charAt(0).toUpperCase()}
                                     </Text>
                                 </View>
-                                <View style={styles.memberInfo}>
-                                    <Text style={[styles.leaderboardName, { color: colors.textPrimary }]}>{member.displayName}</Text>
-                                    <Text style={[styles.memberRole, { color: colors.textTertiary }]}>
-                                        {member.role === 'admin' ? 'Admin' : 'Member'}
+                                <View style={styles.memberItemContent}>
+                                    <Text style={[styles.memberItemName, { color: colors.textPrimary }]}>{member.displayName} {member.isMe && '(You)'}</Text>
+                                    <Text style={[styles.memberItemJoined, { color: colors.textTertiary }]}>
+                                        {member.joinedAt ? `Joined ${new Date(member.joinedAt.toDate ? member.joinedAt.toDate() : member.joinedAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}` : 'Member'}
                                     </Text>
                                 </View>
-                                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+                                {member.role === 'admin' && (
+                                    <View style={[styles.adminBadge, { backgroundColor: colors.accentSecondaryLight + '30' }]}>
+                                        <Text style={[styles.adminBadgeText, { color: colors.accentSecondary }]}>ADMIN</Text>
+                                    </View>
+                                )}
+                                <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
                             </TouchableOpacity>
                         ))}
                     </View>
@@ -1461,6 +1470,40 @@ const getStyles = (colors: any) => StyleSheet.create({
     },
     memberInfo: {
         flex: 1,
+    },
+    memberListItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: Spacing.md,
+        backgroundColor: colors.cardBackground,
+        borderRadius: 16,
+        marginBottom: Spacing.md,
+        borderWidth: 1,
+        borderColor: colors.borderSubtle + '40',
+        gap: Spacing.md,
+    },
+    memberItemContent: {
+        flex: 1,
+        gap: 2,
+    },
+    memberItemName: {
+        fontSize: 15,
+        fontWeight: '600',
+    },
+    memberItemJoined: {
+        fontSize: 12,
+        opacity: 0.7,
+    },
+    adminBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+        marginRight: 4,
+    },
+    adminBadgeText: {
+        fontSize: 9,
+        fontWeight: '800',
+        letterSpacing: 0.5,
     },
     memberRole: {
         fontSize: Typography.size.xs,
