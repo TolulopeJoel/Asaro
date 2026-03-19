@@ -128,7 +128,7 @@ export default function PlanScreen() {
         const progressIds = await getReadingProgress();
         const completedSet = new Set(progressIds);
         setCompletedItems(completedSet);
-        setProgress(Math.round((progressIds.length / READING_PLAN_DATA.length) * 100));
+        setProgress(parseFloat(((progressIds.length / READING_PLAN_DATA.length) * 100).toFixed(2)));
 
         // Smart Focus: on initial load, expand only the section with the next uncompleted item
         if (isInitialLoad) {
@@ -178,7 +178,7 @@ export default function PlanScreen() {
                 const newCompleted = new Set(completedItems);
                 newCompleted.add(id);
                 setCompletedItems(newCompleted);
-                setProgress(Math.round((newCompleted.size / READING_PLAN_DATA.length) * 100));
+                setProgress(parseFloat(((newCompleted.size / READING_PLAN_DATA.length) * 100).toFixed(2)));
                 return;
             }
 
@@ -191,7 +191,7 @@ export default function PlanScreen() {
                 const newCompleted = new Set(completedItems);
                 newCompleted.add(id);
                 setCompletedItems(newCompleted);
-                setProgress(Math.round((newCompleted.size / READING_PLAN_DATA.length) * 100));
+                setProgress(parseFloat(((newCompleted.size / READING_PLAN_DATA.length) * 100).toFixed(2)));
             } else {
                 // No entry yet — go write one
                 router.push({
@@ -209,7 +209,7 @@ export default function PlanScreen() {
             const newCompleted = new Set(completedItems);
             newCompleted.delete(id);
             setCompletedItems(newCompleted);
-            setProgress(Math.round((newCompleted.size / READING_PLAN_DATA.length) * 100));
+            setProgress(parseFloat(((newCompleted.size / READING_PLAN_DATA.length) * 100).toFixed(2)));
         }
     };
 
