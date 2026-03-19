@@ -208,11 +208,13 @@ const buildProcessedFeed = (
 // ─── Member Profile Sheet ─────────────────────────────────────────────────────
 
 const MemberProfileSheet = ({
+    groupId,
     member,
     onClose,
     colors,
     today,
 }: {
+    groupId: string;
     member: any;
     onClose: () => void;
     colors: any;
@@ -222,6 +224,8 @@ const MemberProfileSheet = ({
     const translateY = useSharedValue(SCREEN_HEIGHT);
     const backdropOpacity = useSharedValue(0);
     const [visible, setVisible] = React.useState(true);
+    const [pastReads, setPastReads] = React.useState<any[]>([]);
+    const [loadingReads, setLoadingReads] = React.useState(true);
 
     React.useEffect(() => {
         translateY.value = withSpring(0, { damping: 22, stiffness: 200 });
@@ -242,6 +246,36 @@ const MemberProfileSheet = ({
     const backdropStyle = useAnimatedStyle(() => ({
         opacity: backdropOpacity.value,
     }));
+
+    React.useEffect(() => {
+        if (!member || !groupId) {
+            setLoadingReads(false);
+            return;
+        }
+
+        const memberId = member.userId || member.id;
+        const unsubscribe = firestore()
+            .collection('groups')
+            .doc(groupId)
+            .collection('activities')
+            .where('userId', '==', memberId)
+            .where('type', '==', 'journal_entry')
+            .orderBy('timestamp', 'desc')
+            .limit(30)
+            .onSnapshot(
+                (snapshot) => {
+                    const reads = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    setPastReads(reads);
+                    setLoadingReads(false);
+                },
+                (error) => {
+                    console.error('[MemberProfileSheet] Error fetching past reads:', error);
+                    setLoadingReads(false);
+                }
+            );
+
+        return () => unsubscribe();
+    }, [groupId, member]);
 
     if (!visible) return null;
 
@@ -273,80 +307,112 @@ const MemberProfileSheet = ({
             </Animated.View>
 
             {/* Sheet */}
-            <Animated.View style={[sheetStyles.sheet, { backgroundColor: colors.background, paddingBottom: insets.bottom + Spacing.lg }, sheetStyle]}>
+            <Animated.View style={[sheetStyles.sheet, { backgroundColor: colors.background, paddingBottom: insets.bottom }, sheetStyle]}>
                 {/* ── Drag handle ── */}
                 <View style={sheetStyles.handle}>
                     <View style={[sheetStyles.handleBar, { backgroundColor: colors.border }]} />
                 </View>
 
-                {/* ── Avatar + name ── */}
-                <View style={sheetStyles.header}>
-                    <View style={[sheetStyles.avatar, { backgroundColor: avatarColor, borderWidth: readToday ? 3 : 0, borderColor: colors.indicatorActive }]}>
-                        <Text style={sheetStyles.avatarInitial}>{member.displayName?.charAt(0).toUpperCase()}</Text>
-                    </View>
-                    <Text style={[sheetStyles.name, { color: colors.textPrimary }]}>{member.displayName}</Text>
-                    <Text style={[sheetStyles.lastRead, {
-                        color: readToday ? colors.indicatorActive : colors.textTertiary,
-                    }]}>
-                        {formatLastRead(member.lastReadDate, today)}
-                    </Text>
-                </View>
-
-                {/* ── Stats row ── */}
-                <View style={[sheetStyles.statsRow, { borderColor: colors.border }]}>
-                    <View style={sheetStyles.stat}>
-                        <Text style={[sheetStyles.statValue, { color: colors.textPrimary }]}>{streak}</Text>
-                        <Text style={[sheetStyles.statLabel, { color: colors.textTertiary }]}>Day streak</Text>
-                    </View>
-                    <View style={[sheetStyles.statDivider, { backgroundColor: colors.border }]} />
-                    <View style={sheetStyles.stat}>
-                        <Text style={[sheetStyles.statValue, { color: colors.textPrimary }]}>
-                            {dots.filter(Boolean).length}
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: Spacing.xl }}>
+                    {/* ── Avatar + name ── */}
+                    <View style={sheetStyles.header}>
+                        <View style={[sheetStyles.avatar, { backgroundColor: avatarColor, borderWidth: readToday ? 3 : 0, borderColor: colors.indicatorActive }]}>
+                            <Text style={sheetStyles.avatarInitial}>{member.displayName?.charAt(0).toUpperCase()}</Text>
+                        </View>
+                        <Text style={[sheetStyles.name, { color: colors.textPrimary }]}>{member.displayName}</Text>
+                        <Text style={[sheetStyles.lastRead, {
+                            color: readToday ? colors.indicatorActive : colors.textTertiary,
+                        }]}>
+                            {formatLastRead(member.lastReadDate, today)}
                         </Text>
-                        <Text style={[sheetStyles.statLabel, { color: colors.textTertiary }]}>Days this week</Text>
                     </View>
-                </View>
 
-                {/* ── Weekly heatmap with labels ── */}
-                <View style={sheetStyles.section}>
-                    <Text style={[sheetStyles.sectionTitle, { color: colors.textSecondary }]}>THIS WEEK</Text>
-                    <View style={sheetStyles.heatmapRow}>
-                        {dots.map((active, i) => (
-                            <View key={i} style={sheetStyles.heatmapCell}>
-                                <View style={[sheetStyles.heatmapDot, {
-                                    backgroundColor: active ? colors.accent : colors.border,
-                                }]} />
-                                <Text style={[sheetStyles.heatmapLabel, { color: colors.textTertiary }]}>
-                                    {DAY_LABELS[i]}
-                                </Text>
-                            </View>
-                        ))}
+                    {/* ── Stats row ── */}
+                    <View style={[sheetStyles.statsRow, { borderColor: colors.border }]}>
+                        <View style={sheetStyles.stat}>
+                            <Text style={[sheetStyles.statValue, { color: colors.textPrimary }]}>{streak}</Text>
+                            <Text style={[sheetStyles.statLabel, { color: colors.textTertiary }]}>Day streak</Text>
+                        </View>
+                        <View style={[sheetStyles.statDivider, { backgroundColor: colors.border }]} />
+                        <View style={sheetStyles.stat}>
+                            <Text style={[sheetStyles.statValue, { color: colors.textPrimary }]}>
+                                {dots.filter(Boolean).length}
+                            </Text>
+                            <Text style={[sheetStyles.statLabel, { color: colors.textTertiary }]}>Days this week</Text>
+                        </View>
                     </View>
-                </View>
 
-                {/* ── Badge collection ── */}
-                <View style={sheetStyles.section}>
-                    <Text style={[sheetStyles.sectionTitle, { color: colors.textSecondary }]}>BADGES</Text>
-                    {earnedBadges.length === 0 && unearnedBadges.length === 0 && (
-                        <Text style={[sheetStyles.emptyBadges, { color: colors.textTertiary }]}>
-                            Keep reading to earn badges!
-                        </Text>
-                    )}
-                    <View style={sheetStyles.badgeGrid}>
-                        {earnedBadges.map(badge => (
-                            <View key={badge.id} style={[sheetStyles.badgeItem, { backgroundColor: colors.cardBackground, borderColor: colors.accent }]}>
-                                <Text style={sheetStyles.badgeEmoji}>{badge.emoji}</Text>
-                                <Text style={[sheetStyles.badgeLabel, { color: colors.textPrimary }]} numberOfLines={1}>{badge.label}</Text>
-                            </View>
-                        ))}
-                        {unearnedBadges.map(badge => (
-                            <View key={badge.id} style={[sheetStyles.badgeItem, { backgroundColor: colors.cardBackground, borderColor: colors.border, opacity: 0.4 }]}>
-                                <Text style={[sheetStyles.badgeEmoji, { filter: undefined }]}>{'🔒'}</Text>
-                                <Text style={[sheetStyles.badgeLabel, { color: colors.textTertiary }]} numberOfLines={1}>{badge.label}</Text>
-                            </View>
-                        ))}
+                    {/* ── Weekly heatmap with labels ── */}
+                    <View style={sheetStyles.section}>
+                        <Text style={[sheetStyles.sectionTitle, { color: colors.textSecondary }]}>THIS WEEK</Text>
+                        <View style={sheetStyles.heatmapRow}>
+                            {dots.map((active, i) => (
+                                <View key={i} style={sheetStyles.heatmapCell}>
+                                    <View style={[sheetStyles.heatmapDot, {
+                                        backgroundColor: active ? colors.accent : colors.border,
+                                    }]} />
+                                    <Text style={[sheetStyles.heatmapLabel, { color: colors.textTertiary }]}>
+                                        {DAY_LABELS[i]}
+                                    </Text>
+                                </View>
+                            ))}
+                        </View>
                     </View>
-                </View>
+
+                    {/* ── Badge collection ── */}
+                    <View style={sheetStyles.section}>
+                        <Text style={[sheetStyles.sectionTitle, { color: colors.textSecondary }]}>BADGES</Text>
+                        {earnedBadges.length === 0 && unearnedBadges.length === 0 && (
+                            <Text style={[sheetStyles.emptyBadges, { color: colors.textTertiary }]}>
+                                Keep reading to earn badges!
+                            </Text>
+                        )}
+                        <View style={sheetStyles.badgeGrid}>
+                            {earnedBadges.map(badge => (
+                                <View key={badge.id} style={[sheetStyles.badgeItem, { backgroundColor: colors.cardBackground, borderColor: colors.accent }]}>
+                                    <Text style={sheetStyles.badgeEmoji}>{badge.emoji}</Text>
+                                    <Text style={[sheetStyles.badgeLabel, { color: colors.textPrimary }]} numberOfLines={1}>{badge.label}</Text>
+                                </View>
+                            ))}
+                            {unearnedBadges.map(badge => (
+                                <View key={badge.id} style={[sheetStyles.badgeItem, { backgroundColor: colors.cardBackground, borderColor: colors.border, opacity: 0.4 }]}>
+                                    <Text style={[sheetStyles.badgeEmoji, { filter: undefined }]}>{'🔒'}</Text>
+                                    <Text style={[sheetStyles.badgeLabel, { color: colors.textTertiary }]} numberOfLines={1}>{badge.label}</Text>
+                                </View>
+                            ))}
+                        </View>
+                    </View>
+
+                    {/* ── Past Reads ── */}
+                    <View style={sheetStyles.section}>
+                        <Text style={[sheetStyles.sectionTitle, { color: colors.textSecondary }]}>RECENT READS</Text>
+                        {loadingReads ? (
+                            <Text style={[sheetStyles.emptyBadges, { color: colors.textTertiary }]}>Loading...</Text>
+                        ) : pastReads.length > 0 ? (
+                            <View style={{ gap: Spacing.md }}>
+                                {pastReads.map((read) => (
+                                    <View key={read.id} style={sheetStyles.readCard}>
+                                        <View style={sheetStyles.readCardHeader}>
+                                            <Text style={[sheetStyles.readCardTitle, { color: colors.textPrimary }]}>
+                                                {read.bookName} {read.chapters}
+                                            </Text>
+                                            <Text style={[sheetStyles.readCardTime, { color: colors.textTertiary }]}>
+                                                {formatRelativeTime(read.timestamp)}
+                                            </Text>
+                                        </View>
+                                        {read.preview ? (
+                                            <Text style={[sheetStyles.readCardPreview, { color: colors.textSecondary, borderLeftColor: colors.accentSecondaryLight }]} numberOfLines={2}>
+                                                "{read.preview}"
+                                            </Text>
+                                        ) : null}
+                                    </View>
+                                ))}
+                            </View>
+                        ) : (
+                            <Text style={[sheetStyles.emptyBadges, { color: colors.textTertiary }]}>No recent reads found.</Text>
+                        )}
+                    </View>
+                </ScrollView>
             </Animated.View>
         </Modal>
     );
@@ -483,6 +549,28 @@ const sheetStyles = StyleSheet.create({
     emptyBadges: {
         fontSize: Typography.size.sm,
         fontStyle: 'italic',
+    },
+    readCard: {
+        gap: 4,
+    },
+    readCardHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    readCardTitle: {
+        fontSize: Typography.size.sm,
+        fontWeight: Typography.weight.semibold,
+    },
+    readCardTime: {
+        fontSize: Typography.size.xs,
+    },
+    readCardPreview: {
+        fontSize: Typography.size.sm,
+        lineHeight: 20,
+        fontStyle: 'italic',
+        paddingLeft: Spacing.sm,
+        borderLeftWidth: 2,
     },
 });
 
@@ -1212,6 +1300,7 @@ export default function GroupDetailScreen() {
             {
                 selectedMember && (
                     <MemberProfileSheet
+                        groupId={groupId}
                         member={selectedMember}
                         onClose={() => setSelectedMember(null)}
                         colors={colors}
