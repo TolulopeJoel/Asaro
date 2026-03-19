@@ -11,11 +11,15 @@ export interface PendingActivity {
     userName?: string;
     bookName?: string;
     chapters?: string;
-    type: 'journal_entry' | 'member_joined' | 'member_absent' | 'member_removed';
+    type: 'journal_entry' | 'member_joined' | 'member_absent' | 'member_removed' | 'reflection_shared';
     /** ISO timestamp recorded at queue time */
     queuedAt: string;
     /** Short reflection preview, if present */
     reflectionPreview?: string;
+    /** Title of the reflection question shared */
+    sharedQuestionTitle?: string;
+    /** Full text of the shared reflection */
+    sharedReflectionText?: string;
 }
 
 // ─── Weekly Heatmap Helpers ───────────────────────────────────────────────────
@@ -306,6 +310,8 @@ export const syncPendingActivities = async (): Promise<void> => {
                     if (activity.bookName) activityDataToSet.bookName = activity.bookName;
                     if (activity.chapters) activityDataToSet.chapters = activity.chapters;
                     if (activity.reflectionPreview) activityDataToSet.preview = activity.reflectionPreview;
+                    if (activity.sharedQuestionTitle) activityDataToSet.sharedQuestionTitle = activity.sharedQuestionTitle;
+                    if (activity.sharedReflectionText) activityDataToSet.sharedReflectionText = activity.sharedReflectionText;
 
                     batch.set(activityRef, activityDataToSet);
 

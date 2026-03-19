@@ -1021,7 +1021,8 @@ export default function GroupDetailScreen() {
                                     // ── Regular activity card ──
                                     const activity = item;
                                     const timeStr = formatRelativeTime(activity.timestamp);
-                                    const isEntry = activity.type === 'journal_entry' || activity.type === 'reflection_shared';
+                                    const isJournalEntry = activity.type === 'journal_entry';
+                                    const isSharedReflection = activity.type === 'reflection_shared';
                                     const isAbsent = activity.type === 'member_absent';
                                     const isJoined = activity.type === 'member_joined';
                                     const isRemoved = activity.type === 'member_removed';
@@ -1057,7 +1058,7 @@ export default function GroupDetailScreen() {
                                                         </Text>
                                                     </View>
                                                 )}
-                                                {isEntry && (
+                                                {isJournalEntry && (
                                                     <>
                                                         <Text style={[styles.activityText, { color: colors.textSecondary }]}>
                                                             read {activity.bookName} {activity.chapters}
@@ -1067,6 +1068,23 @@ export default function GroupDetailScreen() {
                                                                 "{activity.preview}"
                                                             </Text>
                                                         ) : null}
+                                                    </>
+                                                )}
+                                                {isSharedReflection && (
+                                                    <>
+                                                        <Text style={[styles.activityText, { color: colors.textSecondary }]}>
+                                                            shared a reflection from {activity.bookName} {activity.chapters}
+                                                        </Text>
+                                                        <View style={{ marginTop: Spacing.sm, padding: Spacing.md, backgroundColor: colors.accentSecondaryLight + '15', borderRadius: 8, borderWidth: 1, borderColor: colors.accentSecondaryLight + '30' }}>
+                                                            {activity.sharedQuestionTitle && (
+                                                                <Text style={{ fontSize: 11, fontWeight: '700', color: colors.accent, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                                                    {activity.sharedQuestionTitle}
+                                                                </Text>
+                                                            )}
+                                                            <Text style={{ fontSize: 13, color: colors.textPrimary, lineHeight: 20 }}>
+                                                                "{activity.sharedReflectionText || activity.preview}"
+                                                            </Text>
+                                                        </View>
                                                     </>
                                                 )}
                                                 {isJoined && (
@@ -1093,18 +1111,20 @@ export default function GroupDetailScreen() {
                                                 ) : (
                                                     <Ionicons
                                                         name={
-                                                            isEntry ? 'journal-outline'
-                                                                : isJoined ? 'person-add-outline'
-                                                                    : isAbsent ? 'moon-outline'
-                                                                        : isRemoved ? 'exit-outline'
-                                                                            : 'checkmark-circle'
+                                                            isJournalEntry ? 'journal-outline'
+                                                                : isSharedReflection ? 'chatbubbles-outline'
+                                                                    : isJoined ? 'person-add-outline'
+                                                                        : isAbsent ? 'moon-outline'
+                                                                            : isRemoved ? 'exit-outline'
+                                                                                : 'checkmark-circle'
                                                         }
                                                         size={20}
                                                         color={
-                                                            isEntry ? colors.accentSecondary
-                                                                : isJoined ? colors.indicatorActive
-                                                                    : isAbsent ? colors.accent
-                                                                        : colors.textTertiary
+                                                            isJournalEntry ? colors.accentSecondary
+                                                                : isSharedReflection ? colors.accentSecondary
+                                                                    : isJoined ? colors.indicatorActive
+                                                                        : isAbsent ? colors.accent
+                                                                            : colors.textTertiary
                                                         }
                                                     />
                                                 )}

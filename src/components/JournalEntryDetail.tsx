@@ -1,4 +1,4 @@
-import { JournalEntry, deleteJournalEntry } from '@/src/data/database';
+import { JournalEntry, deleteJournalEntry, shareReflectionToGroup } from '@/src/data/database';
 import { getDaysDifference, getLocalMidnight } from '@/src/utils/dateUtils';
 import React, { useState } from 'react';
 import {
@@ -181,6 +181,51 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
         }
     };
 
+    const handleShareReflection = (reflectionText: string, questionIndex: number) => {
+        Alert.alert(
+            'Share with Group',
+            'Share this specific reflection to your group feed?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Share',
+                    onPress: async () => {
+                        setIsSharing(true);
+                        try {
+                            const success = await shareReflectionToGroup(entry, reflectionText.trim(), REFLECTION_QUESTIONS[questionIndex]);
+                            if (success) {
+                                Alert.alert('Success', 'Reflection shared to your group!');
+                            } else {
+                                Alert.alert('Notice', 'Could not share reflection. Make sure you are in a group.');
+                            }
+                        } catch (e) {
+                            Alert.alert('Error', 'An error occurred while sharing.');
+                        } finally {
+                            setIsSharing(false);
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    const handleShareActionItems = () => {
+        if (!entry.action_items || entry.action_items.length === 0) return;
+        let content = '';
+        entry.action_items.forEach((item) => {
+            if (item.action.trim()) {
+                content += `→ ${item.action.trim()}`;
+                if (item.motivation.trim()) {
+                    content += ` (motivation: ${item.motivation.trim()})`;
+                }
+                content += '\n';
+            }
+        });
+        if (content.trim()) {
+            handleShareReflection(content, ACTION_QUESTION_INDEX);
+        }
+    };
+
     const renderReflection = (reflection: string | undefined, questionIndex: number) => {
         // For Q3, render action items instead
         if (questionIndex === ACTION_QUESTION_INDEX) {
@@ -190,7 +235,12 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
 
             return (
                 <View key={questionIndex} style={[styles.reflectionCard, { borderLeftColor: colors.accentSecondary }]}>
-                    <Text style={[styles.questionText, { color: colors.accent }]}>{REFLECTION_QUESTIONS[questionIndex]}</Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: Spacing.md }}>
+                        <Text style={[styles.questionText, { color: colors.accent, flex: 1, marginBottom: 0 }]}>{REFLECTION_QUESTIONS[questionIndex]}</Text>
+                        <ScalePressable onPress={handleShareActionItems} style={{ padding: Spacing.sm, marginTop: -Spacing.sm, marginRight: -Spacing.sm }}>
+                            <Ionicons name="share-social-outline" size={20} color={colors.textTertiary} />
+                        </ScalePressable>
+                    </View>
                     <View style={styles.answerContainer}>
                         {entry.action_items.map((item, i) => (
                             (item.action.trim() || item.motivation.trim()) ? (
@@ -219,7 +269,12 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
 
         return (
             <View key={questionIndex} style={[styles.reflectionCard, { borderLeftColor: colors.accentSecondary }]}>
-                <Text style={[styles.questionText, { color: colors.accent }]}>{REFLECTION_QUESTIONS[questionIndex]}</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: Spacing.md }}>
+                    <Text style={[styles.questionText, { color: colors.accent, flex: 1, marginBottom: 0 }]}>{REFLECTION_QUESTIONS[questionIndex]}</Text>
+                    <ScalePressable onPress={() => handleShareReflection(reflection, questionIndex)} style={{ padding: Spacing.sm, marginTop: -Spacing.sm, marginRight: -Spacing.sm }}>
+                        <Ionicons name="share-social-outline" size={20} color={colors.textTertiary} />
+                    </ScalePressable>
+                </View>
                 <View style={styles.answerContainer}>
                     {paragraphs.map((paragraph, pIndex) => (
                         <Text key={pIndex} style={[

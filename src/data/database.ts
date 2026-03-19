@@ -961,3 +961,47 @@ export const checkEntryCoversChapters = async (
         return await checkRangeCovered(database, bookName, planChapterStart, planChapterEnd);
     });
 };
+
+/**
+ * Shares a specific reflection from a journal entry to the user's groups.
+ */
+export const shareReflectionToGroup = async (
+    entry: JournalEntry,
+    sharedText: string,
+    questionTitle: string
+) => {
+    // We only push this to Firestore, not storing it locally.
+    // Since syncActivities uses AsyncStorage to queue, it will be handled there.
+    try {
+        const user = auth().currentUser;
+        if (!user) return false;
+
+        const userDoc = await firestore().collection('users').doc(user.uid).get();
+        const userData = userDoc.data();
+        if (!userData?.groupIds?.length) return false;
+
+        const chapters = entry.chapter_end && entry.chapter_end !== entry.chapter_start
+            ? `${entry.chapter_start}-${entry.chapter_end}`
+            : `${entry.chapter_start}`;
+
+        const resolvedName = user.displayName || user.email?.split('@')[0] || 'Reader';
+
+        const activity = {
+            userId: user.uid,
+            userName: resolvedName,
+            bookName: entry.book_name,
+            chapters,
+            type: 'reflection_shared' as any,
+            queuedAt: new Date().toISOString(),
+            sharedQuestionTitle: questionTitle,
+            sharedReflectionText: sharedText,
+        };
+
+        await queueActivity(activity);
+        await syncPendingActivities();
+        return true;
+    } catch (error) {
+        console.error('[shareReflectionToGroup] Error queuing shared reflection:', error);
+        return false;
+    }
+};
