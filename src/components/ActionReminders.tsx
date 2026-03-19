@@ -30,7 +30,6 @@ export const ActionReminders: React.FC = React.memo(() => {
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                {/* <Ionicons name="sparkles-outline" size={16} color={colors.accent} /> */}
                 <Text style={[styles.headerTitle, { color: colors.textSecondary }]}>
                     WHAT YOU SAID YOU'D DO
                 </Text>

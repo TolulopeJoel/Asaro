@@ -375,7 +375,7 @@ const styles = StyleSheet.create({
     scrollView: { flex: 1 },
     scrollContent: {
         padding: Spacing.layout.screenPadding,
-        paddingBottom: 120,
+        paddingBottom: 185,
         gap: Spacing.layout.cardPadding,
     },
 
