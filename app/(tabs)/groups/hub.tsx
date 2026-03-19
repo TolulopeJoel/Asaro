@@ -80,7 +80,10 @@ export default function GroupsScreen() {
     if (!user) {
         return (
             <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-                <ScrollView contentContainerStyle={styles.authScroll}>
+                <ScrollView
+                    contentContainerStyle={styles.authScroll}
+                    showsVerticalScrollIndicator={false}
+                >
                     <View style={styles.authContainer}>
                         <View style={[styles.authHero, { backgroundColor: colors.accentSecondaryLight + '20', borderColor: colors.accentSecondaryLight + '40' }]}>
                             <View style={[styles.authIconCircle, { backgroundColor: colors.accentSecondaryLight }]}>
@@ -123,7 +126,10 @@ export default function GroupsScreen() {
                         </Text>
                     </View>
                 )}
-                <ScrollView contentContainerStyle={styles.scrollContent}>
+                <ScrollView
+                    contentContainerStyle={styles.scrollContent}
+                    showsVerticalScrollIndicator={false}
+                >
                     <View style={styles.titleRow}>
                         <Text style={[styles.title, { color: colors.textPrimary }]}>My Groups</Text>
                         <TouchableOpacity onPress={() => router.push('/(tabs)/groups/join' as any)}>
@@ -203,7 +209,10 @@ export default function GroupsScreen() {
                 <Text style={[styles.title, { color: colors.textPrimary }]}>Your Groups</Text>
                 <Ionicons name="people-outline" size={24} color={colors.textSecondary} />
             </View>
-            <ScrollView contentContainerStyle={styles.scrollContent}>
+            <ScrollView
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+            >
                 <View style={styles.welcomeHeader}>
                     <Text style={[styles.label, { color: colors.accent }]}>HELLO, {displayName?.toUpperCase() || 'READER'}</Text>
                     <Text style={[styles.subtitle, { color: colors.textSecondary, textAlign: 'left', paddingHorizontal: 0 }]}>
@@ -445,6 +454,6 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         paddingHorizontal: Spacing.layout.screenPadding,
-        paddingBottom: Spacing.xl,
+        paddingBottom: 120, // Support for tab bar spacing
     },
 });

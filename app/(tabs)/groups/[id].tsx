@@ -706,7 +706,10 @@ export default function GroupDetailScreen() {
                 </View>
             )}
 
-            <ScrollView contentContainerStyle={styles.scrollContent}>
+            <ScrollView
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+            >
 
                 {/* ── Members Section ── */}
                 <View style={styles.sectionHeader}>
@@ -1229,7 +1232,7 @@ const getStyles = (colors: any) => StyleSheet.create({
         gap: Spacing.xs, paddingVertical: Spacing.xs, paddingHorizontal: Spacing.md,
     },
     offlineBannerText: { fontSize: Typography.size.xs, fontWeight: Typography.weight.medium, letterSpacing: 0.3 },
-    scrollContent: { padding: Spacing.layout.screenPadding, paddingTop: Spacing.sm },
+    scrollContent: { padding: Spacing.layout.screenPadding, paddingTop: Spacing.sm, paddingBottom: 100, },
     sectionHeader: { marginTop: Spacing.lg, marginBottom: Spacing.md },
     sectionTitleRow: {
         flexDirection: 'row', alignItems: 'center',
