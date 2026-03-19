@@ -4,6 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Spacing } from '@/src/theme/spacing';
+import { Typography } from '@/src/theme/typography';
 import { StyleSheet, Text, View } from 'react-native';
 import { ScalePressable } from './ScalePressable';
 
@@ -103,58 +105,54 @@ export const Flashback: React.FC<FlashbackProps> = React.memo(({ onEntryPress })
     if (!flashbackData) return null;
 
     return (
-        <View style={styles.cardWrapper}>
-            <ScalePressable
-                onPress={() => onEntryPress(flashbackData.entry)}
-                style={[styles.card, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
-            >
-                <View style={styles.header}>
-                    <Ionicons name="time-outline" size={16} color={colors.accentSecondaryDark} />
-                    <Text style={[styles.headerText, { color: colors.textSecondary }]}>
-                        {getTitle()}
-                    </Text>
-                </View>
-
-                <Text style={[styles.preview, { color: colors.textPrimary }]}>
-                    {getPreviewText()}
+        <ScalePressable
+            onPress={() => onEntryPress(flashbackData.entry)}
+            style={[styles.card, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
+        >
+            <View style={styles.header}>
+                <Ionicons name="time-outline" size={14} color={colors.accentSecondaryDark} />
+                <Text style={[styles.headerTitle, { color: colors.textSecondary }]}>
+                    {getTitle().toUpperCase()}
                 </Text>
-
-                <View style={styles.footer}>
-                    <Text style={[styles.date, { color: colors.textTertiary }]}>
-                        {new Date(flashbackData.entry.created_at || '').toLocaleDateString('en-US', {
+                <Text style={[styles.date, { color: colors.textTertiary, marginLeft: 'auto' }]}>
+                    {(() => {
+                        const date = new Date(flashbackData.entry.created_at || '');
+                        const now = new Date();
+                        return date.toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric',
-                            year: 'numeric'
-                        })}
-                    </Text>
-                </View>
-            </ScalePressable>
-        </View>
+                            ...(date.getFullYear() !== now.getFullYear() && { year: 'numeric' })
+                        });
+                    })()}
+                </Text>
+            </View>
+
+            <Text style={[styles.preview, { color: colors.textPrimary }]}>
+                {getPreviewText()}
+            </Text>
+        </ScalePressable>
     );
 });
 
 Flashback.displayName = 'Flashback';
 
 const styles = StyleSheet.create({
-    cardWrapper: {
-        width: "100%",
-    },
     card: {
-        borderRadius: 12,
-        padding: 20,
+        borderRadius: Spacing.borderRadius.md,
+        padding: Spacing.layout.cardPadding,
         borderWidth: 1,
+        width: '100%',
     },
     header: {
         flexDirection: "row",
+        gap: 4,
         alignItems: "center",
-        gap: 8,
         marginBottom: 12,
     },
-    headerText: {
-        fontSize: 13,
-        fontWeight: "600",
-        letterSpacing: 0.3,
-        textTransform: "uppercase",
+    headerTitle: {
+        fontSize: Typography.size.xs,
+        fontWeight: Typography.weight.bold,
+        letterSpacing: Typography.letterSpacing.wider,
     },
     preview: {
         fontSize: 16,
@@ -163,14 +161,8 @@ const styles = StyleSheet.create({
         marginBottom: 16,
         letterSpacing: 0.1,
     },
-    footer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
     date: {
-        fontSize: 12,
-        fontWeight: "500",
-        letterSpacing: 0.2,
+        fontSize: Typography.size.xs,
+        fontWeight: Typography.weight.medium,
     },
 });
