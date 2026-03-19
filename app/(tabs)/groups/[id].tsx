@@ -1075,14 +1075,14 @@ export default function GroupDetailScreen() {
                                                         <Text style={[styles.activityText, { color: colors.textSecondary }]}>
                                                             shared a reflection from {activity.bookName} {activity.chapters}
                                                         </Text>
-                                                        <View style={{ marginTop: Spacing.sm, padding: Spacing.md, backgroundColor: colors.accentSecondaryLight + '15', borderRadius: 8, borderWidth: 1, borderColor: colors.accentSecondaryLight + '30' }}>
+                                                        <View style={{ marginTop: Spacing.sm, marginRight: -32, padding: Spacing.md, backgroundColor: colors.accentSecondaryLight + '15', borderRadius: 8, borderWidth: 1, borderColor: colors.accentSecondaryLight + '30' }}>
                                                             {activity.sharedQuestionTitle && (
-                                                                <Text style={{ fontSize: 11, fontWeight: '700', color: colors.accent, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                                                <Text style={{ fontSize: Typography.size.xs, fontWeight: Typography.weight.bold, color: colors.accent, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                                                                     {activity.sharedQuestionTitle}
                                                                 </Text>
                                                             )}
-                                                            <Text style={{ fontSize: 13, color: colors.textPrimary, lineHeight: 20 }}>
-                                                                "{activity.sharedReflectionText || activity.preview}"
+                                                            <Text style={{ fontSize: Typography.size.sm, color: colors.textPrimary, lineHeight: 20 }}>
+                                                                {activity.sharedReflectionText || activity.preview}
                                                             </Text>
                                                         </View>
                                                     </>
