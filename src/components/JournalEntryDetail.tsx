@@ -518,9 +518,8 @@ const styles = StyleSheet.create({
         borderLeftWidth: 3,
     },
     notesContent: {
-        marginLeft: Spacing.lg + Spacing.xs,
         borderRadius: Spacing.borderRadius.md,
-        padding: Spacing.lg + Spacing.xs,
+        padding: Spacing.md,
         borderWidth: 1,
     },
     notesTitle: {
