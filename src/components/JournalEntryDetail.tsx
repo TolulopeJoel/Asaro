@@ -27,9 +27,11 @@ const REFLECTION_QUESTIONS = [
     'How does this section of the Scriptures contribute to the Bible\'s message?',
     'How can I realistically apply this in my life?',
     'How can I use these verses to help others?',
+    'What would I like to study further?',
 ];
 
 const ACTION_QUESTION_INDEX = 2;
+const STUDY_FURTHER_INDEX = 4;
 
 export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
     entry,
@@ -263,6 +265,39 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
             );
         }
 
+        if (questionIndex === STUDY_FURTHER_INDEX) {
+            if (!entry.study_further || !entry.study_further.trim()) return null;
+
+            const paragraphs = entry.study_further.trim().split('\n\n').filter(p => p.trim());
+
+            return (
+                <View key={questionIndex} style={[styles.reflectionCard, { borderLeftColor: colors.accentSecondary }]}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: Spacing.md }}>
+                        <Text style={[styles.questionText, { color: colors.accent, flex: 1, marginBottom: 0 }]}>{REFLECTION_QUESTIONS[questionIndex]}</Text>
+                    </View>
+                    <View style={styles.answerContainer}>
+                        {paragraphs.map((paragraph, pIndex) => (
+                            <Text key={pIndex} style={[
+                                styles.answerText,
+                                { color: colors.textPrimary },
+                                pIndex > 0 && styles.answerParagraph
+                            ]}>
+                                {paragraph.trim()}
+                            </Text>
+                        ))}
+                    </View>
+                    {entry.study_further_reminder && new Date(entry.study_further_reminder) > new Date() && (
+                        <View style={[styles.reminderChip, { backgroundColor: colors.backgroundSubtle, borderColor: colors.border }]}>
+                            <Ionicons name="notifications-outline" size={14} color={colors.textSecondary} />
+                            <Text style={[styles.reminderChipText, { color: colors.textSecondary }]}>
+                                Reminder set for {new Date(entry.study_further_reminder).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                            </Text>
+                        </View>
+                    )}
+                </View>
+            );
+        }
+
         if (!reflection || !reflection.trim()) return null;
 
         const paragraphs = reflection.trim().split('\n\n').filter(p => p.trim());
@@ -295,6 +330,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
             entry.reflection_1,
             entry.reflection_2,
             entry.reflection_4,
+            entry.study_further,
         ].filter(r => r && r.trim().length > 0);
         const hasActions = entry.action_items && entry.action_items.some(
             item => item.action.trim() || item.motivation.trim()
@@ -338,6 +374,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                                 entry.reflection_2,
                                 entry.reflection_3,
                                 entry.reflection_4,
+                                entry.study_further,
                             ].map((reflection, index) => renderReflection(reflection, index))}
                         </View>
                     ) : (
@@ -577,5 +614,20 @@ const styles = StyleSheet.create({
     },
     bottomSpacer: {
         height: Spacing.xxxl,
+    },
+    reminderChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: Spacing.md,
+        paddingVertical: Spacing.xs + 2,
+        borderRadius: Spacing.borderRadius.round,
+        borderWidth: 1,
+        alignSelf: 'flex-start',
+        marginTop: Spacing.sm,
+        gap: Spacing.xs,
+    },
+    reminderChipText: {
+        fontSize: Typography.size.xs + 1,
+        fontWeight: Typography.weight.medium,
     },
 });

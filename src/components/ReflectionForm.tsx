@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
+  Platform,
   StyleSheet,
   Text,
   View
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
@@ -17,6 +19,8 @@ export interface ReflectionAnswers {
   reflection2: string;
   actionItems: ActionItemPair[];
   reflection4: string;
+  studyFurther?: string;
+  studyFurtherReminder?: string;
   notes: string;
 }
 
@@ -41,8 +45,13 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
     reflection2: initialAnswers?.reflection2 || '',
     actionItems: initialAnswers?.actionItems || [{ action: '', motivation: '' }],
     reflection4: initialAnswers?.reflection4 || '',
+    studyFurther: initialAnswers?.studyFurther || '',
+    studyFurtherReminder: initialAnswers?.studyFurtherReminder || undefined,
     notes: initialAnswers?.notes || '',
   });
+
+  const [showAndroidPicker, setShowAndroidPicker] = useState(false);
+  const [androidPickerMode, setAndroidPickerMode] = useState<'date' | 'time'>('date');
 
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -73,7 +82,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
   };
 
   const hasContent = (() => {
-    const { actionItems, ...textAnswers } = answers;
+    const { actionItems, studyFurtherReminder, ...textAnswers } = answers;
     const hasText = Object.values(textAnswers).some(answer => typeof answer === 'string' && answer.trim().length > 0);
     // An action item only counts if the action itself is filled (motivation alone is not enough)
     const hasActions = actionItems.some(item => item.action.trim().length > 0);
@@ -118,6 +127,8 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
               reflection2: '',
               actionItems: [{ action: '', motivation: '' }],
               reflection4: '',
+              studyFurther: '',
+              studyFurtherReminder: undefined,
               notes: '',
             };
             setAnswers(emptyAnswers);
@@ -151,12 +162,56 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
         ) : (
           <TextArea
             label={question}
-            value={answers[id as keyof ReflectionAnswers] as string}
+            value={answers[id as keyof ReflectionAnswers] as string || ''}
             placeholder={placeholder}
             onChange={(text) => updateAnswer(id as keyof ReflectionAnswers, text)}
             disabled={disabled}
-            isAnswered={(answers[id as keyof ReflectionAnswers] as string).trim().length > 0}
+            isAnswered={((answers[id as keyof ReflectionAnswers] as string) || '').trim().length > 0}
           />
+        )}
+        {id === 'studyFurther' && answers.studyFurther && answers.studyFurther.trim().length > 0 && !disabled && (
+          <View style={styles.reminderContainer}>
+            <Text style={[styles.reminderLabel, { color: colors.textSecondary }]}>Remind me at:</Text>
+            {Platform.OS === 'ios' ? (
+              <DateTimePicker
+                value={answers.studyFurtherReminder ? new Date(answers.studyFurtherReminder) : new Date(Date.now() + 24 * 60 * 60 * 1000)}
+                mode="datetime"
+                display="default"
+                onChange={(event, selectedDate) => {
+                  if (selectedDate) updateAnswer('studyFurtherReminder', selectedDate.toISOString());
+                }}
+              />
+            ) : (
+              <View style={styles.androidPickerRow}>
+                <Button
+                  variant="secondary"
+                  label={answers.studyFurtherReminder ? new Date(answers.studyFurtherReminder).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : "Set Reminder"}
+                  onPress={() => { setAndroidPickerMode('date'); setShowAndroidPicker(true); }}
+                  fullWidth={false}
+                />
+                {showAndroidPicker && (
+                  <DateTimePicker
+                    value={answers.studyFurtherReminder ? new Date(answers.studyFurtherReminder) : new Date(Date.now() + 24 * 60 * 60 * 1000)}
+                    mode={androidPickerMode}
+                    is24Hour={false}
+                    display="default"
+                    onChange={(event, selectedDate) => {
+                      setShowAndroidPicker(false);
+                      if (event.type === 'dismissed') return;
+
+                      if (selectedDate) {
+                        updateAnswer('studyFurtherReminder', selectedDate.toISOString());
+                        if (androidPickerMode === 'date') {
+                          setAndroidPickerMode('time');
+                          setShowAndroidPicker(true);
+                        }
+                      }
+                    }}
+                  />
+                )}
+              </View>
+            )}
+          </View>
         )}
       </View>
     );
@@ -241,6 +296,11 @@ const REFLECTION_QUESTIONS: ReflectionQuestion[] = [
     question: 'How can I use these verses to help others?',
     placeholder: '',
   },
+  {
+    id: 'studyFurther',
+    question: 'What would I like to study further?',
+    placeholder: '',
+  },
 ];
 
 const styles = StyleSheet.create({
@@ -303,5 +363,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingVertical: Spacing.xxl,
     gap: Spacing.md,
+  },
+  reminderContainer: {
+    marginTop: Spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.sm,
+  },
+  reminderLabel: {
+    fontSize: Typography.size.md,
+    fontWeight: Typography.weight.medium,
+  },
+  androidPickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });

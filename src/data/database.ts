@@ -113,6 +113,8 @@ export interface JournalEntry {
     reflection_3?: string;
     reflection_4?: string;
     notes?: string;
+    study_further?: string;
+    study_further_reminder?: string;
     created_at: string;
     updated_at?: string;
     action_items?: ActionItem[];
@@ -126,13 +128,15 @@ export interface JournalEntryInput {
     verseEnd?: string;
     reflections: string[];
     notes?: string;
+    studyFurther?: string;
+    studyFurtherReminder?: string;
     actionItems?: { action: string; motivation: string }[];
     readingItemId?: number;
 }
 
 let db: SQLite.SQLiteDatabase | null = null;
 
-const CURRENT_DB_VERSION = 4;
+const CURRENT_DB_VERSION = 5;
 
 const getDb = async () => {
     if (!db) {
@@ -288,6 +292,14 @@ export const initializeDatabase = async () => {
                 `);
             };
 
+            if (currentVersion < 5) {
+                // Migration to v5: Add study_further columns
+                await database.execAsync(`
+                    ALTER TABLE journal_entries ADD COLUMN study_further TEXT;
+                    ALTER TABLE journal_entries ADD COLUMN study_further_reminder TEXT;
+                `);
+            };
+
             // Set to current version
             await setDbVersion(database, CURRENT_DB_VERSION);
 
@@ -305,9 +317,9 @@ export const createJournalEntry = async (data: JournalEntryInput) => {
     return await withDatabase(async (database) => {
         // ── 1. Local SQLite write (always completes, even offline) ──────────
         const result = await database.runAsync(
-            `INSERT INTO journal_entries (book_name, chapter_start, chapter_end, verse_start, verse_end, reflection_1, reflection_2, reflection_3, reflection_4, notes)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [data.bookName, data.chapterStart ?? null, data.chapterEnd ?? null, data.verseStart ?? null, data.verseEnd ?? null, ...reflections, data.notes ?? null]
+            `INSERT INTO journal_entries (book_name, chapter_start, chapter_end, verse_start, verse_end, reflection_1, reflection_2, reflection_3, reflection_4, notes, study_further, study_further_reminder)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [data.bookName, data.chapterStart ?? null, data.chapterEnd ?? null, data.verseStart ?? null, data.verseEnd ?? null, ...reflections, data.notes ?? null, data.studyFurther ?? null, data.studyFurtherReminder ?? null]
         );
 
         const entryId = result.lastInsertRowId;
@@ -398,9 +410,9 @@ export const updateJournalEntry = async (id: number, data: JournalEntryInput) =>
     await withDatabase(async (database) => {
         await database.runAsync(
             `UPDATE journal_entries SET book_name = ?, chapter_start = ?, chapter_end = ?, verse_start = ?, verse_end = ?, 
-             reflection_1 = ?, reflection_2 = ?, reflection_3 = ?, reflection_4 = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
+             reflection_1 = ?, reflection_2 = ?, reflection_3 = ?, reflection_4 = ?, notes = ?, study_further = ?, study_further_reminder = ?, updated_at = CURRENT_TIMESTAMP
              WHERE id = ?`,
-            [data.bookName, data.chapterStart ?? null, data.chapterEnd ?? null, data.verseStart ?? null, data.verseEnd ?? null, ...reflections, data.notes ?? null, id]
+            [data.bookName, data.chapterStart ?? null, data.chapterEnd ?? null, data.verseStart ?? null, data.verseEnd ?? null, ...reflections, data.notes ?? null, data.studyFurther ?? null, data.studyFurtherReminder ?? null, id]
         );
 
         // Replace action items: delete old, insert new
@@ -482,12 +494,12 @@ export const searchEntries = async (term: string): Promise<JournalEntry[]> => {
             `SELECT je.* FROM journal_entries je
              LEFT JOIN action_items ai ON ai.entry_id = je.id
              WHERE je.reflection_1 LIKE ? OR je.reflection_2 LIKE ? OR je.reflection_3 LIKE ? 
-             OR je.reflection_4 LIKE ? OR je.notes LIKE ?
+             OR je.reflection_4 LIKE ? OR je.notes LIKE ? OR je.study_further LIKE ?
              OR ai.action LIKE ? OR ai.motivation LIKE ?
              GROUP BY je.id
              ORDER BY je.created_at DESC 
              LIMIT 100`,
-            [pattern, pattern, pattern, pattern, pattern, pattern, pattern]
+            [pattern, pattern, pattern, pattern, pattern, pattern, pattern, pattern]
         );
         return await attachActionItems(database, entries);
     });
@@ -630,6 +642,8 @@ export const exportJournalEntriesToJson = async (): Promise<string> => {
                 reflection_3,
                 reflection_4,
                 notes,
+                study_further,
+                study_further_reminder,
                 datetime(created_at, 'localtime') as created_at,
                 datetime(updated_at, 'localtime') as updated_at
             FROM journal_entries
@@ -698,8 +712,8 @@ export const importJournalEntriesFromJson = async (json: string): Promise<{ impo
                     `INSERT INTO journal_entries (
                         book_name, chapter_start, chapter_end, verse_start, verse_end,
                         reflection_1, reflection_2, reflection_3, reflection_4, notes,
-                        created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                        study_further, study_further_reminder, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                     [
                         entry.book_name,
                         entry.chapter_start ?? null,
@@ -708,6 +722,8 @@ export const importJournalEntriesFromJson = async (json: string): Promise<{ impo
                         entry.verse_end ?? null,
                         ...reflections,
                         entry.notes ?? null,
+                        entry.study_further ?? null,
+                        entry.study_further_reminder ?? null,
                         entry.created_at ?? new Date().toISOString(),
                         entry.updated_at ?? new Date().toISOString(),
                     ]

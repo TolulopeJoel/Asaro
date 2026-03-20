@@ -11,7 +11,7 @@ import { ChapterPicker } from '../src/components/ChapterPicker';
 import { ReflectionAnswers, ReflectionForm } from '../src/components/ReflectionForm';
 import { ScalePressable } from '../src/components/ScalePressable';
 import { BibleBook, getBookByName } from '../src/data/bibleBooks';
-import { setupDailyNotifications } from '../src/utils/notifications';
+import { setupDailyNotifications, scheduleReminderNotification } from '../src/utils/notifications';
 import { syncPendingActivities } from '../src/utils/syncActivities';
 
 interface ChapterRange {
@@ -192,6 +192,8 @@ export default function MeditationSessionScreen() {
                             ? entry.action_items.map(item => ({ action: item.action, motivation: item.motivation }))
                             : [{ action: '', motivation: '' }],
                         reflection4: entry.reflection_4 || "",
+                        studyFurther: entry.study_further || "",
+                        studyFurtherReminder: entry.study_further_reminder || undefined,
                         notes: entry.notes || ""
                     });
                     setCurrentStep('reflection');
@@ -309,6 +311,8 @@ export default function MeditationSessionScreen() {
                     answers.reflection4,
                 ],
                 notes: answers.notes,
+                studyFurther: answers.studyFurther,
+                studyFurtherReminder: answers.studyFurtherReminder,
                 actionItems: answers.actionItems.filter(
                     item => item.action.trim() || item.motivation.trim()
                 ),
@@ -328,6 +332,11 @@ export default function MeditationSessionScreen() {
             if (isEditMode && entryId) {
                 await updateJournalEntry(entryId, entryData);
                 await updateNotifications();
+
+                if (answers.studyFurtherReminder && new Date(answers.studyFurtherReminder) > new Date()) {
+                    await scheduleReminderNotification(new Date(answers.studyFurtherReminder), '📖 Study Reminder', `Time to study further: ${answers.studyFurther || 'your topic'}`);
+                }
+
                 Alert.alert('Success', 'Entry updated successfully');
                 router.back();
             } else {
@@ -335,6 +344,11 @@ export default function MeditationSessionScreen() {
                 setCreatedEntryId(newEntryId);
                 await AsyncStorage.removeItem("reflection_draft");
                 await updateNotifications();
+
+                if (answers.studyFurtherReminder && new Date(answers.studyFurtherReminder) > new Date()) {
+                    await scheduleReminderNotification(new Date(answers.studyFurtherReminder), '📖 Study Reminder', `Time to study further: ${answers.studyFurther || 'your topic'}`);
+                }
+
                 setReflectionAnswers(answers);
                 changeStep('summary');
             }
