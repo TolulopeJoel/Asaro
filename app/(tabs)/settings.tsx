@@ -9,9 +9,8 @@ import { documentDirectory, writeAsStringAsync, readAsStringAsync } from 'expo-f
 import * as Sharing from 'expo-sharing';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { Button } from '@/src/components/Button';
 
 export default function Settings() {
@@ -156,11 +155,13 @@ export default function Settings() {
             const asset = result.assets[0];
             const content = await readAsStringAsync(asset.uri);
 
-            const { imported } = await importJournalEntriesFromJson(content);
+            const { imported, skipped } = await importJournalEntriesFromJson(content);
 
             Alert.alert(
                 'Import complete',
-                `Imported ${imported} entries from backup.`,
+                skipped > 0
+                    ? `Imported ${imported} new entries. Skipped ${skipped} duplicates.`
+                    : `Imported ${imported} entries from backup.`,
             );
         } catch (error: any) {
             console.error('Failed to import entries:', error);

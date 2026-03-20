@@ -542,8 +542,6 @@ export const getTotalJournalCount = async (): Promise<number> => {
     });
 };
 
-
-
 export const getMissedDaysCount = async (month?: string): Promise<number> => {
     return await withDatabase(async (database) => {
         if (month) {
@@ -654,7 +652,7 @@ export const exportJournalEntriesToJson = async (): Promise<string> => {
  * Import journal entries from a JSON string previously created by exportJournalEntriesToJson.
  * This will REPLACE all existing journal entries with the ones from the backup.
  */
-export const importJournalEntriesFromJson = async (json: string): Promise<{ imported: number }> => {
+export const importJournalEntriesFromJson = async (json: string): Promise<{ imported: number; skipped: number }> => {
     let parsed: any;
     try {
         parsed = JSON.parse(json);
@@ -671,13 +669,23 @@ export const importJournalEntriesFromJson = async (json: string): Promise<{ impo
     return await withDatabase(async (database) => {
         await database.execAsync('BEGIN TRANSACTION');
         try {
-            // Clear existing entries so this acts as a restore
-            await database.execAsync('DELETE FROM action_items');
-            await database.execAsync('DELETE FROM journal_entries');
+            let imported = 0;
+            let skipped = 0;
 
             for (const entry of entries) {
-                // Basic validation / defaults
                 if (!entry.book_name) continue;
+
+                // Check for duplicate: same book, chapter_start, and created_at
+                const existing = await database.getFirstAsync<{ id: number }>(
+                    `SELECT id FROM journal_entries
+                     WHERE book_name = ? AND chapter_start IS ? AND DATE(created_at) = DATE(?)`,
+                    [entry.book_name, entry.chapter_start ?? null, entry.created_at ?? '']
+                );
+
+                if (existing) {
+                    skipped++;
+                    continue;
+                }
 
                 const reflections = [
                     entry.reflection_1 ?? '',
@@ -688,18 +696,9 @@ export const importJournalEntriesFromJson = async (json: string): Promise<{ impo
 
                 const result = await database.runAsync(
                     `INSERT INTO journal_entries (
-                        book_name,
-                        chapter_start,
-                        chapter_end,
-                        verse_start,
-                        verse_end,
-                        reflection_1,
-                        reflection_2,
-                        reflection_3,
-                        reflection_4,
-                        notes,
-                        created_at,
-                        updated_at
+                        book_name, chapter_start, chapter_end, verse_start, verse_end,
+                        reflection_1, reflection_2, reflection_3, reflection_4, notes,
+                        created_at, updated_at
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                     [
                         entry.book_name,
@@ -714,7 +713,6 @@ export const importJournalEntriesFromJson = async (json: string): Promise<{ impo
                     ]
                 );
 
-                // Import action items if present
                 if (entry.action_items && entry.action_items.length > 0) {
                     const newEntryId = result.lastInsertRowId;
                     for (let i = 0; i < entry.action_items.length; i++) {
@@ -725,11 +723,12 @@ export const importJournalEntriesFromJson = async (json: string): Promise<{ impo
                         );
                     }
                 }
+
+                imported++;
             }
 
             await database.execAsync('COMMIT');
-
-            return { imported: entries.length };
+            return { imported, skipped };
         } catch (error) {
             await database.execAsync('ROLLBACK');
             throw error;
