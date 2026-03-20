@@ -60,21 +60,21 @@ export const MILESTONE_BADGES: Badge[] = [
         id: 'first_entry',
         emoji: '✨',
         label: 'First Entry',
-        desc: 'made {possessive} very first journal entry!',
+        desc: 'made {possessive} very first entry!',
         order: 1,
     },
     {
         id: 'entries_10',
         emoji: '📖',
         label: '10 Entries',
-        desc: 'has written 10 journal entries — keep it up!',
+        desc: 'has written 10 entries — keep it up!',
         order: 2,
     },
     {
         id: 'entries_50',
         emoji: '📚',
         label: '50 Entries',
-        desc: 'has written 50 journal entries — a goldmine of wisdom!',
+        desc: 'has written 50 entries — a goldmine of wisdom!',
         order: 3,
     },
     {
@@ -120,6 +120,7 @@ export const GROUP_BADGES: Array<Badge & { threshold: number }> = [
 export const ALL_BADGES: Badge[] = [
     ...STREAK_BADGES,
     ...MILESTONE_BADGES,
+    ...GROUP_BADGES,
 ];
 
 export const getBadgeById = (id: string): Badge | undefined =>

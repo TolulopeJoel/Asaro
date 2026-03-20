@@ -368,14 +368,17 @@ export const createJournalEntry = async (data: JournalEntryInput) => {
                     : undefined;
 
                 const resolvedName = user.displayName || user.email?.split('@')[0] || 'Reader';
+                const totalEntries = await getTotalJournalCount();
+
                 const activity = {
                     userId: user.uid,
                     userName: resolvedName,
                     bookName: data.bookName,
                     chapters,
-                    type: 'journal_entry' as any, // Changed from reading_completed
+                    type: 'journal_entry' as any,
                     queuedAt: new Date().toISOString(),
                     reflectionPreview,
+                    totalEntries,
                 };
 
                 await queueActivity(activity);
@@ -525,6 +528,15 @@ export const getTotalEntryCount = async (month?: string): Promise<number> => {
         const result = await database.getFirstAsync(`
             SELECT COUNT(DISTINCT DATE(created_at, 'localtime')) as count 
             FROM journal_entries
+        `) as any;
+        return result?.count ?? 0;
+    });
+};
+
+export const getTotalJournalCount = async (): Promise<number> => {
+    return await withDatabase(async (database) => {
+        const result = await database.getFirstAsync(`
+            SELECT COUNT(*) as count FROM journal_entries
         `) as any;
         return result?.count ?? 0;
     });

@@ -20,6 +20,8 @@ export interface PendingActivity {
     sharedQuestionTitle?: string;
     /** Full text of the shared reflection */
     sharedReflectionText?: string;
+    /** Current total journal entry count (local) */
+    totalEntries?: number;
 }
 
 // ─── Weekly Heatmap Helpers ───────────────────────────────────────────────────
@@ -219,10 +221,32 @@ export const syncPendingActivities = async (): Promise<void> => {
                     }
 
                     // 3. One-time milestone: first reflection
-                    if (activity.reflectionPreview) {
+                    if (activity.sharedReflectionText) {
                         const reflBadge = MILESTONE_BADGES.find(b => b.id === 'reflection_first');
                         if (reflBadge && !existingBadgeIds.includes(reflBadge.id)) {
                             newBadges.push(reflBadge);
+                        }
+                    }
+
+                    // 4. One-time milestones: total entries (10, 50)
+                    // We prioritize the totalEntries passed from the app (local DB state), 
+                    // otherwise we increment the Firestore value.
+                    let totalEntries = memberData.totalEntries || 0;
+                    if (activity.totalEntries !== undefined && activity.totalEntries > totalEntries) {
+                        totalEntries = activity.totalEntries;
+                    } else {
+                        totalEntries += 1;
+                    }
+
+                    const entryMilestones = [
+                        { id: 'entries_10', threshold: 10 },
+                        { id: 'entries_50', threshold: 50 },
+                    ];
+
+                    for (const milestone of entryMilestones) {
+                        if (totalEntries >= milestone.threshold && !existingBadgeIds.includes(milestone.id)) {
+                            const badge = MILESTONE_BADGES.find(b => b.id === milestone.id);
+                            if (badge) newBadges.push(badge);
                         }
                     }
 
@@ -315,51 +339,75 @@ export const syncPendingActivities = async (): Promise<void> => {
 
                     batch.set(activityRef, activityDataToSet);
 
-                    // 2. Member/Group updates (only for journal entries)
-                    if (activity.type === 'journal_entry') {
+                    // 2. Member/Group updates (journal entries and reflection shares)
+                    if (activity.type === 'journal_entry' || activity.type === 'reflection_shared') {
                         // ── Build updated badges array ──────────────────────
                         const updatedBadgeIds = [...new Set([...existingBadgeIds, ...newBadges.map(b => b.id)])];
 
-                        if (!lastReadDateStr || activityLocalDateStr >= lastReadDateStr) {
-                            batch.set(memberRef, {
-                                userId: activity.userId,
-                                displayName,
-                                gender: userGender,
-                                lastReadDate: activityLocalDateStr,
-                                streak,
-                                monthlyStreak,
-                                monthlyActivityMonth: currentMonth,
-                                monthlyActivityCount,
-                                weeklyActivity,
-                                weeklyActivityWeek,
-                                badges: updatedBadgeIds,
-                            }, { merge: true });
+                        if (activity.type === 'journal_entry') {
+                            if (!lastReadDateStr || activityLocalDateStr >= lastReadDateStr) {
+                                batch.set(memberRef, {
+                                    userId: activity.userId,
+                                    displayName,
+                                    gender: userGender,
+                                    lastReadDate: activityLocalDateStr,
+                                    streak,
+                                    monthlyStreak,
+                                    monthlyActivityMonth: currentMonth,
+                                    monthlyActivityCount,
+                                    weeklyActivity,
+                                    weeklyActivityWeek,
+                                    totalEntries,
+                                    badges: updatedBadgeIds,
+                                }, { merge: true });
+                            } else {
+                                // Still update heatmap + badges + monthly stats even if date is not newer
+                                batch.set(memberRef, {
+                                    weeklyActivity,
+                                    weeklyActivityWeek,
+                                    badges: updatedBadgeIds,
+                                    totalEntries,
+                                    monthlyStreak,
+                                    monthlyActivityMonth: currentMonth,
+                                    monthlyActivityCount
+                                }, { merge: true });
+                            }
                         } else {
-                            // Still update heatmap + badges + monthly stats even if date is not newer
+                            // Only update badges for shared reflections
                             batch.set(memberRef, {
-                                weeklyActivity,
-                                weeklyActivityWeek,
                                 badges: updatedBadgeIds,
-                                monthlyStreak,
-                                monthlyActivityMonth: currentMonth,
-                                monthlyActivityCount
                             }, { merge: true });
                         }
 
-                        // ── Group streak + readToday ────────────────────────
-                        const newReadTodayCount = memberAlreadyCountedToday ? readTodayCount : readTodayCount;
-                        const allMembersReadToday =
-                            !memberAlreadyCountedToday &&
-                            newReadTodayCount >= memberCount &&
-                            memberCount > 1;
+                        // ── Group streak + readToday (only for journal entries) ────────────────────────
+                        if (activity.type === 'journal_entry') {
+                            const allMembersReadToday =
+                                !memberAlreadyCountedToday &&
+                                readTodayCount >= memberCount &&
+                                memberCount > 1;
 
-                        batch.set(groupRef, {
-                            groupStreak,
-                            groupStreakLastDate,
-                            readTodayCount,
-                            readTodayDate: todayDateStr,
-                            memberCount,
-                        }, { merge: true });
+                            batch.set(groupRef, {
+                                groupStreak,
+                                groupStreakLastDate,
+                                readTodayCount,
+                                readTodayDate: todayDateStr,
+                                memberCount,
+                            }, { merge: true });
+
+                            // All-read-today badge (one per day)
+                            if (allMembersReadToday) {
+                                const todayAllReadBadge = GROUP_BADGES.find(b => b.id === 'all_read_today')!;
+                                const allReadTodayRef = groupRef.collection('activities').doc();
+                                batch.set(allReadTodayRef, {
+                                    type: 'group_milestone',
+                                    badgeId: 'all_read_today',
+                                    badgeEmoji: todayAllReadBadge.emoji,
+                                    badgeLabel: todayAllReadBadge.label,
+                                    badgeDesc: todayAllReadBadge.desc,
+                                    timestamp: firestore.FieldValue.serverTimestamp(),
+                                });
+                            }
+                        }
 
                         // ── Write milestone_earned activities ───────────────
                         for (const badge of newBadges) {
@@ -377,44 +425,32 @@ export const syncPendingActivities = async (): Promise<void> => {
                         }
 
                         // ── Group milestones ────────────────────────────────
-                        // Check group streak badges
-                        const existingGroupBadges: string[] = groupData.badges || [];
-                        const groupStreakBadgesToCheck = GROUP_BADGES.filter(b => b.id.startsWith('group_streak'));
-                        for (const badge of groupStreakBadgesToCheck) {
-                            if (
-                                badge.threshold > (groupData.groupStreak || 0) &&
-                                badge.threshold <= groupStreak &&
-                                !existingGroupBadges.includes(badge.id)
-                            ) {
-                                // Write group milestone to feed
-                                const gMilestoneRef = groupRef.collection('activities').doc();
-                                batch.set(gMilestoneRef, {
-                                    type: 'group_milestone',
-                                    badgeId: badge.id,
-                                    badgeEmoji: badge.emoji,
-                                    badgeLabel: badge.label,
-                                    badgeDesc: badge.desc,
-                                    timestamp: firestore.FieldValue.serverTimestamp(),
-                                });
-                                // Mark badge earned on group doc
-                                batch.set(groupRef, {
-                                    badges: [...existingGroupBadges, badge.id],
-                                }, { merge: true });
+                        if (activity.type === 'journal_entry') {
+                            // Check group streak badges
+                            const existingGroupBadges: string[] = groupData.badges || [];
+                            const groupStreakBadgesToCheck = GROUP_BADGES.filter(b => b.id.startsWith('group_streak'));
+                            for (const badge of groupStreakBadgesToCheck) {
+                                if (
+                                    badge.threshold > (groupData.groupStreak || 0) &&
+                                    badge.threshold <= groupStreak &&
+                                    !existingGroupBadges.includes(badge.id)
+                                ) {
+                                    // Write group milestone to feed
+                                    const gMilestoneRef = groupRef.collection('activities').doc();
+                                    batch.set(gMilestoneRef, {
+                                        type: 'group_milestone',
+                                        badgeId: badge.id,
+                                        badgeEmoji: badge.emoji,
+                                        badgeLabel: badge.label,
+                                        badgeDesc: badge.desc,
+                                        timestamp: firestore.FieldValue.serverTimestamp(),
+                                    });
+                                    // Mark badge earned on group doc
+                                    batch.set(groupRef, {
+                                        badges: [...existingGroupBadges, badge.id],
+                                    }, { merge: true });
+                                }
                             }
-                        }
-
-                        // All-read-today badge (one per day)
-                        if (allMembersReadToday) {
-                            const todayAllReadBadge = GROUP_BADGES.find(b => b.id === 'all_read_today')!;
-                            const allReadTodayRef = groupRef.collection('activities').doc();
-                            batch.set(allReadTodayRef, {
-                                type: 'group_milestone',
-                                badgeId: 'all_read_today',
-                                badgeEmoji: todayAllReadBadge.emoji,
-                                badgeLabel: todayAllReadBadge.label,
-                                badgeDesc: todayAllReadBadge.desc,
-                                timestamp: firestore.FieldValue.serverTimestamp(),
-                            });
                         }
                     }
 
