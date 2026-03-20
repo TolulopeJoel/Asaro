@@ -66,7 +66,11 @@ export default function PastEntriesScreen() {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-            <JournalEntryList onEntryPress={handleEntryPress} refreshTrigger={refreshTrigger} />
+            <JournalEntryList
+                onEntryPress={handleEntryPress}
+                refreshTrigger={refreshTrigger}
+                initialViewMode={(params.view as any) || 'recent'}
+            />
 
             {/* Detail Modal */}
             <AnimatedModal

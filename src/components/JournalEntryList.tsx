@@ -15,13 +15,15 @@ import {
     JournalEntry,
     getEntriesByBook,
     getJournalEntries,
-    searchEntries
+    searchEntries,
+    getAllActionItems,
+    getAllStudyTopics,
+    EnhancedActionItem,
+    getEntryById
 } from '../data/database';
 import { ScalePressable } from './ScalePressable';
 
-
-
-type ViewMode = 'recent' | 'books' | 'bookDetail';
+type ViewMode = 'recent' | 'books' | 'bookDetail' | 'actions' | 'topics';
 
 interface NavigationBreadcrumb {
     label: string;
@@ -32,29 +34,36 @@ type ListItem =
     | { type: 'header'; title: string; id: string }
     | { type: 'entry'; entry: JournalEntry; id: number }
     | { type: 'bookHeader'; bookName: string; entryCount: number; id: string }
-    | { type: 'book'; book: BibleBook; id: string };
+    | { type: 'book'; book: BibleBook; id: string }
+    | { type: 'action'; action: EnhancedActionItem; id: string }
+    | { type: 'topic'; topic: JournalEntry; id: string };
 
 interface JournalEntryListProps {
     onEntryPress: (entry: JournalEntry) => void;
     refreshTrigger?: number;
+    initialViewMode?: ViewMode;
 }
 
-export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress, refreshTrigger }) => {
+export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress, refreshTrigger, initialViewMode = 'recent' }) => {
     const { colors } = useTheme();
     const [entries, setEntries] = useState<JournalEntry[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
-    const [viewMode, setViewMode] = useState<ViewMode>('recent');
+    const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
     const [selectedBook, setSelectedBook] = useState<BibleBook>();
     const [bookEntries, setBookEntries] = useState<JournalEntry[]>([]);
     const [filteredEntries, setFilteredEntries] = useState<JournalEntry[]>([]);
     const [availableBooks, setAvailableBooks] = useState<BibleBook[]>([]);
+    const [actionsList, setActionsList] = useState<EnhancedActionItem[]>([]);
+    const [topicsList, setTopicsList] = useState<JournalEntry[]>([]);
     const [tabContainerWidth, setTabContainerWidth] = useState(0);
     const searchTimeoutRef = useRef<any>(null);
 
     useEffect(() => {
         loadEntries();
-    }, []);
+        if (initialViewMode === 'actions') loadActions();
+        if (initialViewMode === 'topics') loadTopics();
+    }, [initialViewMode]);
 
     // Refresh entries when screen comes into focus (e.g., after edit/delete)
     useFocusEffect(
@@ -63,6 +72,8 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
             if (viewMode === 'bookDetail' && selectedBook) {
                 loadBookEntries();
             }
+            if (viewMode === 'actions') loadActions();
+            if (viewMode === 'topics') loadTopics();
         }, [viewMode, selectedBook])
     );
 
@@ -73,6 +84,8 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
             if (viewMode === 'bookDetail' && selectedBook) {
                 loadBookEntries();
             }
+            if (viewMode === 'actions') loadActions();
+            if (viewMode === 'topics') loadTopics();
         }
     }, [refreshTrigger, viewMode, selectedBook]);
 
@@ -147,6 +160,24 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         }
     }, [selectedBook, debouncedSearchQuery]);
 
+    const loadActions = async () => {
+        try {
+            const data = await getAllActionItems(200);
+            setActionsList(data);
+        } catch (error) {
+            console.error('Error loading actions:', error);
+        }
+    };
+
+    const loadTopics = async () => {
+        try {
+            const data = await getAllStudyTopics(200);
+            setTopicsList(data);
+        } catch (error) {
+            console.error('Error loading topics:', error);
+        }
+    };
+
     const filterEntries = useCallback(async () => {
         if (!debouncedSearchQuery.trim()) {
             setFilteredEntries(entries);
@@ -172,6 +203,20 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         setViewMode('books');
         setSelectedBook(undefined);
         setSearchQuery('');
+    };
+
+    const navigateToActions = () => {
+        setViewMode('actions');
+        setSelectedBook(undefined);
+        setSearchQuery('');
+        loadActions();
+    };
+
+    const navigateToTopics = () => {
+        setViewMode('topics');
+        setSelectedBook(undefined);
+        setSearchQuery('');
+        loadTopics();
     };
 
     const navigateToBookDetail = (book: BibleBook) => {
@@ -328,6 +373,68 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         </View>
     ), [colors, onEntryPress, formatDate, getChapterText, getPreviewText, getAnswerCount]);
 
+    const renderActionCard = useCallback((item: EnhancedActionItem) => (
+        <View style={styles.bookCardWrapper}>
+            <View style={[styles.entryCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder, marginBottom: 0 }]}>
+                <View style={[styles.entryHeader, { marginBottom: 8 }]}>
+                    <Text style={[styles.entryDate, { color: colors.textTertiary }]}>{formatDate(item.created_at)}</Text>
+                    <ScalePressable onPress={async () => {
+                        try {
+                            const entry = await getEntryById(item.entry_id!);
+                            if (entry) onEntryPress(entry);
+                        } catch (e) {
+                            console.error(e);
+                        }
+                    }}>
+                        <View style={[styles.refBadge, { backgroundColor: colors.accent + '15' }]}>
+                            <Text style={[styles.entryScripture, { color: colors.accent }]}>
+                                {item.book_name} {item.chapter_start}{item.chapter_end && item.chapter_end !== item.chapter_start ? `-${item.chapter_end}` : ''}
+                            </Text>
+                        </View>
+                    </ScalePressable>
+                </View>
+                <Text style={[styles.entryPreview, { color: colors.textPrimary, fontWeight: '600', marginBottom: item.motivation ? 8 : 0 }]}>
+                    {item.action}
+                </Text>
+                {item.motivation ? (
+                    <View style={{ marginTop: 8, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.border + '50' }}>
+                        <Text style={{ fontSize: 11, fontWeight: '600', letterSpacing: 1, color: colors.textTertiary, marginBottom: 2 }}>MOTIVATION</Text>
+                        <Text style={[styles.entryPreview, { color: colors.textSecondary, fontStyle: 'italic', marginBottom: 0 }]}>
+                            {item.motivation}
+                        </Text>
+                    </View>
+                ) : null}
+            </View>
+        </View>
+    ), [colors, formatDate, onEntryPress]);
+
+    const renderTopicCard = useCallback((item: JournalEntry) => (
+        <View style={styles.bookCardWrapper}>
+            <View style={[styles.entryCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder, marginBottom: 0 }]}>
+                <View style={[styles.entryHeader, { marginBottom: 8 }]}>
+                    <Text style={[styles.entryDate, { color: colors.textTertiary }]}>{formatDate(item.created_at)}</Text>
+                    <ScalePressable onPress={() => onEntryPress(item)}>
+                        <View style={[styles.refBadge, { backgroundColor: colors.accentSecondary + '15' }]}>
+                            <Text style={[styles.entryScripture, { color: colors.accentSecondary }]}>
+                                {item.book_name} {item.chapter_start}{item.chapter_end && item.chapter_end !== item.chapter_start ? `-${item.chapter_end}` : ''}
+                            </Text>
+                        </View>
+                    </ScalePressable>
+                </View>
+                <Text style={[styles.entryPreview, { color: colors.textPrimary, fontWeight: '600', marginBottom: item.study_further_reminder ? 8 : 0 }]}>
+                    {item.study_further}
+                </Text>
+                {item.study_further_reminder && new Date(item.study_further_reminder) > new Date() ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, backgroundColor: colors.backgroundSubtle, borderColor: colors.border, alignSelf: 'flex-start', marginTop: 8, gap: 4 }}>
+                        <Text style={{ fontSize: 13, fontWeight: '500', color: colors.textSecondary }}>
+                            Reminder: {new Date(item.study_further_reminder).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                        </Text>
+                    </View>
+                ) : null}
+            </View>
+        </View>
+    ), [colors, formatDate, onEntryPress]);
+
     const renderDateGroupHeader = useCallback((title: string) => {
         return (
             <View style={styles.dateGroup}>
@@ -338,6 +445,14 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
 
     // Convert grouped entries to flat list format
     const getFlatListData = useMemo(() => {
+        if (viewMode === 'actions') {
+            return actionsList.map(action => ({ type: 'action' as const, action, id: `action-${action.id}` }));
+        }
+
+        if (viewMode === 'topics') {
+            return topicsList.map(topic => ({ type: 'topic' as const, topic, id: `topic-${topic.id}` }));
+        }
+
         if (viewMode === 'books') {
             return availableBooks.map(book => ({ type: 'book' as const, book, id: book.name }));
         }
@@ -433,6 +548,10 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                 return renderDateGroupHeader(item.title);
             case 'entry':
                 return renderEntryCard(item.entry);
+            case 'action':
+                return renderActionCard(item.action);
+            case 'topic':
+                return renderTopicCard(item.topic);
             case 'bookHeader':
                 return (
                     <View style={[styles.bookDetailHeader, { borderBottomColor: colors.border }]}>
@@ -458,7 +577,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
             default:
                 return null;
         }
-    }, [colors, renderDateGroupHeader, renderEntryCard, navigateToBookDetail]);
+    }, [colors, renderDateGroupHeader, renderEntryCard, renderActionCard, renderTopicCard, navigateToBookDetail]);
 
     const renderEmptyState = useCallback(() => {
         if (viewMode === 'books') {
@@ -467,6 +586,28 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                     <Text style={[styles.emptyStateText, { color: colors.textPrimary }]}>No books studied yet</Text>
                     <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>
                         Create your first reflection to see books here
+                    </Text>
+                </View>
+            );
+        }
+
+        if (viewMode === 'actions') {
+            return (
+                <View style={styles.emptyState}>
+                    <Text style={[styles.emptyStateText, { color: colors.textPrimary }]}>No actions recorded</Text>
+                    <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>
+                        Write actions in your reflections to see them here
+                    </Text>
+                </View>
+            );
+        }
+
+        if (viewMode === 'topics') {
+            return (
+                <View style={styles.emptyState}>
+                    <Text style={[styles.emptyStateText, { color: colors.textPrimary }]}>No study topics</Text>
+                    <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>
+                        Add topics to study further in your reflections
                     </Text>
                 </View>
             );
@@ -510,30 +651,25 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                                 styles.tabIndicator,
                                 {
                                     backgroundColor: colors.accent,
-                                    left: viewMode === 'recent' ? 0 : '50%',
+                                    width: '25%',
+                                    left: viewMode === 'recent' ? '0%' : (viewMode === 'books' || viewMode === 'bookDetail') ? '25%' : viewMode === 'actions' ? '50%' : '75%',
                                 }
                             ]}
                         />
-                        <ScalePressable
-                            style={styles.tab}
-                            onPress={navigateToRecent}
-                        >
-                            <Text style={[
-                                styles.tabText,
-                                { color: colors.textSecondary },
-                                viewMode === 'recent' && { color: colors.textPrimary, fontWeight: '500' }
-                            ]}>Recent</Text>
+                        <ScalePressable style={styles.tab} onPress={navigateToRecent}>
+                            <Text style={[styles.tabText, { color: colors.textSecondary }, viewMode === 'recent' && { color: colors.textPrimary, fontWeight: '500' }]}>Recent</Text>
                         </ScalePressable>
 
-                        <ScalePressable
-                            style={styles.tab}
-                            onPress={navigateToBooks}
-                        >
-                            <Text style={[
-                                styles.tabText,
-                                { color: colors.textSecondary },
-                                (viewMode === 'books' || viewMode === 'bookDetail') && { color: colors.textPrimary, fontWeight: '500' }
-                            ]}>Books</Text>
+                        <ScalePressable style={styles.tab} onPress={navigateToBooks}>
+                            <Text style={[styles.tabText, { color: colors.textSecondary }, (viewMode === 'books' || viewMode === 'bookDetail') && { color: colors.textPrimary, fontWeight: '500' }]}>Books</Text>
+                        </ScalePressable>
+
+                        <ScalePressable style={styles.tab} onPress={navigateToActions}>
+                            <Text style={[styles.tabText, { color: colors.textSecondary }, viewMode === 'actions' && { color: colors.textPrimary, fontWeight: '500' }]}>Actions</Text>
+                        </ScalePressable>
+
+                        <ScalePressable style={styles.tab} onPress={navigateToTopics}>
+                            <Text style={[styles.tabText, { color: colors.textSecondary }, viewMode === 'topics' && { color: colors.textPrimary, fontWeight: '500' }]}>Topics</Text>
                         </ScalePressable>
                     </View>
                 </View>
@@ -617,7 +753,7 @@ const styles = StyleSheet.create({
         position: 'absolute',
         bottom: 0,
         left: 0,
-        width: '50%',
+        width: '25%',
         height: 2,
         borderRadius: 1,
     },
@@ -734,6 +870,11 @@ const styles = StyleSheet.create({
     reflectionIndicator: {
         flexDirection: 'row',
         gap: 8,
+    },
+    refBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 4,
     },
     entryScripture: {
         fontSize: 14,

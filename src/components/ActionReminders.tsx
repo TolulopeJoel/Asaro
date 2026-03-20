@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
@@ -23,60 +23,71 @@ export const ActionReminders: React.FC = React.memo(() => {
         }, [loadActions])
     );
 
+    const router = useRouter();
+
     if (actions.length === 0) return null;
 
     const item = actions[0];
 
+    const handlePress = () => {
+        router.push({
+            pathname: '/browse',
+            params: { view: 'actions' }
+        });
+    };
+
     return (
-        <View
-            style={[
-                styles.card,
-                {
-                    backgroundColor: colors.cardBackground,
-                    borderColor: colors.cardBorder
-                }
-            ]}
-        >
-            <View style={styles.header}>
-                <Text style={[styles.headerTitle, { color: colors.textSecondary }]}>
-                    WHAT YOU SAID YOU'D DO
-                </Text>
-                <Text style={[styles.dateText, { color: colors.textTertiary, marginLeft: 'auto' }]}>
-                    {(() => {
-                        const date = new Date(item.created_at);
-                        const now = new Date();
-                        return date.toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            ...(date.getFullYear() !== now.getFullYear() && { year: 'numeric' })
-                        });
-                    })()}
-                </Text>
-            </View>
-
-            <View style={styles.cardHeader}>
-                <View style={[styles.refBadge, { backgroundColor: colors.accent + '15' }]}>
-                    <Text style={[styles.refText, { color: colors.accent }]}>
-                        {item.book_name} {item.chapter_start}{item.chapter_end && item.chapter_end !== item.chapter_start ? `-${item.chapter_end}` : ''}
+        <ScalePressable onPress={handlePress}>
+            <View
+                style={[
+                    styles.card,
+                    {
+                        backgroundColor: colors.cardBackground,
+                        borderColor: colors.cardBorder
+                    }
+                ]}
+            >
+                <View style={styles.header}>
+                    <Text style={[styles.headerTitle, { color: colors.textSecondary }]}>
+                        WHAT YOU SAID YOU'D DO
+                    </Text>
+                    <Text style={[styles.dateText, { color: colors.textTertiary, marginLeft: 'auto' }]}>
+                        {(() => {
+                            const date = new Date(item.created_at);
+                            const now = new Date();
+                            return date.toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                ...(date.getFullYear() !== now.getFullYear() && { year: 'numeric' })
+                            });
+                        })()}
                     </Text>
                 </View>
-            </View>
 
-            <Text style={[styles.actionText, { color: colors.textPrimary }]}>
-                {item.action}
-            </Text>
-
-            {item.motivation ? (
-                <View style={[styles.motivationContainer, { borderTopColor: colors.border + '50' }]}>
-                    <Text style={[styles.motivationLabel, { color: colors.textTertiary }]}>
-                        MOTIVATION
-                    </Text>
-                    <Text style={[styles.motivationText, { color: colors.textSecondary }]}>
-                        {item.motivation}
-                    </Text>
+                <View style={styles.cardHeader}>
+                    <View style={[styles.refBadge, { backgroundColor: colors.accent + '15' }]}>
+                        <Text style={[styles.refText, { color: colors.accent }]}>
+                            {item.book_name} {item.chapter_start}{item.chapter_end && item.chapter_end !== item.chapter_start ? `-${item.chapter_end}` : ''}
+                        </Text>
+                    </View>
                 </View>
-            ) : null}
-        </View>
+
+                <Text style={[styles.actionText, { color: colors.textPrimary }]}>
+                    {item.action}
+                </Text>
+
+                {item.motivation ? (
+                    <View style={[styles.motivationContainer, { borderTopColor: colors.border + '50' }]}>
+                        <Text style={[styles.motivationLabel, { color: colors.textTertiary }]}>
+                            MOTIVATION
+                        </Text>
+                        <Text style={[styles.motivationText, { color: colors.textSecondary }]}>
+                            {item.motivation}
+                        </Text>
+                    </View>
+                ) : null}
+            </View>
+        </ScalePressable>
     );
 });
 

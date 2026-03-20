@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
@@ -23,61 +23,72 @@ export const StudyReminders: React.FC = React.memo(() => {
         }, [loadTopics])
     );
 
+    const router = useRouter();
+
     if (topics.length === 0) return null;
 
     const item = topics[0];
 
+    const handlePress = () => {
+        router.push({
+            pathname: '/browse',
+            params: { view: 'topics' }
+        });
+    };
+
     return (
-        <View
-            style={[
-                styles.card,
-                {
-                    backgroundColor: colors.cardBackground,
-                    borderColor: colors.cardBorder
-                }
-            ]}
-        >
-            <View style={styles.header}>
-                <View style={styles.titleRow}>
-                    <Ionicons name="bookmark-outline" size={14} color={colors.accentSecondary} />
-                    <Text style={[styles.headerTitle, { color: colors.textSecondary }]}>
-                        TOPIC TO STUDY FURTHER
+        <ScalePressable onPress={handlePress}>
+            <View
+                style={[
+                    styles.card,
+                    {
+                        backgroundColor: colors.cardBackground,
+                        borderColor: colors.cardBorder
+                    }
+                ]}
+            >
+                <View style={styles.header}>
+                    <View style={styles.titleRow}>
+                        <Ionicons name="bookmark-outline" size={14} color={colors.accentSecondary} />
+                        <Text style={[styles.headerTitle, { color: colors.textSecondary }]}>
+                            TOPIC TO STUDY FURTHER
+                        </Text>
+                    </View>
+                    <Text style={[styles.dateText, { color: colors.textTertiary, marginLeft: 'auto' }]}>
+                        {(() => {
+                            const date = new Date(item.created_at);
+                            const now = new Date();
+                            return date.toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                ...(date.getFullYear() !== now.getFullYear() && { year: 'numeric' })
+                            });
+                        })()}
                     </Text>
                 </View>
-                <Text style={[styles.dateText, { color: colors.textTertiary, marginLeft: 'auto' }]}>
-                    {(() => {
-                        const date = new Date(item.created_at);
-                        const now = new Date();
-                        return date.toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            ...(date.getFullYear() !== now.getFullYear() && { year: 'numeric' })
-                        });
-                    })()}
+
+                <View style={styles.cardHeader}>
+                    <View style={[styles.refBadge, { backgroundColor: colors.accentSecondary + '15' }]}>
+                        <Text style={[styles.refText, { color: colors.accentSecondary }]}>
+                            {item.book_name} {item.chapter_start}{item.chapter_end && item.chapter_end !== item.chapter_start ? `-${item.chapter_end}` : ''}
+                        </Text>
+                    </View>
+                </View>
+
+                <Text style={[styles.topicText, { color: colors.textPrimary }]}>
+                    {item.study_further}
                 </Text>
+
+                {item.study_further_reminder && new Date(item.study_further_reminder) > new Date() ? (
+                    <View style={[styles.reminderContainer, { backgroundColor: colors.backgroundSubtle, borderColor: colors.border }]}>
+                        <Ionicons name="notifications-outline" size={14} color={colors.textSecondary} />
+                        <Text style={[styles.reminderText, { color: colors.textSecondary }]}>
+                            Reminder: {new Date(item.study_further_reminder).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                        </Text>
+                    </View>
+                ) : null}
             </View>
-
-            <View style={styles.cardHeader}>
-                <View style={[styles.refBadge, { backgroundColor: colors.accentSecondary + '15' }]}>
-                    <Text style={[styles.refText, { color: colors.accentSecondary }]}>
-                        {item.book_name} {item.chapter_start}{item.chapter_end && item.chapter_end !== item.chapter_start ? `-${item.chapter_end}` : ''}
-                    </Text>
-                </View>
-            </View>
-
-            <Text style={[styles.topicText, { color: colors.textPrimary }]}>
-                {item.study_further}
-            </Text>
-
-            {item.study_further_reminder && new Date(item.study_further_reminder) > new Date() ? (
-                <View style={[styles.reminderContainer, { backgroundColor: colors.backgroundSubtle, borderColor: colors.border }]}>
-                    <Ionicons name="notifications-outline" size={14} color={colors.textSecondary} />
-                    <Text style={[styles.reminderText, { color: colors.textSecondary }]}>
-                        Reminder: {new Date(item.study_further_reminder).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
-                    </Text>
-                </View>
-            ) : null}
-        </View>
+        </ScalePressable>
     );
 });
 

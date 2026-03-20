@@ -910,6 +910,30 @@ export const getRecentActionItems = async (days: number = 7): Promise<EnhancedAc
 };
 
 /**
+ * Fetch all action items, joined with their journal entry context.
+ * Used for the "Actions" tab on the Past Entries screen.
+ */
+export const getAllActionItems = async (limit: number = 200, offset: number = 0): Promise<EnhancedActionItem[]> => {
+    return await withDatabase(async (database) => {
+        const query = `
+            SELECT 
+                ai.*, 
+                je.book_name, 
+                je.chapter_start, 
+                je.chapter_end,
+                datetime(je.created_at, 'localtime') as created_at
+            FROM action_items ai
+            JOIN journal_entries je ON ai.entry_id = je.id
+            WHERE (ai.action != '' OR ai.motivation != '')
+            ORDER BY je.created_at DESC, ai.sort_order ASC
+            LIMIT ? OFFSET ?
+        `;
+
+        return await database.getAllAsync<EnhancedActionItem>(query, [limit, offset]);
+    });
+};
+
+/**
  * Fetch study further topics from the last X days.
  * Used for the "Reminders" section on the home screen.
  */
@@ -927,6 +951,26 @@ export const getRecentStudyTopics = async (days: number = 7): Promise<JournalEnt
 
         const daysParam = `-${days} days`;
         return await database.getAllAsync<JournalEntry>(query, [daysParam]);
+    });
+};
+
+/**
+ * Fetch all study further topics.
+ * Used for the "Topics" tab on the Past Entries screen.
+ */
+export const getAllStudyTopics = async (limit: number = 200, offset: number = 0): Promise<JournalEntry[]> => {
+    return await withDatabase(async (database) => {
+        const query = `
+            SELECT 
+                *,
+                datetime(created_at, 'localtime') as created_at
+            FROM journal_entries
+            WHERE study_further IS NOT NULL AND study_further != ''
+            ORDER BY created_at DESC
+            LIMIT ? OFFSET ?
+        `;
+
+        return await database.getAllAsync<JournalEntry>(query, [limit, offset]);
     });
 };
 
