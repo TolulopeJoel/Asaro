@@ -73,7 +73,7 @@ const formatRelativeTime = (ts: any): string | null => {
 
 const formatLastRead = (dateStr: string | undefined, today: string): string => {
     if (!dateStr) return 'Never read';
-    if (dateStr === today) return 'Read today ✓';
+    if (dateStr === today) return 'Read today 😌';
     try {
         const d = new Date(dateStr);
         const now = new Date(today);
@@ -85,7 +85,6 @@ const formatLastRead = (dateStr: string | undefined, today: string): string => {
 };
 
 // ─── Pronoun helpers ──────────────────────────────────────────────────────────
-// Pure functions — members is passed explicitly so these live outside the component.
 
 const getPronoun = (
     members: any[],
@@ -211,34 +210,17 @@ const buildProcessedFeed = (
 // ─── Avatar ───────────────────────────────────────────────────────────────────
 
 const Avatar = ({
-    id,
-    name,
-    size = 44,
-    radius,
-    borderWidth,
-    borderColor,
-    opacity = 1,
-    style,
+    id, name, size = 44, radius, borderWidth, borderColor, opacity = 1, style,
 }: {
-    id?: string;
-    name?: string;
-    size?: number;
-    radius?: number;
-    borderWidth?: number;
-    borderColor?: string;
-    opacity?: number;
-    style?: any;
+    id?: string; name?: string; size?: number; radius?: number;
+    borderWidth?: number; borderColor?: string; opacity?: number; style?: any;
 }) => (
     <View style={[{
-        width: size,
-        height: size,
+        width: size, height: size,
         borderRadius: radius ?? size / 2,
         backgroundColor: getAvatarColor(id, name),
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: borderWidth ?? 0,
-        borderColor,
-        opacity,
+        justifyContent: 'center', alignItems: 'center',
+        borderWidth: borderWidth ?? 0, borderColor, opacity,
     }, style]}>
         <Text style={{ fontSize: size * 0.4, fontWeight: Typography.weight.bold as any, color: 'white' }}>
             {name?.charAt(0).toUpperCase() ?? '?'}
@@ -249,15 +231,9 @@ const Avatar = ({
 // ─── Accountability Member Card ───────────────────────────────────────────────
 
 const AccountabilityMemberCard = ({
-    member,
-    colors,
-    styles,
-    onPress,
+    member, colors, styles, onPress,
 }: {
-    member: any;
-    colors: any;
-    styles: ReturnType<typeof getStyles>;
-    onPress: () => void;
+    member: any; colors: any; styles: ReturnType<typeof getStyles>; onPress: () => void;
 }) => {
     const isMostConsistent = !member.readToday && member.daysThisWeek >= 5;
 
@@ -349,19 +325,27 @@ const MemberProfileSheet = ({
     onClose,
     colors,
     today,
+    isMe,
+    members,
+    activities,
 }: {
     groupId: string;
     member: any;
     onClose: () => void;
     colors: any;
     today: string;
+    isMe: boolean;
+    members: any[];
+    activities: any[];
 }) => {
     const insets = useSafeAreaInsets();
     const translateY = useSharedValue(SCREEN_HEIGHT);
     const backdropOpacity = useSharedValue(0);
     const [visible, setVisible] = React.useState(true);
     const [pastReads, setPastReads] = React.useState<any[]>([]);
+    const [sharedReflections, setSharedReflections] = React.useState<any[]>([]);
     const [loadingReads, setLoadingReads] = React.useState(true);
+    const [activeSheetTab, setActiveSheetTab] = React.useState<'reads' | 'reflections'>('reads');
 
     React.useEffect(() => {
         translateY.value = withSpring(0, { damping: 22, stiffness: 200 });
@@ -383,9 +367,11 @@ const MemberProfileSheet = ({
         if (!member || !groupId) { setLoadingReads(false); return; }
 
         const memberId = member.userId || member.id;
-        const unsubscribe = firestore()
+        const baseRef = firestore()
             .collection('groups').doc(groupId)
-            .collection('activities')
+            .collection('activities');
+
+        const unsubReads = baseRef
             .where('userId', '==', memberId)
             .where('type', '==', 'journal_entry')
             .orderBy('timestamp', 'desc')
@@ -401,23 +387,140 @@ const MemberProfileSheet = ({
                 }
             );
 
-        return () => unsubscribe();
+        const unsubReflections = baseRef
+            .where('userId', '==', memberId)
+            .where('type', '==', 'reflection_shared')
+            .orderBy('timestamp', 'desc')
+            .limit(30)
+            .onSnapshot(
+                (snapshot) => {
+                    setSharedReflections(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+                },
+                (error) => {
+                    console.error('[MemberProfileSheet] Error fetching reflections:', error);
+                }
+            );
+
+        return () => {
+            unsubReads();
+            unsubReflections();
+        };
     }, [groupId, member]);
 
     if (!visible) return null;
 
+    const memberId = member.userId || member.id;
+
+    // ── Heatmap ─────────────────────────────────────────────────────────────
     const currentWeek = getISOWeekString(new Date());
     const isCurrentWeek = member.weeklyActivityWeek === currentWeek;
     const dots: boolean[] = (isCurrentWeek && Array.isArray(member.weeklyActivity) && member.weeklyActivity.length === 7)
         ? member.weeklyActivity
         : [false, false, false, false, false, false, false];
 
+    const readToday = member.lastReadDate === today;
+    const totalReflections = member.totalReflections || 0;
+
+    // ── Badges ───────────────────────────────────────────────────────────────
     const earnedBadgeIds: string[] = member.badges || [];
     const earnedBadges = ALL_BADGES.filter(b => earnedBadgeIds.includes(b.id)).sort((a, b) => a.order - b.order);
-    const unearnedBadges = ALL_BADGES.filter(b => !earnedBadgeIds.includes(b.id)).sort((a, b) => a.order - b.order);
+    const unearnedBadges = isMe
+        ? ALL_BADGES.filter(b => !earnedBadgeIds.includes(b.id)).sort((a, b) => a.order - b.order)
+        : [];
 
-    const readToday = member.lastReadDate === today;
-    const streak = member.streak || 0;
+    // ── Insight 1: Most active time ──────────────────────────────────────────
+    const getTimeOfDay = (ts: any): 'morning' | 'afternoon' | 'evening' | 'night' | null => {
+        try {
+            const hour = (ts.toDate ? ts.toDate() : new Date(ts)).getHours();
+            if (hour >= 5 && hour < 12) return 'morning';
+            if (hour >= 12 && hour < 17) return 'afternoon';
+            if (hour >= 17 && hour < 21) return 'evening';
+            return 'night';
+        } catch { return null; }
+    };
+
+    const timeCounts = { morning: 0, afternoon: 0, evening: 0, night: 0 };
+    for (const read of pastReads) {
+        const t = getTimeOfDay(read.timestamp);
+        if (t) timeCounts[t]++;
+    }
+
+    const mostActiveTime = pastReads.length >= 5
+        ? (Object.entries(timeCounts).sort((a, b) => b[1] - a[1])[0][0] as keyof typeof timeCounts)
+        : null;
+
+    const timeInsightMap: Record<string, { label: string; emoji: string }> = {
+        morning: { label: 'Usually reads in the morning', emoji: '☀️' },
+        afternoon: { label: 'Usually reads in the afternoon', emoji: '🌤️' },
+        evening: { label: 'Usually reads in the evening', emoji: '🌙' },
+        night: { label: 'Usually reads late at night', emoji: '🌃' },
+    };
+
+    // ── Insight 2: Reading style ─────────────────────────────────────────────
+    const parseChapterRange = (chapters: string | undefined): number => {
+        if (!chapters) return 1;
+        const parts = chapters.split('-');
+        if (parts.length === 1) return 1;
+        try {
+            const start = parseInt(parts[0], 10);
+            const end = parseInt(parts[parts.length - 1], 10);
+            return isNaN(start) || isNaN(end) ? 1 : Math.max(1, end - start + 1);
+        } catch { return 1; }
+    };
+
+    const avgChaptersPerEntry = pastReads.length > 0
+        ? pastReads.reduce((sum, r) => sum + parseChapterRange(r.chapters), 0) / pastReads.length
+        : 0;
+
+    const readingStyleInsight = pastReads.length >= 3
+        ? avgChaptersPerEntry >= 4
+            ? { label: 'Reads in big chunks — covers a lot at once', emoji: '📖' }
+            : avgChaptersPerEntry <= 2
+                ? { label: 'Reads chapter by chapter — slow and deliberate', emoji: '🔍' }
+                : { label: 'Reads at a steady, measured pace', emoji: '📑' }
+        : null;
+
+    // ── Insight 3: Same books connection ─────────────────────────────────────
+    // Build this member's recent book set
+    const myRecentBooks = new Set(pastReads.map(r => r.bookName).filter(Boolean));
+
+    // For each other member, find their recent books from group activities
+    // and count overlap with this member's books
+    const otherMemberBooks: Record<string, { name: string; books: Set<string> }> = {};
+    for (const a of activities) {
+        if (a.type !== 'journal_entry') continue;
+        if (a.userId === memberId) continue;
+        if (!a.bookName) continue;
+        if (!otherMemberBooks[a.userId]) {
+            const m = members.find(m => m.userId === a.userId || m.id === a.userId);
+            otherMemberBooks[a.userId] = {
+                name: m?.displayName || a.userName || 'Someone',
+                books: new Set(),
+            };
+        }
+        otherMemberBooks[a.userId].books.add(a.bookName);
+    }
+
+    let bestMatchName = '';
+    let bestMatchCount = 0;
+    for (const { name, books } of Object.values(otherMemberBooks)) {
+        const overlap = [...myRecentBooks].filter(b => books.has(b)).length;
+        if (overlap > bestMatchCount) {
+            bestMatchCount = overlap;
+            bestMatchName = name;
+        }
+    }
+
+    const connectionInsight = myRecentBooks.size >= 2 && bestMatchCount >= 2
+        ? { label: `Often reads the same books as ${bestMatchName}`, emoji: '🤝' }
+        : null;
+
+    // ── Assemble final insights (only show what has enough data) ─────────────
+    const insights: { label: string; emoji: string }[] = [
+        mostActiveTime ? timeInsightMap[mostActiveTime] : null,
+        readingStyleInsight,
+        connectionInsight,
+    ].filter(Boolean) as { label: string; emoji: string }[];
 
     return (
         <Modal transparent animationType="none" onRequestClose={dismiss}>
@@ -431,6 +534,7 @@ const MemberProfileSheet = ({
                 </View>
 
                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: Spacing.xl }}>
+
                     {/* ── Avatar + name ── */}
                     <View style={sheetStyles.header}>
                         <Avatar
@@ -447,20 +551,19 @@ const MemberProfileSheet = ({
                         </Text>
                     </View>
 
-                    {/* ── Stats row ── */}
-                    <View style={[sheetStyles.statsRow, { borderColor: colors.border }]}>
-                        <View style={sheetStyles.stat}>
-                            <Text style={[sheetStyles.statValue, { color: colors.textPrimary }]}>{streak}</Text>
-                            <Text style={[sheetStyles.statLabel, { color: colors.textTertiary }]}>Day streak</Text>
+                    {/* ── Insights ── */}
+                    {insights.length > 0 && (
+                        <View style={sheetStyles.insightsContainer}>
+                            {insights.map((insight, i) => (
+                                <View key={i} style={[sheetStyles.insightChip, { backgroundColor: colors.backgroundElevated, borderColor: colors.border }]}>
+                                    <Text style={sheetStyles.insightEmoji}>{insight.emoji}</Text>
+                                    <Text style={[sheetStyles.insightLabel, { color: colors.textSecondary }]}>
+                                        {insight.label}
+                                    </Text>
+                                </View>
+                            ))}
                         </View>
-                        <View style={[sheetStyles.statDivider, { backgroundColor: colors.border }]} />
-                        <View style={sheetStyles.stat}>
-                            <Text style={[sheetStyles.statValue, { color: colors.textPrimary }]}>
-                                {dots.filter(Boolean).length}
-                            </Text>
-                            <Text style={[sheetStyles.statLabel, { color: colors.textTertiary }]}>Days this week</Text>
-                        </View>
-                    </View>
+                    )}
 
                     {/* ── Weekly heatmap ── */}
                     <View style={sheetStyles.section}>
@@ -479,7 +582,7 @@ const MemberProfileSheet = ({
                     <View style={sheetStyles.section}>
                         <Text style={[sheetStyles.sectionTitle, { color: colors.textSecondary }]}>BADGES</Text>
                         {earnedBadges.length === 0 && unearnedBadges.length === 0 && (
-                            <Text style={[sheetStyles.emptyBadges, { color: colors.textTertiary }]}>Keep reading to earn badges!</Text>
+                            <Text style={[sheetStyles.emptyText, { color: colors.textTertiary }]}>{isMe ? "Keep reading to earn badges!" : "No badges earned yet"}</Text>
                         )}
                         <View style={sheetStyles.badgeGrid}>
                             {earnedBadges.map(badge => (
@@ -490,42 +593,100 @@ const MemberProfileSheet = ({
                             ))}
                             {unearnedBadges.map(badge => (
                                 <View key={badge.id} style={[sheetStyles.badgeItem, { backgroundColor: colors.cardBackground, borderColor: colors.border, opacity: 0.4 }]}>
-                                    <Text style={sheetStyles.badgeEmoji}>{'🔒'}</Text>
+                                    <Text style={sheetStyles.badgeEmoji}>🔒</Text>
                                     <Text style={[sheetStyles.badgeLabel, { color: colors.textTertiary }]} numberOfLines={1}>{badge.label}</Text>
                                 </View>
                             ))}
                         </View>
                     </View>
 
-                    {/* ── Past Reads ── */}
+                    {/* ── Reads / Reflections tabs ── */}
                     <View style={sheetStyles.section}>
-                        <Text style={[sheetStyles.sectionTitle, { color: colors.textSecondary }]}>RECENT READS</Text>
-                        {loadingReads ? (
-                            <Text style={[sheetStyles.emptyBadges, { color: colors.textTertiary }]}>Loading...</Text>
-                        ) : pastReads.length > 0 ? (
-                            <View style={{ gap: Spacing.md }}>
-                                {pastReads.map((read) => (
-                                    <View key={read.id} style={sheetStyles.readCard}>
-                                        <View style={sheetStyles.readCardHeader}>
-                                            <Text style={[sheetStyles.readCardTitle, { color: colors.textPrimary }]}>
-                                                {read.bookName} {read.chapters}
-                                            </Text>
-                                            <Text style={[sheetStyles.readCardTime, { color: colors.textTertiary }]}>
-                                                {formatRelativeTime(read.timestamp)}
+                        <View style={[sheetStyles.miniTabRow, { borderColor: colors.border }]}>
+                            <TouchableOpacity
+                                style={[sheetStyles.miniTab, activeSheetTab === 'reads' && { borderBottomColor: colors.accent, borderBottomWidth: 2 }]}
+                                onPress={() => setActiveSheetTab('reads')}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={[sheetStyles.miniTabText, { color: activeSheetTab === 'reads' ? colors.textPrimary : colors.textTertiary }]}>
+                                    Recent Reads
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[sheetStyles.miniTab, activeSheetTab === 'reflections' && { borderBottomColor: colors.accent, borderBottomWidth: 2 }]}
+                                onPress={() => setActiveSheetTab('reflections')}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={[sheetStyles.miniTabText, { color: activeSheetTab === 'reflections' ? colors.textPrimary : colors.textTertiary }]}>
+                                    Reflections{totalReflections > 0 ? ` (${totalReflections})` : ''}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Recent Reads */}
+                        {activeSheetTab === 'reads' && (
+                            loadingReads ? (
+                                <Text style={[sheetStyles.emptyText, { color: colors.textTertiary, marginTop: Spacing.md }]}>Loading...</Text>
+                            ) : pastReads.length > 0 ? (
+                                <View style={{ gap: Spacing.md, marginTop: Spacing.md }}>
+                                    {pastReads.map((read) => (
+                                        <View key={read.id} style={sheetStyles.readCard}>
+                                            <View style={sheetStyles.readCardHeader}>
+                                                <Text style={[sheetStyles.readCardTitle, { color: colors.textPrimary }]}>
+                                                    {read.bookName} {read.chapters}
+                                                </Text>
+                                                <Text style={[sheetStyles.readCardTime, { color: colors.textTertiary }]}>
+                                                    {formatRelativeTime(read.timestamp)}
+                                                </Text>
+                                            </View>
+                                            {read.preview && (
+                                                <Text style={[sheetStyles.readCardPreview, { color: colors.textSecondary, borderLeftColor: colors.accentSecondaryLight }]} numberOfLines={2}>
+                                                    "{read.preview}"
+                                                </Text>
+                                            )}
+                                        </View>
+                                    ))}
+                                </View>
+                            ) : (
+                                <Text style={[sheetStyles.emptyText, { color: colors.textTertiary, marginTop: Spacing.md }]}>No recent reads found.</Text>
+                            )
+                        )}
+
+                        {/* Shared Reflections */}
+                        {activeSheetTab === 'reflections' && (
+                            sharedReflections.length > 0 ? (
+                                <View style={{ gap: Spacing.lg, marginTop: Spacing.md }}>
+                                    {sharedReflections.map((item) => (
+                                        <View key={item.id} style={[sheetStyles.reflectionCard, { backgroundColor: colors.accentSecondaryLight + '10', borderColor: colors.accentSecondaryLight + '30' }]}>
+                                            <View style={sheetStyles.reflectionCardHeader}>
+                                                <View style={{ flex: 1, gap: 2 }}>
+                                                    {item.sharedQuestionTitle && (
+                                                        <Text style={[sheetStyles.reflectionQuestion, { color: colors.accent }]}>
+                                                            {item.sharedQuestionTitle}
+                                                        </Text>
+                                                    )}
+                                                    <Text style={[sheetStyles.reflectionSource, { color: colors.textTertiary }]}>
+                                                        {item.bookName} {item.chapters}
+                                                    </Text>
+                                                </View>
+                                                <Text style={[sheetStyles.readCardTime, { color: colors.textTertiary }]}>
+                                                    {formatRelativeTime(item.timestamp)}
+                                                </Text>
+                                            </View>
+                                            <Text style={[sheetStyles.reflectionText, { color: colors.textPrimary }]}>
+                                                {item.sharedReflectionText || item.preview}
                                             </Text>
                                         </View>
-                                        {read.preview ? (
-                                            <Text style={[sheetStyles.readCardPreview, { color: colors.textSecondary, borderLeftColor: colors.accentSecondaryLight }]} numberOfLines={2}>
-                                                "{read.preview}"
-                                            </Text>
-                                        ) : null}
-                                    </View>
-                                ))}
-                            </View>
-                        ) : (
-                            <Text style={[sheetStyles.emptyBadges, { color: colors.textTertiary }]}>No recent reads found.</Text>
+                                    ))}
+                                </View>
+                            ) : (
+                                <Text style={[sheetStyles.emptyText, { color: colors.textTertiary, marginTop: Spacing.md }]}>
+                                    {isMe ? "You haven't shared any reflections yet." : "No reflections shared yet."}
+                                </Text>
+                            )
                         )}
                     </View>
+
                 </ScrollView>
             </Animated.View>
         </Modal>
@@ -546,20 +707,28 @@ const sheetStyles = StyleSheet.create({
     header: { alignItems: 'center', paddingVertical: Spacing.lg, gap: Spacing.xs },
     name: { fontSize: Typography.size.xxl, fontWeight: Typography.weight.bold, letterSpacing: -0.3 },
     lastRead: { fontSize: Typography.size.sm, fontWeight: Typography.weight.medium },
-    statsRow: {
-        flexDirection: 'row', borderWidth: 1,
-        borderRadius: Spacing.borderRadius.lg, marginVertical: Spacing.lg, overflow: 'hidden',
+    // Insights
+    insightsContainer: { gap: Spacing.sm, marginBottom: Spacing.lg },
+    insightChip: {
+        flexDirection: 'row', alignItems: 'center',
+        gap: Spacing.sm, paddingVertical: Spacing.sm,
+        paddingHorizontal: Spacing.md,
+        borderRadius: Spacing.borderRadius.md, borderWidth: 1,
     },
-    stat: { flex: 1, alignItems: 'center', paddingVertical: Spacing.md, gap: 2 },
-    statDivider: { width: 1 },
-    statValue: { fontSize: Typography.size.xl, fontWeight: Typography.weight.bold, letterSpacing: -0.5 },
-    statLabel: { fontSize: Typography.size.xs, letterSpacing: 0.2 },
+    insightEmoji: { fontSize: 16 },
+    insightLabel: {
+        fontSize: Typography.size.sm,
+        fontWeight: Typography.weight.medium,
+        flex: 1, lineHeight: 20,
+    },
+    // Heatmap
     section: { marginBottom: Spacing.xl, gap: Spacing.md },
     sectionTitle: { fontSize: Typography.size.xs, fontWeight: Typography.weight.bold, letterSpacing: 2, opacity: 0.6 },
     heatmapRow: { flexDirection: 'row', justifyContent: 'space-between' },
     heatmapCell: { alignItems: 'center', gap: 5, flex: 1 },
     heatmapDot: { width: 28, height: 28, borderRadius: 8 },
     heatmapLabel: { fontSize: Typography.size.xs, fontWeight: Typography.weight.medium },
+    // Badges
     badgeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
     badgeItem: {
         width: '30%', alignItems: 'center', padding: Spacing.sm,
@@ -567,7 +736,15 @@ const sheetStyles = StyleSheet.create({
     },
     badgeEmoji: { fontSize: 24 },
     badgeLabel: { fontSize: 9, textAlign: 'center', fontWeight: Typography.weight.semibold, letterSpacing: 0.2 },
-    emptyBadges: { fontSize: Typography.size.sm, fontStyle: 'italic' },
+    emptyText: { fontSize: Typography.size.sm, fontStyle: 'italic' },
+    // Mini tab switcher
+    miniTabRow: { flexDirection: 'row', borderBottomWidth: 1, marginBottom: 0 },
+    miniTab: {
+        flex: 1, alignItems: 'center', paddingVertical: Spacing.sm,
+        borderBottomWidth: 2, borderBottomColor: 'transparent',
+    },
+    miniTabText: { fontSize: Typography.size.sm, fontWeight: Typography.weight.semibold },
+    // Reads
     readCard: { gap: 4 },
     readCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     readCardTitle: { fontSize: Typography.size.sm, fontWeight: Typography.weight.semibold },
@@ -576,6 +753,12 @@ const sheetStyles = StyleSheet.create({
         fontSize: Typography.size.sm, lineHeight: 20,
         fontStyle: 'italic', paddingLeft: Spacing.sm, borderLeftWidth: 2,
     },
+    // Reflections
+    reflectionCard: { borderRadius: Spacing.borderRadius.md, borderWidth: 1, padding: Spacing.md, gap: Spacing.sm },
+    reflectionCardHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm },
+    reflectionQuestion: { fontSize: Typography.size.xs, fontWeight: Typography.weight.bold, textTransform: 'uppercase', letterSpacing: 0.5 },
+    reflectionSource: { fontSize: Typography.size.xs },
+    reflectionText: { fontSize: Typography.size.sm, lineHeight: 22 },
 });
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
@@ -594,10 +777,8 @@ export default function GroupDetailScreen() {
     const [expandedDigests, setExpandedDigests] = React.useState<Set<string>>(new Set());
     const [activeTab, setActiveTab] = React.useState<'feed' | 'accountability' | 'members'>('feed');
 
-    // Declared once — used by accountabilityData memo, sortedMembers, buildProcessedFeed, and MemberProfileSheet
     const today = useMemo(() => getTodayDateString(), []);
 
-    // Tab animation
     const tabOffset = useSharedValue(0);
     React.useEffect(() => {
         const target = activeTab === 'feed' ? 0 : activeTab === 'accountability' ? 1 : 2;
@@ -610,7 +791,6 @@ export default function GroupDetailScreen() {
 
     const styles = useMemo(() => getStyles(colors), [colors]);
 
-    // Single counter replaces the three-boolean resolvedRef pattern
     const pendingCount = React.useRef(3);
     const markResolved = React.useCallback(() => {
         pendingCount.current -= 1;
@@ -718,7 +898,7 @@ export default function GroupDetailScreen() {
         return {
             upToDate: processed.filter(m => m.readToday).sort((a, b) => b.streak - a.streak),
             needsSupport: processed.filter(m => !m.readToday).sort((a, b) => b.daysThisWeek - a.daysThisWeek),
-            membersByConsistency: [...processed].sort((a, b) => a.monthlyCount - b.monthlyCount), // least active to most active
+            membersByConsistency: [...processed].sort((a, b) => a.monthlyCount - b.monthlyCount),
             groupProgressPercent,
             readTodayCount,
             totalMembers,
@@ -853,7 +1033,6 @@ export default function GroupDetailScreen() {
                             <View style={[styles.feedChainLine, { backgroundColor: colors.border }]} />
                             {feedItems.length > 0 ? feedItems.map((item: FeedItem) => {
 
-                                // ── Date separator ──
                                 if (item.type === 'separator') {
                                     return (
                                         <View key={item.id} style={styles.dateSeparator}>
@@ -866,7 +1045,6 @@ export default function GroupDetailScreen() {
                                     );
                                 }
 
-                                // ── Reading digest ──
                                 if (item.type === 'reading_digest') {
                                     const digest = item as ReadingDigest;
                                     const isExpanded = expandedDigests.has(digest.id);
@@ -925,7 +1103,6 @@ export default function GroupDetailScreen() {
                                     );
                                 }
 
-                                // ── Regular activity card ──
                                 const activity = item;
                                 const timeStr = formatRelativeTime(activity.timestamp);
                                 const isJournalEntry = activity.type === 'journal_entry';
@@ -1162,6 +1339,9 @@ export default function GroupDetailScreen() {
                     onClose={() => setSelectedMember(null)}
                     colors={colors}
                     today={today}
+                    isMe={selectedMember.userId === user?.uid || selectedMember.id === user?.uid}
+                    members={members}
+                    activities={activities}
                 />
             )}
         </SafeAreaView>
