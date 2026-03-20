@@ -1,14 +1,18 @@
 import React, { useCallback, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
-import { getRecentActionItems, EnhancedActionItem } from '../data/database';
+import { getRecentActionItems, EnhancedActionItem, JournalEntry, getEntryById } from '../data/database';
 import { ScalePressable } from './ScalePressable';
 
-export const ActionReminders: React.FC = React.memo(() => {
+interface ActionRemindersProps {
+    onEntryPress: (entry: JournalEntry) => void;
+}
+
+export const ActionReminders: React.FC<ActionRemindersProps> = React.memo(({ onEntryPress }) => {
     const { colors } = useTheme();
     const [actions, setActions] = useState<EnhancedActionItem[]>([]);
 
@@ -23,17 +27,19 @@ export const ActionReminders: React.FC = React.memo(() => {
         }, [loadActions])
     );
 
-    const router = useRouter();
-
     if (actions.length === 0) return null;
 
     const item = actions[0];
 
-    const handlePress = () => {
-        router.push({
-            pathname: '/browse',
-            params: { view: 'actions' }
-        });
+    const handlePress = async () => {
+        try {
+            const entry = await getEntryById(item.entry_id!);
+            if (entry) {
+                onEntryPress(entry);
+            }
+        } catch (error) {
+            console.error('Error loading entry:', error);
+        }
     };
 
     return (

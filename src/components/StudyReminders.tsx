@@ -1,14 +1,18 @@
 import React, { useCallback, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
 import { getRecentStudyTopics, JournalEntry } from '../data/database';
 import { ScalePressable } from './ScalePressable';
 
-export const StudyReminders: React.FC = React.memo(() => {
+interface StudyRemindersProps {
+    onEntryPress: (entry: JournalEntry) => void;
+}
+
+export const StudyReminders: React.FC<StudyRemindersProps> = React.memo(({ onEntryPress }) => {
     const { colors } = useTheme();
     const [topics, setTopics] = useState<JournalEntry[]>([]);
 
@@ -23,17 +27,12 @@ export const StudyReminders: React.FC = React.memo(() => {
         }, [loadTopics])
     );
 
-    const router = useRouter();
-
     if (topics.length === 0) return null;
 
     const item = topics[0];
 
     const handlePress = () => {
-        router.push({
-            pathname: '/browse',
-            params: { view: 'topics' }
-        });
+        onEntryPress(item);
     };
 
     return (

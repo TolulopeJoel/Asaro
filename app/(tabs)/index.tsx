@@ -273,6 +273,11 @@ export default function Index() {
     const { colors } = useTheme();
     const router = useRouter();
 
+    const handleEntryPress = useCallback((entry: JournalEntry) => {
+        setSelectedEntry(entry);
+        setIsDetailModalVisible(true);
+    }, []);
+
     const checkDraft = useCallback(async () => {
         try {
             const draft = await AsyncStorage.getItem(DRAFT_KEY);
@@ -303,16 +308,10 @@ export default function Index() {
             >
                 <QuickStats />
                 <NextReading />
-                <StudyReminders />
+                <StudyReminders onEntryPress={handleEntryPress} />
                 <WeeklyStreak />
-                <ActionReminders />
-
-                <Flashback
-                    onEntryPress={useCallback((entry) => {
-                        setSelectedEntry(entry);
-                        setIsDetailModalVisible(true);
-                    }, [])}
-                />
+                <ActionReminders onEntryPress={handleEntryPress} />
+                <Flashback onEntryPress={handleEntryPress} />
             </ScrollView>
 
             {!draftExists && <FloatingActionButton />}
