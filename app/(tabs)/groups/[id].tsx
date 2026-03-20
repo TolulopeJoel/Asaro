@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import {
-    View, Text, StyleSheet, ScrollView, TouchableOpacity,
+    View, Text, StyleSheet, ScrollView,
     LayoutAnimation, Platform, UIManager, Modal, Pressable, Dimensions,
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
@@ -16,7 +16,7 @@ import { getTodayDateString } from '@/src/utils/dateUtils';
 import { ALL_BADGES } from '@/src/utils/badges';
 import Animated, {
     useSharedValue, useAnimatedStyle, withSpring, withTiming,
-    runOnJS,
+    runOnJS, LinearTransition,
 } from 'react-native-reanimated';
 import { ScalePressable } from '@/src/components/ScalePressable';
 
@@ -238,13 +238,12 @@ const AccountabilityMemberCard = ({
     const isMostConsistent = !member.readToday && member.daysThisWeek >= 5;
 
     return (
-        <TouchableOpacity
+        <ScalePressable
             style={[
                 styles.accMemberCard,
                 member.isMe && { backgroundColor: colors.accentSecondaryLight + '10', borderRadius: 12 },
             ]}
             onPress={onPress}
-            activeOpacity={0.7}
         >
             <Avatar
                 id={member.userId || member.id}
@@ -313,7 +312,7 @@ const AccountabilityMemberCard = ({
                     ) : null}
                 </View>
             </View>
-        </TouchableOpacity>
+        </ScalePressable>
     );
 };
 
@@ -533,7 +532,7 @@ const MemberProfileSheet = ({
                     <View style={[sheetStyles.handleBar, { backgroundColor: colors.border }]} />
                 </View>
 
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: Spacing.xl }}>
+                <Animated.ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: Spacing.xl }} layout={LinearTransition}>
 
                     {/* ── Avatar + name ── */}
                     <View style={sheetStyles.header}>
@@ -603,24 +602,22 @@ const MemberProfileSheet = ({
                     {/* ── Reads / Reflections tabs ── */}
                     <View style={sheetStyles.section}>
                         <View style={[sheetStyles.miniTabRow, { borderColor: colors.border }]}>
-                            <TouchableOpacity
+                            <ScalePressable
                                 style={[sheetStyles.miniTab, activeSheetTab === 'reads' && { borderBottomColor: colors.accent, borderBottomWidth: 2 }]}
                                 onPress={() => setActiveSheetTab('reads')}
-                                activeOpacity={0.7}
                             >
                                 <Text style={[sheetStyles.miniTabText, { color: activeSheetTab === 'reads' ? colors.textPrimary : colors.textTertiary }]}>
                                     Recent Reads
                                 </Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
+                            </ScalePressable>
+                            <ScalePressable
                                 style={[sheetStyles.miniTab, activeSheetTab === 'reflections' && { borderBottomColor: colors.accent, borderBottomWidth: 2 }]}
                                 onPress={() => setActiveSheetTab('reflections')}
-                                activeOpacity={0.7}
                             >
                                 <Text style={[sheetStyles.miniTabText, { color: activeSheetTab === 'reflections' ? colors.textPrimary : colors.textTertiary }]}>
                                     Reflections{totalReflections > 0 ? ` (${totalReflections})` : ''}
                                 </Text>
-                            </TouchableOpacity>
+                            </ScalePressable>
                         </View>
 
                         {/* Recent Reads */}
@@ -687,7 +684,7 @@ const MemberProfileSheet = ({
                         )}
                     </View>
 
-                </ScrollView>
+                </Animated.ScrollView>
             </Animated.View>
         </Modal>
     );
@@ -931,7 +928,7 @@ export default function GroupDetailScreen() {
                 </View>
             )}
 
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <Animated.ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} layout={LinearTransition}>
 
                 {/* ── Members who read today ── */}
                 <View style={styles.sectionHeader}>
@@ -945,7 +942,7 @@ export default function GroupDetailScreen() {
                 {sortedMembers.length > 0 ? (
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.memberList}>
                         {sortedMembers.map((member) => (
-                            <TouchableOpacity
+                            <ScalePressable
                                 key={member.id}
                                 style={styles.memberItem}
                                 onPress={() => setSelectedMember(member)}
@@ -967,7 +964,7 @@ export default function GroupDetailScreen() {
                                 <Text style={[styles.memberName, { color: colors.textSecondary }]} numberOfLines={1}>
                                     {member.displayName}
                                 </Text>
-                            </TouchableOpacity>
+                            </ScalePressable>
                         ))}
                     </ScrollView>
                 ) : (
@@ -1064,7 +1061,7 @@ export default function GroupDetailScreen() {
 
                                     return (
                                         <View key={digest.id} style={styles.digestCard}>
-                                            <TouchableOpacity style={styles.digestHeader} onPress={toggleDigest} activeOpacity={0.7}>
+                                            <ScalePressable style={styles.digestHeader} onPress={toggleDigest}>
                                                 <View style={[styles.digestIconWrap, { backgroundColor: colors.accentSecondaryLight + '40' }]}>
                                                     <Ionicons name="journal-outline" size={20} color={colors.accent} />
                                                 </View>
@@ -1075,7 +1072,7 @@ export default function GroupDetailScreen() {
                                                     </Text>
                                                 </View>
                                                 <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textTertiary} />
-                                            </TouchableOpacity>
+                                            </ScalePressable>
 
                                             {isExpanded && (
                                                 <View style={[styles.digestEntries, { borderTopColor: colors.border }]}>
@@ -1302,11 +1299,10 @@ export default function GroupDetailScreen() {
                             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>DISTINGUISHED {memberSectionTitle}</Text>
                         </View>
                         {accountabilityData.membersByConsistency.map((member) => (
-                            <TouchableOpacity
+                            <ScalePressable
                                 key={member.id}
                                 style={styles.memberListItem}
                                 onPress={() => setSelectedMember(member)}
-                                activeOpacity={0.7}
                             >
                                 <Avatar id={member.userId || member.id} name={member.displayName} size={52} radius={16} />
                                 <View style={styles.memberItemContent}>
@@ -1325,12 +1321,12 @@ export default function GroupDetailScreen() {
                                     </View>
                                 )}
                                 <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
-                            </TouchableOpacity>
+                            </ScalePressable>
                         ))}
                     </View>
                 )}
 
-            </ScrollView>
+            </Animated.ScrollView>
 
             {selectedMember && (
                 <MemberProfileSheet

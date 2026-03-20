@@ -3,7 +3,6 @@ import { getLocalMidnight, isSameDay } from '@/src/utils/dateUtils';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    FlatList,
     Platform,
     StyleSheet,
     Text,
@@ -22,6 +21,7 @@ import {
     getEntryById
 } from '../data/database';
 import { ScalePressable } from './ScalePressable';
+import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 
 type ViewMode = 'recent' | 'books' | 'bookDetail' | 'actions' | 'topics';
 
@@ -340,7 +340,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
     }, []);
 
     const renderEntryCard = useCallback((entry: JournalEntry) => (
-        <View>
+        <Animated.View entering={FadeIn.duration(400)} layout={LinearTransition}>
             <ScalePressable
                 style={[styles.entryCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
                 onPress={() => onEntryPress(entry)}
@@ -370,11 +370,11 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                     </View>
                 </View>
             </ScalePressable>
-        </View>
+        </Animated.View>
     ), [colors, onEntryPress, formatDate, getChapterText, getPreviewText, getAnswerCount]);
 
     const renderActionCard = useCallback((item: EnhancedActionItem) => (
-        <View style={styles.bookCardWrapper}>
+        <Animated.View style={styles.bookCardWrapper} entering={FadeIn.duration(400)} layout={LinearTransition}>
             <View style={[styles.entryCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder, marginBottom: 0 }]}>
                 <View style={[styles.entryHeader, { marginBottom: 8 }]}>
                     <Text style={[styles.entryDate, { color: colors.textTertiary }]}>{formatDate(item.created_at)}</Text>
@@ -405,11 +405,11 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                     </View>
                 ) : null}
             </View>
-        </View>
+        </Animated.View>
     ), [colors, formatDate, onEntryPress]);
 
     const renderTopicCard = useCallback((item: JournalEntry) => (
-        <View style={styles.bookCardWrapper}>
+        <Animated.View style={styles.bookCardWrapper} entering={FadeIn.duration(400)} layout={LinearTransition}>
             <View style={[styles.entryCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder, marginBottom: 0 }]}>
                 <View style={[styles.entryHeader, { marginBottom: 8 }]}>
                     <Text style={[styles.entryDate, { color: colors.textTertiary }]}>{formatDate(item.created_at)}</Text>
@@ -432,7 +432,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                     </View>
                 ) : null}
             </View>
-        </View>
+        </Animated.View>
     ), [colors, formatDate, onEntryPress]);
 
     const renderDateGroupHeader = useCallback((title: string) => {
@@ -704,7 +704,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                 </View>
             )}
 
-            <FlatList
+            <Animated.FlatList
                 data={getFlatListData}
                 renderItem={renderListItem}
                 keyExtractor={(item) => item.id.toString()}
@@ -719,6 +719,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                 maxToRenderPerBatch={10}
                 windowSize={5}
                 removeClippedSubviews={Platform.OS === 'android'}
+                itemLayoutAnimation={LinearTransition}
             />
         </View>
     );
