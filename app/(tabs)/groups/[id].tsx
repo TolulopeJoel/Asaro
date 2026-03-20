@@ -33,7 +33,7 @@ const AVATAR_COLORS = [
     '#00C7BE', '#007AFF', '#5856D6', '#AF52DE', '#FF375F',
 ];
 
-const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 // ─── Pure Helpers ─────────────────────────────────────────────────────────────
 

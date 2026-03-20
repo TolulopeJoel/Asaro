@@ -29,24 +29,32 @@ export interface PendingActivity {
 // ─── Weekly Heatmap Helpers ───────────────────────────────────────────────────
 
 /**
- * Returns the ISO week string for a given date, e.g. "2026-W10".
- * Week starts on Monday (ISO-8601).
+ * Returns a week string for a given date, e.g. "2026-W10".
+ * Now starts on Sunday.
  */
 export const getISOWeekString = (date: Date): string => {
     const d = new Date(date);
     d.setHours(0, 0, 0, 0);
-    d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
-    const week1 = new Date(d.getFullYear(), 0, 4);
-    const weekNum = 1 + Math.round(
-        ((d.getTime() - week1.getTime()) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7
-    );
+    // Find the Sunday of this week
+    d.setDate(d.getDate() - d.getDay());
+
+    // Calculate week number relative to the first Sunday of the year
+    const firstDayOfYear = new Date(d.getFullYear(), 0, 1);
+    const firstSunday = new Date(firstDayOfYear);
+    firstSunday.setDate(firstDayOfYear.getDate() + (7 - firstDayOfYear.getDay()) % 7);
+
+    let weekNum = 1;
+    if (d.getTime() >= firstSunday.getTime()) {
+        weekNum = 1 + Math.round((d.getTime() - firstSunday.getTime()) / (7 * 86400000));
+    }
+
     return `${d.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
 };
 
 /**
- * Returns the 0-indexed day-of-week for a date, where 0=Monday … 6=Sunday.
+ * Returns the 0-indexed day-of-week for a date, where 0=Sunday … 6=Saturday.
  */
-const getMondayBasedDayIndex = (date: Date): number => (date.getDay() + 6) % 7;
+const getSundayBasedDayIndex = (date: Date): number => date.getDay();
 
 /**
  * Given existing weeklyActivity (7-element bool array) and its week string,
@@ -61,7 +69,7 @@ export const computeWeeklyActivity = (
     const base: boolean[] = (existingWeek === currentWeek && Array.isArray(existing) && existing.length === 7)
         ? [...existing]
         : [false, false, false, false, false, false, false];
-    base[getMondayBasedDayIndex(activityDate)] = true;
+    base[getSundayBasedDayIndex(activityDate)] = true;
     return { weeklyActivity: base, weeklyActivityWeek: currentWeek };
 };
 
