@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import auth from '@react-native-firebase/auth';
 import firestore, { FirebaseFirestoreTypes } from '@react-native-firebase/firestore';
 import { parseLocalDateString, getDaysDifference, formatDateToLocalString } from './dateUtils';
-import { getNewlyEarnedStreakBadges, MILESTONE_BADGES, GROUP_BADGES, Badge } from './badges';
+import { getNewlyEarnedStreakBadges, getNewlyEarnedReflectionBadges, MILESTONE_BADGES, GROUP_BADGES, Badge } from './badges';
 
 const PENDING_ACTIVITIES_KEY = 'pending_firestore_activities';
 
@@ -22,6 +22,8 @@ export interface PendingActivity {
     sharedReflectionText?: string;
     /** Current total journal entry count (local) */
     totalEntries?: number;
+    /** Current total reflections shared count (local) */
+    totalReflections?: number;
 }
 
 // ─── Weekly Heatmap Helpers ───────────────────────────────────────────────────
@@ -297,28 +299,24 @@ export const syncPendingActivities = async (): Promise<void> => {
                     // 2. Member / group updates
                     if (activity.type === 'journal_entry' || activity.type === 'reflection_shared') {
 
-                        // ── Collect member badge candidates ─────────────────
+                        // ── Counts & badge candidates ───────────────────────
                         const prevStreak = memberData.streak || 0;
+                        const prevReflections = memberData.totalReflections || 0;
                         const existingMemberBadgeIds: string[] = memberData.badges || [];
 
                         let totalEntries = Math.max(memberData.totalEntries || 0, activity.totalEntries ?? 0);
                         if (activity.totalEntries === undefined) totalEntries += 1;
 
-                        const memberBadgeCandidates: Badge[] = [
-                            // Streak milestones
-                            ...getNewlyEarnedStreakBadges(prevStreak, streak),
-                            // First journal entry
-                            ...(!lastReadDateStr
-                                ? [MILESTONE_BADGES.find(b => b.id === 'first_entry')!]
-                                : []),
-                            // First reflection shared
-                            ...(activity.sharedReflectionText
-                                ? [MILESTONE_BADGES.find(b => b.id === 'reflection_first')!]
-                                : []),
-                            // Entry-count milestones (threshold lives on the badge)
-                            ...MILESTONE_BADGES.filter(b => b.threshold && totalEntries >= b.threshold),
-                        ].filter(Boolean);
+                        let totalReflections = Math.max(memberData.totalReflections || 0, activity.totalReflections ?? 0);
+                        if (activity.type === 'reflection_shared' && activity.totalReflections === undefined) totalReflections += 1;
 
+                        const memberBadgeCandidates: Badge[] = [
+                            ...getNewlyEarnedStreakBadges(prevStreak, streak),
+                            ...getNewlyEarnedReflectionBadges(prevReflections, totalReflections),
+                            ...MILESTONE_BADGES.filter(b => b.threshold && totalEntries >= b.threshold),
+                        ];
+
+                        // ── journal_entry: full member + group writes ───────
                         if (activity.type === 'journal_entry') {
                             if (!lastReadDateStr || activityLocalDateStr >= lastReadDateStr) {
                                 batch.set(memberRef, {
@@ -333,6 +331,7 @@ export const syncPendingActivities = async (): Promise<void> => {
                                     weeklyActivity,
                                     weeklyActivityWeek,
                                     totalEntries,
+                                    totalReflections,
                                 }, { merge: true });
                             } else {
                                 // Backfilled activity: still update heatmap, monthly stats, totals
@@ -340,13 +339,14 @@ export const syncPendingActivities = async (): Promise<void> => {
                                     weeklyActivity,
                                     weeklyActivityWeek,
                                     totalEntries,
+                                    totalReflections,
                                     monthlyStreak,
                                     monthlyActivityMonth: currentMonth,
                                     monthlyActivityCount,
                                 }, { merge: true });
                             }
 
-                            // ── Group streak + readToday ────────────────────
+                            // Group streak + readToday
                             batch.set(groupRef, {
                                 groupStreak,
                                 groupStreakLastDate,
@@ -370,7 +370,7 @@ export const syncPendingActivities = async (): Promise<void> => {
                                 });
                             }
 
-                            // ── Group streak milestone badges ───────────────
+                            // Group streak milestone badges
                             const existingGroupBadgeIds: string[] = groupData.badges || [];
                             const groupStreakCandidates = GROUP_BADGES.filter(
                                 b => b.id.startsWith('group_streak') &&
@@ -386,6 +386,10 @@ export const syncPendingActivities = async (): Promise<void> => {
                                 groupRef,
                                 activitiesRef
                             );
+
+                            // ── reflection_shared: persist totalReflections ─────
+                        } else if (activity.type === 'reflection_shared') {
+                            batch.set(memberRef, { totalReflections }, { merge: true });
                         }
 
                         // ── Member milestone badges (journal_entry + reflection_shared) ──
