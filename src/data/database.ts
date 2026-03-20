@@ -910,6 +910,27 @@ export const getRecentActionItems = async (days: number = 7): Promise<EnhancedAc
 };
 
 /**
+ * Fetch study further topics from the last X days.
+ * Used for the "Reminders" section on the home screen.
+ */
+export const getRecentStudyTopics = async (days: number = 7): Promise<JournalEntry[]> => {
+    return await withDatabase(async (database) => {
+        const query = `
+            SELECT 
+                *,
+                datetime(created_at, 'localtime') as created_at
+            FROM journal_entries
+            WHERE DATE(created_at, 'localtime') >= DATE('now', 'localtime', ?)
+            AND study_further IS NOT NULL AND study_further != ''
+            ORDER BY created_at DESC
+        `;
+
+        const daysParam = `-${days} days`;
+        return await database.getAllAsync<JournalEntry>(query, [daysParam]);
+    });
+};
+
+/**
  * READING PLAN PROGRESS FUNCTIONS
  */
 

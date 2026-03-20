@@ -16,6 +16,7 @@ import { WavyAddIcon } from '@/src/components/WavyAddIcon';
 import { AnimatedModal } from '@/src/components/AnimatedModal';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { ActionReminders } from '@/src/components/ActionReminders';
+import { StudyReminders } from '@/src/components/StudyReminders';
 
 
 const DRAFT_KEY = "reflection_draft";
@@ -328,6 +329,7 @@ export default function Index() {
             >
                 <QuickStats />
                 <NextReading />
+                <StudyReminders />
                 <WeeklyStreak />
                 <ActionReminders />
 
