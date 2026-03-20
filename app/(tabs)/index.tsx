@@ -207,32 +207,6 @@ const NextReading = React.memo(() => {
     );
 });
 
-const UpdateCard = React.memo(() => {
-    const { colors } = useTheme();
-    return (
-        <View style={styles.updateCardWrapper}>
-            <View style={[styles.updateCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
-                <View style={styles.updateHeader}>
-                    <View style={[styles.updateBadge, { backgroundColor: colors.accentSecondaryLight, borderColor: colors.accentSecondary }]}>
-                        <Ionicons name="sparkles" size={Typography.size.xs} color={colors.accentSecondaryDark} />
-                        <Text style={[styles.updateBadgeText, { color: colors.accentSecondaryDark }]}>NEW</Text>
-                    </View>
-                    <Text style={[styles.updateDate, { color: colors.textTertiary }]}>Sept 6, 2025</Text>
-                </View>
-
-                <Text style={[styles.updateTitle, { color: colors.textPrimary }]}>
-                    Quick Update 🏃‍♂️
-                </Text>
-
-                <Text style={[styles.updateContent, { color: colors.textSecondary }]}>
-                    Meditation question no. 5 (what do I want to remember?) has been removed.
-                    We're building a smarter feature with reminders to help you revisit topics from your readings.
-                </Text>
-            </View>
-        </View>
-    );
-});
-
 const FloatingActionButton = React.memo(() => {
     const { colors, isDark } = useTheme();
     const router = useRouter();
