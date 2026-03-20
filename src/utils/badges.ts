@@ -27,7 +27,7 @@ export const GROUP_BADGES: Badge[] = [
     { id: 'all_read_today', emoji: '🤝', label: 'All Read Today', desc: 'Everyone read today — amazing!', order: 22, threshold: 0 },
 ];
 
-export const ALL_BADGES: Badge[] = [...STREAK_BADGES, ...MILESTONE_BADGES, ...GROUP_BADGES];
+export const ALL_BADGES: Badge[] = [...STREAK_BADGES, ...MILESTONE_BADGES];
 
 export const getBadgeById = (id: string): Badge | undefined =>
     ALL_BADGES.find(b => b.id === id);
