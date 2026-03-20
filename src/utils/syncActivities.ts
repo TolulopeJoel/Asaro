@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
-import { parseLocalDateString, getDaysDifference } from './dateUtils';
+import { parseLocalDateString, getDaysDifference, formatDateToLocalString } from './dateUtils';
 import { getNewlyEarnedStreakBadges, MILESTONE_BADGES, GROUP_BADGES, Badge } from './badges';
 
 const PENDING_ACTIVITIES_KEY = 'pending_firestore_activities';
@@ -33,19 +33,18 @@ export interface PendingActivity {
 export const getISOWeekString = (date: Date): string => {
     const d = new Date(date);
     d.setHours(0, 0, 0, 0);
-    // ISO week: Thursday of the current week determines the year
     d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
     const week1 = new Date(d.getFullYear(), 0, 4);
-    const weekNum = 1 + Math.round(((d.getTime() - week1.getTime()) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7);
+    const weekNum = 1 + Math.round(
+        ((d.getTime() - week1.getTime()) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7
+    );
     return `${d.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
 };
 
 /**
  * Returns the 0-indexed day-of-week for a date, where 0=Monday … 6=Sunday.
  */
-const getMondayBasedDayIndex = (date: Date): number => {
-    return (date.getDay() + 6) % 7; // Sun=0 in JS, we want Mon=0
-};
+const getMondayBasedDayIndex = (date: Date): number => (date.getDay() + 6) % 7;
 
 /**
  * Given existing weeklyActivity (7-element bool array) and its week string,
@@ -64,7 +63,33 @@ export const computeWeeklyActivity = (
     return { weeklyActivity: base, weeklyActivityWeek: currentWeek };
 };
 
-// ─── Group Streak Helper ──────────────────────────────────────────────────────
+// ─── Streak Helpers ───────────────────────────────────────────────────────────
+
+/**
+ * Increments a streak based on the day difference between last and current date.
+ * - Same day  → unchanged
+ * - +1 day    → incremented
+ * - Gap > 1   → reset to 1
+ * - No prior  → starts at 1
+ */
+const incrementStreak = (
+    current: number,
+    lastDateStr: string | undefined,
+    currentDateStr: string
+): number => {
+    if (!lastDateStr) return 1;
+    try {
+        const diff = getDaysDifference(
+            parseLocalDateString(lastDateStr),
+            parseLocalDateString(currentDateStr)
+        );
+        if (diff === 1) return current + 1;
+        if (diff > 1) return 1;
+        return current; // same day — no change
+    } catch {
+        return 1;
+    }
+};
 
 /**
  * Computes the updated group streak given the current state on the group doc
@@ -78,23 +103,10 @@ const computeGroupStreak = (
     if (!lastDateStr) {
         return { groupStreak: 1, groupStreakLastDate: activityDateStr };
     }
-    try {
-        const last = parseLocalDateString(lastDateStr);
-        const current = parseLocalDateString(activityDateStr);
-        const diff = getDaysDifference(last, current);
-        if (diff === 0) {
-            // Same day — no change
-            return { groupStreak: existingStreak, groupStreakLastDate: lastDateStr };
-        } else if (diff === 1) {
-            // Consecutive day
-            return { groupStreak: existingStreak + 1, groupStreakLastDate: activityDateStr };
-        } else {
-            // Streak broken
-            return { groupStreak: 1, groupStreakLastDate: activityDateStr };
-        }
-    } catch {
-        return { groupStreak: 1, groupStreakLastDate: activityDateStr };
-    }
+    const groupStreak = incrementStreak(existingStreak, lastDateStr, activityDateStr);
+    // Same-day case: streak unchanged, keep the existing last date
+    const groupStreakLastDate = groupStreak === existingStreak ? lastDateStr : activityDateStr;
+    return { groupStreak, groupStreakLastDate };
 };
 
 // ─── Queue ────────────────────────────────────────────────────────────────────
@@ -147,18 +159,14 @@ export const syncPendingActivities = async (): Promise<void> => {
 
         const remaining: PendingActivity[] = [];
 
-        // Sort queue by queuedAt so we process oldest activities first for correct streak incrementing
+        // Sort oldest-first so streak increments happen in chronological order
         queue.sort((a, b) => new Date(a.queuedAt).getTime() - new Date(b.queuedAt).getTime());
 
         for (const activity of queue) {
             let successForAllGroups = true;
 
             const activityDate = new Date(activity.queuedAt);
-            const activityYear = activityDate.getFullYear();
-            const activityMonth = String(activityDate.getMonth() + 1).padStart(2, '0');
-            const activityDay = String(activityDate.getDate()).padStart(2, '0');
-            const activityLocalDateStr = `${activityYear}-${activityMonth}-${activityDay}`;
-            const todayDateStr = activityLocalDateStr; // same: derived from queue time
+            const activityLocalDateStr = formatDateToLocalString(activityDate);
 
             for (const groupId of groupIds) {
                 try {
@@ -171,82 +179,65 @@ export const syncPendingActivities = async (): Promise<void> => {
                         groupRef.get(),
                     ]);
 
-                    const memberData = memberDoc.data() || {};
-                    const groupData = groupDoc.data() || {};
+                    const memberData: Record<string, any> = memberDoc.data() || {};
+                    const groupData: Record<string, any> = groupDoc.data() || {};
 
-                    // ── Member streak ───────────────────────────────────────
-                    let streak = memberData.streak || 0;
                     const lastReadDateStr: string | undefined = memberData.lastReadDate;
 
-                    if (lastReadDateStr) {
-                        try {
-                            const lastRead = parseLocalDateString(lastReadDateStr);
-                            const current = parseLocalDateString(activityLocalDateStr);
-                            const diff = getDaysDifference(lastRead, current);
+                    // ── Member streak ───────────────────────────────────────
+                    const streak = incrementStreak(
+                        memberData.streak || 0,
+                        lastReadDateStr,
+                        activityLocalDateStr
+                    );
 
-                            if (diff === 1) {
-                                streak += 1;
-                            } else if (diff > 1) {
-                                streak = 1;
-                            }
-                            // diff === 0 → same day, leave streak unchanged
-                            // diff < 0  → older queued activity, skip
-                        } catch {
-                            streak += 1;
-                        }
-                    } else {
-                        streak = 1;
+                    // ── Monthly streak & count ──────────────────────────────
+                    const currentMonth = activityLocalDateStr.substring(0, 7); // "YYYY-MM"
+                    const isNewMonth = memberData.monthlyActivityMonth !== currentMonth;
+                    const isNewDay = !lastReadDateStr || activityLocalDateStr > lastReadDateStr;
+
+                    let monthlyStreak = memberData.monthlyStreak || 0;
+                    let monthlyActivityCount = memberData.monthlyActivityCount || 0;
+
+                    if (isNewMonth) {
+                        monthlyStreak = 1;
+                        monthlyActivityCount = 1;
+                    } else if (isNewDay) {
+                        monthlyActivityCount += 1;
+                        monthlyStreak = incrementStreak(monthlyStreak, lastReadDateStr, activityLocalDateStr);
                     }
 
-                    // ── Badge detection (streak milestones) ─────────────────
+                    // ── Badge detection ─────────────────────────────────────
                     const prevStreak = memberData.streak || 0;
                     const existingBadgeIds: string[] = memberData.badges || [];
-                    const newBadges: Array<Badge & { threshold?: number }> = [];
+                    const newBadges: Badge[] = [];
 
-                    // 1. Streak badges
-                    const newStreakBadges = getNewlyEarnedStreakBadges(prevStreak, streak);
-                    for (const badge of newStreakBadges) {
-                        if (!existingBadgeIds.includes(badge.id)) {
+                    const addBadgeIfNew = (badge: Badge | undefined) => {
+                        if (badge && !existingBadgeIds.includes(badge.id)) {
                             newBadges.push(badge);
                         }
+                    };
+
+                    // 1. Streak milestone badges
+                    getNewlyEarnedStreakBadges(prevStreak, streak).forEach(addBadgeIfNew);
+
+                    // 2. First journal entry
+                    if (!lastReadDateStr) {
+                        addBadgeIfNew(MILESTONE_BADGES.find(b => b.id === 'first_entry'));
                     }
 
-                    // 2. One-time milestone: first journal entry
-                    const isFirstEntry = !lastReadDateStr;
-                    if (isFirstEntry) {
-                        const firstBadge = MILESTONE_BADGES.find(b => b.id === 'first_entry');
-                        if (firstBadge && !existingBadgeIds.includes(firstBadge.id)) {
-                            newBadges.push(firstBadge);
-                        }
-                    }
-
-                    // 3. One-time milestone: first reflection
+                    // 3. First reflection shared
                     if (activity.sharedReflectionText) {
-                        const reflBadge = MILESTONE_BADGES.find(b => b.id === 'reflection_first');
-                        if (reflBadge && !existingBadgeIds.includes(reflBadge.id)) {
-                            newBadges.push(reflBadge);
-                        }
+                        addBadgeIfNew(MILESTONE_BADGES.find(b => b.id === 'reflection_first'));
                     }
 
-                    // 4. One-time milestones: total entries (10, 50)
-                    // We prioritize the totalEntries passed from the app (local DB state), 
-                    // otherwise we increment the Firestore value.
-                    let totalEntries = memberData.totalEntries || 0;
-                    if (activity.totalEntries !== undefined && activity.totalEntries > totalEntries) {
-                        totalEntries = activity.totalEntries;
-                    } else {
-                        totalEntries += 1;
-                    }
+                    // 4. Entry-count milestones (threshold defined on the badge itself)
+                    let totalEntries = Math.max(memberData.totalEntries || 0, activity.totalEntries ?? 0);
+                    if (activity.totalEntries === undefined) totalEntries += 1;
 
-                    const entryMilestones = [
-                        { id: 'entries_10', threshold: 10 },
-                        { id: 'entries_50', threshold: 50 },
-                    ];
-
-                    for (const milestone of entryMilestones) {
-                        if (totalEntries >= milestone.threshold && !existingBadgeIds.includes(milestone.id)) {
-                            const badge = MILESTONE_BADGES.find(b => b.id === milestone.id);
-                            if (badge) newBadges.push(badge);
+                    for (const badge of MILESTONE_BADGES) {
+                        if (badge.threshold && totalEntries >= badge.threshold) {
+                            addBadgeIfNew(badge);
                         }
                     }
 
@@ -257,40 +248,6 @@ export const syncPendingActivities = async (): Promise<void> => {
                         activityDate
                     );
 
-                    // ── Monthly streak & count ──────────────────────────────
-                    const currentMonth = activityLocalDateStr.substring(0, 7); // "YYYY-MM"
-                    let monthlyStreak = memberData.monthlyStreak || 0;
-                    let monthlyActivityCount = memberData.monthlyActivityCount || 0;
-                    const lastMonth = memberData.monthlyActivityMonth;
-
-                    if (lastMonth !== currentMonth) {
-                        // Fresh start for the new month
-                        monthlyStreak = 1;
-                        monthlyActivityCount = 1;
-                    } else {
-                        // Same month logic — only update if this is a new day of reading
-                        const isNewDay = !lastReadDateStr || activityLocalDateStr > lastReadDateStr;
-                        if (isNewDay) {
-                            monthlyActivityCount += 1;
-                            if (lastReadDateStr) {
-                                try {
-                                    const lastRead = parseLocalDateString(lastReadDateStr);
-                                    const current = parseLocalDateString(activityLocalDateStr);
-                                    const diff = getDaysDifference(lastRead, current);
-                                    if (diff === 1) {
-                                        monthlyStreak += 1;
-                                    } else {
-                                        monthlyStreak = 1;
-                                    }
-                                } catch {
-                                    monthlyStreak = 1;
-                                }
-                            } else {
-                                monthlyStreak = 1;
-                            }
-                        }
-                    }
-
                     // ── Group streak ────────────────────────────────────────
                     const { groupStreak, groupStreakLastDate } = computeGroupStreak(
                         groupData.groupStreak || 0,
@@ -299,24 +256,17 @@ export const syncPendingActivities = async (): Promise<void> => {
                     );
 
                     // ── readTodayCount on group doc ─────────────────────────
-                    // Reset count if the stored date is not today
                     const storedReadTodayDate: string | undefined = groupData.readTodayDate;
-                    let readTodayCount: number = (storedReadTodayDate === todayDateStr)
+                    let readTodayCount: number = storedReadTodayDate === activityLocalDateStr
                         ? (groupData.readTodayCount || 0)
                         : 0;
 
-                    // Only increment if this member hasn't already been counted today
                     const memberAlreadyCountedToday =
-                        storedReadTodayDate === todayDateStr &&
-                        lastReadDateStr === todayDateStr;
+                        storedReadTodayDate === activityLocalDateStr &&
+                        lastReadDateStr === activityLocalDateStr;
 
-                    if (!memberAlreadyCountedToday) {
-                        readTodayCount += 1;
-                    }
+                    if (!memberAlreadyCountedToday) readTodayCount += 1;
 
-                    // ── Member count ────────────────────────────────────────
-                    // Keep memberCount accurate (use subcollection size from groupData if available,
-                    // otherwise rely on the group doc's denormalized field)
                     const memberCount = groupData.memberCount || 1;
 
                     // ── Commit batch ────────────────────────────────────────
@@ -324,24 +274,23 @@ export const syncPendingActivities = async (): Promise<void> => {
 
                     // 1. Activity entry
                     const activityRef = groupRef.collection('activities').doc();
-                    const activityDataToSet: any = {
+                    const activityPayload: Record<string, any> = {
                         userId: activity.userId,
-                        userName: activity.userName || displayName || 'Reader',
+                        userName: activity.userName || displayName,
                         timestamp: firestore.FieldValue.serverTimestamp(),
                         type: activity.type,
                     };
 
-                    if (activity.bookName) activityDataToSet.bookName = activity.bookName;
-                    if (activity.chapters) activityDataToSet.chapters = activity.chapters;
-                    if (activity.reflectionPreview) activityDataToSet.preview = activity.reflectionPreview;
-                    if (activity.sharedQuestionTitle) activityDataToSet.sharedQuestionTitle = activity.sharedQuestionTitle;
-                    if (activity.sharedReflectionText) activityDataToSet.sharedReflectionText = activity.sharedReflectionText;
+                    if (activity.bookName) activityPayload.bookName = activity.bookName;
+                    if (activity.chapters) activityPayload.chapters = activity.chapters;
+                    if (activity.reflectionPreview) activityPayload.preview = activity.reflectionPreview;
+                    if (activity.sharedQuestionTitle) activityPayload.sharedQuestionTitle = activity.sharedQuestionTitle;
+                    if (activity.sharedReflectionText) activityPayload.sharedReflectionText = activity.sharedReflectionText;
 
-                    batch.set(activityRef, activityDataToSet);
+                    batch.set(activityRef, activityPayload);
 
-                    // 2. Member/Group updates (journal entries and reflection shares)
+                    // 2. Member / group updates
                     if (activity.type === 'journal_entry' || activity.type === 'reflection_shared') {
-                        // ── Build updated badges array ──────────────────────
                         const updatedBadgeIds = [...new Set([...existingBadgeIds, ...newBadges.map(b => b.id)])];
 
                         if (activity.type === 'journal_entry') {
@@ -361,7 +310,7 @@ export const syncPendingActivities = async (): Promise<void> => {
                                     badges: updatedBadgeIds,
                                 }, { merge: true });
                             } else {
-                                // Still update heatmap + badges + monthly stats even if date is not newer
+                                // Backfilled activity: still update heatmap, badges, monthly stats
                                 batch.set(memberRef, {
                                     weeklyActivity,
                                     weeklyActivityWeek,
@@ -369,36 +318,28 @@ export const syncPendingActivities = async (): Promise<void> => {
                                     totalEntries,
                                     monthlyStreak,
                                     monthlyActivityMonth: currentMonth,
-                                    monthlyActivityCount
+                                    monthlyActivityCount,
                                 }, { merge: true });
                             }
-                        } else {
-                            // Only update badges for shared reflections
-                            batch.set(memberRef, {
-                                badges: updatedBadgeIds,
-                            }, { merge: true });
-                        }
 
-                        // ── Group streak + readToday (only for journal entries) ────────────────────────
-                        if (activity.type === 'journal_entry') {
+                            // Group streak + readToday
+                            batch.set(groupRef, {
+                                groupStreak,
+                                groupStreakLastDate,
+                                readTodayCount,
+                                readTodayDate: activityLocalDateStr,
+                                memberCount,
+                            }, { merge: true });
+
+                            // All-members-read-today badge
                             const allMembersReadToday =
                                 !memberAlreadyCountedToday &&
                                 readTodayCount >= memberCount &&
                                 memberCount > 1;
 
-                            batch.set(groupRef, {
-                                groupStreak,
-                                groupStreakLastDate,
-                                readTodayCount,
-                                readTodayDate: todayDateStr,
-                                memberCount,
-                            }, { merge: true });
-
-                            // All-read-today badge (one per day)
                             if (allMembersReadToday) {
                                 const todayAllReadBadge = GROUP_BADGES.find(b => b.id === 'all_read_today')!;
-                                const allReadTodayRef = groupRef.collection('activities').doc();
-                                batch.set(allReadTodayRef, {
+                                batch.set(groupRef.collection('activities').doc(), {
                                     type: 'group_milestone',
                                     badgeId: 'all_read_today',
                                     badgeEmoji: todayAllReadBadge.emoji,
@@ -407,12 +348,36 @@ export const syncPendingActivities = async (): Promise<void> => {
                                     timestamp: firestore.FieldValue.serverTimestamp(),
                                 });
                             }
+
+                            // Group streak milestone badges
+                            const existingGroupBadges: string[] = groupData.badges || [];
+                            for (const badge of GROUP_BADGES.filter(b => b.id.startsWith('group_streak'))) {
+                                if (
+                                    badge.threshold! > (groupData.groupStreak || 0) &&
+                                    badge.threshold! <= groupStreak &&
+                                    !existingGroupBadges.includes(badge.id)
+                                ) {
+                                    batch.set(groupRef.collection('activities').doc(), {
+                                        type: 'group_milestone',
+                                        badgeId: badge.id,
+                                        badgeEmoji: badge.emoji,
+                                        badgeLabel: badge.label,
+                                        badgeDesc: badge.desc,
+                                        timestamp: firestore.FieldValue.serverTimestamp(),
+                                    });
+                                    batch.set(groupRef, {
+                                        badges: [...existingGroupBadges, badge.id],
+                                    }, { merge: true });
+                                }
+                            }
+                        } else {
+                            // reflection_shared — only update badges
+                            batch.set(memberRef, { badges: updatedBadgeIds }, { merge: true });
                         }
 
-                        // ── Write milestone_earned activities ───────────────
+                        // Individual milestone_earned activity entries
                         for (const badge of newBadges) {
-                            const milestoneRef = groupRef.collection('activities').doc();
-                            batch.set(milestoneRef, {
+                            batch.set(groupRef.collection('activities').doc(), {
                                 userId: activity.userId,
                                 userName: activity.userName || displayName,
                                 type: 'milestone_earned',
@@ -422,35 +387,6 @@ export const syncPendingActivities = async (): Promise<void> => {
                                 badgeDesc: badge.desc,
                                 timestamp: firestore.FieldValue.serverTimestamp(),
                             });
-                        }
-
-                        // ── Group milestones ────────────────────────────────
-                        if (activity.type === 'journal_entry') {
-                            // Check group streak badges
-                            const existingGroupBadges: string[] = groupData.badges || [];
-                            const groupStreakBadgesToCheck = GROUP_BADGES.filter(b => b.id.startsWith('group_streak'));
-                            for (const badge of groupStreakBadgesToCheck) {
-                                if (
-                                    badge.threshold > (groupData.groupStreak || 0) &&
-                                    badge.threshold <= groupStreak &&
-                                    !existingGroupBadges.includes(badge.id)
-                                ) {
-                                    // Write group milestone to feed
-                                    const gMilestoneRef = groupRef.collection('activities').doc();
-                                    batch.set(gMilestoneRef, {
-                                        type: 'group_milestone',
-                                        badgeId: badge.id,
-                                        badgeEmoji: badge.emoji,
-                                        badgeLabel: badge.label,
-                                        badgeDesc: badge.desc,
-                                        timestamp: firestore.FieldValue.serverTimestamp(),
-                                    });
-                                    // Mark badge earned on group doc
-                                    batch.set(groupRef, {
-                                        badges: [...existingGroupBadges, badge.id],
-                                    }, { merge: true });
-                                }
-                            }
                         }
                     }
 
@@ -462,9 +398,7 @@ export const syncPendingActivities = async (): Promise<void> => {
                 }
             }
 
-            if (!successForAllGroups) {
-                remaining.push(activity);
-            }
+            if (!successForAllGroups) remaining.push(activity);
         }
 
         if (remaining.length === 0) {
@@ -478,8 +412,8 @@ export const syncPendingActivities = async (): Promise<void> => {
 };
 
 /**
- * Checks for inactive members in a group and segments alerts for 7-day and 30-day absences.
- * Uses lastReadDate for simplicity as requested.
+ * Checks for inactive members in a group and posts alerts for 7-day and 30-day absences.
+ * Only posts once every 7 days per member to avoid feed spam.
  */
 export const checkInactiveMembers = async (groupId: string): Promise<void> => {
     try {
@@ -488,49 +422,35 @@ export const checkInactiveMembers = async (groupId: string): Promise<void> => {
         const activitiesRef = groupRef.collection('activities');
 
         const today = new Date();
-        const todayStr = today.toISOString().split('T')[0];
 
         for (const doc of membersSnapshot.docs) {
             const member = doc.data();
             if (!member.lastReadDate) continue;
 
-            const lastRead = parseLocalDateString(member.lastReadDate);
-            const diff = getDaysDifference(lastRead, today);
+            const diff = getDaysDifference(parseLocalDateString(member.lastReadDate), today);
+            if (diff < 7) continue;
 
-            if (diff >= 7) {
-                const threshold = diff >= 30 ? 30 : 7;
+            const threshold = diff >= 30 ? 30 : 7;
 
-                // Check if we've already alerted for this user recently to avoid spam
-                // We'll search for 'member_absent' activities for this user
-                const recentAlerts = await activitiesRef
-                    .where('userId', '==', doc.id)
-                    .where('type', '==', 'member_absent')
-                    .orderBy('timestamp', 'desc')
-                    .limit(1)
-                    .get();
+            const recentAlerts = await activitiesRef
+                .where('userId', '==', doc.id)
+                .where('type', '==', 'member_absent')
+                .orderBy('timestamp', 'desc')
+                .limit(1)
+                .get();
 
-                let shouldPost = true;
-                if (!recentAlerts.empty) {
-                    const lastAlert = recentAlerts.docs[0].data();
-                    const lastAlertDate = lastAlert.timestamp?.toDate() || new Date(0);
-                    const daysSinceAlert = getDaysDifference(lastAlertDate, today);
-
-                    // Only post once every 7 days
-                    if (daysSinceAlert < 7) {
-                        shouldPost = false;
-                    }
-                }
-
-                if (shouldPost) {
-                    await activitiesRef.add({
-                        userId: doc.id,
-                        userName: member.displayName || 'Reader',
-                        type: 'member_absent',
-                        timestamp: firestore.FieldValue.serverTimestamp(),
-                        threshold, // 7 or 30
-                    });
-                }
+            if (!recentAlerts.empty) {
+                const lastAlertDate = recentAlerts.docs[0].data().timestamp?.toDate() || new Date(0);
+                if (getDaysDifference(lastAlertDate, today) < 7) continue;
             }
+
+            await activitiesRef.add({
+                userId: doc.id,
+                userName: member.displayName || 'Reader',
+                type: 'member_absent',
+                timestamp: firestore.FieldValue.serverTimestamp(),
+                threshold,
+            });
         }
     } catch (error) {
         console.error('[checkInactiveMembers] Error:', error);
