@@ -66,11 +66,13 @@ export default function TabLayout() {
                             };
 
                             let iconName: any = 'ellipse-outline';
-                            if (route.name === 'index') iconName = 'prism-outline';
-                            else if (route.name === 'browse') iconName = 'square-outline';
-                            else if (route.name === 'plan') iconName = 'book-outline';
-                            else if (route.name === 'groups') iconName = 'people-outline';
+                            if (route.name === 'index') iconName = 'sparkles-outline';
+                            else if (route.name === 'browse') iconName = 'albums-outline';
+                            else if (route.name === 'plan') iconName = 'map-outline';
+                            else if (route.name === 'groups') iconName = 'people-circle-outline';
                             else if (route.name === 'settings') iconName = 'options-outline';
+
+                            const finalIcon = isFocused ? iconName.replace('-outline', '') : iconName;
 
                             return (
                                 <ScalePressable
@@ -79,8 +81,8 @@ export default function TabLayout() {
                                     onPress={onPress}
                                 >
                                     <Ionicons
-                                        name={iconName}
-                                        size={24}
+                                        name={finalIcon}
+                                        size={23.5}
                                         color={isFocused ? colors.accent : colors.textTertiary}
                                     />
                                 </ScalePressable>
