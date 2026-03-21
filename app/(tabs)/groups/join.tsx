@@ -119,7 +119,7 @@ export default function JoinGroupScreen() {
                         </View>
                         <Text style={[styles.title, { color: colors.textPrimary }]}>Access Code</Text>
                         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                            Enter the code to join the official accountability group.
+                            Enter the code to join a group.
                         </Text>
                     </View>
 

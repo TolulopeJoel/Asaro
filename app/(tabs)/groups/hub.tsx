@@ -200,20 +200,21 @@ export default function GroupsScreen() {
                     </Text>
                 </View>
             )}
-            <View style={styles.header}>
-                <View style={styles.headerTitleRow}>
-                    <Text style={[styles.title, { color: colors.textPrimary }]}>Groups</Text>
-                    <Ionicons name="people-outline" size={24} color={colors.textSecondary} />
-                </View>
-            </View>
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
+                <View style={styles.header}>
+                    <View style={styles.headerTitleRow}>
+                        <Text style={[styles.title, { color: colors.textPrimary }]}>Groups</Text>
+                        <Ionicons name="people-outline" size={24} color={colors.textSecondary} />
+                    </View>
+                </View>
+
                 <View style={styles.welcomeHeader}>
                     <Text style={[styles.label, { color: colors.accentSecondary }]}>HELLO, {displayName?.toUpperCase() || 'READER'}</Text>
                     <Text style={[styles.subtitle, { color: colors.textSecondary, textAlign: 'left', paddingHorizontal: 0 }]}>
-                        You haven't joined any accountability groups yet.
+                        You haven't joined any groups yet.
                     </Text>
                 </View>
 
@@ -221,7 +222,7 @@ export default function GroupsScreen() {
                     <View style={[styles.welcomeIconIconWrap, { backgroundColor: colors.accentSecondaryLight + '20' }]}>
                         <Ionicons name="add-outline" size={34} color={colors.accentSecondary} />
                     </View>
-                    <Text style={[styles.emptyStateTitle, { color: colors.textPrimary }]}>No groups yet</Text>
+                    {/* <Text style={[styles.emptyStateTitle, { color: colors.textPrimary }]}>No groups yet</Text> */}
                     <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>
                         Accountability is the "secret sauce" to consistency. Join a group to start reading together.
                     </Text>
@@ -394,7 +395,7 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 34,
         fontWeight: '800',
-        letterSpacing: -1,
+        letterSpacing: -1.5,
     },
     label: {
         fontSize: 12,
@@ -411,8 +412,7 @@ const styles = StyleSheet.create({
         marginTop: Spacing.lg,
     },
     scrollContent: {
-        paddingHorizontal: Spacing.layout.screenPadding,
-        paddingTop: Spacing.layout.screenPadding,
+        padding: Spacing.layout.screenPadding,
         paddingBottom: 120, // Support for tab bar spacing
     },
 });
