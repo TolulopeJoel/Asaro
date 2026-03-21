@@ -638,7 +638,6 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
             <View style={[styles.header, { backgroundColor: colors.backgroundElevated, borderBottomColor: colors.border }]}>
                 <View style={styles.headerTitleRow}>
                     <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Journal</Text>
-                    <Ionicons name="journal-outline" size={20} color={colors.textTertiary} />
                 </View>
 
                 {/* Tab Navigation */}
@@ -742,9 +741,9 @@ const styles = StyleSheet.create({
         borderBottomWidth: 0.5,
     },
     headerTitle: {
-        fontSize: 28,
+        fontSize: 34,
         fontWeight: '800',
-        letterSpacing: -0.5,
+        letterSpacing: -1,
     },
     headerTitleRow: {
         flexDirection: 'row',
@@ -902,7 +901,6 @@ const styles = StyleSheet.create({
         // Color handled in component
     },
     bookCardWrapper: {
-        paddingHorizontal: 24,
         marginBottom: 12,
     },
     bookCard: {
