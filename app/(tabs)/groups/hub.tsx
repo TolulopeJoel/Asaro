@@ -85,27 +85,23 @@ export default function GroupsScreen() {
                     showsVerticalScrollIndicator={false}
                 >
                     <View style={styles.authContainer}>
-                        <View style={[styles.authHero, { backgroundColor: colors.accentSecondaryLight + '20', borderColor: colors.accentSecondaryLight + '40' }]}>
-                            <View style={[styles.authIconCircle, { backgroundColor: colors.accentSecondaryLight }]}>
-                                <Ionicons name="people" size={42} color={colors.accentSecondary} />
+                        <View style={[styles.welcomeCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
+                            <View style={[styles.welcomeIconIconWrap, { backgroundColor: colors.accentSecondaryLight + '20' }]}>
+                                <Ionicons name="people-outline" size={34} color={colors.accentSecondary} />
                             </View>
+
                             <Text style={[styles.authHeroTitle, { color: colors.textPrimary }]}>Better Together</Text>
                             <Text style={[styles.authHeroSubtitle, { color: colors.textSecondary }]}>
-                                Join a community of readers and stay accountable on your journey through the Word.
+                                "If you want to go fast, go alone. If you want to go far, go together"
                             </Text>
-                        </View>
 
-                        <View style={styles.authActionCard}>
-                            <Text style={[styles.authActionTitle, { color: colors.textPrimary }]}>Ready to join?</Text>
-                            <Text style={[styles.authActionDesc, { color: colors.textSecondary }]}>
-                                Sign in to browse existing groups or join your friends with a code.
-                            </Text>
                             <Button
-                                label="Sign in to Get Started"
+                                label="Sign in to Join Them"
                                 variant="primary"
+                                size="lg"
                                 onPress={() => router.push('/(tabs)/groups/auth' as any)}
                                 fullWidth
-                                style={{ marginTop: Spacing.md }}
+                                style={{ marginTop: Spacing.lg }}
                             />
                         </View>
                     </View>
@@ -215,26 +211,27 @@ export default function GroupsScreen() {
                 showsVerticalScrollIndicator={false}
             >
                 <View style={styles.welcomeHeader}>
-                    <Text style={[styles.label, { color: colors.accent }]}>HELLO, {displayName?.toUpperCase() || 'READER'}</Text>
+                    <Text style={[styles.label, { color: colors.accentSecondary }]}>HELLO, {displayName?.toUpperCase() || 'READER'}</Text>
                     <Text style={[styles.subtitle, { color: colors.textSecondary, textAlign: 'left', paddingHorizontal: 0 }]}>
                         You haven't joined any accountability groups yet.
                     </Text>
                 </View>
 
-                <View style={[styles.emptyStateCard, { backgroundColor: colors.cardBackground, borderColor: colors.borderSubtle }]}>
-                    <View style={[styles.emptyStateIconWrap, { backgroundColor: colors.accentSecondaryLight + '30' }]}>
-                        <Ionicons name="add" size={32} color={colors.accentSecondary} />
+                <View style={[styles.welcomeCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
+                    <View style={[styles.welcomeIconIconWrap, { backgroundColor: colors.accentSecondaryLight + '20' }]}>
+                        <Ionicons name="add-outline" size={34} color={colors.accentSecondary} />
                     </View>
                     <Text style={[styles.emptyStateTitle, { color: colors.textPrimary }]}>No groups yet</Text>
                     <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>
-                        Accountability is the "secret sauce" to consistency. Grab a code from a friend or join a group to start.
+                        Accountability is the "secret sauce" to consistency. Join a group to start reading together.
                     </Text>
 
                     <Button
                         label="Enter Group Code"
                         variant="primary"
+                        size="lg"
                         onPress={() => router.push('/(tabs)/groups/join' as any)}
-                        style={{ marginTop: Spacing.md, width: '100%' }}
+                        style={{ marginTop: Spacing.lg, width: '100%' }}
                     />
                 </View>
             </ScrollView>
@@ -268,72 +265,46 @@ const styles = StyleSheet.create({
         gap: Spacing.lg,
         justifyContent: 'center',
     },
-    authHero: {
+    welcomeCard: {
         padding: Spacing.xxl,
-        borderRadius: 32,
-        alignItems: 'center',
-        borderWidth: 1,
-        gap: Spacing.md,
-    },
-    authIconCircle: {
-        width: 84,
-        height: 84,
-        borderRadius: 42,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: Spacing.sm,
-    },
-    authHeroTitle: {
-        fontSize: 28,
-        fontWeight: '800',
-        letterSpacing: -1,
-        textAlign: 'center',
-    },
-    authHeroSubtitle: {
-        fontSize: 16,
-        textAlign: 'center',
-        lineHeight: 24,
-        opacity: 0.8,
-    },
-    authActionCard: {
-        padding: Spacing.xl,
-        gap: Spacing.xs,
-    },
-    authActionTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-    },
-    authActionDesc: {
-        fontSize: 14,
-        lineHeight: 20,
-        opacity: 0.7,
-    },
-    emptyStateCard: {
-        padding: Spacing.xl,
         borderRadius: 24,
         alignItems: 'center',
         borderWidth: 1,
         gap: Spacing.sm,
         marginTop: Spacing.md,
     },
-    emptyStateIconWrap: {
-        width: 64,
-        height: 64,
-        borderRadius: 20,
+    authHeroTitle: {
+        fontSize: 34,
+        fontWeight: '800',
+        letterSpacing: -1.5,
+        textAlign: 'center',
+    },
+    authHeroSubtitle: {
+        fontSize: 16,
+        fontWeight: '500',
+        textAlign: 'center',
+        lineHeight: 24,
+        opacity: 0.7,
+        paddingHorizontal: Spacing.md,
+    },
+    welcomeIconIconWrap: {
+        width: 72,
+        height: 72,
+        borderRadius: 22,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: Spacing.sm,
+        marginBottom: Spacing.md,
     },
     emptyStateTitle: {
-        fontSize: 20,
+        fontSize: 22,
         fontWeight: '800',
         letterSpacing: -0.5,
     },
     emptyStateText: {
-        fontSize: 15,
+        fontSize: 16,
         textAlign: 'center',
-        lineHeight: 22,
-        opacity: 0.7,
+        lineHeight: 24,
+        opacity: 0.6,
         paddingHorizontal: Spacing.sm,
     },
     groupCard: {

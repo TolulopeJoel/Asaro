@@ -165,12 +165,12 @@ export default function AuthScreen() {
                         {isSignUp ? 'Create Account' : 'Welcome Back'}
                     </Text>
                     <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                        {isSignUp ? 'Start your accountability journey.' : 'Sign in to see your groups.'}
+                        {isSignUp ? 'Start your accountability journey.' : 'Continue w/ friends'}
                     </Text>
 
                     <View style={styles.form}>
-                        <View style={styles.inputContainer}>
-                            <Ionicons name="mail-outline" size={20} color={colors.textTertiary} style={styles.inputIcon} />
+                        <View style={[styles.inputContainer, { backgroundColor: colors.cardBackground, borderColor: colors.borderSubtle }]}>
+                            <Ionicons name="mail-outline" size={20} color={colors.textPrimary} style={styles.inputIcon} />
                             <TextInput
                                 style={[styles.input, { color: colors.textPrimary }]}
                                 placeholder="Email Address"
@@ -182,8 +182,8 @@ export default function AuthScreen() {
                             />
                         </View>
 
-                        <View style={styles.inputContainer}>
-                            <Ionicons name="lock-closed-outline" size={20} color={colors.textTertiary} style={styles.inputIcon} />
+                        <View style={[styles.inputContainer, { backgroundColor: colors.cardBackground, borderColor: colors.borderSubtle }]}>
+                            <Ionicons name="lock-closed-outline" size={20} color={colors.textPrimary} style={styles.inputIcon} />
                             <TextInput
                                 style={[styles.input, { color: colors.textPrimary }]}
                                 placeholder="Password"
@@ -196,8 +196,8 @@ export default function AuthScreen() {
 
                         {isSignUp && (
                             <>
-                                <View style={styles.inputContainer}>
-                                    <Ionicons name="lock-closed-outline" size={20} color={colors.textTertiary} style={styles.inputIcon} />
+                                <View style={[styles.inputContainer, { backgroundColor: colors.cardBackground, borderColor: colors.borderSubtle }]}>
+                                    <Ionicons name="lock-closed-outline" size={20} color={colors.textPrimary} style={styles.inputIcon} />
                                     <TextInput
                                         style={[styles.input, { color: colors.textPrimary }]}
                                         placeholder="Confirm Password"
@@ -230,6 +230,7 @@ export default function AuthScreen() {
                         <Button
                             label={isSignUp ? 'Create Account' : 'Sign In'}
                             variant="primary"
+                            size="lg"
                             onPress={handleAuth}
                             loading={loading}
                             fullWidth
@@ -237,7 +238,7 @@ export default function AuthScreen() {
                         />
 
                         <Button
-                            label={isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
+                            label={isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Create One"}
                             variant="ghost"
                             onPress={() => setIsSignUp(!isSignUp)}
                             fullWidth
@@ -255,16 +256,19 @@ const styles = StyleSheet.create({
     },
     content: {
         flex: 1,
-        paddingHorizontal: Spacing.xl,
-        paddingTop: Spacing.xxl,
+        paddingHorizontal: Spacing.layout.screenPadding,
+        paddingTop: Spacing.xxxl,
     },
     title: {
-        fontSize: Typography.size.xxxl,
-        fontWeight: Typography.weight.bold,
+        fontSize: 34,
+        fontWeight: '800',
+        letterSpacing: -1.5,
         marginBottom: Spacing.xs,
     },
     subtitle: {
-        fontSize: Typography.size.md,
+        fontSize: 16,
+        fontWeight: '500',
+        opacity: 0.6,
         marginBottom: Spacing.xxxl,
     },
     form: {
@@ -273,20 +277,20 @@ const styles = StyleSheet.create({
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Platform.OS === 'ios' ? Spacing.md : 0,
-        borderRadius: Spacing.borderRadius.md,
-        backgroundColor: '#f5f5f5', // TODO: use theme gray
+        paddingHorizontal: Spacing.lg,
+        paddingVertical: Platform.OS === 'ios' ? Spacing.sm : 0,
+        borderRadius: Spacing.borderRadius.lg,
         borderWidth: 1,
-        borderColor: 'transparent',
     },
     inputIcon: {
-        marginRight: Spacing.sm,
+        marginRight: Spacing.md,
+        opacity: 0.5,
     },
     input: {
         flex: 1,
-        fontSize: Typography.size.md,
-        height: 50,
+        fontSize: Typography.size.lg,
+        height: 56,
+        fontWeight: '500',
     },
     genderContainer: {
         flexDirection: 'row',

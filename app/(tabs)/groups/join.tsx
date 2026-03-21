@@ -114,8 +114,8 @@ export default function JoinGroupScreen() {
             <ScrollView contentContainerStyle={styles.content}>
                 <View style={[styles.card, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
                     <View style={styles.intro}>
-                        <View style={[styles.iconContainer, { backgroundColor: colors.accentSecondaryLight }]}>
-                            <Ionicons name="key-outline" size={32} color={colors.accent} />
+                        <View style={[styles.iconContainer, { backgroundColor: colors.accentSecondaryLight + '30' }]}>
+                            <Ionicons name="key-outline" size={32} color={colors.accentSecondary} />
                         </View>
                         <Text style={[styles.title, { color: colors.textPrimary }]}>Access Code</Text>
                         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
@@ -125,7 +125,7 @@ export default function JoinGroupScreen() {
 
                     <View style={styles.form}>
                         <TextInput
-                            style={[styles.input, { color: colors.textPrimary, backgroundColor: colors.background, borderColor: colors.border }]}
+                            style={[styles.input, { color: colors.textPrimary, backgroundColor: colors.cardBackground, borderColor: colors.borderSubtle }]}
                             placeholder="X X X X X X"
                             placeholderTextColor={colors.textMuted}
                             value={code}
@@ -138,6 +138,7 @@ export default function JoinGroupScreen() {
                         <Button
                             label={loading ? 'Joining Group...' : 'Continue to Group'}
                             variant="primary"
+                            size="lg"
                             onPress={handleJoin}
                             disabled={loading || !code.trim()}
                             loading={loading}
@@ -166,39 +167,42 @@ const styles = StyleSheet.create({
     },
     intro: {
         alignItems: 'center',
-        marginBottom: Spacing.xxl,
+        marginBottom: Spacing.xxxl,
     },
     iconContainer: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
+        width: 84,
+        height: 84,
+        borderRadius: 28,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: Spacing.lg,
+        marginBottom: Spacing.xl,
     },
     title: {
-        fontSize: Typography.size.xxl,
-        fontWeight: Typography.weight.bold,
-        marginBottom: Spacing.sm,
+        fontSize: 34,
+        fontWeight: '800',
+        letterSpacing: -1.5,
+        marginBottom: Spacing.xs,
     },
     subtitle: {
-        fontSize: Typography.size.md,
+        fontSize: 16,
+        fontWeight: '500',
         textAlign: 'center',
-        lineHeight: 22,
-        opacity: 0.8,
+        lineHeight: 24,
+        opacity: 0.6,
+        paddingHorizontal: Spacing.md,
     },
     form: {
         width: '100%',
         gap: Spacing.lg,
     },
     input: {
-        fontSize: Typography.size.xl,
+        fontSize: 32,
         textAlign: 'center',
-        paddingVertical: Spacing.md,
-        borderRadius: Spacing.borderRadius.md,
+        height: 72,
+        borderRadius: Spacing.borderRadius.lg,
         borderWidth: 1,
-        letterSpacing: 4,
-        fontWeight: Typography.weight.bold,
-        marginBottom: Spacing.md,
+        letterSpacing: 6,
+        fontWeight: '800',
+        marginBottom: Spacing.lg,
     },
 });

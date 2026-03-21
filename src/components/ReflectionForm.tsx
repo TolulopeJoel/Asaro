@@ -224,7 +224,6 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
         <View style={styles.notesContainer}>
           <View style={styles.notesHeader}>
             <Text style={[styles.notesTitle, { color: colors.textSecondary }]}>Additional Thoughts</Text>
-            <Text style={[styles.notesSubtitle, { color: colors.textTertiary }]}>Optional</Text>
           </View>
           <TextArea
             label=""
@@ -334,12 +333,6 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weight.regular,
     letterSpacing: 0.2,
     marginRight: Spacing.sm,
-  },
-  notesSubtitle: {
-    fontSize: Typography.size.xs,
-    fontWeight: Typography.weight.regular,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
   },
   actionsContainer: {
     flexDirection: 'row',
