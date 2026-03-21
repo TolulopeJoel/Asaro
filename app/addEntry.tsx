@@ -3,9 +3,11 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, AppState, KeyboardAvoidingView, LayoutAnimation, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { BookPicker } from '../src/components/BookPicker';
 import { ChapterPicker } from '../src/components/ChapterPicker';
 import { ReflectionAnswers, ReflectionForm } from '../src/components/ReflectionForm';
@@ -447,9 +449,11 @@ export default function MeditationSessionScreen() {
         <View style={styles.stepContainer}>
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.stepContent}>
-                    <Text style={[styles.stepQuestion, { color: colors.textSecondary }]}>
-                        What book?
-                    </Text>
+                    <View style={styles.header}>
+                        <Text style={[styles.title, { color: colors.textPrimary }]}>
+                            What book?
+                        </Text>
+                    </View>
 
                     <View style={styles.contentArea}>
                         <BookPicker
@@ -466,9 +470,11 @@ export default function MeditationSessionScreen() {
         <View style={styles.stepContainer}>
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.stepContent}>
-                    <Text style={[styles.stepQuestion, { color: colors.textSecondary }]}>
-                        What part did you read?
-                    </Text>
+                    <View style={styles.header}>
+                        <Text style={[styles.title, { color: colors.textPrimary }]}>
+                            What part?
+                        </Text>
+                    </View>
 
                     <View style={styles.contentArea}>
                         <ChapterPicker
@@ -509,9 +515,14 @@ export default function MeditationSessionScreen() {
         <View style={styles.stepContainer}>
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.stepContent}>
+                    <View style={styles.header}>
+                        <Text style={[styles.title, { color: colors.textPrimary }]}>
+                            Reflections
+                        </Text>
+                    </View>
                     {!isEditMode &&
                         <Text style={[styles.stepDescription, { color: colors.textSecondary }]}>
-                            A good way to get the most out of your Bible reading is to consider one or more of the following questions as you read:
+                            Consider these questions to get the most out of your reading:
                         </Text>
                     }
 
@@ -559,14 +570,15 @@ export default function MeditationSessionScreen() {
         <View style={styles.stepContainer}>
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.stepContent}>
-                    <View style={styles.titleContainer}>
-                        <Text style={[styles.stepTitle, { color: colors.textPrimary }]}>Complete</Text>
-                        <View style={[styles.titleUnderline, { backgroundColor: colors.border }]} />
+                    <View style={styles.header}>
+                        <Text style={[styles.title, { color: colors.textPrimary }]}>
+                            Complete
+                        </Text>
                     </View>
 
-                    <View style={[styles.completionCard, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
+                    <View style={[styles.completionCard, { backgroundColor: colors.cardBackground, borderColor: colors.border + '50' }]}>
                         <View style={styles.completionHeader}>
-                            <View style={[styles.completionDot, { backgroundColor: colors.accent }]} />
+                            <Ionicons name="checkmark-circle" size={18} color={colors.accent} />
                             <Text style={[styles.completionTitle, { color: colors.accent }]}>Study Record</Text>
                         </View>
                         <View style={styles.completionDetails}>
@@ -613,14 +625,15 @@ export default function MeditationSessionScreen() {
     }
 
     return (
-        <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+            <Stack.Screen options={{ headerShown: false }} />
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             >
                 {renderCurrentStep()}
             </KeyboardAvoidingView>
-        </View>
+        </SafeAreaView>
     );
 }
 
@@ -651,22 +664,7 @@ const styles = StyleSheet.create({
     },
     stepContent: {
         flex: 1,
-        paddingTop: 40,
-    },
-    titleContainer: {
-        alignItems: 'center',
-        marginBottom: Spacing.xl,
-    },
-    stepTitle: {
-        fontSize: Typography.size.xxxl,
-        fontWeight: Typography.weight.semibold,
-        letterSpacing: Typography.letterSpacing.tight,
-        marginBottom: Spacing.sm,
-    },
-    titleUnderline: {
-        width: 40,
-        height: 2,
-        borderRadius: 1,
+        paddingTop: Spacing.layout.screenPadding,
     },
     stepDescription: {
         fontSize: Typography.size.lg,
@@ -677,11 +675,18 @@ const styles = StyleSheet.create({
         letterSpacing: Typography.letterSpacing.wide,
     },
     stepQuestion: {
-        fontSize: 28, // Keeping large for impact
-        fontWeight: Typography.weight.semibold,
-        marginBottom: Spacing.xxl,
-        lineHeight: 34,
-        letterSpacing: Typography.letterSpacing.tight,
+        fontSize: 34,
+        fontWeight: '800',
+        letterSpacing: -1,
+        marginBottom: Spacing.xl,
+    },
+    header: {
+        marginBottom: Spacing.xl,
+    },
+    title: {
+        fontSize: 34,
+        fontWeight: '800',
+        letterSpacing: -1,
     },
     contentArea: {
         flex: 1,
@@ -755,8 +760,8 @@ const styles = StyleSheet.create({
             width: 0,
             height: 4,
         },
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
+        shadowOpacity: 0.04,
+        shadowRadius: 10,
     },
     completionHeader: {
         flexDirection: 'row',
@@ -770,10 +775,9 @@ const styles = StyleSheet.create({
         marginRight: Spacing.md,
     },
     completionTitle: {
-        fontSize: Typography.size.md,
-        fontWeight: Typography.weight.semibold,
-        letterSpacing: 0.8,
-        textTransform: 'uppercase',
+        fontSize: 15,
+        fontWeight: '700',
+        letterSpacing: -0.2,
     },
     completionDetails: {
         paddingLeft: 20,

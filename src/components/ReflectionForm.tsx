@@ -146,10 +146,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
         style={styles.questionContainer}
       >
         <View style={styles.questionHeader}>
-          <Text style={[styles.questionNumber, { backgroundColor: colors.badge, color: colors.primary }]}>{index + 1}</Text>
-          <View style={styles.questionTitleContainer}>
-            <Text style={[styles.questionTitle, { color: colors.text }]}>{question}</Text>
-          </View>
+          <Text style={[styles.questionTitle, { color: colors.textPrimary }]}>{question}</Text>
         </View>
 
         {isActionList ? (
@@ -314,30 +311,13 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xxxl,
   },
   questionHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: Spacing.md,
-  },
-  questionNumber: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    fontSize: Typography.size.xs,
-    fontWeight: Typography.weight.medium,
-    textAlign: 'center',
-    lineHeight: 24,
-    marginRight: Spacing.md,
-    marginTop: 2,
-    overflow: 'hidden',
-  },
-  questionTitleContainer: {
-    flex: 1,
+    marginBottom: Spacing.sm,
   },
   questionTitle: {
-    fontSize: Typography.size.md,
-    fontWeight: Typography.weight.regular,
-    lineHeight: Typography.lineHeight.md,
-    letterSpacing: 0.1,
+    fontSize: 16,
+    fontWeight: '700',
+    lineHeight: 22,
+    letterSpacing: -0.2,
   },
   notesContainer: {
     marginTop: Spacing.xl,

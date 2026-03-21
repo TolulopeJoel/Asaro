@@ -89,7 +89,7 @@ export const MILESTONE_BADGES: Badge[] = [
 export const REFLECTION_BADGES: Badge[] = [
     {
         id: 'reflection_first',
-        emoji: '✨',
+        emoji: '🗣',
         label: 'Spoke Up',
         desc: 'shared {possessive} very first reflection — it takes courage!',
         order: 20,

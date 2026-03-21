@@ -79,7 +79,7 @@ export default function GroupsScreen() {
 
     if (!user) {
         return (
-            <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+            <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
                 <ScrollView
                     contentContainerStyle={styles.authScroll}
                     showsVerticalScrollIndicator={false}
@@ -117,7 +117,7 @@ export default function GroupsScreen() {
     // If user has joined groups
     if (joinedGroups.length > 0) {
         return (
-            <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+            <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
                 {isOffline && (
                     <View style={[styles.offlineBanner, { backgroundColor: colors.border }]}>
                         <Ionicons name="cloud-offline-outline" size={14} color={colors.textSecondary} />
@@ -195,7 +195,7 @@ export default function GroupsScreen() {
     }
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
             {isOffline && (
                 <View style={[styles.offlineBanner, { backgroundColor: colors.border }]}>
                     <Ionicons name="cloud-offline-outline" size={14} color={colors.textSecondary} />

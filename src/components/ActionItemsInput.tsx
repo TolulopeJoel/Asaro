@@ -214,17 +214,6 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                         multiline={true}
                     />
                 </View>
-
-                {/* Remove whole pair button - moved to bottom right to avoid overlap with expand button */}
-                {showRemove(index, currentItems) && (
-                    <TouchableOpacity
-                        onPress={() => handleRemove(index, isModal)}
-                        style={styles.removeButton}
-                        hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-                    >
-                        <Text style={[styles.removeText, { color: colors.textTertiary }]}>Remove this action</Text>
-                    </TouchableOpacity>
-                )}
             </View>
         </View>
     );
@@ -360,18 +349,6 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderStyle: 'dashed',
         marginHorizontal: Spacing.lg,
-    },
-    removeButton: {
-        marginTop: Spacing.sm,
-        marginHorizontal: Spacing.lg,
-        paddingBottom: Spacing.md,
-        alignSelf: 'flex-end',
-    },
-    removeText: {
-        fontSize: Typography.size.xs,
-        fontWeight: Typography.weight.medium,
-        textDecorationLine: 'underline',
-        opacity: 0.8,
     },
     expandButton: {
         position: 'absolute',

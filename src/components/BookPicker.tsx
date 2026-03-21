@@ -4,13 +4,13 @@ import {
     StyleSheet,
     Text,
     TextInput,
-    TouchableOpacity,
     View,
 } from 'react-native';
 import { ALL_BIBLE_BOOKS, BibleBook, GREEK_BOOKS, HEBREW_BOOKS } from '../data/bibleBooks';
 import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
+import { ScalePressable } from './ScalePressable';
 
 interface BookPickerProps {
     selectedBook?: BibleBook;
@@ -45,32 +45,28 @@ export const BookPicker: React.FC<BookPickerProps> = React.memo(({
     );
 
     const BookCard = React.memo(({ book, isSelected }: { book: BibleBook, isSelected: boolean }) => (
-        <TouchableOpacity
+        <ScalePressable
             key={book.name}
             style={[
                 styles.bookCard,
-                { backgroundColor: colors.cardBackground, borderColor: colors.border },
-                isSelected && [styles.bookCardSelected, { backgroundColor: colors.backgroundSubtle, borderColor: colors.accentSecondary }],
+                { backgroundColor: colors.cardBackground, borderColor: colors.border + '50' },
+                isSelected && [styles.bookCardSelected, { backgroundColor: colors.accent + '08', borderColor: colors.accent }],
             ]}
             onPress={() => onBookSelect(book)}
-            activeOpacity={0.7}
         >
             <Text style={[
                 styles.bookAbbreviation,
-                { color: colors.text },
-                isSelected && [styles.bookAbbreviationSelected, { color: colors.textSecondary }]
+                { color: isSelected ? colors.textPrimary : colors.textSecondary },
             ]}>
                 {book.abbrv}
             </Text>
             <Text style={[
                 styles.chapterCount,
-                { color: colors.textTertiary },
-                isSelected && [styles.chapterCountSelected, { color: colors.textSecondary }]
+                { color: isSelected ? colors.accent : colors.textTertiary },
             ]}>
                 {book.chapters}
             </Text>
-            {isSelected && <View style={[styles.selectedDot, { backgroundColor: colors.textSecondary }]} />}
-        </TouchableOpacity>
+        </ScalePressable>
     ));
 
     const renderBookGrid = (books: BibleBook[], isGreekBooks = false) => {
@@ -242,15 +238,7 @@ const styles = StyleSheet.create({
         position: 'relative',
     },
     bookCardSelected: {
-        borderRadius: Spacing.borderRadius.lg,
         borderWidth: 1.5,
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 2,
     },
     bookAbbreviation: {
         fontSize: 15, // Keeping slightly custom for specific card fit

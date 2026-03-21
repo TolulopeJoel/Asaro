@@ -7,10 +7,10 @@ import {
     StyleSheet,
     Text,
     TextInput,
-    TouchableOpacity,
     View,
     ViewStyle
 } from 'react-native';
+import { ScalePressable } from './ScalePressable';
 import { BibleBook, getChapterNumbers } from '../data/bibleBooks';
 
 interface ChapterRange {
@@ -197,31 +197,29 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = React.memo(({
 
         return (
             <View key={chapter} style={styles.chapterButtonWrapper}>
-                <TouchableOpacity
+                <ScalePressable
                     style={[
                         styles.chapterButton,
-                        { backgroundColor: colors.cardBackground, borderColor: colors.border },
+                        { backgroundColor: colors.cardBackground, borderColor: colors.border + '50' },
                         (isSelected || isInDrag) && {
-                            backgroundColor: colors.accentSecondary,
-                            borderColor: colors.accentSecondary,
+                            backgroundColor: colors.accent + '08',
+                            borderColor: colors.accent,
                         },
                         isFirst && styles.chapterButtonSingle,
                         borderRadiusStyle,
-                        // Reduce gap between range buttons
                         isMiddle && styles.chapterButtonMiddle,
                         isRangeEnd && styles.chapterButtonRangeEnd,
                     ] as StyleProp<ViewStyle>}
                     onPress={() => handleChapterPress(chapter)}
-                    activeOpacity={0.7}
                 >
                     <Text style={[
                         styles.chapterButtonText,
-                        { color: colors.text },
-                        (isSelected || isInDrag) && { color: colors.buttonPrimaryText, fontWeight: Typography.weight.semibold }
+                        { color: isSelected ? colors.textPrimary : colors.textSecondary },
+                        (isSelected || isInDrag) && { fontWeight: '700' }
                     ]}>
                         {chapter}
                     </Text>
-                </TouchableOpacity>
+                </ScalePressable>
 
                 {/* Single chapter verse inputs */}
                 {isSingleChapterSelected && (
@@ -288,34 +286,33 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = React.memo(({
             {selectedChapters && selectedChapters.start > 0 && (
                 <View style={[styles.selectionContainer, { backgroundColor: colors.cardHover, borderColor: colors.border }]}>
                     <Text style={[styles.selectionText, { color: colors.textSecondary }]}>{getSelectionText()}</Text>
-                    <TouchableOpacity
-                        style={[styles.clearButton, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}
+                    <ScalePressable
+                        style={[styles.clearButton, { backgroundColor: colors.cardBackground, borderColor: colors.border + '50' }]}
                         onPress={() => onChapterSelect({ start: 0 })}
                     >
                         <Text style={[styles.clearButtonText, { color: colors.textSecondary }]}>Clear</Text>
-                    </TouchableOpacity>
+                    </ScalePressable>
                 </View>
             )}
 
             <View style={styles.chaptersGrid}>
                 {chapters.map(renderChapterButton)}
             </View>
-            <TouchableOpacity
+            <ScalePressable
                 style={styles.checkboxContainer}
                 onPress={handleReadVersesToggle}
-                activeOpacity={0.7}
             >
                 <View style={[
                     styles.checkbox,
-                    { backgroundColor: colors.card, borderColor: colors.border },
-                    readVerses && [styles.checkboxChecked, { backgroundColor: colors.textSecondary, borderColor: colors.textSecondary }]
+                    { backgroundColor: colors.cardBackground, borderColor: colors.border + '50' },
+                    readVerses && [styles.checkboxChecked, { backgroundColor: colors.accent, borderColor: colors.accent }]
                 ]}>
                     {readVerses && (
                         <Text style={[styles.checkmark, { color: colors.buttonPrimaryText }]}>✓</Text>
                     )}
                 </View>
                 <Text style={[styles.checkboxLabel, { color: colors.textSecondary }]}>I read verses</Text>
-            </TouchableOpacity>
+            </ScalePressable>
         </View>
     );
 });

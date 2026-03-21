@@ -3,12 +3,16 @@ import { getLocalMidnight, isSameDay } from '@/src/utils/dateUtils';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+    ActivityIndicator,
+    FlatList,
     Platform,
     StyleSheet,
     Text,
     TextInput,
+    TouchableOpacity,
     View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { ALL_BIBLE_BOOKS, BibleBook } from '../data/bibleBooks';
 import {
@@ -634,7 +638,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
     }, [viewMode, debouncedSearchQuery, colors]);
 
     return (
-        <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
             <View style={[styles.header, { backgroundColor: colors.backgroundElevated, borderBottomColor: colors.border }]}>
                 <View style={styles.headerTitleRow}>
                     <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Journal</Text>
@@ -726,7 +730,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                 removeClippedSubviews={Platform.OS === 'android'}
                 itemLayoutAnimation={LinearTransition}
             />
-        </View>
+        </SafeAreaView>
     );
 };
 
