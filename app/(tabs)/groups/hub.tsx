@@ -130,18 +130,19 @@ export default function GroupsScreen() {
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
                 >
-                    <View style={styles.titleRow}>
-                        <Text style={[styles.title, { color: colors.textPrimary }]}>My Groups</Text>
-                        <TouchableOpacity onPress={() => router.push('/(tabs)/groups/join' as any)}>
-                            <Ionicons name="add-circle-outline" size={28} color={colors.accent} />
-                        </TouchableOpacity>
+                    <View style={styles.header}>
+                        <View style={styles.headerTitleRow}>
+                            <Text style={[styles.title, { color: colors.textPrimary }]}>My Groups</Text>
+                            <ScalePressable onPress={() => router.push('/(tabs)/groups/join' as any)}>
+                                <Ionicons name="add" size={28} color={colors.textSecondary} />
+                            </ScalePressable>
+                        </View>
                     </View>
                     {joinedGroups.map((group) => {
                         const today = new Date();
                         const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
                         const readTodayCount = group.readTodayDate === todayStr ? (group.readTodayCount || 0) : 0;
                         const groupStreak = group.groupStreak || 0;
-                        const memberCount = group.memberCount || 0;
 
                         return (
                             <ScalePressable
@@ -168,24 +169,22 @@ export default function GroupsScreen() {
                                     <View style={styles.groupStatsRow}>
                                         <View style={styles.groupStatItem}>
                                             <Text style={[styles.groupStatValue, { color: colors.accent }]}>🔥 {groupStreak}</Text>
-                                            <Text style={[styles.groupStatLabel, { color: colors.textTertiary }]}>STREAK</Text>
                                         </View>
                                         <View style={[styles.groupStatDivider, { backgroundColor: colors.borderSubtle }]} />
-                                        <View style={styles.groupStatItem}>
-                                            <Text style={[styles.groupStatValue, { color: colors.textPrimary }]}>{memberCount}</Text>
-                                            <Text style={[styles.groupStatLabel, { color: colors.textTertiary }]}>PEOPLE</Text>
-                                        </View>
                                     </View>
 
-                                    <View style={[styles.activePill, {
-                                        backgroundColor: readTodayCount > 0 ? colors.indicatorActive + '15' : colors.cardBackground,
-                                        borderColor: readTodayCount > 0 ? colors.indicatorActive + '40' : colors.borderSubtle
-                                    }]}>
-                                        <View style={[styles.activeDot, { backgroundColor: readTodayCount > 0 ? colors.indicatorActive : colors.textTertiary }]} />
-                                        <Text style={[styles.activeTodayText, { color: readTodayCount > 0 ? colors.indicatorActive : colors.textTertiary }]}>
-                                            {readTodayCount > 0 ? `${readTodayCount} ACTIVE TODAY` : 'NO ACTIVITY YET'}
-                                        </Text>
-                                    </View>
+                                    {readTodayCount > 0 ? (
+                                        <View style={[styles.activeIndicator, { backgroundColor: colors.indicatorActive + '15' }]}>
+                                            <View style={[styles.activeDot, { backgroundColor: colors.indicatorActive }]} />
+                                            <Text style={[styles.activeText, { color: colors.indicatorActive }]}>
+                                                {readTodayCount}
+                                            </Text>
+                                        </View>
+                                    ) : (
+                                        <View style={[styles.activeIndicator, { backgroundColor: colors.backgroundSubtle, opacity: 0.5 }]}>
+                                            <View style={[styles.activeDot, { backgroundColor: colors.textTertiary }]} />
+                                        </View>
+                                    )}
                                 </View>
                             </ScalePressable>
                         );
@@ -205,9 +204,11 @@ export default function GroupsScreen() {
                     </Text>
                 </View>
             )}
-            <View style={styles.headerRow}>
-                <Text style={[styles.title, { color: colors.textPrimary }]}>Your Groups</Text>
-                <Ionicons name="people-outline" size={24} color={colors.textSecondary} />
+            <View style={styles.header}>
+                <View style={styles.headerTitleRow}>
+                    <Text style={[styles.title, { color: colors.textPrimary }]}>Groups</Text>
+                    <Ionicons name="people-outline" size={24} color={colors.textSecondary} />
+                </View>
             </View>
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
@@ -308,12 +309,12 @@ const styles = StyleSheet.create({
         opacity: 0.7,
     },
     emptyStateCard: {
-        padding: Spacing.xxl,
-        borderRadius: 32,
+        padding: Spacing.xl,
+        borderRadius: 24,
         alignItems: 'center',
         borderWidth: 1,
         gap: Spacing.sm,
-        marginTop: Spacing.lg,
+        marginTop: Spacing.md,
     },
     emptyStateIconWrap: {
         width: 64,
@@ -335,31 +336,11 @@ const styles = StyleSheet.create({
         opacity: 0.7,
         paddingHorizontal: Spacing.sm,
     },
-    title: {
-        fontSize: 24,
-        fontWeight: '800',
-        letterSpacing: -0.5,
-    },
-    titleRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: Spacing.lg,
-    },
-    headerRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: Spacing.layout.screenPadding,
-        paddingTop: Spacing.md,
-        paddingBottom: Spacing.sm,
-    },
     groupCard: {
         padding: Spacing.lg,
         borderRadius: 16,
         borderWidth: 1,
         marginBottom: Spacing.lg,
-        elevation: 0.5,
     },
     groupCardTop: {
         flexDirection: 'row',
@@ -406,26 +387,20 @@ const styles = StyleSheet.create({
         gap: 1,
     },
     groupStatValue: {
-        fontSize: 15,
-        fontWeight: '800',
-    },
-    groupStatLabel: {
-        fontSize: 8,
-        fontWeight: 'bold',
-        letterSpacing: 0.5,
+        fontSize: 14,
+        fontWeight: '700',
     },
     groupStatDivider: {
         width: 1,
         height: 20,
         opacity: 1,
     },
-    activePill: {
+    activeIndicator: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 12,
-        borderWidth: 1,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
         gap: 6,
     },
     activeDot: {
@@ -433,10 +408,22 @@ const styles = StyleSheet.create({
         height: 6,
         borderRadius: 3,
     },
-    activeTodayText: {
-        fontSize: 9,
+    activeText: {
+        fontSize: 11,
+        fontWeight: '700',
+    },
+    header: {
+        marginBottom: Spacing.xl,
+    },
+    headerTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    title: {
+        fontSize: 34,
         fontWeight: '800',
-        letterSpacing: 0.5,
+        letterSpacing: -1,
     },
     label: {
         fontSize: 12,
@@ -454,6 +441,7 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         paddingHorizontal: Spacing.layout.screenPadding,
+        paddingTop: Spacing.layout.screenPadding,
         paddingBottom: 120, // Support for tab bar spacing
     },
 });
