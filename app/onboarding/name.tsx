@@ -121,18 +121,18 @@ const styles = StyleSheet.create({
         flex: 1,
         padding: Spacing.layout.screenPadding,
         justifyContent: 'space-between',
-        paddingTop: Spacing.xxxl,
+        paddingTop: Spacing.layout.screenPadding,
     },
     textContainer: {
         flex: 1,
         width: '100%',
     },
     introBlock: {
-        marginBottom: Spacing.xxxl * 1.5,
+        marginBottom: Spacing.xxxl,
     },
     greeting: {
-        fontSize: Typography.size.display,
-        fontWeight: Typography.weight.bold,
+        fontSize: 34,
+        fontWeight: '800',
         letterSpacing: -1.5,
         marginBottom: Spacing.sm,
     },

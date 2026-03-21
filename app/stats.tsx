@@ -172,8 +172,8 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.xxxl,
     },
     monthTitleLarge: {
-        fontSize: Typography.size.display,
-        fontWeight: Typography.weight.bold,
+        fontSize: 34,
+        fontWeight: '800',
         letterSpacing: -1.5,
         marginBottom: Spacing.xl,
     },

@@ -277,25 +277,28 @@ export default function PlanScreen() {
         );
     };
 
-    return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-            <View style={styles.header}>
-                <View style={styles.progressHeaderRow}>
-                    <Text style={[styles.title, { color: colors.textPrimary }]}>Bible Plan</Text>
-                    <Text style={[styles.progressPercentage, { color: colors.accent }]}>{parseFloat(progress.toFixed(2))}%</Text>
-                </View>
-                <View style={styles.progressCard}>
-                    <View style={[styles.progressBarBase, { backgroundColor: colors.border }]}>
-                        <View style={[styles.progressBarFill, { width: `${progress}%`, backgroundColor: colors.accent }]} />
-                    </View>
+    const renderHeader = () => (
+        <View style={styles.header}>
+            <View style={styles.progressHeaderRow}>
+                <Text style={[styles.title, { color: colors.textPrimary }]}>Bible Plan</Text>
+                <Text style={[styles.progressPercentage, { color: colors.accent }]}>{parseFloat(progress.toFixed(2))}%</Text>
+            </View>
+            <View style={styles.progressCard}>
+                <View style={[styles.progressBarBase, { backgroundColor: colors.border }]}>
+                    <View style={[styles.progressBarFill, { width: `${progress}%`, backgroundColor: colors.accent }]} />
                 </View>
             </View>
+        </View>
+    );
 
+    return (
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
             <FlatList
                 data={READING_PLAN_DATA}
                 renderItem={renderItem}
                 keyExtractor={(item) => item.id.toString()}
                 contentContainerStyle={styles.listContent}
+                ListHeaderComponent={renderHeader}
                 showsVerticalScrollIndicator={false}
             />
         </SafeAreaView>
@@ -307,14 +310,12 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     header: {
-        padding: Spacing.layout.screenPadding,
-        paddingBottom: Spacing.sm,
+        marginBottom: Spacing.xl,
     },
     title: {
-        fontSize: 32,
+        fontSize: 34,
         fontWeight: '800',
-        letterSpacing: -1,
-        marginBottom: Spacing.lg,
+        letterSpacing: -1.5,
     },
     progressCard: {
         gap: Spacing.sm,
@@ -344,8 +345,8 @@ const styles = StyleSheet.create({
         letterSpacing: -0.5,
     },
     listContent: {
-        paddingHorizontal: Spacing.layout.screenPadding,
-        paddingBottom: 120,
+        padding: Spacing.layout.screenPadding,
+        paddingBottom: 120, // Tab bar avoidance
     },
     sectionHeader: {
         marginTop: Spacing.lg,

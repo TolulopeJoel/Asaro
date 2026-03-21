@@ -221,7 +221,9 @@ export default function Settings() {
                 showsVerticalScrollIndicator={false}
             >
                 <View style={styles.header}>
-                    <Text style={[styles.title, { color: colors.textPrimary }]}>Settings</Text>
+                    <View style={styles.headerTitleRow}>
+                        <Text style={[styles.title, { color: colors.textPrimary }]}>Engine Room</Text>
+                    </View>
                 </View>
 
                 {/* Appearance */}
@@ -363,6 +365,7 @@ const styles = StyleSheet.create({
     headerTitleRow: {
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'space-between',
         gap: 8,
     },
     headerTitle: {
@@ -373,7 +376,7 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 34,
         fontWeight: '800',
-        letterSpacing: -1,
+        letterSpacing: -1.5,
     },
     group: {
         marginBottom: Spacing.xxl,

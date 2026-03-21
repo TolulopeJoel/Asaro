@@ -678,7 +678,7 @@ const styles = StyleSheet.create({
     stepQuestion: {
         fontSize: 34,
         fontWeight: '800',
-        letterSpacing: -1,
+        letterSpacing: -1.5,
         marginBottom: Spacing.xl,
     },
     header: {
@@ -687,7 +687,7 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 34,
         fontWeight: '800',
-        letterSpacing: -1,
+        letterSpacing: -1.5,
     },
     contentArea: {
         flex: 1,

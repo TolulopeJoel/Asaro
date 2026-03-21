@@ -207,7 +207,6 @@ export default function GroupsScreen() {
                 <View style={styles.header}>
                     <View style={styles.headerTitleRow}>
                         <Text style={[styles.title, { color: colors.textPrimary }]}>Groups</Text>
-                        <Ionicons name="people-outline" size={24} color={colors.textSecondary} />
                     </View>
                 </View>
 

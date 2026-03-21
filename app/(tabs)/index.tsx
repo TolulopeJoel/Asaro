@@ -317,6 +317,12 @@ export default function Index() {
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
+                <View style={styles.header}>
+                    <View style={styles.headerTitleRow}>
+                        <Text style={[styles.title, { color: colors.textPrimary }]}>My Superstar!</Text>
+                    </View>
+                </View>
+
                 <QuickStats />
                 <NextReading />
                 <StudyReminders onEntryPress={handleEntryPress} />
@@ -363,6 +369,19 @@ const styles = StyleSheet.create({
         padding: Spacing.layout.screenPadding,
         paddingBottom: 185,
         gap: Spacing.layout.cardPadding,
+    },
+    header: {
+        marginBottom: Spacing.xs,
+    },
+    headerTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    title: {
+        fontSize: 34,
+        fontWeight: '800',
+        letterSpacing: -1.5,
     },
 
     statsContainer: {

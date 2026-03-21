@@ -637,9 +637,9 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         );
     }, [viewMode, debouncedSearchQuery, colors]);
 
-    return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-            <View style={[styles.header, { backgroundColor: colors.backgroundElevated, borderBottomColor: colors.border }]}>
+    const renderListHeader = () => (
+        <View style={{ backgroundColor: colors.background }}>
+            <View style={[styles.header, { borderBottomColor: colors.border }]}>
                 <View style={styles.headerTitleRow}>
                     <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Journal</Text>
                 </View>
@@ -712,17 +712,20 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                     )}
                 </View>
             )}
+        </View>
+    );
 
+    return (
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
             <Animated.FlatList
                 data={getFlatListData}
                 renderItem={renderListItem}
                 keyExtractor={(item) => item.id.toString()}
                 contentContainerStyle={[
-                    viewMode === 'books' ? { paddingTop: 24 } : styles.entriesList,
                     styles.scrollContent,
                     getFlatListData.length === 0 && styles.emptyContainer
                 ]}
-                ListEmptyComponent={renderEmptyState}
+                ListHeaderComponent={renderListHeader}
                 showsVerticalScrollIndicator={false}
                 initialNumToRender={10}
                 maxToRenderPerBatch={10}
@@ -730,7 +733,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                 removeClippedSubviews={Platform.OS === 'android'}
                 itemLayoutAnimation={LinearTransition}
             />
-        </SafeAreaView>
+        </View>
     );
 };
 
@@ -739,15 +742,12 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     header: {
-        paddingHorizontal: 24,
-        paddingTop: 20,
-        paddingBottom: 4,
-        borderBottomWidth: 0.5,
+        marginBottom: 24,
     },
     headerTitle: {
         fontSize: 34,
         fontWeight: '800',
-        letterSpacing: -1,
+        letterSpacing: -1.5,
     },
     headerTitleRow: {
         flexDirection: 'row',
@@ -834,14 +834,14 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     scrollContent: {
-        paddingBottom: 100,
+        padding: 20,
+        paddingBottom: 120,
     },
     emptyContainer: {
         flexGrow: 1,
     },
     entriesList: {
-        paddingHorizontal: 20,
-        paddingTop: 24,
+        // No extra horizontal padding here, handled by scrollContent
     },
     dateGroup: {
         marginBottom: 32,
