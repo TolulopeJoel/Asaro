@@ -110,11 +110,13 @@ export const Flashback: React.FC<FlashbackProps> = React.memo(({ onEntryPress })
             style={[styles.card, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
         >
             <View style={styles.header}>
-                <Ionicons name="time-outline" size={14} color={colors.accentSecondaryDark} />
-                <Text style={[styles.headerTitle, { color: colors.textSecondary }]}>
-                    {getTitle().toUpperCase()}
-                </Text>
-                <Text style={[styles.date, { color: colors.textTertiary, marginLeft: 'auto' }]}>
+                <View style={styles.headerTitleRow}>
+                    <Ionicons name="time" size={14} color={colors.accentSecondary} />
+                    <Text style={[styles.headerTitle, { color: colors.textSecondary }]}>
+                        {getTitle().toUpperCase()}
+                    </Text>
+                </View>
+                <Text style={[styles.date, { color: colors.textTertiary }]}>
                     {(() => {
                         const date = new Date(flashbackData.entry.created_at || '');
                         const now = new Date();
@@ -145,24 +147,33 @@ const styles = StyleSheet.create({
     },
     header: {
         flexDirection: "row",
-        gap: 4,
+        justifyContent: "space-between",
         alignItems: "center",
         marginBottom: 12,
     },
+    headerTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
     headerTitle: {
-        fontSize: Typography.size.xs,
-        fontWeight: Typography.weight.bold,
-        letterSpacing: Typography.letterSpacing.wider,
+        fontSize: 10,
+        fontWeight: '600',
+        letterSpacing: 1.5,
+        textTransform: 'uppercase',
+        opacity: 0.7,
     },
     preview: {
-        fontSize: 16,
-        lineHeight: 24,
-        fontWeight: "400",
-        marginBottom: 16,
-        letterSpacing: 0.1,
+        fontSize: 18,
+        lineHeight: 26,
+        fontWeight: "500",
+        letterSpacing: -0.2,
+        fontStyle: 'italic',
+        opacity: 0.9,
     },
     date: {
-        fontSize: Typography.size.xs,
-        fontWeight: Typography.weight.medium,
+        fontSize: 10,
+        fontWeight: '600',
+        opacity: 0.8,
     },
 });

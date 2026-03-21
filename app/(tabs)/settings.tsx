@@ -9,9 +9,11 @@ import { documentDirectory, writeAsStringAsync, readAsStringAsync } from 'expo-f
 import * as Sharing from 'expo-sharing';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/src/components/Button';
+import { ScalePressable } from '@/src/components/ScalePressable';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function Settings() {
     const { colors, theme, setTheme } = useTheme();
@@ -171,6 +173,45 @@ export default function Settings() {
         }
     };
 
+    const SettingsItem = ({
+        label,
+        value,
+        onPress,
+        icon,
+        destructive,
+        showChevron = true
+    }: {
+        label: string;
+        value?: string;
+        onPress: () => void;
+        icon: React.ComponentProps<typeof Ionicons>['name'];
+        destructive?: boolean;
+        showChevron?: boolean;
+    }) => (
+        <ScalePressable
+            style={[styles.itemContainer, { borderBottomColor: colors.border + '50' }]}
+            onPress={onPress}
+        >
+            <View style={[styles.itemIconWrap, { backgroundColor: destructive ? '#FF3B3010' : colors.accent + '10' }]}>
+                <Ionicons name={icon} size={18} color={destructive ? '#FF3B30' : colors.accent} />
+            </View>
+            <View style={styles.itemContent}>
+                <Text style={[styles.itemLabel, { color: colors.textPrimary }]}>{label}</Text>
+                {value && <Text style={[styles.itemValue, { color: colors.textTertiary }]}>{value}</Text>}
+            </View>
+            {showChevron && <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />}
+        </ScalePressable>
+    );
+
+    const SettingsGroup = ({ title, children }: { title: string; children: React.ReactNode }) => (
+        <View style={styles.group}>
+            <Text style={[styles.groupTitle, { color: colors.textSecondary }]}>{title.toUpperCase()}</Text>
+            <View style={[styles.groupContent, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
+                {children}
+            </View>
+        </View>
+    );
+
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
             <Stack.Screen options={{ title: 'Settings' }} />
@@ -179,54 +220,60 @@ export default function Settings() {
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
+                <View style={styles.header}>
+                    <Text style={[styles.title, { color: colors.textPrimary }]}>Settings</Text>
+                </View>
+
                 {/* Appearance */}
-                <View style={styles.section}>
-                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Appearance</Text>
+                <SettingsGroup title="Appearance">
                     <View style={styles.themeSelector}>
                         {(['light', 'dark', 'system'] as const).map((mode) => (
-                            <Button
+                            <ScalePressable
                                 key={mode}
-                                variant={theme === mode ? 'primary' : 'secondary'}
                                 onPress={() => setTheme(mode)}
-                                style={styles.themeOption}
-                                icon={
-                                    mode === 'light' ? 'sunny' :
-                                        mode === 'dark' ? 'moon' :
-                                            'phone-portrait'
-                                }
-                            />
+                                style={[
+                                    styles.themeOption,
+                                    { backgroundColor: theme === mode ? colors.accent : colors.buttonSecondary },
+                                    { borderColor: theme === mode ? 'transparent' : colors.buttonSecondaryBorder }
+                                ]}
+                            >
+                                <Ionicons
+                                    name={mode === 'light' ? 'sunny' : mode === 'dark' ? 'moon' : 'phone-portrait'}
+                                    size={20}
+                                    color={theme === mode ? colors.background : colors.textSecondary}
+                                />
+                            </ScalePressable>
                         ))}
                     </View>
-                </View>
+                </SettingsGroup>
 
-                {/* Backup & Restore */}
-                <View style={styles.section}>
-                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Backup & Restore</Text>
+                {/* Data Management */}
+                <SettingsGroup title="Backup & Restore">
                     <View style={styles.buttonGroup}>
-                        <Button
-                            variant="secondary"
+                        <ScalePressable
                             onPress={handleExport}
-                            loading={isExporting}
-                            icon="download"
-                            style={styles.actionButton}
-                        />
-                        <Button
-                            variant="secondary"
+                            disabled={isExporting}
+                            style={[styles.actionButton, { backgroundColor: colors.buttonSecondary, borderColor: colors.buttonSecondaryBorder }]}
+                        >
+                            {isExporting ? <ActivityIndicator size="small" color={colors.textSecondary} /> : <Ionicons name="download" size={20} color={colors.textSecondary} />}
+                        </ScalePressable>
+                        <ScalePressable
                             onPress={handleImport}
-                            loading={isImporting}
-                            icon="cloud-upload"
-                            style={styles.actionButton}
-                        />
+                            disabled={isImporting}
+                            style={[styles.actionButton, { backgroundColor: colors.buttonSecondary, borderColor: colors.buttonSecondaryBorder }]}
+                        >
+                            {isImporting ? <ActivityIndicator size="small" color={colors.textSecondary} /> : <Ionicons name="cloud-upload" size={20} color={colors.textSecondary} />}
+                        </ScalePressable>
                     </View>
-                </View>
+                </SettingsGroup>
 
                 {/* About */}
-                <View style={styles.section}>
-                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>About</Text>
-                    <View style={styles.row}>
-                        <Text style={[styles.label, { color: colors.textSecondary }]}>Version</Text>
+                <View style={styles.group}>
+                    <Text style={[styles.groupTitle, { color: colors.textSecondary }]}>ABOUT</Text>
+                    <View style={[styles.row, { paddingHorizontal: 4 }]}>
+                        <Text style={[styles.itemLabel, { color: colors.textPrimary }]}>Version</Text>
                         <TouchableOpacity onPress={handleNotificationTitleTap} activeOpacity={0.7}>
-                            <Text style={[styles.value, { color: colors.textPrimary }]}>
+                            <Text style={[styles.itemValue, { color: colors.textTertiary }]}>
                                 {Constants.expoConfig?.version || '1.0.0'}
                             </Text>
                         </TouchableOpacity>
@@ -235,9 +282,14 @@ export default function Settings() {
 
                 {/* Notifications - Easter Egg */}
                 {showNotifications && (
-                    <View style={styles.section}>
-                        <View style={styles.sectionHeader}>
-                            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Notifications</Text>
+                    <SettingsGroup title="Scheduled Notifications">
+                        <View style={styles.notificationsHeaderRow}>
+                            <View style={styles.headerTitleRow}>
+                                <Ionicons name="notifications" size={14} color={colors.accent} />
+                                <Text style={[styles.headerTitle, { color: colors.textSecondary }]}>
+                                    NOTIFICATIONS
+                                </Text>
+                            </View>
                             <View style={styles.headerActions}>
                                 <Button
                                     variant="ghost"
@@ -249,14 +301,6 @@ export default function Settings() {
                                 <Button
                                     variant="ghost"
                                     onPress={handleForceReschedule}
-                                    disabled={isLoadingNotifications}
-                                    loading={isLoadingNotifications}
-                                    icon="calendar"
-                                    size="sm"
-                                />
-                                <Button
-                                    variant="ghost"
-                                    onPress={loadScheduledNotifications}
                                     disabled={isLoadingNotifications}
                                     loading={isLoadingNotifications}
                                     icon="refresh"
@@ -295,10 +339,10 @@ export default function Settings() {
                                 No scheduled notifications
                             </Text>
                         )}
-                    </View>
+                    </SettingsGroup>
                 )}
             </ScrollView>
-        </SafeAreaView>
+        </SafeAreaView >
     );
 }
 
@@ -311,56 +355,70 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         padding: Spacing.layout.screenPadding,
-        paddingBottom: Spacing.xxxl,
+        paddingBottom: 60,
     },
-    section: {
-        marginBottom: Spacing.xxxl,
+    header: {
+        marginBottom: Spacing.xl,
     },
-    sectionTitle: {
-        fontSize: Typography.size.xs,
-        fontWeight: Typography.weight.semibold,
-        marginBottom: Spacing.lg,
-        textTransform: 'uppercase',
-        letterSpacing: 1,
+    headerTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
     },
-    sectionHeader: {
+    headerTitle: {
+        fontSize: 10,
+        fontWeight: '800',
+        letterSpacing: 1.2,
+    },
+    title: {
+        fontSize: 34,
+        fontWeight: '800',
+        letterSpacing: -1,
+    },
+    group: {
+        marginBottom: Spacing.xxl,
+    },
+    groupTitle: {
+        fontSize: 10,
+        fontWeight: '800',
+        marginBottom: Spacing.md,
+        letterSpacing: 1.5,
+        paddingHorizontal: 4,
+    },
+    groupContent: {
+        borderRadius: 20,
+        borderWidth: 1,
+        overflow: 'hidden',
+    },
+    itemContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        borderBottomWidth: 1,
+    },
+    itemIconWrap: {
+        width: 32,
+        height: 32,
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    itemContent: {
+        flex: 1,
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: Spacing.lg,
+        marginRight: 8,
     },
-    refreshButton: {
-        padding: Spacing.xs,
+    itemLabel: {
+        fontSize: 16,
+        fontWeight: '600',
+        letterSpacing: -0.2,
     },
-    headerActions: {
-        flexDirection: 'row',
-        gap: Spacing.md,
-    },
-    themeSelector: {
-        flexDirection: 'row',
-        gap: Spacing.md,
-    },
-    themeOption: {
-        flex: 1,
-        paddingVertical: Spacing.xl,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: Spacing.borderRadius.lg,
-        borderWidth: 1,
-        aspectRatio: 1,
-    },
-    actionButton: {
-        flex: 1,
-        paddingVertical: Spacing.xl,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: Spacing.borderRadius.lg,
-        borderWidth: 1,
-        aspectRatio: 1,
-    },
-    buttonGroup: {
-        flexDirection: 'row',
-        gap: Spacing.md,
+    itemValue: {
+        fontSize: 14,
+        fontWeight: '500',
     },
     row: {
         flexDirection: 'row',
@@ -368,19 +426,50 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: Spacing.sm,
     },
-    label: {
-        fontSize: Typography.size.md,
-        fontWeight: Typography.weight.medium,
-        letterSpacing: 0.2,
+    themeSelector: {
+        flexDirection: 'row',
+        padding: 12,
+        gap: 10,
     },
-    value: {
-        fontSize: Typography.size.md,
-        fontWeight: Typography.weight.semibold,
-        letterSpacing: 0.2,
+    themeOption: {
+        flex: 1,
+        paddingVertical: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 14,
+        borderWidth: 1,
+        aspectRatio: 1,
     },
-    // Notifications
+    actionButton: {
+        flex: 1,
+        paddingVertical: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 14,
+        borderWidth: 1,
+        aspectRatio: 1,
+    },
+    buttonGroup: {
+        flexDirection: 'row',
+        padding: 12,
+        gap: 10,
+    },
+    notificationsHeaderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingTop: 16,
+        paddingBottom: 8,
+    },
+    headerActions: {
+        flexDirection: 'row',
+        gap: 4,
+    },
+    // Notifications styles
     notificationsList: {
         gap: Spacing.md,
+        padding: 16,
     },
     notificationsCount: {
         fontSize: Typography.size.sm,
@@ -390,9 +479,10 @@ const styles = StyleSheet.create({
     },
     notificationItem: {
         padding: Spacing.lg,
-        borderRadius: Spacing.borderRadius.lg,
+        borderRadius: 16,
         borderWidth: 1,
         gap: Spacing.xs,
+        marginBottom: 12,
     },
     notificationTitle: {
         fontSize: Typography.size.md,

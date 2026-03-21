@@ -9,6 +9,7 @@ import {
     TextInput,
     View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { ALL_BIBLE_BOOKS, BibleBook } from '../data/bibleBooks';
 import {
     JournalEntry,
@@ -373,75 +374,90 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         </Animated.View>
     ), [colors, onEntryPress, formatDate, getChapterText, getPreviewText, getAnswerCount]);
 
-    const renderActionCard = useCallback((item: EnhancedActionItem) => (
-        <Animated.View style={styles.bookCardWrapper} entering={FadeIn.duration(400)} layout={LinearTransition}>
-            <View style={[styles.entryCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder, marginBottom: 0 }]}>
-                <View style={[styles.entryHeader, { marginBottom: 8 }]}>
-                    <Text style={[styles.entryDate, { color: colors.textTertiary }]}>{formatDate(item.created_at)}</Text>
-                    <ScalePressable onPress={async () => {
-                        try {
-                            const entry = await getEntryById(item.entry_id!);
-                            if (entry) onEntryPress(entry);
-                        } catch (e) {
-                            console.error(e);
-                        }
-                    }}>
-                        <View style={[styles.refBadge, { backgroundColor: colors.accent + '15' }]}>
-                            <Text style={[styles.entryScripture, { color: colors.accent }]}>
-                                {item.book_name} {item.chapter_start}{item.chapter_end && item.chapter_end !== item.chapter_start ? `-${item.chapter_end}` : ''}
-                            </Text>
-                        </View>
-                    </ScalePressable>
-                </View>
-                <Text style={[styles.entryPreview, { color: colors.textPrimary, fontWeight: '600', marginBottom: item.motivation ? 8 : 0 }]}>
-                    {item.action}
-                </Text>
-                {item.motivation ? (
-                    <View style={{ marginTop: 8, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.border + '50' }}>
-                        <Text style={{ fontSize: 11, fontWeight: '600', letterSpacing: 1, color: colors.textTertiary, marginBottom: 2 }}>MOTIVATION</Text>
-                        <Text style={[styles.entryPreview, { color: colors.textSecondary, fontStyle: 'italic', marginBottom: 0 }]}>
-                            {item.motivation}
-                        </Text>
-                    </View>
-                ) : null}
-            </View>
-        </Animated.View>
-    ), [colors, formatDate, onEntryPress]);
+    const getDynamicCardStyle = (text: string) => {
+        const length = text.length;
+        if (length < 60) {
+            return { fontSize: 18, lineHeight: 28, padding: 24 };
+        } else if (length < 120) {
+            return { fontSize: 16, lineHeight: 24, padding: 20 };
+        } else {
+            return { fontSize: 14, lineHeight: 22, padding: 16 };
+        }
+    };
 
-    const renderTopicCard = useCallback((item: JournalEntry) => (
-        <Animated.View style={styles.bookCardWrapper} entering={FadeIn.duration(400)} layout={LinearTransition}>
-            <View style={[styles.entryCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder, marginBottom: 0 }]}>
-                <View style={[styles.entryHeader, { marginBottom: 8 }]}>
-                    <Text style={[styles.entryDate, { color: colors.textTertiary }]}>{formatDate(item.created_at)}</Text>
-                    <ScalePressable onPress={() => onEntryPress(item)}>
-                        <View style={[styles.refBadge, { backgroundColor: colors.accentSecondary + '15' }]}>
-                            <Text style={[styles.entryScripture, { color: colors.accentSecondary }]}>
-                                {item.book_name} {item.chapter_start}{item.chapter_end && item.chapter_end !== item.chapter_start ? `-${item.chapter_end}` : ''}
-                            </Text>
-                        </View>
-                    </ScalePressable>
-                </View>
-                <Text style={[styles.entryPreview, { color: colors.textPrimary, fontWeight: '600', marginBottom: item.study_further_reminder ? 8 : 0 }]}>
-                    {item.study_further}
-                </Text>
-                {item.study_further_reminder && new Date(item.study_further_reminder) > new Date() ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, backgroundColor: colors.backgroundSubtle, borderColor: colors.border, alignSelf: 'flex-start', marginTop: 8, gap: 4 }}>
-                        <Text style={{ fontSize: 13, fontWeight: '500', color: colors.textSecondary }}>
-                            Reminder: {new Date(item.study_further_reminder).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
-                        </Text>
-                    </View>
-                ) : null}
-            </View>
-        </Animated.View>
-    ), [colors, formatDate, onEntryPress]);
-
-    const renderDateGroupHeader = useCallback((title: string) => {
+    const renderActionCard = useCallback((item: EnhancedActionItem) => {
+        const dynamic = getDynamicCardStyle(item.action);
         return (
-            <View style={styles.dateGroup}>
-                <Text style={[styles.dateGroupTitle, { color: colors.textPrimary }]}>{title}</Text>
-            </View>
+            <Animated.View style={styles.bookCardWrapper} entering={FadeIn.duration(400)} layout={LinearTransition}>
+                <View style={[styles.entryCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder, marginBottom: 0, padding: dynamic.padding }]}>
+                    <View style={[styles.entryHeader, { marginBottom: 8 }]}>
+                        <Text style={[styles.entryDate, { color: colors.textTertiary }]}>{formatDate(item.created_at)}</Text>
+                        <ScalePressable onPress={async () => {
+                            try {
+                                const entry = await getEntryById(item.entry_id!);
+                                if (entry) onEntryPress(entry);
+                            } catch (e) {
+                                console.error(e);
+                            }
+                        }}>
+                            <View style={[styles.refBadge, { backgroundColor: colors.accent + '15' }]}>
+                                <Text style={[styles.entryScripture, { color: colors.accent }]}>
+                                    {item.book_name} {item.chapter_start}{item.chapter_end && item.chapter_end !== item.chapter_start ? `-${item.chapter_end}` : ''}
+                                </Text>
+                            </View>
+                        </ScalePressable>
+                    </View>
+                    <Text style={[styles.entryPreview, { color: colors.textPrimary, fontWeight: '600', fontSize: dynamic.fontSize, lineHeight: dynamic.lineHeight, marginBottom: item.motivation ? 8 : 0 }]}>
+                        {item.action}
+                    </Text>
+                    {item.motivation ? (
+                        <View style={{ marginTop: 8, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.border + '30' }}>
+                            <Text style={[styles.entryPreview, { color: colors.textSecondary, fontStyle: 'italic', marginBottom: 0, fontSize: Math.max(13, dynamic.fontSize - 2) }]}>
+                                {item.motivation}
+                            </Text>
+                        </View>
+                    ) : null}
+                </View>
+            </Animated.View>
         );
-    }, [colors]);
+    }, [colors, formatDate, onEntryPress]);
+
+    const renderTopicCard = useCallback((item: JournalEntry) => {
+        const dynamic = getDynamicCardStyle(item.study_further || '');
+        return (
+            <Animated.View style={styles.bookCardWrapper} entering={FadeIn.duration(400)} layout={LinearTransition}>
+                <View style={[styles.entryCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder, marginBottom: 0, padding: dynamic.padding }]}>
+                    <View style={[styles.entryHeader, { marginBottom: 8 }]}>
+                        <Text style={[styles.entryDate, { color: colors.textTertiary }]}>{formatDate(item.created_at)}</Text>
+                        <ScalePressable onPress={() => onEntryPress(item)}>
+                            <View style={[styles.refBadge, { backgroundColor: colors.accentSecondary + '15' }]}>
+                                <Text style={[styles.entryScripture, { color: colors.accentSecondary }]}>
+                                    {item.book_name} {item.chapter_start}{item.chapter_end && item.chapter_end !== item.chapter_start ? `-${item.chapter_end}` : ''}
+                                </Text>
+                            </View>
+                        </ScalePressable>
+                    </View>
+                    <Text style={[styles.entryPreview, { color: colors.textPrimary, fontWeight: '600', fontSize: dynamic.fontSize, lineHeight: dynamic.lineHeight, marginBottom: item.study_further_reminder ? 8 : 0 }]}>
+                        {item.study_further}
+                    </Text>
+                    {item.study_further_reminder && new Date(item.study_further_reminder) > new Date() ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, backgroundColor: colors.backgroundSubtle, borderColor: colors.border, alignSelf: 'flex-start', marginTop: 8, gap: 4 }}>
+                            <Ionicons name="notifications-outline" size={12} color={colors.textSecondary} />
+                            <Text style={{ fontSize: 11, fontWeight: '500', color: colors.textSecondary }}>
+                                {new Date(item.study_further_reminder).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                            </Text>
+                        </View>
+                    ) : null}
+                </View>
+            </Animated.View>
+        );
+    }, [colors, formatDate, onEntryPress]);
+
+    const renderDateGroupHeader = useCallback((title: string) => (
+        <View style={styles.dateGroup}>
+            <Text style={[styles.dateGroupTitle, { color: colors.textPrimary }]}>{title}</Text>
+        </View>
+    ), [colors]);
 
     // Convert grouped entries to flat list format
     const getFlatListData = useMemo(() => {
@@ -580,52 +596,39 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
     }, [colors, renderDateGroupHeader, renderEntryCard, renderActionCard, renderTopicCard, navigateToBookDetail]);
 
     const renderEmptyState = useCallback(() => {
+        let iconName: any = "journal-outline";
+        let title = "No entries yet";
+        let subtext = "Start your first reflection to see it here";
+
         if (viewMode === 'books') {
-            return (
-                <View style={styles.emptyState}>
-                    <Text style={[styles.emptyStateText, { color: colors.textPrimary }]}>No books studied yet</Text>
-                    <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>
-                        Create your first reflection to see books here
-                    </Text>
-                </View>
-            );
-        }
-
-        if (viewMode === 'actions') {
-            return (
-                <View style={styles.emptyState}>
-                    <Text style={[styles.emptyStateText, { color: colors.textPrimary }]}>No actions recorded</Text>
-                    <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>
-                        Write actions in your reflections to see them here
-                    </Text>
-                </View>
-            );
-        }
-
-        if (viewMode === 'topics') {
-            return (
-                <View style={styles.emptyState}>
-                    <Text style={[styles.emptyStateText, { color: colors.textPrimary }]}>No study topics</Text>
-                    <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>
-                        Add topics to study further in your reflections
-                    </Text>
-                </View>
-            );
+            iconName = "library-outline";
+            title = "No books studied yet";
+            subtext = "Create your first reflection to see books here";
+        } else if (viewMode === 'actions') {
+            iconName = "flash-outline";
+            title = "No actions recorded";
+            subtext = "Write actions in your reflections to see them here";
+        } else if (viewMode === 'topics') {
+            iconName = "bookmark-outline";
+            title = "No study topics";
+            subtext = "Add topics to study further in your reflections";
+        } else if (debouncedSearchQuery) {
+            iconName = "search-outline";
+            title = "No matches found";
+            subtext = "Try adjusting your search terms";
+        } else if (viewMode === 'bookDetail') {
+            iconName = "book-outline";
+            title = "Empty book";
+            subtext = "Create your first entry for this book";
         }
 
         return (
             <View style={styles.emptyState}>
-                <Text style={[styles.emptyStateText, { color: colors.text }]}>
-                    {debouncedSearchQuery ? 'No entries match your search' : viewMode === 'bookDetail' ? 'No entries for this book' : 'No entries yet'}
-                </Text>
-                <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>
-                    {debouncedSearchQuery
-                        ? 'Try adjusting your search terms'
-                        : viewMode === 'bookDetail'
-                            ? 'Create your first entry for this book'
-                            : 'Start your first reflection to see it here'
-                    }
-                </Text>
+                <View style={[styles.emptyIconContainer, { backgroundColor: colors.backgroundSubtle }]}>
+                    <Ionicons name={iconName} size={32} color={colors.textTertiary} />
+                </View>
+                <Text style={[styles.emptyStateText, { color: colors.textPrimary }]}>{title}</Text>
+                <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>{subtext}</Text>
             </View>
         );
     }, [viewMode, debouncedSearchQuery, colors]);
@@ -633,7 +636,10 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
             <View style={[styles.header, { backgroundColor: colors.backgroundElevated, borderBottomColor: colors.border }]}>
-                <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Past Entries</Text>
+                <View style={styles.headerTitleRow}>
+                    <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Journal</Text>
+                    <Ionicons name="journal-outline" size={20} color={colors.textTertiary} />
+                </View>
 
                 {/* Tab Navigation */}
                 <View style={styles.tabContainer}>
@@ -657,19 +663,19 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                             ]}
                         />
                         <ScalePressable style={styles.tab} onPress={navigateToRecent}>
-                            <Text style={[styles.tabText, { color: colors.textSecondary }, viewMode === 'recent' && { color: colors.textPrimary, fontWeight: '500' }]}>Recent</Text>
+                            <Ionicons name="time-outline" size={20} color={viewMode === 'recent' ? colors.accent : colors.textTertiary} />
                         </ScalePressable>
 
                         <ScalePressable style={styles.tab} onPress={navigateToBooks}>
-                            <Text style={[styles.tabText, { color: colors.textSecondary }, (viewMode === 'books' || viewMode === 'bookDetail') && { color: colors.textPrimary, fontWeight: '500' }]}>Books</Text>
+                            <Ionicons name="library-outline" size={20} color={(viewMode === 'books' || viewMode === 'bookDetail') ? colors.accent : colors.textTertiary} />
                         </ScalePressable>
 
                         <ScalePressable style={styles.tab} onPress={navigateToActions}>
-                            <Text style={[styles.tabText, { color: colors.textSecondary }, viewMode === 'actions' && { color: colors.textPrimary, fontWeight: '500' }]}>Actions</Text>
+                            <Ionicons name="flash-outline" size={20} color={viewMode === 'actions' ? colors.accent : colors.textTertiary} />
                         </ScalePressable>
 
                         <ScalePressable style={styles.tab} onPress={navigateToTopics}>
-                            <Text style={[styles.tabText, { color: colors.textSecondary }, viewMode === 'topics' && { color: colors.textPrimary, fontWeight: '500' }]}>Topics</Text>
+                            <Ionicons name="bookmark-outline" size={20} color={viewMode === 'topics' ? colors.accent : colors.textTertiary} />
                         </ScalePressable>
                     </View>
                 </View>
@@ -736,10 +742,15 @@ const styles = StyleSheet.create({
         borderBottomWidth: 0.5,
     },
     headerTitle: {
-        fontSize: 24, // Slightly larger
-        fontWeight: '600',
+        fontSize: 28,
+        fontWeight: '800',
+        letterSpacing: -0.5,
+    },
+    headerTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
         marginBottom: 20,
-        letterSpacing: 0.5,
     },
     tabContainer: {
         marginBottom: 20,
@@ -897,6 +908,7 @@ const styles = StyleSheet.create({
     bookCard: {
         borderRadius: 8, // Softened
         padding: 20,
+        marginHorizontal: 20,
         marginBottom: 0, // Handled by gap
         borderWidth: 1,
         flexDirection: 'row',
@@ -936,7 +948,15 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 48,
-        paddingVertical: 80,
+        paddingVertical: 100,
+    },
+    emptyIconContainer: {
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 24,
     },
     emptyStateText: {
         fontSize: 18,

@@ -10,7 +10,7 @@ import { READING_PLAN_DATA, ReadingItem } from '@/src/data/readingPlanData';
 import { getReadingProgress, toggleReadingItem, checkEntryCoversChapters } from '@/src/data/database';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { ScalePressable } from '@/src/components/ScalePressable';
-import { Alert } from 'react-native';
+import Animated, { LinearTransition } from 'react-native-reanimated';
 
 const SectionHeader = ({
     title,
@@ -27,27 +27,39 @@ const SectionHeader = ({
 }) => {
     const { colors } = useTheme();
     const isDone = completedCount === totalCount && totalCount > 0;
+    const progress = totalCount > 0 ? (completedCount / totalCount) : 0;
 
     return (
         <TouchableOpacity
-            activeOpacity={0.7}
+            activeOpacity={0.8}
             onPress={onToggle}
             style={[
                 styles.sectionHeader,
-                { borderBottomColor: isDone ? colors.textTertiary : colors.accent, opacity: isDone ? 0.6 : 1 }
+                { backgroundColor: colors.backgroundSubtle, borderColor: colors.border }
             ]}
         >
             <View style={styles.sectionTitleContainer}>
                 <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>{title.toUpperCase()}</Text>
-                <Text style={[styles.sectionProgress, { color: colors.textSecondary }]}>
-                    {completedCount}/{totalCount}
-                </Text>
+                <View style={[styles.sectionBadge, { backgroundColor: isDone ? colors.accent + '20' : colors.border }]}>
+                    <Text style={[styles.sectionProgress, { color: isDone ? colors.accent : colors.textSecondary }]}>
+                        {completedCount}/{totalCount}
+                    </Text>
+                </View>
             </View>
-            <Ionicons
-                name={isCollapsed ? "chevron-forward" : "chevron-down"}
-                size={16}
-                color={colors.textSecondary}
-            />
+            <View style={styles.sectionHeaderRight}>
+                {progress > 0 && !isDone && (
+                    <View style={[styles.miniProgressTrack, { backgroundColor: colors.border }]}>
+                        <View style={[styles.miniProgressFill, { width: `${progress * 100}%`, backgroundColor: colors.accent }]} />
+                    </View>
+                )}
+                {isDone && <Ionicons name="checkmark-circle" size={16} color={colors.accent} />}
+                <Ionicons
+                    name={isCollapsed ? "chevron-forward" : "chevron-down"}
+                    size={16}
+                    color={colors.textTertiary}
+                    style={{ marginLeft: 8 }}
+                />
+            </View>
         </TouchableOpacity>
     );
 };
@@ -69,8 +81,11 @@ const ReadingCard = ({
                 styles.card,
                 {
                     backgroundColor: colors.cardBackground,
-                    borderColor: isCompleted ? colors.accent : colors.cardBorder,
-                    opacity: isCompleted ? 0.7 : 1
+                    borderColor: isCompleted ? colors.accent + '40' : colors.cardBorder,
+                },
+                item.isKey && !isCompleted && {
+                    borderColor: colors.accentSecondary + '60',
+                    backgroundColor: colors.accentSecondaryLight + '05',
                 }
             ]}
             onPress={() => onToggle(item.id, !isCompleted)}
@@ -79,26 +94,38 @@ const ReadingCard = ({
                 <View style={styles.bookInfo}>
                     <View style={styles.bookHeader}>
                         {item.isKey && (
-                            <Ionicons
-                                name="sparkles"
-                                size={14}
-                                color={colors.accent}
-                                style={{ marginRight: 4 }}
-                            />
+                            <View style={[styles.keyBadge, { backgroundColor: colors.accentSecondary + '15' }]}>
+                                <Ionicons
+                                    name="sparkles"
+                                    size={10}
+                                    color={colors.accentSecondary}
+                                />
+                            </View>
                         )}
-                        <Text style={[styles.bookName, { color: colors.textPrimary }]}>{item.book}</Text>
+                        <Text style={[
+                            styles.bookName,
+                            { color: isCompleted ? colors.textTertiary : colors.textPrimary },
+                            isCompleted && { textDecorationLine: 'line-through' }
+                        ]}>
+                            {item.book}
+                        </Text>
                     </View>
-                    <Text style={[styles.chapters, { color: colors.textSecondary }]}>{item.chapters || "Full Book"}</Text>
+                    <Text style={[
+                        styles.chapters,
+                        { color: isCompleted ? colors.textMuted : colors.textSecondary }
+                    ]}>
+                        {item.chapters || "Full Book"}
+                    </Text>
                 </View>
 
                 <View style={[
                     styles.checkbox,
                     {
                         backgroundColor: isCompleted ? colors.accent : 'transparent',
-                        borderColor: isCompleted ? colors.accent : colors.textTertiary
+                        borderColor: isCompleted ? colors.accent : colors.border,
                     }
                 ]}>
-                    {isCompleted && <Ionicons name="checkmark" size={16} color={colors.background} />}
+                    {isCompleted && <Ionicons name="checkmark" size={14} color={colors.background} />}
                 </View>
             </View>
         </ScalePressable>
@@ -229,7 +256,7 @@ export default function PlanScreen() {
         const sectionStats = sectionData[item.section] || { completed: 0, total: 0 };
 
         return (
-            <View>
+            <Animated.View layout={LinearTransition}>
                 {showHeader && (
                     <SectionHeader
                         title={item.section}
@@ -246,19 +273,21 @@ export default function PlanScreen() {
                         onToggle={handleToggle}
                     />
                 )}
-            </View>
+            </Animated.View>
         );
     };
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
             <View style={styles.header}>
-                <Text style={[styles.title, { color: colors.textPrimary }]}>Bible Reading Plan</Text>
-                <View style={styles.progressContainer}>
-                    <View style={[styles.progressBarBase, { backgroundColor: colors.cardBackground }]}>
+                <View style={styles.progressHeaderRow}>
+                    <Text style={[styles.title, { color: colors.textPrimary }]}>Bible Plan</Text>
+                    <Text style={[styles.progressPercentage, { color: colors.accent }]}>{parseFloat(progress.toFixed(2))}%</Text>
+                </View>
+                <View style={styles.progressCard}>
+                    <View style={[styles.progressBarBase, { backgroundColor: colors.border }]}>
                         <View style={[styles.progressBarFill, { width: `${progress}%`, backgroundColor: colors.accent }]} />
                     </View>
-                    <Text style={[styles.progressText, { color: colors.textSecondary }]}>{progress}% Complete</Text>
                 </View>
             </View>
 
@@ -279,67 +308,95 @@ const styles = StyleSheet.create({
     },
     header: {
         padding: Spacing.layout.screenPadding,
-        paddingBottom: Spacing.md,
+        paddingBottom: Spacing.sm,
     },
     title: {
-        fontSize: Typography.size.xxl,
-        fontWeight: Typography.weight.bold,
-        marginBottom: Spacing.md,
+        fontSize: 32,
+        fontWeight: '800',
+        letterSpacing: -1,
+        marginBottom: Spacing.lg,
     },
-    progressContainer: {
+    progressCard: {
+        gap: Spacing.sm,
+    },
+    progressInfo: {
         flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.md,
+        justifyContent: 'space-between',
+        alignItems: 'baseline',
+    },
+    progressLabel: {
+        fontSize: 10,
+        fontWeight: '800',
+        letterSpacing: 1.2,
     },
     progressBarBase: {
-        flex: 1,
-        height: 8,
-        borderRadius: 4,
+        height: 6,
+        borderRadius: 3,
         overflow: 'hidden',
     },
     progressBarFill: {
         height: '100%',
-        borderRadius: 4,
+        borderRadius: 3,
     },
     progressText: {
-        fontSize: Typography.size.sm,
-        fontWeight: Typography.weight.medium,
-        minWidth: 80,
+        fontSize: 16,
+        fontWeight: '800',
+        letterSpacing: -0.5,
     },
     listContent: {
-        padding: Spacing.layout.screenPadding,
-        paddingTop: 0,
-        paddingBottom: 100,
+        paddingHorizontal: Spacing.layout.screenPadding,
+        paddingBottom: 120,
     },
     sectionHeader: {
-        marginTop: Spacing.xl,
-        marginBottom: Spacing.md,
-        borderBottomWidth: 2,
-        paddingBottom: 4,
+        marginTop: Spacing.lg,
+        marginBottom: Spacing.sm,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        borderRadius: 14,
+        borderWidth: 1,
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
     },
+    sectionHeaderRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
     sectionTitleContainer: {
         flexDirection: 'row',
-        alignItems: 'baseline',
+        alignItems: 'center',
         gap: Spacing.sm,
+        flex: 1,
     },
     sectionTitle: {
-        fontSize: Typography.size.sm,
-        fontWeight: Typography.weight.bold,
-        letterSpacing: 1.5,
+        fontSize: 12,
+        fontWeight: '800',
+        letterSpacing: 1,
+    },
+    sectionBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 8,
     },
     sectionProgress: {
-        fontSize: Typography.size.xs,
-        fontWeight: Typography.weight.medium,
-        opacity: 0.7,
+        fontSize: 10,
+        fontWeight: '800',
+    },
+    miniProgressTrack: {
+        width: 40,
+        height: 4,
+        borderRadius: 2,
+        overflow: 'hidden',
+    },
+    miniProgressFill: {
+        height: '100%',
+        borderRadius: 2,
     },
     card: {
-        borderRadius: Spacing.borderRadius.md,
+        borderRadius: 16,
         borderWidth: 1,
-        marginBottom: Spacing.sm,
-        padding: Spacing.layout.cardPadding,
+        marginBottom: Spacing.xs,
+        padding: 16,
     },
     cardContent: {
         flexDirection: 'row',
@@ -348,25 +405,47 @@ const styles = StyleSheet.create({
     },
     bookInfo: {
         flex: 1,
+        gap: 2,
     },
     bookHeader: {
         flexDirection: 'row',
         alignItems: 'center',
+        gap: 8,
     },
     bookName: {
-        fontSize: Typography.size.lg,
-        fontWeight: Typography.weight.semibold,
+        fontSize: 17,
+        fontWeight: '700',
+        letterSpacing: -0.3,
     },
     chapters: {
-        fontSize: Typography.size.md,
-        marginTop: 2,
+        fontSize: 14,
+        letterSpacing: 0.1,
     },
     checkbox: {
-        width: 24,
-        height: 24,
-        borderRadius: 6,
-        borderWidth: 2,
+        width: 26,
+        height: 26,
+        borderRadius: 8,
+        borderWidth: 1.5,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    keyBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 3,
+        paddingHorizontal: 6,
+        paddingVertical: 5,
+        borderRadius: 8,
+    },
+    progressHeaderRow: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
+        justifyContent: 'space-between',
+        marginBottom: Spacing.sm,
+    },
+    progressPercentage: {
+        fontSize: 24,
+        fontWeight: '800',
+        letterSpacing: -1,
     },
 });

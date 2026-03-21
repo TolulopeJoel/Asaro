@@ -35,6 +35,15 @@ export const StudyReminders: React.FC<StudyRemindersProps> = React.memo(({ onEnt
         onEntryPress(item);
     };
 
+    const getDynamicStyle = (text: string) => {
+        const length = text.length;
+        if (length < 60) return { fontSize: 22, lineHeight: 28, padding: 24 };
+        if (length < 120) return { fontSize: 18, lineHeight: 24, padding: 20 };
+        return { fontSize: 15, lineHeight: 20, padding: 16 };
+    };
+
+    const dynamic = getDynamicStyle(item.study_further || '');
+
     return (
         <ScalePressable onPress={handlePress}>
             <View
@@ -42,18 +51,19 @@ export const StudyReminders: React.FC<StudyRemindersProps> = React.memo(({ onEnt
                     styles.card,
                     {
                         backgroundColor: colors.cardBackground,
-                        borderColor: colors.cardBorder
+                        borderColor: colors.cardBorder,
+                        padding: dynamic.padding
                     }
                 ]}
             >
                 <View style={styles.header}>
-                    <View style={styles.titleRow}>
-                        <Ionicons name="bookmark-outline" size={14} color={colors.accentSecondary} />
+                    <View style={styles.headerTitleRow}>
+                        <Ionicons name="bookmark" size={14} color={colors.accentSecondary} />
                         <Text style={[styles.headerTitle, { color: colors.textSecondary }]}>
                             TOPIC TO STUDY FURTHER
                         </Text>
                     </View>
-                    <Text style={[styles.dateText, { color: colors.textTertiary, marginLeft: 'auto' }]}>
+                    <Text style={[styles.dateText, { color: colors.textTertiary }]}>
                         {(() => {
                             const date = new Date(item.created_at);
                             const now = new Date();
@@ -74,15 +84,20 @@ export const StudyReminders: React.FC<StudyRemindersProps> = React.memo(({ onEnt
                     </View>
                 </View>
 
-                <Text style={[styles.topicText, { color: colors.textPrimary }]}>
+                <Text style={[styles.topicText, { color: colors.textPrimary, fontSize: dynamic.fontSize, lineHeight: dynamic.lineHeight }]}>
                     {item.study_further}
                 </Text>
 
                 {item.study_further_reminder && new Date(item.study_further_reminder) > new Date() ? (
-                    <View style={[styles.reminderContainer, { backgroundColor: colors.backgroundSubtle, borderColor: colors.border }]}>
-                        <Ionicons name="notifications-outline" size={14} color={colors.textSecondary} />
-                        <Text style={[styles.reminderText, { color: colors.textSecondary }]}>
-                            Reminder: {new Date(item.study_further_reminder).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                    <View style={[styles.reminderContainer, { backgroundColor: colors.backgroundSubtle + '40', borderColor: colors.border + '30' }]}>
+                        <Ionicons name="notifications-outline" size={14} color={colors.textTertiary} />
+                        <Text style={[styles.reminderText, { color: colors.textSecondary, opacity: 0.8 }]}>
+                            {new Date(item.study_further_reminder).toLocaleString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: 'numeric',
+                                minute: '2-digit'
+                            })}
                         </Text>
                     </View>
                 ) : null}
@@ -104,21 +119,25 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 8,
+        justifyContent: 'space-between',
+        marginBottom: 12,
     },
-    titleRow: {
+    headerTitleRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
+        gap: 8,
     },
     headerTitle: {
-        fontSize: Typography.size.xs,
-        fontWeight: Typography.weight.bold,
-        letterSpacing: Typography.letterSpacing.wider,
+        fontSize: 10,
+        fontWeight: '600',
+        letterSpacing: 1.5,
+        textTransform: 'uppercase',
+        opacity: 0.7,
     },
     dateText: {
-        fontSize: Typography.size.xs,
-        fontWeight: Typography.weight.medium,
+        fontSize: 10,
+        fontWeight: '600',
+        opacity: 0.8,
     },
     cardHeader: {
         flexDirection: 'row',
@@ -137,10 +156,11 @@ const styles = StyleSheet.create({
         letterSpacing: 0.5,
     },
     topicText: {
-        fontSize: Typography.size.lg,
-        fontWeight: Typography.weight.semibold,
-        lineHeight: Typography.lineHeight.lg,
-        letterSpacing: 0.2,
+        fontSize: 22,
+        fontWeight: '800',
+        lineHeight: 28,
+        letterSpacing: -0.3,
+        marginTop: 4,
     },
     reminderContainer: {
         flexDirection: 'row',

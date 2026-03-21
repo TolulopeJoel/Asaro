@@ -25,9 +25,10 @@ type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 interface StatCardProps {
     icon: IoniconName;
     value: number;
+    label: string;
 }
 
-const StatCard = React.memo(({ icon, value }: StatCardProps) => {
+const StatCard = React.memo(({ icon, value, label }: StatCardProps) => {
     const { colors } = useTheme();
     return (
         <View
@@ -39,20 +40,24 @@ const StatCard = React.memo(({ icon, value }: StatCardProps) => {
                 },
             ]}
         >
-            <Ionicons
-                name={icon}
-                size={Typography.size.xl}
-                color={colors.accent}
-            />
+            <View style={[styles.statIconContainer, { backgroundColor: colors.accent + '10' }]}>
+                <Ionicons
+                    name={icon}
+                    size={20}
+                    color={colors.accent}
+                />
+            </View>
 
-            <Text
-                style={[
-                    styles.statValue,
-                    { color: colors.textPrimary },
-                ]}
-            >
-                {value}
-            </Text>
+            <View style={styles.statInfo}>
+                <Text
+                    style={[
+                        styles.statValue,
+                        { color: colors.textPrimary },
+                    ]}
+                >
+                    {value}
+                </Text>
+            </View>
         </View>
     );
 });
@@ -89,8 +94,8 @@ const QuickStats = React.memo(() => {
 
     return (
         <View style={styles.statsContainer}>
-            <StatCard icon="flame-outline" value={totalEntries} />
-            <StatCard icon="rainy-outline" value={missedDays} />
+            <StatCard icon="flame" value={totalEntries} label="Entries" />
+            <StatCard icon="rainy" value={missedDays} label="Missed" />
         </View>
     );
 });
@@ -185,20 +190,26 @@ const NextReading = React.memo(() => {
                 <View style={[styles.nextReadingCard, { backgroundColor: colors.accent }]}>
                     <View style={styles.nextReadingHeader}>
                         <View style={styles.nextReadingLabelContainer}>
-                            <Ionicons name="book" size={12} color={colors.background} />
-                            <Text style={[styles.nextReadingLabel, { color: colors.background }]}>NEXT ENTRY</Text>
+                            <View style={[styles.nextReadingIconWrap, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                                <Ionicons name="book" size={12} color={colors.background} />
+                            </View>
+                            <Text style={[styles.nextReadingLabel, { color: colors.background }]}>NEXT READING</Text>
                         </View>
-                        <Text style={[styles.nextReadingSection, { color: colors.background, opacity: 0.8 }]}>
-                            {nextItem.section}
-                        </Text>
+                        <View style={[styles.nextReadingSectionPill, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
+                            <Text style={[styles.nextReadingSection, { color: colors.background }]}>
+                                {nextItem.section}
+                            </Text>
+                        </View>
                     </View>
 
                     <View style={styles.nextReadingContent}>
-                        <Text style={[styles.nextReadingText, { color: colors.background }]}>
-                            {nextItem.book} {nextItem.chapters}
-                        </Text>
-                        <View style={[styles.nextReadingGo, { backgroundColor: colors.background }]}>
-                            <Ionicons name="arrow-forward" size={16} color={colors.accent} />
+                        <View style={{ flex: 1 }}>
+                            <Text style={[styles.nextReadingText, { color: colors.background }]}>
+                                {nextItem.book} {nextItem.chapters}
+                            </Text>
+                        </View>
+                        <View style={[styles.nextReadingGo, { backgroundColor: colors.background, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 }]}>
+                            <Ionicons name="arrow-forward" size={18} color={colors.accent} />
                         </View>
                     </View>
                 </View>
@@ -362,17 +373,33 @@ const styles = StyleSheet.create({
     statCard: {
         flex: 1,
         borderRadius: Spacing.borderRadius.md,
-        paddingVertical: Spacing.layout.cardPadding,
-        paddingHorizontal: Spacing.sm,
+        padding: Spacing.md,
+        flexDirection: 'row',
         alignItems: "center",
-        justifyContent: "center",
-        gap: Spacing.sm,
+        gap: Spacing.md,
         borderWidth: 1,
     },
+    statIconContainer: {
+        width: 38,
+        height: 38,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    statInfo: {
+        flex: 1,
+        gap: 0,
+    },
     statValue: {
-        fontSize: Typography.size.xxl,
+        fontSize: 20,
         fontWeight: Typography.weight.bold,
-        letterSpacing: Typography.letterSpacing.wide,
+        letterSpacing: -0.5,
+    },
+    statLabel: {
+        fontSize: 9,
+        fontWeight: Typography.weight.bold,
+        letterSpacing: 1,
+        opacity: 0.8,
     },
 
     /* Update card */
@@ -476,9 +503,14 @@ const styles = StyleSheet.create({
     },
     /* Next Reading */
     nextReadingCard: {
-        borderRadius: Spacing.borderRadius.md,
-        padding: Spacing.layout.cardPadding,
-        gap: Spacing.sm,
+        borderRadius: 20,
+        padding: 20,
+        gap: Spacing.md,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 5,
     },
     nextReadingHeader: {
         flexDirection: 'row',
@@ -488,32 +520,45 @@ const styles = StyleSheet.create({
     nextReadingLabelContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
+        gap: 8,
+    },
+    nextReadingIconWrap: {
+        width: 24,
+        height: 24,
+        borderRadius: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     nextReadingLabel: {
-        fontSize: Typography.size.xs,
-        fontWeight: Typography.weight.bold,
-        letterSpacing: 1,
+        fontSize: 10,
+        fontWeight: '800',
+        letterSpacing: 1.2,
+    },
+    nextReadingSectionPill: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: Spacing.borderRadius.round,
     },
     nextReadingSection: {
-        fontSize: Typography.size.xs,
-        fontWeight: Typography.weight.medium,
+        fontSize: 10,
+        fontWeight: '700',
+        letterSpacing: 0.5,
     },
     nextReadingContent: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginTop: 4,
+        marginTop: 2,
     },
     nextReadingText: {
-        fontSize: Typography.size.xl,
-        fontWeight: Typography.weight.bold,
-        letterSpacing: 0.5,
+        fontSize: 28,
+        fontWeight: '800',
+        letterSpacing: -0.5,
     },
     nextReadingGo: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
+        width: 44,
+        height: 44,
+        borderRadius: 14,
         justifyContent: 'center',
         alignItems: 'center',
     },

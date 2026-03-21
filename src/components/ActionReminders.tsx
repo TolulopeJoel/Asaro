@@ -42,6 +42,15 @@ export const ActionReminders: React.FC<ActionRemindersProps> = React.memo(({ onE
         }
     };
 
+    const getDynamicStyle = (text: string) => {
+        const length = text.length;
+        if (length < 60) return { fontSize: 22, lineHeight: 28, padding: 24 };
+        if (length < 120) return { fontSize: 18, lineHeight: 24, padding: 20 };
+        return { fontSize: 15, lineHeight: 20, padding: 16 };
+    };
+
+    const dynamic = getDynamicStyle(item.action);
+
     return (
         <ScalePressable onPress={handlePress}>
             <View
@@ -49,15 +58,19 @@ export const ActionReminders: React.FC<ActionRemindersProps> = React.memo(({ onE
                     styles.card,
                     {
                         backgroundColor: colors.cardBackground,
-                        borderColor: colors.cardBorder
+                        borderColor: colors.cardBorder,
+                        padding: dynamic.padding
                     }
                 ]}
             >
                 <View style={styles.header}>
-                    <Text style={[styles.headerTitle, { color: colors.textSecondary }]}>
-                        WHAT YOU SAID YOU'D DO
-                    </Text>
-                    <Text style={[styles.dateText, { color: colors.textTertiary, marginLeft: 'auto' }]}>
+                    <View style={styles.headerTitleRow}>
+                        <Ionicons name="flash" size={14} color={colors.accent} />
+                        <Text style={[styles.headerTitle, { color: colors.textSecondary }]}>
+                            WHAT YOU SAID YOU'D DO
+                        </Text>
+                    </View>
+                    <Text style={[styles.dateText, { color: colors.textTertiary }]}>
                         {(() => {
                             const date = new Date(item.created_at);
                             const now = new Date();
@@ -78,16 +91,13 @@ export const ActionReminders: React.FC<ActionRemindersProps> = React.memo(({ onE
                     </View>
                 </View>
 
-                <Text style={[styles.actionText, { color: colors.textPrimary }]}>
+                <Text style={[styles.actionText, { color: colors.textPrimary, fontSize: dynamic.fontSize, lineHeight: dynamic.lineHeight }]}>
                     {item.action}
                 </Text>
 
                 {item.motivation ? (
-                    <View style={[styles.motivationContainer, { borderTopColor: colors.border + '50' }]}>
-                        <Text style={[styles.motivationLabel, { color: colors.textTertiary }]}>
-                            MOTIVATION
-                        </Text>
-                        <Text style={[styles.motivationText, { color: colors.textSecondary }]}>
+                    <View style={[styles.motivationContainer, { borderTopColor: colors.border + '30' }]}>
+                        <Text style={[styles.motivationText, { color: colors.textSecondary, fontSize: Math.max(13, dynamic.fontSize - 3) }]}>
                             {item.motivation}
                         </Text>
                     </View>
@@ -111,16 +121,25 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 8,
+        justifyContent: 'space-between',
+        marginBottom: 12,
+    },
+    headerTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
     },
     headerTitle: {
-        fontSize: Typography.size.xs,
-        fontWeight: Typography.weight.bold,
-        letterSpacing: Typography.letterSpacing.wider,
+        fontSize: 10,
+        fontWeight: '600',
+        letterSpacing: 1.5,
+        textTransform: 'uppercase',
+        opacity: 0.7,
     },
     dateText: {
-        fontSize: Typography.size.xs,
-        fontWeight: Typography.weight.medium,
+        fontSize: 10,
+        fontWeight: '600',
+        opacity: 0.8,
     },
     cardHeader: {
         flexDirection: 'row',
@@ -139,21 +158,17 @@ const styles = StyleSheet.create({
         letterSpacing: 0.5,
     },
     actionText: {
-        fontSize: Typography.size.lg,
-        fontWeight: Typography.weight.semibold,
-        lineHeight: Typography.lineHeight.lg,
-        letterSpacing: 0.2,
+        fontSize: 22,
+        fontWeight: '800',
+        lineHeight: 28,
+        letterSpacing: -0.3,
+        marginTop: 4,
     },
     motivationContainer: {
         marginTop: Spacing.xs,
         paddingTop: Spacing.sm,
         borderTopWidth: 1,
         gap: 2,
-    },
-    motivationLabel: {
-        fontSize: Typography.size.xs - 1,
-        fontWeight: Typography.weight.bold,
-        letterSpacing: 1,
     },
     motivationText: {
         fontSize: Typography.size.md,

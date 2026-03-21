@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeInDown, useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence } from 'react-native-reanimated';
 import { ScalePressable } from './ScalePressable';
 
 interface DayStatus {
@@ -71,6 +72,22 @@ export const WeeklyStreak = React.memo(() => {
     );
 
     const router = useRouter();
+    const pulseValue = useSharedValue(1);
+
+    React.useEffect(() => {
+        pulseValue.value = withRepeat(
+            withSequence(
+                withTiming(1.05, { duration: 1500 }),
+                withTiming(1, { duration: 1500 })
+            ),
+            -1,
+            true
+        );
+    }, [pulseValue]);
+
+    const todayPulseStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: pulseValue.value }],
+    }));
 
     return (
         <ScalePressable
@@ -83,7 +100,11 @@ export const WeeklyStreak = React.memo(() => {
 
             <View style={styles.daysContainer}>
                 {weekDays.map((day, index) => (
-                    <View key={index} style={styles.dayItem}>
+                    <Animated.View
+                        key={index}
+                        entering={FadeInDown.delay(index * 60).duration(400)}
+                        style={styles.dayItem}
+                    >
                         <Text style={[
                             styles.dayName,
                             {
@@ -95,7 +116,7 @@ export const WeeklyStreak = React.memo(() => {
                         ]}>
                             {day.dayName.charAt(0)}
                         </Text>
-                        <View style={[
+                        <Animated.View style={[
                             styles.dayIndicator,
                             // Completed - filled with hairline precision
                             day.hasEntry && {
@@ -122,7 +143,8 @@ export const WeeklyStreak = React.memo(() => {
                                 borderWidth: 0.5,
                                 backgroundColor: 'transparent',
                                 opacity: 0.2,
-                            }
+                            },
+                            day.isToday && !day.hasEntry && todayPulseStyle
                         ]}>
                             {day.hasEntry ? (
                                 <View style={[styles.dot, { backgroundColor: colors.cardBackground }]} />
@@ -140,8 +162,8 @@ export const WeeklyStreak = React.memo(() => {
                                     {day.dayNumber}
                                 </Text>
                             )}
-                        </View>
-                    </View>
+                        </Animated.View>
+                    </Animated.View>
                 ))}
             </View>
         </ScalePressable>
