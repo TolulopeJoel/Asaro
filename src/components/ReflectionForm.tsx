@@ -242,6 +242,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
           <Button
             label="Start Over"
             variant="secondary"
+            size="lg"
             onPress={handleClear}
             fullWidth={false}
             style={{ flex: 1 }}
@@ -251,6 +252,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
             <Button
               label={saveButtonText}
               variant="primary"
+              size="lg"
               onPress={handleSave}
               disabled={!hasContent}
               style={{ flex: 1 }}
