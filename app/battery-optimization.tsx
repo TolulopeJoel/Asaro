@@ -7,6 +7,7 @@ import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { ScalePressable } from '@/src/components/ScalePressable';
 import * as IntentLauncher from 'expo-intent-launcher';
 
 export default function BatteryOptimizationScreen() {
@@ -69,9 +70,6 @@ export default function BatteryOptimizationScreen() {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-            {/* Decorative background elements */}
-            <View style={[styles.circle, { backgroundColor: colors.primary, opacity: 0.05, top: -50, right: -50 }]} />
-            <View style={[styles.circle, { backgroundColor: colors.primary, opacity: 0.03, bottom: 100, left: -100, width: 300, height: 300, borderRadius: 150 }]} />
 
             <View style={styles.content}>
                 <View style={styles.header}>
@@ -98,14 +96,13 @@ export default function BatteryOptimizationScreen() {
                 </View>
 
                 <View style={styles.footer}>
-                    <TouchableOpacity
-                        style={[styles.button, { backgroundColor: colors.primary, shadowColor: colors.primary }]}
+                    <ScalePressable
+                        style={[styles.button, { backgroundColor: colors.textPrimary }]}
                         onPress={handleFixSettings}
-                        activeOpacity={0.8}
                     >
-                        <Text style={styles.buttonText}>Fix Settings</Text>
-                        <Ionicons name="arrow-forward" size={Typography.size.xl} color="#FFF" style={{ marginLeft: Spacing.sm }} />
-                    </TouchableOpacity>
+                        <Text style={[styles.buttonText, { color: colors.background }]}>Fix Settings</Text>
+                        <Ionicons name="arrow-forward" size={Typography.size.lg} color={colors.background} style={{ marginLeft: Spacing.sm }} />
+                    </ScalePressable>
                 </View>
             </View>
         </SafeAreaView>
@@ -125,67 +122,70 @@ const styles = StyleSheet.create({
     },
     content: {
         flex: 1,
-        padding: Spacing.xxl,
+        padding: Spacing.layout.screenPadding,
         justifyContent: 'space-between',
+        paddingTop: Spacing.xxxl * 2,
     },
     header: {
-        flex: 1,
+        flex: 1.5,
         justifyContent: 'center',
         alignItems: 'center',
     },
     iconContainer: {
-        padding: Spacing.xl,
-        borderRadius: Spacing.borderRadius.xl,
+        width: 120,
+        height: 120,
+        borderRadius: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     textContainer: {
         flex: 1,
         alignItems: 'center',
     },
     title: {
-        fontSize: Typography.size.xxxl,
+        fontSize: Typography.size.display,
         fontWeight: Typography.weight.bold,
         textAlign: 'center',
-        marginBottom: Spacing.lg,
-        letterSpacing: Typography.letterSpacing.tight,
+        marginBottom: Spacing.sm,
+        letterSpacing: -1.5,
     },
     description: {
         fontSize: Typography.size.lg,
+        fontWeight: Typography.weight.medium,
         textAlign: 'center',
-        lineHeight: Typography.lineHeight.lg,
-        marginBottom: Spacing.xxl,
-        opacity: 0.8,
+        lineHeight: Typography.lineHeight.xl,
+        opacity: 0.7,
+        letterSpacing: -0.2,
     },
     infoBox: {
         flexDirection: 'row',
         alignItems: 'center',
         padding: Spacing.lg,
-        borderRadius: Spacing.borderRadius.lg,
+        borderRadius: Spacing.borderRadius.md,
         borderWidth: 1,
         width: '100%',
+        marginTop: Spacing.xl,
     },
     infoText: {
         fontSize: Typography.size.md,
         flex: 1,
         lineHeight: Typography.lineHeight.md,
+        fontWeight: Typography.weight.medium,
     },
     footer: {
         paddingTop: Spacing.xxl,
     },
     button: {
         flexDirection: 'row',
-        paddingVertical: 18,
-        borderRadius: Spacing.borderRadius.xl,
+        paddingVertical: 20,
+        borderRadius: Spacing.borderRadius.lg,
         alignItems: 'center',
         justifyContent: 'center',
         width: '100%',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
-        shadowRadius: 12,
-        elevation: 8,
     },
     buttonText: {
-        color: '#FFFFFF',
         fontSize: Typography.size.lg,
-        fontWeight: Typography.weight.bold,
+        fontWeight: Typography.weight.semibold,
+        letterSpacing: 0.3,
     },
 });

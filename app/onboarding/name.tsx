@@ -7,6 +7,7 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { ScalePressable } from '@/src/components/ScalePressable';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 
 export default function NameScreen() {
@@ -32,15 +33,16 @@ export default function NameScreen() {
     };
 
     return (
-        <View
+        <SafeAreaView
             style={[styles.container, { backgroundColor: colors.background }]}
+            edges={['top']}
         >
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={styles.keyboardView}
             >
                 <View style={styles.content}>
-                    <View style={[styles.textContainer, { borderLeftColor: colors.accentSecondary }]}>
+                    <View style={styles.textContainer}>
                         <View style={styles.introBlock}>
                             <Text style={[styles.greeting, { color: colors.textPrimary }]}>
                                 Hello.
@@ -50,7 +52,7 @@ export default function NameScreen() {
                                 I want to help you stay consistent with your reading.
                                 But I can&apos;t be friends with a stranger, can I?
                                 {'\n\n'}
-                                <Text style={{ fontStyle: 'italic', opacity: 0.7 }}>Let&apos;s make this official 😏</Text>
+                                <Text style={{ fontStyle: 'italic', opacity: 0.6 }}>Let&apos;s make this official 😏</Text>
                             </Text>
                         </View>
 
@@ -85,7 +87,7 @@ export default function NameScreen() {
                             style={[
                                 styles.button,
                                 {
-                                    backgroundColor: isValid ? colors.textPrimary : 'transparent',
+                                    backgroundColor: isValid ? colors.textPrimary : colors.cardBackground,
                                     borderColor: isValid ? 'transparent' : colors.border,
                                     borderWidth: isValid ? 0 : 1,
                                     opacity: isValid ? 1 : 0.5,
@@ -104,7 +106,7 @@ export default function NameScreen() {
                     </View>
                 </View>
             </KeyboardAvoidingView>
-        </View>
+        </SafeAreaView>
     );
 }
 
@@ -119,71 +121,63 @@ const styles = StyleSheet.create({
         flex: 1,
         padding: Spacing.layout.screenPadding,
         justifyContent: 'space-between',
-        paddingTop: 100,
+        paddingTop: Spacing.xxxl,
     },
     textContainer: {
         flex: 1,
         width: '100%',
-        paddingLeft: Spacing.lg,
-        borderLeftWidth: 3,
     },
     introBlock: {
-        marginBottom: Spacing.xxxl * 2,
+        marginBottom: Spacing.xxxl * 1.5,
     },
     greeting: {
         fontSize: Typography.size.display,
-        fontWeight: Typography.weight.regular,
-        fontFamily: Typography.fontFamily.serif,
-        letterSpacing: -1,
-        marginBottom: Spacing.lg,
+        fontWeight: Typography.weight.bold,
+        letterSpacing: -1.5,
+        marginBottom: Spacing.sm,
     },
     introText: {
         fontSize: Typography.size.lg,
-        fontWeight: Typography.weight.regular,
+        fontWeight: Typography.weight.medium,
         lineHeight: Typography.lineHeight.xl,
-        fontFamily: Typography.fontFamily.serif,
-        letterSpacing: 0.2,
-        opacity: 0.85,
+        letterSpacing: -0.2,
+        opacity: 0.8,
     },
     nameSection: {
         gap: Spacing.md,
+        marginTop: Spacing.xl,
     },
     label: {
-        fontSize: Typography.size.xs,
+        fontSize: Typography.size.sm,
         fontWeight: Typography.weight.bold,
-        letterSpacing: 2,
+        letterSpacing: Typography.letterSpacing.wider,
         textTransform: 'uppercase',
-        opacity: 0.6,
-        fontFamily: Typography.fontFamily.regular, // Sans-serif for label contrast
+        opacity: 0.5,
     },
     inputContainer: {
-        borderRadius: Spacing.borderRadius.sm,
+        borderRadius: Spacing.borderRadius.md,
         overflow: 'hidden',
     },
     input: {
         fontSize: Typography.size.xxxl,
-        fontWeight: Typography.weight.regular,
-        paddingVertical: Spacing.sm,
-        paddingHorizontal: Spacing.sm, // Added padding for the blur container
-        letterSpacing: 0.5,
-        fontFamily: Typography.fontFamily.serif,
-        borderBottomWidth: 0, // Remove underline for cleaner look
+        fontWeight: Typography.weight.bold,
+        paddingVertical: Spacing.md,
+        paddingHorizontal: Spacing.lg,
+        letterSpacing: -0.5,
     },
     footer: {
         paddingTop: Spacing.xxl,
-        paddingHorizontal: Spacing.lg, // Align with content roughly
     },
     button: {
         paddingVertical: 20,
-        borderRadius: 2,
+        borderRadius: Spacing.borderRadius.lg,
         alignItems: 'center',
         justifyContent: 'center',
         width: '100%',
     },
     buttonText: {
-        fontSize: Typography.size.sm,
-        fontWeight: Typography.weight.medium,
-        letterSpacing: 3,
-        textTransform: 'uppercase',
+        fontSize: Typography.size.lg,
+        fontWeight: Typography.weight.semibold,
+        letterSpacing: 0.3,
     },
 });

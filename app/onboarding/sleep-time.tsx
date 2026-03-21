@@ -156,13 +156,13 @@ export default function SleepTimeScreen() {
 
                                 <Text style={[styles.introText, { color: colors.textPrimary }]}>
                                     I promise not to disturb your beauty sleep. But once you wake up? No mercy.
-
+                                    {'\n\n'}
                                     I need to know when to let you rest.
                                 </Text>
                             </View>
 
                             <Text style={[styles.label, { color: colors.textPrimary }]}>
-                                I usually go to sleep at
+                                What time do you usually go to sleep?
                             </Text>
 
                             <View style={styles.timeInputContainer}>
@@ -233,10 +233,10 @@ export default function SleepTimeScreen() {
                                 style={[
                                     styles.button,
                                     {
-                                        backgroundColor: isFormValid ? colors.textPrimary : colors.background,
-                                        borderColor: colors.textPrimary,
-                                        borderWidth: 1,
-                                        opacity: isFormValid ? 1 : 0.15
+                                        backgroundColor: isFormValid ? colors.textPrimary : colors.cardBackground,
+                                        borderColor: isFormValid ? 'transparent' : colors.border,
+                                        borderWidth: isFormValid ? 0 : 1,
+                                        opacity: isFormValid ? 1 : 0.5
                                     }
                                 ]}
                                 onPress={handleContinue}
@@ -245,7 +245,7 @@ export default function SleepTimeScreen() {
                                 <Text style={[
                                     styles.buttonText,
                                     {
-                                        color: isFormValid ? colors.background : colors.textPrimary,
+                                        color: isFormValid ? colors.background : colors.textSecondary,
                                     }
                                 ]}>Continue</Text>
                             </ScalePressable>
@@ -266,68 +266,63 @@ const styles = StyleSheet.create({
     },
     content: {
         flex: 1,
-        padding: Spacing.layout.screenPadding * 1.5,
+        padding: Spacing.layout.screenPadding,
         justifyContent: 'space-between',
-        paddingTop: 140,
+        paddingTop: Spacing.xxxl,
     },
     textContainer: {
         flex: 1,
         width: '100%',
     },
     introBlock: {
-        marginBottom: Spacing.xxxl * 3,
+        marginBottom: Spacing.xxxl * 2,
     },
     greeting: {
-        fontSize: Typography.size.xxl,
-        fontWeight: Typography.weight.light,
-        fontFamily: Typography.fontFamily.serif,
-        letterSpacing: 0.5,
-        marginBottom: Spacing.xxl,
+        fontSize: Typography.size.display,
+        fontWeight: Typography.weight.bold,
+        letterSpacing: -1.5,
+        marginBottom: Spacing.sm,
     },
     introText: {
-        fontSize: Typography.size.md,
-        fontWeight: Typography.weight.light,
+        fontSize: Typography.size.lg,
+        fontWeight: Typography.weight.medium,
         lineHeight: Typography.lineHeight.xl,
-        fontFamily: Typography.fontFamily.serif,
-        letterSpacing: 0.4,
-        opacity: 0.85,
+        letterSpacing: -0.2,
+        opacity: 0.8,
     },
     label: {
         fontSize: Typography.size.sm,
-        fontWeight: Typography.weight.medium,
-        letterSpacing: 1.5,
+        fontWeight: Typography.weight.bold,
+        letterSpacing: Typography.letterSpacing.wider,
         textTransform: 'uppercase',
         opacity: 0.5,
-        fontFamily: Typography.fontFamily.serif,
-        marginBottom: Spacing.lg,
+        marginBottom: Spacing.xl,
         textAlign: 'center',
     },
     timeInputContainer: {
         flexDirection: 'row',
-        alignItems: 'flex-end',
+        alignItems: 'baseline',
         justifyContent: 'center',
         gap: Spacing.sm,
     },
     input: {
-        fontSize: 48,
-        fontWeight: Typography.weight.light,
-        borderBottomWidth: 1,
+        fontSize: 64,
+        fontWeight: Typography.weight.bold,
+        borderBottomWidth: 2,
         paddingBottom: 4,
-        letterSpacing: Typography.letterSpacing.tight,
-        fontFamily: Typography.fontFamily.serif,
+        letterSpacing: -2,
     },
     separator: {
         fontSize: 48,
-        fontWeight: Typography.weight.light,
-        marginBottom: 8,
-        fontFamily: Typography.fontFamily.serif,
+        fontWeight: Typography.weight.medium,
+        opacity: 0.3,
+        marginHorizontal: 4,
     },
     periodText: {
         fontSize: 24,
-        fontWeight: Typography.weight.light,
-        marginBottom: 12,
-        marginLeft: Spacing.sm,
-        fontFamily: Typography.fontFamily.serif,
+        fontWeight: Typography.weight.bold,
+        marginLeft: Spacing.md,
+        opacity: 0.8,
     },
     errorText: {
         marginTop: Spacing.md,
@@ -340,15 +335,14 @@ const styles = StyleSheet.create({
     },
     button: {
         paddingVertical: 20,
-        borderRadius: 2,
+        borderRadius: Spacing.borderRadius.lg,
         alignItems: 'center',
         justifyContent: 'center',
         width: '100%',
     },
     buttonText: {
-        fontSize: Typography.size.sm,
-        fontWeight: Typography.weight.medium,
-        letterSpacing: 3,
-        textTransform: 'uppercase',
+        fontSize: Typography.size.lg,
+        fontWeight: Typography.weight.semibold,
+        letterSpacing: 0.3,
     },
 });
