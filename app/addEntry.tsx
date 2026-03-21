@@ -569,17 +569,18 @@ export default function MeditationSessionScreen() {
     const renderSummaryStep = useCallback(() => (
         <View style={styles.stepContainer}>
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                <View style={styles.stepContent}>
-                    <View style={styles.header}>
-                        <Text style={[styles.title, { color: colors.textPrimary }]}>
-                            Complete
-                        </Text>
+                <View style={[styles.stepContent, { justifyContent: 'center', minHeight: 400 }]}>
+                    <View style={styles.successHero}>
+                        <View style={[styles.successIconOuter, { backgroundColor: colors.accent + '15' }]}>
+                            <Ionicons name="checkmark-circle" size={64} color={colors.accent} />
+                        </View>
+                        <Text style={[styles.successTitle, { color: colors.textPrimary }]}>Complete</Text>
+                        <Text style={[styles.successSubtitle, { color: colors.textSecondary }]}>Your record has been saved.</Text>
                     </View>
 
-                    <View style={[styles.completionCard, { backgroundColor: colors.cardBackground, borderColor: colors.border + '50' }]}>
+                    <View style={[styles.completionCard, { backgroundColor: colors.cardBackground, borderColor: colors.border + '30', marginTop: Spacing.xxl }]}>
                         <View style={styles.completionHeader}>
-                            <Ionicons name="checkmark-circle" size={18} color={colors.accent} />
-                            <Text style={[styles.completionTitle, { color: colors.accent }]}>Study Record</Text>
+                            <Text style={[styles.completionTitle, { color: colors.accent }]}>ENTRY RECORD</Text>
                         </View>
                         <View style={styles.completionDetails}>
                             <Text style={[styles.completionText, { color: colors.textPrimary }]}>{selectionSummary}</Text>
@@ -587,7 +588,7 @@ export default function MeditationSessionScreen() {
                         </View>
                     </View>
 
-                    <View style={styles.contentArea}>
+                    <View style={[styles.contentArea, { marginTop: Spacing.xxxl }]}>
                         <ScalePressable style={[styles.primaryButton, { backgroundColor: colors.accent }]} onPress={handleDone}>
                             <Text style={[styles.primaryButtonText, { color: colors.buttonPrimaryText }]}>Done</Text>
                         </ScalePressable>
@@ -752,46 +753,57 @@ const styles = StyleSheet.create({
         letterSpacing: 0.3,
     },
     completionCard: {
-        padding: Spacing.xxl,
-        marginBottom: 40,
-        borderRadius: Spacing.borderRadius.xl,
-        borderWidth: 1,
-        shadowOffset: {
-            width: 0,
-            height: 4,
-        },
-        shadowOpacity: 0.04,
-        shadowRadius: 10,
+        padding: Spacing.xl,
+        borderRadius: 24,
+        borderWidth: 1.5,
+        alignItems: 'center',
+        width: '100%',
     },
     completionHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: Spacing.lg,
-    },
-    completionDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        marginRight: Spacing.md,
+        marginBottom: Spacing.md,
     },
     completionTitle: {
-        fontSize: 15,
-        fontWeight: '700',
-        letterSpacing: -0.2,
+        fontSize: 10,
+        fontWeight: '800',
+        letterSpacing: 1.5,
+        opacity: 0.8,
     },
     completionDetails: {
-        paddingLeft: 20,
+        alignItems: 'center',
+        gap: 4,
     },
     completionText: {
-        fontSize: Typography.size.xl,
-        fontWeight: Typography.weight.regular,
-        marginBottom: Spacing.xs,
-        letterSpacing: -0.2,
+        fontSize: 22,
+        fontWeight: '800',
+        letterSpacing: -0.5,
+        textAlign: 'center',
     },
     completionDate: {
-        fontSize: Typography.size.md,
-        fontWeight: Typography.weight.regular,
-        letterSpacing: Typography.letterSpacing.wide,
+        fontSize: 13,
+        fontWeight: '500',
+        opacity: 0.6,
+    },
+    successHero: {
+        alignItems: 'center',
+        gap: Spacing.md,
+    },
+    successIconOuter: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: Spacing.sm,
+    },
+    successTitle: {
+        fontSize: 34,
+        fontWeight: '800',
+        letterSpacing: -1.5,
+    },
+    successSubtitle: {
+        fontSize: 16,
+        fontWeight: '500',
+        opacity: 0.6,
     },
     primaryButton: {
         paddingVertical: 20,
