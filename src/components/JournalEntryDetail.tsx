@@ -151,14 +151,14 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                         content += `Q${index + 1}. ${REFLECTION_QUESTIONS[index]} \n\n`;
                         entry.action_items.forEach((item) => {
                             if (item.action.trim()) {
-                                content += `→ ${item.action.trim()}`;
+                                content += `* ${item.action.trim()}\n\n`;
                                 if (item.motivation.trim()) {
-                                    content += ` (motivated by: ${item.motivation.trim()})`;
+                                    content += `motivation:\n\n${item.motivation.trim()}\n\n`;
                                 }
-                                content += '\n';
+                            } else if (item.motivation.trim()) {
+                                content += `motivation:\n\n${item.motivation.trim()}\n\n`;
                             }
                         });
-                        content += '\n';
                     }
                 } else if (reflection && reflection.trim()) {
                     content += `Q${index + 1}. ${REFLECTION_QUESTIONS[index]} \n\n`;
@@ -216,11 +216,12 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
         let content = '';
         entry.action_items.forEach((item) => {
             if (item.action.trim()) {
-                content += `→ ${item.action.trim()}`;
+                content += `* ${item.action.trim()}\n\n`;
                 if (item.motivation.trim()) {
-                    content += ` (motivation: ${item.motivation.trim()})`;
+                    content += `motivation:\n\n${item.motivation.trim()}\n\n`;
                 }
-                content += '\n';
+            } else if (item.motivation.trim()) {
+                content += `motivation:\n\n${item.motivation.trim()}\n\n`;
             }
         });
         if (content.trim()) {
@@ -244,22 +245,33 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                         </ScalePressable>
                     </View>
                     <View style={styles.answerContainer}>
-                        {entry.action_items.map((item, i) => (
-                            (item.action.trim() || item.motivation.trim()) ? (
-                                <View key={i} style={[styles.actionItemCard, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
+                        {(() => {
+                            const validActions = (entry.action_items || []).filter(item => item.action.trim() || item.motivation.trim());
+                            const isSingleAction = validActions.length === 1;
+
+                            return validActions.map((item, i) => (
+                                <View
+                                    key={i}
+                                    style={[
+                                        !isSingleAction && styles.actionItemCard,
+                                        !isSingleAction && { backgroundColor: colors.cardBackground, borderColor: colors.border }
+                                    ]}
+                                >
                                     {item.action.trim() ? (
                                         <Text style={[styles.actionText, { color: colors.textPrimary }]}>
-                                            → {item.action.trim()}
+                                            {item.action.trim()}
                                         </Text>
                                     ) : null}
                                     {item.motivation.trim() ? (
-                                        <Text style={[styles.motivationText, { color: colors.textSecondary }]}>
-                                            {item.motivation.trim()}
-                                        </Text>
+                                        <View style={styles.motivationRow}>
+                                            <Text style={[styles.motivationText, { color: colors.textSecondary }]}>
+                                                {item.motivation.trim()}
+                                            </Text>
+                                        </View>
                                     ) : null}
                                 </View>
-                            ) : null
-                        ))}
+                            ));
+                        })()}
                     </View>
                 </View>
             );
@@ -521,16 +533,24 @@ const styles = StyleSheet.create({
     },
     actionItemCard: {
         borderRadius: Spacing.borderRadius.md,
-        borderWidth: 1,
         padding: Spacing.md,
+        paddingLeft: Spacing.lg,
+        borderWidth: 1,
     },
     actionText: {
         fontSize: Typography.size.lg - 1,
         lineHeight: Typography.lineHeight.xl,
-        fontWeight: Typography.weight.medium,
+        fontWeight: Typography.weight.semibold,
         letterSpacing: Typography.letterSpacing.normal,
     },
+    motivationRow: {
+        flexDirection: 'row',
+        marginTop: Spacing.sm,
+        gap: 8,
+        alignItems: 'flex-start',
+    },
     motivationText: {
+        flex: 1,
         fontSize: Typography.size.md,
         lineHeight: Typography.lineHeight.lg,
         fontWeight: Typography.weight.regular,
