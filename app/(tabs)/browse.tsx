@@ -17,28 +17,6 @@ export default function PastEntriesScreen() {
     const [refreshTrigger, setRefreshTrigger] = useState(0);
     const { colors } = useTheme();
 
-    // Handle deep linking to specific entry from addEntry
-    React.useEffect(() => {
-        const checkOpenEntry = async () => {
-            if (params.openEntryId) {
-                try {
-                    const entryId = Number(params.openEntryId);
-                    const { getEntryById } = await import('@/src/data/database');
-                    const entry = await getEntryById(entryId);
-                    if (entry) {
-                        setSelectedEntry(entry);
-                        setIsDetailModalVisible(true);
-                        // Clear the param so it doesn't reopen on refresh
-                        router.setParams({ openEntryId: undefined });
-                    }
-                } catch (error) {
-                    console.error('Error opening entry from params:', error);
-                }
-            }
-        };
-
-        checkOpenEntry();
-    }, [params.openEntryId]);
 
     const handleEntryPress = (entry: JournalEntry) => {
         setSelectedEntry(entry);

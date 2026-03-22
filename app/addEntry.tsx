@@ -145,7 +145,6 @@ export default function MeditationSessionScreen() {
     const [verseRange, setVerseRange] = useState<VerseRange | null>(null);
     const [reflectionAnswers, setReflectionAnswers] = useState<ReflectionAnswers>();
     const [isLoading, setIsLoading] = useState(true);
-    const [createdEntryId, setCreatedEntryId] = useState<number | null>(null);
     const isSaving = useRef(false);
 
     const readingItemId = params.readingItemId ? Number(params.readingItemId) : undefined;
@@ -342,8 +341,7 @@ export default function MeditationSessionScreen() {
                 Alert.alert('Success', 'Entry updated successfully');
                 router.back();
             } else {
-                const newEntryId = await createJournalEntry(entryData);
-                setCreatedEntryId(newEntryId);
+                await createJournalEntry(entryData);
                 await AsyncStorage.removeItem("reflection_draft");
                 await updateNotifications();
 
@@ -363,15 +361,8 @@ export default function MeditationSessionScreen() {
     }, [selectedBook, selectedChapters, verseRange, isEditMode, entryId, router, changeStep, params.readingItemId]);
 
     const handleDone = useCallback(() => {
-        if (createdEntryId) {
-            router.replace({
-                pathname: '/(tabs)/browse',
-                params: { openEntryId: createdEntryId }
-            });
-        } else {
-            router.back();
-        }
-    }, [router, createdEntryId]);
+        router.replace('/');
+    }, [router]);
 
     const handleStartOver = useCallback(async () => {
         await AsyncStorage.removeItem("reflection_draft");
