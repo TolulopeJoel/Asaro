@@ -99,6 +99,7 @@ export interface ActionItem {
     action: string;
     motivation: string;
     sort_order: number;
+    is_completed?: boolean;
 }
 
 export interface JournalEntry {
@@ -115,6 +116,7 @@ export interface JournalEntry {
     notes?: string;
     study_further?: string;
     study_further_reminder?: string;
+    study_completed?: boolean;
     created_at: string;
     updated_at?: string;
     action_items?: ActionItem[];
@@ -136,7 +138,7 @@ export interface JournalEntryInput {
 
 let db: SQLite.SQLiteDatabase | null = null;
 
-const CURRENT_DB_VERSION = 5;
+const CURRENT_DB_VERSION = 6;
 
 const getDb = async () => {
     if (!db) {
@@ -299,6 +301,13 @@ export const initializeDatabase = async () => {
                     ALTER TABLE journal_entries ADD COLUMN study_further_reminder TEXT;
                 `);
             };
+            if (currentVersion < 6) {
+                // Migration to v6: Add completion status
+                await database.execAsync(`
+                    ALTER TABLE action_items ADD COLUMN is_completed BOOLEAN DEFAULT 0;
+                    ALTER TABLE journal_entries ADD COLUMN study_completed BOOLEAN DEFAULT 0;
+                `);
+            }
 
             // Set to current version
             await setDbVersion(database, CURRENT_DB_VERSION);
@@ -882,13 +891,14 @@ export interface EnhancedActionItem extends ActionItem {
     chapter_start: number;
     chapter_end?: number;
     created_at: string;
+    is_completed: boolean;
 }
 
 /**
  * Fetch action items from the last X days, joined with their journal entry context.
  * Used for the "Reminders" section on the home screen.
  */
-export const getRecentActionItems = async (days: number = 7): Promise<EnhancedActionItem[]> => {
+export const getRecentActionItems = async (days: number = 7, includeCompleted: boolean = false): Promise<EnhancedActionItem[]> => {
     return await withDatabase(async (database) => {
         const query = `
             SELECT 
@@ -901,11 +911,21 @@ export const getRecentActionItems = async (days: number = 7): Promise<EnhancedAc
             JOIN journal_entries je ON ai.entry_id = je.id
             WHERE DATE(je.created_at, 'localtime') >= DATE('now', 'localtime', ?)
             AND (ai.action != '' OR ai.motivation != '')
+            ${includeCompleted ? '' : 'AND ai.is_completed = 0'}
             ORDER BY je.created_at DESC, ai.sort_order ASC
         `;
 
         const daysParam = `-${days} days`;
         return await database.getAllAsync<EnhancedActionItem>(query, [daysParam]);
+    });
+};
+
+export const toggleActionItemCompletion = async (id: number, completed: boolean) => {
+    await withDatabase(async (database) => {
+        await database.runAsync(
+            `UPDATE action_items SET is_completed = ? WHERE id = ?`,
+            [completed ? 1 : 0, id]
+        );
     });
 };
 
@@ -937,7 +957,7 @@ export const getAllActionItems = async (limit: number = 200, offset: number = 0)
  * Fetch study further topics from the last X days.
  * Used for the "Reminders" section on the home screen.
  */
-export const getRecentStudyTopics = async (days: number = 7): Promise<JournalEntry[]> => {
+export const getRecentStudyTopics = async (days: number = 7, includeCompleted: boolean = false): Promise<JournalEntry[]> => {
     return await withDatabase(async (database) => {
         const query = `
             SELECT 
@@ -946,6 +966,7 @@ export const getRecentStudyTopics = async (days: number = 7): Promise<JournalEnt
             FROM journal_entries
             WHERE DATE(created_at, 'localtime') >= DATE('now', 'localtime', ?)
             AND study_further IS NOT NULL AND study_further != ''
+            ${includeCompleted ? '' : 'AND study_completed = 0'}
             ORDER BY created_at DESC
         `;
 
@@ -954,11 +975,20 @@ export const getRecentStudyTopics = async (days: number = 7): Promise<JournalEnt
     });
 };
 
+export const toggleStudyTopicCompletion = async (entryId: number, completed: boolean) => {
+    await withDatabase(async (database) => {
+        await database.runAsync(
+            `UPDATE journal_entries SET study_completed = ? WHERE id = ?`,
+            [completed ? 1 : 0, entryId]
+        );
+    });
+};
+
 /**
  * Fetch all study further topics.
  * Used for the "Topics" tab on the Past Entries screen.
  */
-export const getAllStudyTopics = async (limit: number = 200, offset: number = 0): Promise<JournalEntry[]> => {
+export const getAllStudyTopics = async (): Promise<JournalEntry[]> => {
     return await withDatabase(async (database) => {
         const query = `
             SELECT 
@@ -967,10 +997,8 @@ export const getAllStudyTopics = async (limit: number = 200, offset: number = 0)
             FROM journal_entries
             WHERE study_further IS NOT NULL AND study_further != ''
             ORDER BY created_at DESC
-            LIMIT ? OFFSET ?
         `;
-
-        return await database.getAllAsync<JournalEntry>(query, [limit, offset]);
+        return await database.getAllAsync<JournalEntry>(query);
     });
 };
 

@@ -3,8 +3,6 @@ import { getLocalMidnight, isSameDay } from '@/src/utils/dateUtils';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
     Platform,
     StyleSheet,
     Text,
@@ -12,7 +10,6 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { ALL_BIBLE_BOOKS, BibleBook } from '../data/bibleBooks';
 import {
@@ -23,7 +20,8 @@ import {
     getAllActionItems,
     getAllStudyTopics,
     EnhancedActionItem,
-    getEntryById
+    getEntryById,
+    toggleStudyTopicCompletion
 } from '../data/database';
 import { ScalePressable } from './ScalePressable';
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
@@ -41,7 +39,9 @@ type ListItem =
     | { type: 'bookHeader'; bookName: string; entryCount: number; id: string }
     | { type: 'book'; book: BibleBook; id: string }
     | { type: 'action'; action: EnhancedActionItem; id: string }
-    | { type: 'topic'; topic: JournalEntry; id: string };
+    | { type: 'topic'; topic: JournalEntry; id: string }
+    | { type: 'topicHeader'; title: string; count: number; id: string }
+    | { type: 'emptyState'; id: string };
 
 interface JournalEntryListProps {
     onEntryPress: (entry: JournalEntry) => void;
@@ -61,6 +61,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
     const [availableBooks, setAvailableBooks] = useState<BibleBook[]>([]);
     const [actionsList, setActionsList] = useState<EnhancedActionItem[]>([]);
     const [topicsList, setTopicsList] = useState<JournalEntry[]>([]);
+    const [isArchiveCollapsed, setIsArchiveCollapsed] = useState(true);
     const [tabContainerWidth, setTabContainerWidth] = useState(0);
     const searchTimeoutRef = useRef<any>(null);
 
@@ -176,10 +177,20 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
 
     const loadTopics = async () => {
         try {
-            const data = await getAllStudyTopics(200);
+            const data = await getAllStudyTopics();
             setTopicsList(data);
         } catch (error) {
             console.error('Error loading topics:', error);
+        }
+    };
+
+    const handleToggleTopic = async (item: JournalEntry) => {
+        try {
+            await toggleStudyTopicCompletion(item.id!, !item.study_completed);
+            // Refresh the list
+            loadTopics();
+        } catch (error) {
+            console.error('Error toggling study topic:', error);
         }
     };
 
@@ -428,9 +439,20 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
 
     const renderTopicCard = useCallback((item: JournalEntry) => {
         const dynamic = getDynamicCardStyle(item.study_further || '');
+        const isCompleted = !!item.study_completed;
+
         return (
             <Animated.View style={styles.bookCardWrapper} entering={FadeIn.duration(400)} layout={LinearTransition}>
-                <View style={[styles.entryCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder, marginBottom: 0, padding: dynamic.padding }]}>
+                <View style={[
+                    styles.entryCard,
+                    {
+                        backgroundColor: colors.cardBackground,
+                        borderColor: colors.cardBorder,
+                        marginBottom: 0,
+                        padding: dynamic.padding,
+                        opacity: isCompleted ? 0.6 : 1
+                    }
+                ]}>
                     <View style={[styles.entryHeader, { marginBottom: 8 }]}>
                         <Text style={[styles.entryDate, { color: colors.textTertiary }]}>{formatDate(item.created_at)}</Text>
                         <ScalePressable onPress={() => onEntryPress(item)}>
@@ -441,9 +463,24 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                             </View>
                         </ScalePressable>
                     </View>
-                    <Text style={[styles.entryPreview, { color: colors.textPrimary, fontWeight: '600', fontSize: dynamic.fontSize, lineHeight: dynamic.lineHeight, marginBottom: item.study_further_reminder ? 8 : 0 }]}>
-                        {item.study_further}
-                    </Text>
+                    <View style={styles.topicContentContainer}>
+                        <Text style={[
+                            styles.entryPreview,
+                            {
+                                color: colors.textPrimary,
+                                fontWeight: '600',
+                                fontSize: dynamic.fontSize,
+                                lineHeight: dynamic.lineHeight,
+                                marginBottom: item.study_further_reminder ? 8 : 0,
+                                textDecorationLine: isCompleted ? 'line-through' : 'none',
+                            }
+                        ]}>
+                            {item.study_further}
+                        </Text>
+                        {isCompleted && (
+                            <View style={[styles.strikeThroughLine, { backgroundColor: colors.textPrimary, opacity: 0.4 }]} />
+                        )}
+                    </View>
                     {item.study_further_reminder && new Date(item.study_further_reminder) > new Date() ? (
                         <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, backgroundColor: colors.backgroundSubtle, borderColor: colors.border, alignSelf: 'flex-start', marginTop: 8, gap: 4 }}>
                             <Ionicons name="notifications-outline" size={12} color={colors.textSecondary} />
@@ -452,10 +489,48 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                             </Text>
                         </View>
                     ) : null}
+                    <ScalePressable
+                        onPress={() => handleToggleTopic(item)}
+                        style={[
+                            styles.checkCircle,
+                            {
+                                position: 'absolute',
+                                bottom: 16,
+                                right: 16,
+                                borderColor: isCompleted ? colors.accentSecondary : colors.border,
+                                backgroundColor: isCompleted ? colors.accentSecondary + '20' : colors.backgroundSubtle + '40'
+                            }
+                        ]}
+                    >
+                        <Ionicons
+                            name={isCompleted ? "checkmark-circle" : "checkmark"}
+                            size={14}
+                            color={isCompleted ? colors.accentSecondary : colors.textTertiary}
+                        />
+                    </ScalePressable>
                 </View>
             </Animated.View>
         );
-    }, [colors, formatDate, onEntryPress]);
+    }, [colors, formatDate, onEntryPress, handleToggleTopic]);
+
+    const renderTopicHeader = useCallback((title: string, count: number) => (
+        <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => setIsArchiveCollapsed(!isArchiveCollapsed)}
+            style={[styles.archiveHeader, { borderTopColor: colors.border }]}
+        >
+            <View style={styles.archiveHeaderContent}>
+                <Text style={[styles.archiveHeaderText, { color: colors.textTertiary }]}>
+                    {title} ({count})
+                </Text>
+                <Ionicons
+                    name={isArchiveCollapsed ? "chevron-down" : "chevron-up"}
+                    size={16}
+                    color={colors.textTertiary}
+                />
+            </View>
+        </TouchableOpacity>
+    ), [colors, isArchiveCollapsed]);
 
     const renderDateGroupHeader = useCallback((title: string) => (
         <View style={styles.dateGroup}>
@@ -470,7 +545,35 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         }
 
         if (viewMode === 'topics') {
-            return topicsList.map(topic => ({ type: 'topic' as const, topic, id: `topic-${topic.id}` }));
+            const activeTopics = topicsList.filter(t => !t.study_completed);
+            const completedTopics = topicsList.filter(t => !!t.study_completed);
+
+            const items: ListItem[] = [];
+
+            if (activeTopics.length === 0) {
+                items.push({ type: 'emptyState', id: 'empty-topics' });
+            } else {
+                activeTopics.forEach(topic => {
+                    items.push({ type: 'topic' as const, topic, id: `topic-${topic.id}` });
+                });
+            }
+
+            if (completedTopics.length > 0) {
+                items.push({
+                    type: 'topicHeader',
+                    title: 'COMPLETED TOPICS',
+                    count: completedTopics.length,
+                    id: 'completed-topics-header'
+                });
+
+                if (!isArchiveCollapsed) {
+                    completedTopics.forEach(topic => {
+                        items.push({ type: 'topic' as const, topic, id: `topic-${topic.id}` });
+                    });
+                }
+            }
+
+            return items;
         }
 
         if (viewMode === 'books') {
@@ -572,6 +675,10 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                 return renderActionCard(item.action);
             case 'topic':
                 return renderTopicCard(item.topic);
+            case 'topicHeader':
+                return renderTopicHeader(item.title, item.count);
+            case 'emptyState':
+                return renderEmptyState();
             case 'bookHeader':
                 return (
                     <View style={[styles.bookDetailHeader, { borderBottomColor: colors.border }]}>
@@ -597,7 +704,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
             default:
                 return null;
         }
-    }, [colors, renderDateGroupHeader, renderEntryCard, renderActionCard, renderTopicCard, navigateToBookDetail]);
+    }, [colors, renderDateGroupHeader, renderEntryCard, renderActionCard, renderTopicCard, renderTopicHeader, navigateToBookDetail]);
 
     const renderEmptyState = useCallback(() => {
         let iconName: any = "journal-outline";
@@ -972,5 +1079,43 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         lineHeight: 24,
         fontWeight: '400',
+    },
+    checkCircle: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        borderWidth: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    archiveHeader: {
+        marginTop: 24,
+        paddingTop: 16,
+        paddingBottom: 8,
+        borderTopWidth: 0.5,
+    },
+    archiveHeaderContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 4,
+    },
+    archiveHeaderText: {
+        fontSize: 12,
+        fontWeight: '600',
+        letterSpacing: 1,
+        textTransform: 'uppercase',
+    },
+    topicContentContainer: {
+        position: 'relative',
+        alignSelf: 'flex-start',
+    },
+    strikeThroughLine: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: '50%',
+        height: 1.5,
+        borderRadius: 1,
     },
 });
