@@ -17,6 +17,7 @@ import { AnimatedModal } from '@/src/components/AnimatedModal';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { ActionReminders } from '@/src/components/ActionReminders';
 import { StudyReminders } from '@/src/components/StudyReminders';
+import { getDailyTitle } from '@/src/data/homeTitles';
 
 
 const DRAFT_KEY = "reflection_draft";
@@ -319,7 +320,14 @@ export default function Index() {
             >
                 <View style={styles.header}>
                     <View style={styles.headerTitleRow}>
-                        <Text style={[styles.title, { color: colors.textPrimary }]}>My Superstar!</Text>
+                        <Text
+                            style={[styles.title, { color: colors.textPrimary }]}
+                            numberOfLines={1}
+                            adjustsFontSizeToFit
+                            minimumFontScale={0.6}
+                        >
+                            {getDailyTitle()}
+                        </Text>
                     </View>
                 </View>
 
