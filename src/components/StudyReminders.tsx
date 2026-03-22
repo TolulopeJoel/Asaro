@@ -114,6 +114,14 @@ export const StudyReminders: React.FC<StudyRemindersProps> = React.memo(({ onEnt
                             {item.study_further}
                         </Text>
 
+                        {item.notes && isTop ? (
+                            <View style={[styles.notesContainer, { borderTopColor: colors.border + '20' }]}>
+                                <Text style={[styles.notesText, { color: colors.textSecondary, fontSize: Math.max(13, dynamic.fontSize - 10) }]} numberOfLines={2}>
+                                    {item.notes}
+                                </Text>
+                            </View>
+                        ) : null}
+
                         {item.study_further_reminder && new Date(item.study_further_reminder) > new Date() && isTop ? (
                             <View style={[styles.reminderContainer, { backgroundColor: colors.backgroundSubtle + '40', borderColor: colors.border + '30' }]}>
                                 <Ionicons name="notifications-outline" size={14} color={colors.textTertiary} />
@@ -163,7 +171,7 @@ const styles = StyleSheet.create({
         borderRadius: Spacing.borderRadius.md,
         borderWidth: 1,
         gap: Spacing.sm,
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
     },
     header: {
         flexDirection: 'row',
@@ -233,5 +241,16 @@ const styles = StyleSheet.create({
     reminderText: {
         fontSize: 9,
         fontWeight: Typography.weight.medium,
+    },
+    notesContainer: {
+        marginTop: 4,
+        paddingTop: 8,
+        borderTopWidth: 1,
+        gap: 2,
+    },
+    notesText: {
+        lineHeight: 18,
+        fontStyle: 'italic',
+        opacity: 0.8,
     },
 });
