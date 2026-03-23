@@ -5,7 +5,7 @@ import { Typography } from '@/src/theme/typography';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, AppState, KeyboardAvoidingView, LayoutAnimation, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Animated, AppState, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { BookPicker } from '../src/components/BookPicker';
@@ -36,7 +36,17 @@ interface DraftData {
 
 type Step = 'book' | 'chapter' | 'reflection' | 'summary';
 
-export function useAutoSave(reflectionAnswers: any, selectedBook: any, selectedChapters: any, verseRange: any, currentStep: Step, isEditMode: boolean, readingItemId?: number) {
+// ─── Auto-save hook ───────────────────────────────────────────────────────────
+
+function useAutoSave(
+    reflectionAnswers: any,
+    selectedBook: any,
+    selectedChapters: any,
+    verseRange: any,
+    currentStep: Step,
+    isEditMode: boolean,
+    readingItemId?: number
+) {
     const lastSaveTime = useRef<number>(0);
     const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isMountedRef = useRef(true);
@@ -46,90 +56,82 @@ export function useAutoSave(reflectionAnswers: any, selectedBook: any, selectedC
         isMountedRef.current = true;
         return () => {
             isMountedRef.current = false;
-            if (debounceTimer.current) {
-                clearTimeout(debounceTimer.current);
-            }
-            if (intervalRef.current) {
-                clearInterval(intervalRef.current);
-            }
+            if (debounceTimer.current) clearTimeout(debounceTimer.current);
+            if (intervalRef.current) clearInterval(intervalRef.current);
         };
     }, []);
 
     useEffect(() => {
         if (isEditMode || currentStep !== 'reflection') {
             // Clear any running timers when not in reflection step
-            if (debounceTimer.current) {
-                clearTimeout(debounceTimer.current);
-                debounceTimer.current = null;
-            }
-            if (intervalRef.current) {
-                clearInterval(intervalRef.current);
-                intervalRef.current = null;
-            }
+            if (debounceTimer.current) { clearTimeout(debounceTimer.current); debounceTimer.current = null; }
+            if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
             return;
         }
 
         const saveDraft = async () => {
-            if (!isMountedRef.current) {
-                return;
-            }
-
+            if (!isMountedRef.current) return;
             try {
-                const draftData: DraftData = {
-                    selectedBook,
-                    selectedChapters,
-                    verseRange,
-                    reflectionAnswers,
-                    readingItemId,
-                };
-                await AsyncStorage.setItem(
-                    "reflection_draft",
-                    JSON.stringify(draftData)
-                );
+                const draftData: DraftData = { selectedBook, selectedChapters, verseRange, reflectionAnswers, readingItemId };
+                await AsyncStorage.setItem('reflection_draft', JSON.stringify(draftData));
                 lastSaveTime.current = Date.now();
             } catch (e) {
-                console.error("Failed to save draft:", e);
+                console.error('Failed to save draft:', e);
             }
         };
 
-        if (!selectedBook && !reflectionAnswers) {
-            return;
-        }
+        if (!selectedBook && !reflectionAnswers) return;
 
         // Set up periodic save every 20 seconds
         if (!intervalRef.current) {
             intervalRef.current = setInterval(() => {
-                if (isMountedRef.current) {
-                    saveDraft();
-                }
+                if (isMountedRef.current) saveDraft();
             }, 20000);
         }
 
         // Save immediately if it's been more than 20 seconds since last save
         const now = Date.now();
-        const timeSinceLastSave = now - lastSaveTime.current;
-        if (timeSinceLastSave >= 20000) {
-            saveDraft();
-            return;
-        }
+        if (now - lastSaveTime.current >= 20000) { saveDraft(); return; }
 
         // Debounced save after user stops typing (0.8 seconds)
-        if (debounceTimer.current) {
-            clearTimeout(debounceTimer.current);
-        }
+        if (debounceTimer.current) clearTimeout(debounceTimer.current);
         debounceTimer.current = setTimeout(() => {
-            if (isMountedRef.current) {
-                saveDraft();
-            }
+            if (isMountedRef.current) saveDraft();
         }, 800);
 
-        return () => {
-            if (debounceTimer.current) {
-                clearTimeout(debounceTimer.current);
-            }
-        };
+        return () => { if (debounceTimer.current) clearTimeout(debounceTimer.current); };
     }, [reflectionAnswers, selectedBook, selectedChapters, verseRange, currentStep, isEditMode, readingItemId]);
 }
+
+// ─── Step fade hook ───────────────────────────────────────────────────────────
+
+function useStepFade(currentStep: Step) {
+    const opacity = useRef(new Animated.Value(1)).current;
+    const translateY = useRef(new Animated.Value(0)).current;
+    const prevStep = useRef<Step>(currentStep);
+
+    useEffect(() => {
+        if (prevStep.current === currentStep) return;
+        prevStep.current = currentStep;
+
+        // Fade + lift out, then snap reset and fade in
+        Animated.parallel([
+            Animated.timing(opacity, { toValue: 0, duration: 160, useNativeDriver: true }),
+            Animated.timing(translateY, { toValue: -10, duration: 160, useNativeDriver: true }),
+        ]).start(() => {
+            opacity.setValue(0);
+            translateY.setValue(14);
+            Animated.parallel([
+                Animated.timing(opacity, { toValue: 1, duration: 280, useNativeDriver: true }),
+                Animated.timing(translateY, { toValue: 0, duration: 280, useNativeDriver: true }),
+            ]).start();
+        });
+    }, [currentStep]);
+
+    return { opacity, translateY };
+}
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function MeditationSessionScreen() {
     const { colors } = useTheme();
@@ -145,21 +147,22 @@ export default function MeditationSessionScreen() {
     const [verseRange, setVerseRange] = useState<VerseRange | null>(null);
     const [reflectionAnswers, setReflectionAnswers] = useState<ReflectionAnswers>();
     const [isLoading, setIsLoading] = useState(true);
+    const [createdEntryId, setCreatedEntryId] = useState<number | null>(null);
     const isSaving = useRef(false);
 
     const readingItemId = params.readingItemId ? Number(params.readingItemId) : undefined;
 
-    // Flush any queued Firestore activities when the app comes back to the foreground
+    const { opacity, translateY } = useStepFade(currentStep);
+
+    // Sync pending activities on foreground
     useEffect(() => {
         const subscription = AppState.addEventListener('change', (nextState) => {
-            if (nextState === 'active') {
-                syncPendingActivities();
-            }
+            if (nextState === 'active') syncPendingActivities();
         });
         return () => subscription.remove();
     }, []);
 
-    // Load data immediately without waiting
+    // Load data
     useEffect(() => {
         const loadData = async () => {
             try {
@@ -170,77 +173,55 @@ export default function MeditationSessionScreen() {
                         router.back();
                         return;
                     }
-
                     const book = getBookByName(entry.book_name);
                     setSelectedBook(book);
-                    setSelectedChapters({
-                        start: entry.chapter_start,
-                        end: entry.chapter_end
-                    });
-
-                    // Load verse range if it exists
+                    setSelectedChapters({ start: entry.chapter_start, end: entry.chapter_end });
                     if (entry.verse_start || entry.verse_end) {
                         setVerseRange({
                             start: entry.verse_start?.toString() || '',
-                            end: entry.verse_end?.toString() || ''
+                            end: entry.verse_end?.toString() || '',
                         });
                     }
-
                     setReflectionAnswers({
-                        reflection1: entry.reflection_1 || "",
-                        reflection2: entry.reflection_2 || "",
-                        actionItems: entry.action_items && entry.action_items.length > 0
+                        reflection1: entry.reflection_1 || '',
+                        reflection2: entry.reflection_2 || '',
+                        actionItems: entry.action_items && entry.action_items?.length > 0
                             ? entry.action_items.map(item => ({ action: item.action, motivation: item.motivation }))
                             : [{ action: '', motivation: '' }],
-                        reflection4: entry.reflection_4 || "",
-                        studyFurther: entry.study_further || "",
+                        reflection4: entry.reflection_4 || '',
+                        studyFurther: entry.study_further || '',
                         studyFurtherReminder: entry.study_further_reminder || undefined,
-                        notes: entry.notes || ""
+                        notes: entry.notes || '',
                     });
                     setCurrentStep('reflection');
                 } else if (params.readingItemId) {
                     // CASE 2: Reading Plan Item explicitly selected
                     const rId = Number(params.readingItemId);
-
-                    // Always set book/chapters from params (Priority)
                     const book = getBookByName(params.bookName as string);
                     setSelectedBook(book);
-
                     const chaptersStr = params.chapters as string;
                     if (chaptersStr) {
                         const [start, end] = chaptersStr.split('-').map(Number);
                         setSelectedChapters({ start, end: end || start });
                     }
-
-                    // Now check if there's a draft for THIS specific reading item
-                    const draftJson = await AsyncStorage.getItem("reflection_draft");
+                    const draftJson = await AsyncStorage.getItem('reflection_draft');
                     if (draftJson) {
                         const draft: DraftData = JSON.parse(draftJson);
                         if (draft.readingItemId === rId) {
-                            // If it matches, we can restore reflections and verse range
                             if (draft.verseRange) setVerseRange(draft.verseRange);
                             if (draft.reflectionAnswers) setReflectionAnswers(draft.reflectionAnswers);
                         }
                     }
-
                     setCurrentStep('reflection');
                 } else {
                     // CASE 3: No specific item or edit mode, just load generic draft if it exists
-                    const draftJson = await AsyncStorage.getItem("reflection_draft");
+                    const draftJson = await AsyncStorage.getItem('reflection_draft');
                     if (draftJson) {
                         const draft: DraftData = JSON.parse(draftJson);
-                        if (draft.selectedBook) {
-                            setSelectedBook(draft.selectedBook);
-                        }
-                        if (draft.selectedChapters) {
-                            setSelectedChapters(draft.selectedChapters);
-                        }
-                        if (draft.verseRange) {
-                            setVerseRange(draft.verseRange);
-                        }
-                        if (draft.reflectionAnswers) {
-                            setReflectionAnswers(draft.reflectionAnswers);
-                        }
+                        if (draft.selectedBook) setSelectedBook(draft.selectedBook);
+                        if (draft.selectedChapters) setSelectedChapters(draft.selectedChapters);
+                        if (draft.verseRange) setVerseRange(draft.verseRange);
+                        if (draft.reflectionAnswers) setReflectionAnswers(draft.reflectionAnswers);
                         setCurrentStep('reflection');
                     }
                 }
@@ -256,14 +237,9 @@ export default function MeditationSessionScreen() {
 
     useAutoSave(reflectionAnswers, selectedBook, selectedChapters, verseRange, currentStep, isEditMode, readingItemId);
 
-    const scrollToStep = useCallback((step: Step) => {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    const changeStep = useCallback((step: Step) => {
         setCurrentStep(step);
     }, []);
-
-    const changeStep = useCallback((step: Step) => {
-        scrollToStep(step);
-    }, [scrollToStep]);
 
     const handleBookSelect = useCallback((book: BibleBook) => {
         setSelectedBook(book);
@@ -293,8 +269,6 @@ export default function MeditationSessionScreen() {
             Alert.alert('Incomplete', 'Please select a book and chapter first.');
             return;
         }
-
-        // Prevent double-saves from rapid taps (especially relevant when offline)
         if (isSaving.current) return;
         isSaving.current = true;
 
@@ -305,50 +279,34 @@ export default function MeditationSessionScreen() {
                 chapterEnd: selectedChapters.end,
                 verseStart: verseRange?.start || undefined,
                 verseEnd: verseRange?.end || undefined,
-                reflections: [
-                    answers.reflection1,
-                    answers.reflection2,
-                    '',
-                    answers.reflection4,
-                ],
+                reflections: [answers.reflection1, answers.reflection2, '', answers.reflection4],
                 notes: answers.notes,
                 studyFurther: answers.studyFurther,
                 studyFurtherReminder: answers.studyFurtherReminder,
-                actionItems: answers.actionItems.filter(
-                    item => item.action.trim() || item.motivation.trim()
-                ),
+                actionItems: answers.actionItems.filter(item => item.action.trim() || item.motivation.trim()),
                 readingItemId: params.readingItemId ? Number(params.readingItemId) : undefined,
             };
 
-            // Batch notification operations
             const updateNotifications = async () => {
-                if (isEditMode) {
-                    await setupDailyNotifications(false);
-                } else {
-                    // New Entry: Reset schedule starting from tomorrow (cancels today's)
-                    await setupDailyNotifications(true);
-                }
+                await setupDailyNotifications(isEditMode ? false : true);
             };
 
             if (isEditMode && entryId) {
                 await updateJournalEntry(entryId, entryData);
                 await updateNotifications();
-
                 if (answers.studyFurtherReminder && new Date(answers.studyFurtherReminder) > new Date()) {
                     await scheduleReminderNotification(new Date(answers.studyFurtherReminder), '📖 Study Reminder', `Time to study further: ${answers.studyFurther || 'your topic'}`);
                 }
-
                 Alert.alert('Success', 'Entry updated successfully');
                 router.back();
             } else {
-                await createJournalEntry(entryData);
-                await AsyncStorage.removeItem("reflection_draft");
+                const newEntryId = await createJournalEntry(entryData);
+                setCreatedEntryId(newEntryId);
+                await AsyncStorage.removeItem('reflection_draft');
                 await updateNotifications();
-
                 if (answers.studyFurtherReminder && new Date(answers.studyFurtherReminder) > new Date()) {
                     await scheduleReminderNotification(new Date(answers.studyFurtherReminder), '📖 Study Reminder', `Time to study further: ${answers.studyFurther || 'your topic'}`);
                 }
-
                 setReflectionAnswers(answers);
                 changeStep('summary');
             }
@@ -361,11 +319,15 @@ export default function MeditationSessionScreen() {
     }, [selectedBook, selectedChapters, verseRange, isEditMode, entryId, router, changeStep, params.readingItemId]);
 
     const handleDone = useCallback(() => {
-        router.replace('/');
-    }, [router]);
+        if (createdEntryId) {
+            router.replace({ pathname: '/(tabs)/browse', params: { openEntryId: createdEntryId } });
+        } else {
+            router.back();
+        }
+    }, [router, createdEntryId]);
 
     const handleStartOver = useCallback(async () => {
-        await AsyncStorage.removeItem("reflection_draft");
+        await AsyncStorage.removeItem('reflection_draft');
         setSelectedBook(undefined);
         setSelectedChapters(undefined);
         setVerseRange(null);
@@ -378,19 +340,17 @@ export default function MeditationSessionScreen() {
             'Discard Draft?',
             'Are you sure you want to discard your draft and start fresh?',
             [
-                { text: 'Cancel', style: 'cancel' },
+                { text: 'Keep Writing', style: 'cancel' },
                 {
                     text: 'Discard',
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            await AsyncStorage.removeItem("reflection_draft");
-
+                            await AsyncStorage.removeItem('reflection_draft');
                             setSelectedBook(undefined);
                             setSelectedChapters(undefined);
                             setVerseRange(null);
                             setReflectionAnswers(undefined);
-
                             router.replace('/');
                         } catch (error) {
                             console.error('Error discarding draft:', error);
@@ -402,121 +362,106 @@ export default function MeditationSessionScreen() {
     }, [router]);
 
     const selectionSummary = useMemo(() => {
-        if (!selectedBook) {
-            return 'No selection yet';
-        }
-
+        if (!selectedBook) return 'No selection yet';
         let summary = selectedBook.name;
         if (selectedChapters && selectedChapters.start > 0) {
             summary += ` ${selectedChapters.start}`;
             if (selectedChapters.end && selectedChapters.end !== selectedChapters.start) {
                 summary += `–${selectedChapters.end}`;
             }
-
-            // Add verse range if present
             if (verseRange) {
                 if (selectedChapters.end && selectedChapters.end !== selectedChapters.start) {
-                    // Range of chapters with verses
                     const startVerse = verseRange.start ? `:${verseRange.start}` : '';
                     const endVerse = verseRange.end ? `:${verseRange.end}` : '';
                     if (startVerse || endVerse) {
                         summary = `${selectedBook.name} ${selectedChapters.start}${startVerse}–${selectedChapters.end}${endVerse}`;
                     }
-                }
-                else if (verseRange.start) {
+                } else if (verseRange.start) {
                     summary += `:${verseRange.start}`;
-                    if (verseRange.end) {
-                        summary += `-${verseRange.end}`;
-                    }
+                    if (verseRange.end) summary += `–${verseRange.end}`;
                 }
             }
         }
         return summary;
     }, [selectedBook, selectedChapters, verseRange]);
 
-
+    // ─── Step renders ─────────────────────────────────────────────────────────
 
     const renderBookStep = useCallback(() => (
         <View style={styles.stepContainer}>
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.stepContent}>
                     <View style={styles.header}>
-                        <Text style={[styles.title, { color: colors.textPrimary }]}>
-                            What book?
-                        </Text>
+                        <Text style={[styles.stepLabel, { color: colors.textTertiary }]}>PASSAGE</Text>
+                        <Text style={[styles.title, { color: colors.textPrimary }]}>What book?</Text>
                     </View>
-
                     <View style={styles.contentArea}>
-                        <BookPicker
-                            selectedBook={selectedBook}
-                            onBookSelect={handleBookSelect}
-                        />
+                        <BookPicker selectedBook={selectedBook} onBookSelect={handleBookSelect} />
                     </View>
                 </View>
             </ScrollView>
         </View>
-    ), [colors.textSecondary, selectedBook, handleBookSelect]);
+    ), [colors.textPrimary, colors.textTertiary, selectedBook, handleBookSelect]);
 
-    const renderChapterStep = useCallback(() => (
-        <View style={styles.stepContainer}>
-            <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                <View style={styles.stepContent}>
-                    <View style={styles.header}>
-                        <Text style={[styles.title, { color: colors.textPrimary }]}>
-                            What part?
-                        </Text>
+    const renderChapterStep = useCallback(() => {
+        const canContinue = !!(selectedChapters && selectedChapters.start > 0);
+        return (
+            <View style={styles.stepContainer}>
+                <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                    <View style={styles.stepContent}>
+                        <View style={styles.header}>
+                            <Text style={[styles.stepLabel, { color: colors.textTertiary }]}>PASSAGE</Text>
+                            <Text style={[styles.title, { color: colors.textPrimary }]}>What part?</Text>
+                        </View>
+                        <View style={styles.contentArea}>
+                            <ChapterPicker
+                                selectedBook={selectedBook}
+                                selectedChapters={selectedChapters}
+                                onChapterSelect={handleChapterSelect}
+                                onVerseRangeChange={handleVerseRangeChange}
+                                allowRange={true}
+                            />
+                        </View>
+                        <View style={styles.navigationContainer}>
+                            <ScalePressable
+                                style={[styles.backButton, { borderColor: colors.border }]}
+                                onPress={() => changeStep('book')}
+                            >
+                                <Text style={[styles.backButtonText, { color: colors.textSecondary }]}>Back</Text>
+                            </ScalePressable>
+
+                            {/* Always render Continue — dim it when disabled so user sees it exists */}
+                            <ScalePressable
+                                style={[
+                                    styles.continueButton,
+                                    { backgroundColor: colors.accent },
+                                    !canContinue && styles.continueButtonDisabled,
+                                ]}
+                                onPress={handleContinueToReflection}
+                                disabled={!canContinue}
+                            >
+                                <Text style={[styles.continueButtonText, { color: colors.buttonPrimaryText }]}>Continue</Text>
+                            </ScalePressable>
+                        </View>
                     </View>
-
-                    <View style={styles.contentArea}>
-                        <ChapterPicker
-                            selectedBook={selectedBook}
-                            selectedChapters={selectedChapters}
-                            onChapterSelect={handleChapterSelect}
-                            onVerseRangeChange={handleVerseRangeChange}
-                            allowRange={true}
-                        />
-                    </View>
-
-                    <View style={styles.navigationContainer}>
-                        <ScalePressable
-                            style={[styles.backButton, { borderColor: colors.border }]}
-                            onPress={() => changeStep('book')}
-                        >
-                            <Text style={[styles.backButtonText, { color: colors.textSecondary }]}>Back</Text>
-                        </ScalePressable>
-
-                        <ScalePressable
-                            style={[
-                                styles.continueButton,
-                                { backgroundColor: colors.accent },
-                                (!selectedChapters || selectedChapters.start === 0) && styles.continueButtonDisabled
-                            ]}
-                            onPress={handleContinueToReflection}
-                            disabled={!selectedChapters || selectedChapters.start === 0}
-                        >
-                            <Text style={[styles.continueButtonText, { color: colors.buttonPrimaryText }]}>Continue</Text>
-                        </ScalePressable>
-                    </View>
-                </View>
-            </ScrollView>
-        </View>
-    ), [colors, selectedBook, selectedChapters, handleChapterSelect, handleVerseRangeChange, handleContinueToReflection, changeStep]);
+                </ScrollView>
+            </View>
+        );
+    }, [colors, selectedBook, selectedChapters, handleChapterSelect, handleVerseRangeChange, handleContinueToReflection, changeStep]);
 
     const renderReflectionStep = useCallback(() => (
         <View style={styles.stepContainer}>
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.stepContent}>
                     <View style={styles.header}>
-                        <Text style={[styles.title, { color: colors.textPrimary }]}>
-                            Reflections
-                        </Text>
+                        <Text style={[styles.stepLabel, { color: colors.textTertiary }]}>REFLECT</Text>
+                        <Text style={[styles.title, { color: colors.textPrimary }]}>Reflections</Text>
                     </View>
-                    {!isEditMode &&
+                    {!isEditMode && (
                         <Text style={[styles.stepDescription, { color: colors.textSecondary }]}>
                             Consider these questions to get the most out of your reading:
                         </Text>
-                    }
-
+                    )}
                     <View style={styles.contentArea}>
                         <ReflectionForm
                             initialAnswers={reflectionAnswers}
@@ -527,67 +472,84 @@ export default function MeditationSessionScreen() {
                         />
                     </View>
 
-                    <ScalePressable
-                        style={styles.subtleBackButton}
-                        onPress={() => changeStep('chapter')}
-                    >
-                        <Text style={[styles.subtleBackButtonText, { color: colors.textTertiary }]}>← Return to chapter selection</Text>
-                    </ScalePressable>
-
-                    {!isEditMode && (reflectionAnswers) && (
+                    {/* Navigation footer */}
+                    <View style={[styles.reflectionFooter, { borderTopColor: colors.border + '40' }]}>
                         <ScalePressable
-                            style={styles.discardButton}
-                            onPress={handleDiscardDraft}
+                            style={styles.footerNavButton}
+                            onPress={() => changeStep('chapter')}
                         >
-                            <Text style={[styles.discardButtonText, { color: colors.textSecondary }]}>Discard Draft</Text>
+                            <Ionicons name="chevron-back" size={14} color={colors.textTertiary} />
+                            <Text style={[styles.footerNavText, { color: colors.textTertiary }]}>Chapter selection</Text>
                         </ScalePressable>
-                    )}
 
+                        {!isEditMode && reflectionAnswers && (
+                            <>
+                                <View style={[styles.footerDivider, { backgroundColor: colors.border }]} />
+                                <ScalePressable
+                                    style={styles.footerDiscardButton}
+                                    onPress={handleDiscardDraft}
+                                >
+                                    <Ionicons name="trash-outline" size={13} color={'#C0392B'} />
+                                    <Text style={[styles.footerDiscardText, { color: '#C0392B' }]}>
+                                        Discard draft
+                                    </Text>
+                                </ScalePressable>
+                            </>
+                        )}
+                    </View>
                 </View>
             </ScrollView>
         </View>
     ), [colors, isEditMode, reflectionAnswers, handleSaveReflection, handleDiscardDraft, changeStep]);
 
-    const formattedDate = useMemo(() => {
-        return new Date().toLocaleDateString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
-    }, []);
+    const formattedDate = useMemo(() => new Date().toLocaleDateString('en-US', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    }), []);
 
     const renderSummaryStep = useCallback(() => (
         <View style={styles.stepContainer}>
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                <View style={[styles.stepContent, { justifyContent: 'center', minHeight: 400 }]}>
+                <View style={[styles.stepContent, styles.summaryContent]}>
+
+                    {/* Icon hero */}
                     <View style={styles.successHero}>
-                        <View style={[styles.successIconOuter, { backgroundColor: colors.accent + '15' }]}>
-                            <Ionicons name="checkmark-circle" size={64} color={colors.accent} />
+                        <View style={[styles.successRing, { borderColor: colors.accent + '30' }]}>
+                            <View style={[styles.successIconOuter, { backgroundColor: colors.accent + '18' }]}>
+                                <Ionicons name="checkmark" size={38} color={colors.accent} />
+                            </View>
                         </View>
-                        <Text style={[styles.successTitle, { color: colors.textPrimary }]}>Complete</Text>
-                        <Text style={[styles.successSubtitle, { color: colors.textSecondary }]}>Your record has been saved.</Text>
+                        <Text style={[styles.successTitle, { color: colors.textPrimary }]}>Recorded</Text>
+                        <Text style={[styles.successSubtitle, { color: colors.textSecondary }]}>
+                            Your reflection has been saved.
+                        </Text>
                     </View>
 
-                    <View style={[styles.completionCard, { backgroundColor: colors.cardBackground, borderColor: colors.border + '30', marginTop: Spacing.xxl }]}>
-                        <View style={styles.completionHeader}>
-                            <Text style={[styles.completionTitle, { color: colors.accent }]}>ENTRY RECORD</Text>
+                    {/* Receipt-style entry card */}
+                    <View style={[styles.entryCard, { backgroundColor: colors.cardBackground, borderColor: colors.border + '50' }]}>
+                        {/* Top rule */}
+                        <View style={[styles.entryCardRule, { backgroundColor: colors.accent + '40' }]} />
+
+                        <View style={styles.entryCardBody}>
+                            <Text style={[styles.entryCardLabel, { color: colors.textTertiary }]}>PASSAGE</Text>
+                            <Text style={[styles.entryCardPassage, { color: colors.textPrimary }]}>{selectionSummary}</Text>
+                            <View style={[styles.entryCardSeparator, { backgroundColor: colors.border + '60' }]} />
+                            <Text style={[styles.entryCardDate, { color: colors.textSecondary }]}>{formattedDate}</Text>
                         </View>
-                        <View style={styles.completionDetails}>
-                            <Text style={[styles.completionText, { color: colors.textPrimary }]}>{selectionSummary}</Text>
-                            <Text style={[styles.completionDate, { color: colors.textSecondary }]}>{formattedDate}</Text>
-                        </View>
+
+                        {/* Bottom rule */}
+                        <View style={[styles.entryCardRule, { backgroundColor: colors.accent + '40' }]} />
                     </View>
 
-                    <View style={[styles.contentArea, { marginTop: Spacing.xxxl }]}>
-                        <ScalePressable style={[styles.primaryButton, { backgroundColor: colors.accent }]} onPress={handleDone}>
-                            <Text style={[styles.primaryButtonText, { color: colors.buttonPrimaryText }]}>Done</Text>
+                    {/* Actions */}
+                    <View style={styles.summaryActions}>
+                        <ScalePressable
+                            style={[styles.primaryButton, { backgroundColor: colors.accent }]}
+                            onPress={handleDone}
+                        >
+                            <Text style={[styles.primaryButtonText, { color: colors.buttonPrimaryText }]}>View Entry</Text>
                         </ScalePressable>
 
-                        <ScalePressable
-                            style={styles.secondaryButton}
-                            onPress={handleStartOver}
-                        >
+                        <ScalePressable style={styles.secondaryButton} onPress={handleStartOver}>
                             <Text style={[styles.secondaryButtonText, { color: colors.textSecondary }]}>New Entry</Text>
                         </ScalePressable>
                     </View>
@@ -606,11 +568,11 @@ export default function MeditationSessionScreen() {
         }
     };
 
-    if (isLoading && isEditMode) {
+    if (isLoading) {
         return (
             <View style={[styles.container, { backgroundColor: colors.background }]}>
                 <View style={styles.loadingContainer}>
-                    <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading...</Text>
+                    <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading…</Text>
                 </View>
             </View>
         );
@@ -619,15 +581,16 @@ export default function MeditationSessionScreen() {
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
             <Stack.Screen options={{ headerShown: false }} />
-            <KeyboardAvoidingView
-                style={{ flex: 1 }}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            >
-                {renderCurrentStep()}
+            <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+                <Animated.View style={[{ flex: 1 }, { opacity, transform: [{ translateY }] }]}>
+                    {renderCurrentStep()}
+                </Animated.View>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
 }
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
     container: {
@@ -658,6 +621,21 @@ const styles = StyleSheet.create({
         flex: 1,
         paddingTop: Spacing.layout.screenPadding,
     },
+    header: {
+        marginBottom: Spacing.xl,
+        gap: 4,
+    },
+    // Small all-caps context label above the main title
+    stepLabel: {
+        fontSize: 10,
+        fontWeight: '700',
+        letterSpacing: 2,
+    },
+    title: {
+        fontSize: 34,
+        fontWeight: '800',
+        letterSpacing: -1,
+    },
     stepDescription: {
         fontSize: Typography.size.lg,
         fontWeight: Typography.weight.regular,
@@ -665,20 +643,6 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.md,
         lineHeight: Typography.lineHeight.xl,
         letterSpacing: Typography.letterSpacing.wide,
-    },
-    stepQuestion: {
-        fontSize: 34,
-        fontWeight: '800',
-        letterSpacing: -1.5,
-        marginBottom: Spacing.xl,
-    },
-    header: {
-        marginBottom: Spacing.xl,
-    },
-    title: {
-        fontSize: 34,
-        fontWeight: '800',
-        letterSpacing: -1.5,
     },
     contentArea: {
         flex: 1,
@@ -723,68 +687,69 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         letterSpacing: 0.3,
     },
-    subtleBackButton: {
+    reflectionFooter: {
+        flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: Spacing.lg,
-        marginTop: Spacing.layout.screenPadding,
+        justifyContent: 'center',
+        gap: Spacing.lg,
+        marginTop: Spacing.xl,
+        paddingTop: Spacing.lg,
+        borderTopWidth: StyleSheet.hairlineWidth,
     },
-    subtleBackButtonText: {
-        fontSize: Typography.size.md,
-        fontWeight: Typography.weight.medium,
-        letterSpacing: Typography.letterSpacing.wide,
-    },
-    discardButton: {
-        alignItems: 'center',
-        paddingVertical: Spacing.md,
-        marginTop: Spacing.layout.screenPadding,
-    },
-    discardButtonText: {
-        fontSize: Typography.size.md,
-        fontWeight: Typography.weight.medium,
-        letterSpacing: 0.3,
-    },
-    completionCard: {
-        padding: Spacing.xl,
-        borderRadius: 24,
-        borderWidth: 1.5,
-        alignItems: 'center',
-        width: '100%',
-    },
-    completionHeader: {
-        marginBottom: Spacing.md,
-    },
-    completionTitle: {
-        fontSize: 10,
-        fontWeight: '800',
-        letterSpacing: 1.5,
-        opacity: 0.8,
-    },
-    completionDetails: {
+    footerNavButton: {
+        flexDirection: 'row',
         alignItems: 'center',
         gap: 4,
+        paddingVertical: Spacing.sm,
     },
-    completionText: {
-        fontSize: 22,
-        fontWeight: '800',
-        letterSpacing: -0.5,
-        textAlign: 'center',
+    footerNavText: {
+        fontSize: Typography.size.sm,
+        fontWeight: Typography.weight.medium,
+        letterSpacing: 0.2,
     },
-    completionDate: {
-        fontSize: 13,
-        fontWeight: '500',
-        opacity: 0.6,
+    footerDivider: {
+        width: 1,
+        height: 14,
+        opacity: 0.4,
+    },
+    footerDiscardButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingVertical: Spacing.sm,
+    },
+    footerDiscardText: {
+        fontSize: Typography.size.sm,
+        fontWeight: Typography.weight.medium,
+        letterSpacing: 0.2,
+    },
+    summaryContent: {
+        justifyContent: 'center',
+        gap: Spacing.xxxl,
+        minHeight: 400,
+    },
+    summaryActions: {
+        gap: 0,
     },
     successHero: {
         alignItems: 'center',
         gap: Spacing.md,
     },
-    successIconOuter: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
+    successRing: {
+        width: 112,
+        height: 112,
+        borderRadius: 56,
+        borderWidth: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: Spacing.sm,
+        marginBottom: Spacing.xs,
+    },
+    successIconOuter: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     successTitle: {
         fontSize: 34,
@@ -792,19 +757,53 @@ const styles = StyleSheet.create({
         letterSpacing: -1.5,
     },
     successSubtitle: {
-        fontSize: 16,
-        fontWeight: '500',
+        fontSize: 15,
+        fontWeight: '400',
         opacity: 0.6,
+    },
+    entryCard: {
+        borderRadius: 16,
+        borderWidth: 1,
+        overflow: 'hidden',
+    },
+    entryCardRule: {
+        height: 3,
+        width: '100%',
+    },
+    entryCardBody: {
+        paddingVertical: Spacing.xl,
+        paddingHorizontal: Spacing.xl,
+        alignItems: 'center',
+        gap: Spacing.sm,
+    },
+    entryCardLabel: {
+        fontSize: 10,
+        fontWeight: '700',
+        letterSpacing: 2,
+    },
+    entryCardPassage: {
+        fontSize: 24,
+        fontWeight: '800',
+        letterSpacing: -0.5,
+        textAlign: 'center',
+    },
+    entryCardSeparator: {
+        width: 32,
+        height: 1,
+        marginVertical: Spacing.xs,
+        opacity: 0.5,
+    },
+    entryCardDate: {
+        fontSize: 13,
+        fontWeight: '400',
+        opacity: 0.55,
     },
     primaryButton: {
         paddingVertical: 20,
         paddingHorizontal: Spacing.xxl,
         borderRadius: Spacing.borderRadius.lg,
         alignItems: 'center',
-        shadowOffset: {
-            width: 0,
-            height: 4,
-        },
+        shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.15,
         shadowRadius: 8,
         elevation: 4,
