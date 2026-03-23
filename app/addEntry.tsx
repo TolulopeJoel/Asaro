@@ -107,28 +107,19 @@ function useAutoSave(
 
 function useStepFade(currentStep: Step) {
     const opacity = useRef(new Animated.Value(1)).current;
-    const translateY = useRef(new Animated.Value(0)).current;
     const prevStep = useRef<Step>(currentStep);
 
     useEffect(() => {
         if (prevStep.current === currentStep) return;
         prevStep.current = currentStep;
 
-        // Fade + lift out, then snap reset and fade in
-        Animated.parallel([
-            Animated.timing(opacity, { toValue: 0, duration: 160, useNativeDriver: true }),
-            Animated.timing(translateY, { toValue: -10, duration: 160, useNativeDriver: true }),
-        ]).start(() => {
+        Animated.timing(opacity, { toValue: 0, duration: 150, useNativeDriver: true }).start(() => {
             opacity.setValue(0);
-            translateY.setValue(14);
-            Animated.parallel([
-                Animated.timing(opacity, { toValue: 1, duration: 280, useNativeDriver: true }),
-                Animated.timing(translateY, { toValue: 0, duration: 280, useNativeDriver: true }),
-            ]).start();
+            Animated.timing(opacity, { toValue: 1, duration: 250, useNativeDriver: true }).start();
         });
     }, [currentStep]);
 
-    return { opacity, translateY };
+    return { opacity };
 }
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -152,7 +143,7 @@ export default function MeditationSessionScreen() {
 
     const readingItemId = params.readingItemId ? Number(params.readingItemId) : undefined;
 
-    const { opacity, translateY } = useStepFade(currentStep);
+    const { opacity } = useStepFade(currentStep);
 
     // Sync pending activities on foreground
     useEffect(() => {
@@ -389,7 +380,7 @@ export default function MeditationSessionScreen() {
 
     const renderBookStep = useCallback(() => (
         <View style={styles.stepContainer}>
-            <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <ScrollView key="step-book" style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.stepContent}>
                     <View style={styles.header}>
                         <Text style={[styles.stepLabel, { color: colors.textTertiary }]}>PASSAGE</Text>
@@ -407,7 +398,7 @@ export default function MeditationSessionScreen() {
         const canContinue = !!(selectedChapters && selectedChapters.start > 0);
         return (
             <View style={styles.stepContainer}>
-                <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                <ScrollView key="step-chapter" style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                     <View style={styles.stepContent}>
                         <View style={styles.header}>
                             <Text style={[styles.stepLabel, { color: colors.textTertiary }]}>PASSAGE</Text>
@@ -427,10 +418,9 @@ export default function MeditationSessionScreen() {
                                 style={[styles.backButton, { borderColor: colors.border }]}
                                 onPress={() => changeStep('book')}
                             >
-                                <Text style={[styles.backButtonText, { color: colors.textSecondary }]}>Back</Text>
+                                <Text style={[styles.backButtonText, { color: colors.textSecondary }]}>Change book</Text>
                             </ScalePressable>
 
-                            {/* Always render Continue — dim it when disabled so user sees it exists */}
                             <ScalePressable
                                 style={[
                                     styles.continueButton,
@@ -440,7 +430,7 @@ export default function MeditationSessionScreen() {
                                 onPress={handleContinueToReflection}
                                 disabled={!canContinue}
                             >
-                                <Text style={[styles.continueButtonText, { color: colors.buttonPrimaryText }]}>Continue</Text>
+                                <Text style={[styles.continueButtonText, { color: colors.buttonPrimaryText }]}>Reflect</Text>
                             </ScalePressable>
                         </View>
                     </View>
@@ -451,7 +441,7 @@ export default function MeditationSessionScreen() {
 
     const renderReflectionStep = useCallback(() => (
         <View style={styles.stepContainer}>
-            <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <ScrollView key="step-reflection" style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.stepContent}>
                     <View style={styles.header}>
                         <Text style={[styles.stepLabel, { color: colors.textTertiary }]}>REFLECT</Text>
@@ -468,7 +458,7 @@ export default function MeditationSessionScreen() {
                             onAnswersChange={setReflectionAnswers}
                             onSave={handleSaveReflection}
                             disabled={false}
-                            saveButtonText={isEditMode ? 'Update It' : 'Save It'}
+                            saveButtonText={isEditMode ? 'Update entry' : 'Record it'}
                         />
                     </View>
 
@@ -479,7 +469,9 @@ export default function MeditationSessionScreen() {
                             onPress={() => changeStep('chapter')}
                         >
                             <Ionicons name="chevron-back" size={14} color={colors.textTertiary} />
-                            <Text style={[styles.footerNavText, { color: colors.textTertiary }]}>Chapter selection</Text>
+                            <Text style={[styles.footerNavText, { color: colors.textTertiary }]}>
+                                {`Change chapter${selectedChapters?.end && selectedChapters.end !== selectedChapters.start ? 's' : ''}`}
+                            </Text>
                         </ScalePressable>
 
                         {!isEditMode && reflectionAnswers && (
@@ -508,7 +500,7 @@ export default function MeditationSessionScreen() {
 
     const renderSummaryStep = useCallback(() => (
         <View style={styles.stepContainer}>
-            <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <ScrollView key="step-summary" style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={[styles.stepContent, styles.summaryContent]}>
 
                     {/* Icon hero */}
@@ -546,11 +538,11 @@ export default function MeditationSessionScreen() {
                             style={[styles.primaryButton, { backgroundColor: colors.accent }]}
                             onPress={handleDone}
                         >
-                            <Text style={[styles.primaryButtonText, { color: colors.buttonPrimaryText }]}>View Entry</Text>
+                            <Text style={[styles.primaryButtonText, { color: colors.buttonPrimaryText }]}>Open entry</Text>
                         </ScalePressable>
 
                         <ScalePressable style={styles.secondaryButton} onPress={handleStartOver}>
-                            <Text style={[styles.secondaryButtonText, { color: colors.textSecondary }]}>New Entry</Text>
+                            <Text style={[styles.secondaryButtonText, { color: colors.textSecondary }]}>New entry</Text>
                         </ScalePressable>
                     </View>
                 </View>
@@ -582,7 +574,7 @@ export default function MeditationSessionScreen() {
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
             <Stack.Screen options={{ headerShown: false }} />
             <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-                <Animated.View style={[{ flex: 1 }, { opacity, transform: [{ translateY }] }]}>
+                <Animated.View style={[{ flex: 1 }, { opacity }]}>
                     {renderCurrentStep()}
                 </Animated.View>
             </KeyboardAvoidingView>

@@ -110,34 +110,6 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
     }
   };
 
-  const handleClear = () => {
-    if (!hasContent) return;
-
-    Alert.alert(
-      'Re-write',
-      'This will clear everything you\'ve written. Are you sure? 👀',
-      [
-        { text: 'Keep It', style: 'cancel' },
-        {
-          text: 'Clear All',
-          style: 'destructive',
-          onPress: () => {
-            const emptyAnswers: ReflectionAnswers = {
-              reflection1: '',
-              reflection2: '',
-              actionItems: [{ action: '', motivation: '' }],
-              reflection4: '',
-              studyFurther: '',
-              studyFurtherReminder: undefined,
-              notes: '',
-            };
-            setAnswers(emptyAnswers);
-          },
-        },
-      ]
-    );
-  };
-
   const renderQuestion = (questionData: ReflectionQuestion, index: number) => {
     const { id, question, placeholder, isActionList } = questionData;
     return (
@@ -238,15 +210,6 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
 
       {!disabled && (
         <View style={styles.actionsContainer}>
-          <Button
-            label="Start Over"
-            variant="secondary"
-            size="lg"
-            onPress={handleClear}
-            fullWidth={false}
-            style={{ flex: 1 }}
-          />
-
           {hasContent && (
             <Button
               label={saveButtonText}
