@@ -121,14 +121,17 @@ export default function Settings() {
         setIsExporting(true);
         try {
             const json = await exportJournalEntriesToJson();
-            const fileName = `asaro-backup-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+            const now = new Date();
+            const dateStr = now.toISOString().split('T')[0];
+            const timeStr = now.getHours().toString().padStart(2, '0') + '-' + now.getMinutes().toString().padStart(2, '0');
+            const fileName = `Asaro_Backup_${dateStr}_${timeStr}.json`;
             const uri = `${documentDirectory || ''}${fileName}`;
 
             await writeAsStringAsync(uri, json);
 
-            const now = new Date().toISOString();
-            await AsyncStorage.setItem('lastBackupDate', now);
-            setLastBackupDate(now);
+            const nowIso = now.toISOString();
+            await AsyncStorage.setItem('lastBackupDate', nowIso);
+            setLastBackupDate(nowIso);
 
             if (await Sharing.isAvailableAsync()) {
                 await Sharing.shareAsync(uri, {

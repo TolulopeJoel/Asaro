@@ -662,6 +662,7 @@ export const exportJournalEntriesToJson = async (): Promise<string> => {
                 notes,
                 study_further,
                 study_further_reminder,
+                study_completed,
                 datetime(created_at, 'localtime') as created_at,
                 datetime(updated_at, 'localtime') as updated_at
             FROM journal_entries
@@ -670,15 +671,18 @@ export const exportJournalEntriesToJson = async (): Promise<string> => {
 
         const entriesWithItems = await attachActionItems(database, entries);
 
-        const readingProgress = await database.getAllAsync<{ item_id: number }>(
-            `SELECT item_id FROM reading_progress`
+        const readingProgress = await database.getAllAsync<{ item_id: number; completed_at: string }>(
+            `SELECT item_id, datetime(completed_at, 'localtime') as completed_at FROM reading_progress`
         );
 
         const payload = {
-            version: 3,
+            version: 4,
             exportedAt: new Date().toISOString(),
             entries: entriesWithItems,
-            readingProgress: readingProgress.map(rp => rp.item_id),
+            readingProgress: readingProgress.map(rp => ({
+                item_id: rp.item_id,
+                completed_at: rp.completed_at
+            })),
         };
 
         return JSON.stringify(payload, null, 2);
@@ -766,8 +770,8 @@ export const importJournalEntriesFromJson = async (json: string): Promise<{
                     for (let i = 0; i < entry.action_items.length; i++) {
                         const item = entry.action_items[i];
                         await database.runAsync(
-                            `INSERT INTO action_items (entry_id, action, motivation, sort_order, is_completed) VALUES (?, ?, ?, ?, ?)`,
-                            [newEntryId, item.action ?? '', item.motivation ?? '', item.sort_order ?? i, item.is_completed ? 1 : 0]
+                            `INSERT INTO action_items (entry_id, action, motivation, sort_order, is_completed, is_pinned) VALUES (?, ?, ?, ?, ?, ?)`,
+                            [newEntryId, item.action ?? '', item.motivation ?? '', item.sort_order ?? i, item.is_completed ? 1 : 0, item.is_pinned ? 1 : 0]
                         );
                     }
                 }
@@ -777,7 +781,11 @@ export const importJournalEntriesFromJson = async (json: string): Promise<{
 
             // 2. Process Reading Progress (if version >= 3)
             if (parsed.version >= 3 && Array.isArray(parsed.readingProgress)) {
-                for (const itemId of parsed.readingProgress) {
+                for (const item of parsed.readingProgress) {
+                    // Handle both version 3 (array of numbers) and version 4 (array of objects)
+                    const itemId = typeof item === 'number' ? item : item.item_id;
+                    const completedAt = typeof item === 'object' ? item.completed_at : null;
+
                     const existing = await database.getFirstAsync<{ item_id: number }>(
                         `SELECT item_id FROM reading_progress WHERE item_id = ?`,
                         [itemId]
@@ -788,10 +796,17 @@ export const importJournalEntriesFromJson = async (json: string): Promise<{
                         continue;
                     }
 
-                    await database.runAsync(
-                        `INSERT INTO reading_progress (item_id) VALUES (?)`,
-                        [itemId]
-                    );
+                    if (completedAt) {
+                        await database.runAsync(
+                            `INSERT INTO reading_progress (item_id, completed_at) VALUES (?, ?)`,
+                            [itemId, completedAt]
+                        );
+                    } else {
+                        await database.runAsync(
+                            `INSERT INTO reading_progress (item_id) VALUES (?)`,
+                            [itemId]
+                        );
+                    }
                     importedReadingItems++;
                 }
             }
