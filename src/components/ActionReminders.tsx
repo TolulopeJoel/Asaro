@@ -10,7 +10,6 @@ import {
     JournalEntry,
     getEntryById,
     getPinnedActionItem,
-    toggleActionItemPin,
     getActionItemsForWindow,
 } from '../data/database';
 import { ScalePressable } from './ScalePressable';
@@ -36,7 +35,6 @@ interface ActionCardProps {
     stackedHeight?: number;
     isTopStacked?: boolean;
     onEntryPress: (entry: JournalEntry) => void;
-    onTogglePin: (id: number, pinned: boolean) => void;
 }
 
 const ActionCard = React.memo(({
@@ -46,7 +44,6 @@ const ActionCard = React.memo(({
     stackedHeight,
     isTopStacked,
     onEntryPress,
-    onTogglePin,
 }: ActionCardProps) => {
     const { colors } = useTheme();
 
@@ -115,17 +112,6 @@ const ActionCard = React.memo(({
                         <Text style={[styles.dateText, { color: colors.textTertiary }]}>
                             {formattedDate}
                         </Text>
-                        <TouchableOpacity
-                            onPress={() => onTogglePin(item.id!, isPinned)}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                            style={styles.pinButton}
-                        >
-                            <Ionicons
-                                name={isPinned ? 'pin' : 'pin-outline'}
-                                size={16}
-                                color={isPinned ? colors.accent : colors.textTertiary}
-                            />
-                        </TouchableOpacity>
                     </View>
                 </View>
 
@@ -186,7 +172,6 @@ export const ActionReminders: React.FC<ActionRemindersProps> = React.memo(({ onE
     const [isExpanded, setIsExpanded] = useState(false);
     const [topCardHeight, setTopCardHeight] = useState(200);
 
-
     const loadItems = useCallback(async () => {
         const [pinned, ...windowResults] = await Promise.all([
             getPinnedActionItem(),
@@ -221,11 +206,6 @@ export const ActionReminders: React.FC<ActionRemindersProps> = React.memo(({ onE
             loadItems();
         }, [loadItems])
     );
-
-    const handleTogglePin = useCallback(async (id: number, currentlyPinned: boolean) => {
-        await toggleActionItemPin(id, !currentlyPinned);
-        loadItems();
-    }, [loadItems]);
 
     // Consolidate items for map rendering
     const allItems = useMemo(() => {
@@ -320,7 +300,6 @@ export const ActionReminders: React.FC<ActionRemindersProps> = React.memo(({ onE
                                     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                                     setIsExpanded(true);
                                 }}
-                                onTogglePin={handleTogglePin}
                             />
                         </View>
                     );
@@ -397,10 +376,6 @@ const styles = StyleSheet.create({
         fontSize: 10,
         fontWeight: '600',
         opacity: 0.8,
-    },
-    pinButton: {
-        justifyContent: 'center',
-        alignItems: 'center',
     },
     cardHeader: {
         flexDirection: 'row',
