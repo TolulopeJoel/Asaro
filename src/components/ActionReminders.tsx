@@ -1,6 +1,7 @@
 import React, { useCallback, useState, useMemo } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, LayoutAnimation } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Svg, { Path } from 'react-native-svg';
 import { useFocusEffect } from 'expo-router';
 import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
@@ -82,9 +83,9 @@ const ActionCard = React.memo(({
                     styles.card,
                     {
                         backgroundColor: colors.cardBackground,
-                        borderColor: isPinned ? colors.accent : colors.cardBorder,
+                        borderColor: colors.cardBorder,
                         padding: dynamic.padding,
-                        borderWidth: isPinned ? 1.5 : 1,
+                        borderWidth: 1,
                     },
                     stackedHeight !== undefined && {
                         height: stackedHeight,
@@ -112,6 +113,22 @@ const ActionCard = React.memo(({
                         <Text style={[styles.dateText, { color: colors.textTertiary }]}>
                             {formattedDate}
                         </Text>
+                        {isPinned && (
+                            <Svg
+                                width="12"
+                                height="12"
+                                viewBox="0 0 24 24"
+                                fill={colors.accent}
+                                stroke={colors.accent}
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                style={{ transform: [{ rotate: '30deg' }], marginLeft: 4 }}
+                            >
+                                <Path d="M12 17v5" />
+                                <Path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
+                            </Svg>
+                        )}
                     </View>
                 </View>
 
