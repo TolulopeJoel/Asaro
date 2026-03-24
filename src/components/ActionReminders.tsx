@@ -1,42 +1,57 @@
-import React, { useCallback, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useState, useMemo } from 'react';
+import { StyleSheet, Text, View, TouchableOpacity, LayoutAnimation } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
-import { getRecentActionItems, EnhancedActionItem, JournalEntry, getEntryById } from '../data/database';
+import {
+    EnhancedActionItem,
+    JournalEntry,
+    getEntryById,
+    getPinnedActionItem,
+    toggleActionItemPin,
+    getActionItemsForWindow,
+} from '../data/database';
 import { ScalePressable } from './ScalePressable';
+import { getItemForSlot, SlotKey } from '../utils/actionRemindersRotation';
 
+// ─── Window definitions ──────────────────────────────────────────────────────
+const WINDOWS: { slot: SlotKey; newerDays: number; olderDays: number; label: string }[] = [
+    { slot: 'thisWeek', newerDays: 0, olderDays: 7, label: 'THIS WEEK' },
+    { slot: 'lastWeek', newerDays: 7, olderDays: 14, label: 'LAST WEEK' },
+    { slot: 'monthAgo', newerDays: 21, olderDays: 35, label: 'A MONTH AGO' },
+];
+
+// ─── Props ────────────────────────────────────────────────────────────────────
 interface ActionRemindersProps {
     onEntryPress: (entry: JournalEntry) => void;
 }
 
-export const ActionReminders: React.FC<ActionRemindersProps> = React.memo(({ onEntryPress }) => {
+// ─── Single card ─────────────────────────────────────────────────────────────
+interface ActionCardProps {
+    item: EnhancedActionItem;
+    isPinned: boolean;
+    windowLabel?: string;
+    stackedHeight?: number;
+    onEntryPress: (entry: JournalEntry) => void;
+    onTogglePin: (id: number, pinned: boolean) => void;
+}
+
+const ActionCard = React.memo(({
+    item,
+    isPinned,
+    windowLabel,
+    stackedHeight,
+    onEntryPress,
+    onTogglePin,
+}: ActionCardProps) => {
     const { colors } = useTheme();
-    const [actions, setActions] = useState<EnhancedActionItem[]>([]);
-
-    const loadActions = useCallback(async () => {
-        const data = await getRecentActionItems(7); // Show actions from last 7 days
-        setActions(data);
-    }, []);
-
-    useFocusEffect(
-        useCallback(() => {
-            loadActions();
-        }, [loadActions])
-    );
-
-    if (actions.length === 0) return null;
-
-    const item = actions[0];
 
     const handlePress = async () => {
         try {
             const entry = await getEntryById(item.entry_id!);
-            if (entry) {
-                onEntryPress(entry);
-            }
+            if (entry) onEntryPress(entry);
         } catch (error) {
             console.error('Error loading entry:', error);
         }
@@ -51,6 +66,16 @@ export const ActionReminders: React.FC<ActionRemindersProps> = React.memo(({ onE
 
     const dynamic = getDynamicStyle(item.action);
 
+    const formattedDate = (() => {
+        const date = new Date(item.created_at);
+        const now = new Date();
+        return date.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            ...(date.getFullYear() !== now.getFullYear() && { year: 'numeric' }),
+        });
+    })();
+
     return (
         <ScalePressable onPress={handlePress}>
             <View
@@ -58,46 +83,86 @@ export const ActionReminders: React.FC<ActionRemindersProps> = React.memo(({ onE
                     styles.card,
                     {
                         backgroundColor: colors.cardBackground,
-                        borderColor: colors.cardBorder,
-                        padding: dynamic.padding
-                    }
+                        borderColor: isPinned ? colors.accent : colors.cardBorder,
+                        padding: dynamic.padding,
+                        borderWidth: isPinned ? 1.5 : 1,
+                    },
+                    stackedHeight !== undefined && {
+                        height: stackedHeight,
+                        overflow: 'hidden',
+                    },
                 ]}
             >
+                {/* ── Header row ── */}
                 <View style={styles.header}>
                     <View style={styles.headerTitleRow}>
-                        <Ionicons name="flash" size={14} color={colors.accent} />
+                        <Ionicons
+                            name="flash"
+                            size={14}
+                            color={colors.accent}
+                        />
                         <Text style={[styles.headerTitle, { color: colors.textSecondary }]}>
-                            WHAT YOU SAID YOU'D DO
+                            {isPinned ? 'PINNED REMINDER' : (windowLabel ?? 'WHAT YOU SAID YOU\'D DO')}
                         </Text>
                     </View>
-                    <Text style={[styles.dateText, { color: colors.textTertiary }]}>
-                        {(() => {
-                            const date = new Date(item.created_at);
-                            const now = new Date();
-                            return date.toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                ...(date.getFullYear() !== now.getFullYear() && { year: 'numeric' })
-                            });
-                        })()}
-                    </Text>
+
+                    <View style={styles.headerRight}>
+                        <Text style={[styles.dateText, { color: colors.textTertiary }]}>
+                            {formattedDate}
+                        </Text>
+                        <TouchableOpacity
+                            onPress={() => onTogglePin(item.id!, isPinned)}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            style={styles.pinButton}
+                        >
+                            <Ionicons
+                                name={isPinned ? 'pin' : 'pin-outline'}
+                                size={16}
+                                color={isPinned ? colors.accent : colors.textTertiary}
+                            />
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
+                {/* ── Scripture badge ── */}
                 <View style={styles.cardHeader}>
                     <View style={[styles.refBadge, { backgroundColor: colors.accent + '15' }]}>
                         <Text style={[styles.refText, { color: colors.accent }]}>
-                            {item.book_name} {item.chapter_start}{item.chapter_end && item.chapter_end !== item.chapter_start ? `-${item.chapter_end}` : ''}
+                            {item.book_name}{' '}
+                            {item.chapter_start}
+                            {item.chapter_end && item.chapter_end !== item.chapter_start
+                                ? `–${item.chapter_end}`
+                                : ''}
                         </Text>
                     </View>
                 </View>
 
-                <Text style={[styles.actionText, { color: colors.textPrimary, fontSize: dynamic.fontSize, lineHeight: dynamic.lineHeight }]}>
+                {/* ── Action text ── */}
+                <Text
+                    style={[
+                        styles.actionText,
+                        {
+                            color: colors.textPrimary,
+                            fontSize: dynamic.fontSize,
+                            lineHeight: dynamic.lineHeight,
+                        },
+                    ]}
+                >
                     {item.action}
                 </Text>
 
+                {/* ── Motivation ── */}
                 {item.motivation ? (
                     <View style={[styles.motivationContainer, { borderTopColor: colors.border + '30' }]}>
-                        <Text style={[styles.motivationText, { color: colors.textSecondary, fontSize: Math.max(13, dynamic.fontSize - 3) }]}>
+                        <Text
+                            style={[
+                                styles.motivationText,
+                                {
+                                    color: colors.textSecondary,
+                                    fontSize: Math.max(13, dynamic.fontSize - 3),
+                                },
+                            ]}
+                        >
                             {item.motivation}
                         </Text>
                     </View>
@@ -107,16 +172,189 @@ export const ActionReminders: React.FC<ActionRemindersProps> = React.memo(({ onE
     );
 });
 
+ActionCard.displayName = 'ActionCard';
+
+export const ActionReminders: React.FC<ActionRemindersProps> = React.memo(({ onEntryPress }) => {
+    const { colors } = useTheme();
+    const [pinnedItem, setPinnedItem] = useState<EnhancedActionItem | null>(null);
+    const [rotatingItems, setRotatingItems] = useState<EnhancedActionItem[]>([]);
+    const [isExpanded, setIsExpanded] = useState(false);
+    const [topCardHeight, setTopCardHeight] = useState(200);
+
+
+    const loadItems = useCallback(async () => {
+        const [pinned, ...windowResults] = await Promise.all([
+            getPinnedActionItem(),
+            ...WINDOWS.map(w => getActionItemsForWindow(w.newerDays, w.olderDays)),
+        ]);
+
+        setPinnedItem(pinned as EnhancedActionItem | null);
+
+        const pinnedId = (pinned as EnhancedActionItem | null)?.id;
+        const rotating: EnhancedActionItem[] = [];
+
+        for (let i = 0; i < WINDOWS.length; i++) {
+            const { slot } = WINDOWS[i];
+            const pool = (windowResults[i] as EnhancedActionItem[])
+                .filter(item => item.id !== pinnedId);
+
+            if (pool.length === 0) continue;
+
+            const ids = pool.map(it => it.id!).filter(Boolean);
+            const selectedId = await getItemForSlot(slot, ids);
+            if (selectedId !== null) {
+                const selected = pool.find(it => it.id === selectedId);
+                if (selected) rotating.push(selected);
+            }
+        }
+
+        setRotatingItems(rotating);
+    }, []);
+
+    useFocusEffect(
+        useCallback(() => {
+            loadItems();
+        }, [loadItems])
+    );
+
+    const handleTogglePin = useCallback(async (id: number, currentlyPinned: boolean) => {
+        await toggleActionItemPin(id, !currentlyPinned);
+        loadItems();
+    }, [loadItems]);
+
+    // Consolidate items for map rendering
+    const allItems = useMemo(() => {
+        const items: { item: EnhancedActionItem; isPinned: boolean; windowLabel: string }[] = [];
+
+        if (pinnedItem) {
+            items.push({ item: pinnedItem, isPinned: true, windowLabel: 'PINNED REMINDER' });
+        }
+
+        rotatingItems.forEach(item => {
+            const entryDate = new Date(item.created_at);
+            const daysAgo = Math.floor((Date.now() - entryDate.getTime()) / 86_400_000);
+            const windowLabel = WINDOWS.find(w => daysAgo >= w.newerDays && daysAgo <= w.olderDays)?.label ?? "WHAT YOU SAID YOU'D DO";
+            items.push({ item, isPinned: false, windowLabel });
+        });
+
+        return items;
+    }, [pinnedItem, rotatingItems]);
+
+    const PEEK_OFFSET = 14;
+    const SCALE_STEP = 0.03;
+    const OPACITY_STEP = 0.18;
+
+
+    if (allItems.length === 0) return null;
+
+    const totalCards = allItems.length;
+
+    const toggleDeck = () => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setIsExpanded(prev => !prev);
+    };
+    // Replace the return block in ActionReminders:
+
+    return (
+        <View style={styles.container}>
+            <View
+                style={[
+                    styles.stackWrapper,
+                    !isExpanded && {
+                        height: topCardHeight + (Math.min(totalCards, 3) - 1) * PEEK_OFFSET,
+                    },
+                ]}
+            >
+                {allItems.map(({ item, isPinned, windowLabel }, index) => {
+                    const isStacked = !isExpanded && index > 0;
+                    const clampedIndex = Math.min(index, 2);
+
+                    return (
+                        <View
+                            key={`${isPinned ? 'pinned' : 'rotating'}-${item.id}-${index}`}
+                            onLayout={index === 0 ? (e) => setTopCardHeight(e.nativeEvent.layout.height) : undefined}
+                            style={[
+                                styles.cardWrapper,
+                                { zIndex: totalCards - index },
+                                isStacked
+                                    ? {
+                                        position: 'absolute',
+                                        top: clampedIndex * PEEK_OFFSET,
+                                        left: clampedIndex * 4,
+                                        right: clampedIndex * 4,
+                                        transform: [{ scale: 1 - clampedIndex * SCALE_STEP }],
+                                        opacity: 1 - clampedIndex * OPACITY_STEP,
+                                        height: topCardHeight,
+                                        overflow: 'hidden',
+                                        borderRadius: Spacing.borderRadius.md,
+                                        shadowColor: '#000',
+                                        shadowOffset: { width: 0, height: 6 },
+                                        shadowOpacity: 0.12,
+                                        shadowRadius: 16,
+                                        elevation: totalCards - index,
+                                    }
+                                    : {
+                                        marginBottom: index < totalCards - 1 ? Spacing.md : 0,
+                                    },
+                            ]}
+                        >
+                            <ActionCard
+                                item={item}
+                                isPinned={isPinned}
+                                windowLabel={windowLabel}
+                                stackedHeight={isStacked ? topCardHeight : undefined}
+                                onEntryPress={index === 0 || isExpanded ? onEntryPress : () => {
+                                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                                    setIsExpanded(true);
+                                }}
+                                onTogglePin={handleTogglePin}
+                            />
+                        </View>
+                    );
+                })}
+            </View>
+
+            {/* Toggle — always below the stack, never overlapping */}
+            {totalCards > 1 && (
+                <TouchableOpacity
+                    style={styles.expandButton}
+                    onPress={toggleDeck}
+                    activeOpacity={0.7}
+                >
+                    <Text style={[styles.expandText, { color: colors.textSecondary }]}>
+                        {isExpanded ? 'Collapse' : `${totalCards} reminders`}
+                    </Text>
+                    <Ionicons
+                        name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                        size={14}
+                        color={colors.textSecondary}
+                    />
+                </TouchableOpacity>
+            )}
+        </View>
+    );
+
+});
 
 ActionReminders.displayName = 'ActionReminders';
 
 const styles = StyleSheet.create({
+    container: {
+        width: '100%',
+    },
+    stackWrapper: {
+        width: '100%',
+        position: 'relative',
+    },
+    cardWrapper: {
+        width: '100%',
+    },
     card: {
+        minHeight: 160,           // ← was height: 200
         width: '100%',
         borderRadius: Spacing.borderRadius.md,
-        padding: Spacing.layout.cardPadding,
-        borderWidth: 1,
         gap: Spacing.sm,
+        overflow: 'hidden',
     },
     header: {
         flexDirection: 'row',
@@ -128,6 +366,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
+        flex: 1,
     },
     headerTitle: {
         fontSize: 10,
@@ -136,10 +375,19 @@ const styles = StyleSheet.create({
         textTransform: 'uppercase',
         opacity: 0.7,
     },
+    headerRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
     dateText: {
         fontSize: 10,
         fontWeight: '600',
         opacity: 0.8,
+    },
+    pinButton: {
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     cardHeader: {
         flexDirection: 'row',
@@ -174,5 +422,19 @@ const styles = StyleSheet.create({
         fontSize: Typography.size.md,
         lineHeight: Typography.lineHeight.md,
         fontStyle: 'italic',
+    },
+    expandButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: Spacing.md,
+        gap: 6,
+        paddingVertical: Spacing.xs,
+    },
+    expandText: {
+        fontSize: Typography.size.xs,
+        fontWeight: Typography.weight.bold,
+        textTransform: 'uppercase',
+        letterSpacing: 1,
     },
 });

@@ -100,6 +100,7 @@ export interface ActionItem {
     motivation: string;
     sort_order: number;
     is_completed?: boolean;
+    is_pinned?: boolean;
 }
 
 export interface JournalEntry {
@@ -138,7 +139,7 @@ export interface JournalEntryInput {
 
 let db: SQLite.SQLiteDatabase | null = null;
 
-const CURRENT_DB_VERSION = 6;
+const CURRENT_DB_VERSION = 7;
 
 const getDb = async () => {
     if (!db) {
@@ -301,11 +302,18 @@ export const initializeDatabase = async () => {
                     ALTER TABLE journal_entries ADD COLUMN study_further_reminder TEXT;
                 `);
             };
+
             if (currentVersion < 6) {
                 // Migration to v6: Add completion status
                 await database.execAsync(`
                     ALTER TABLE action_items ADD COLUMN is_completed BOOLEAN DEFAULT 0;
                     ALTER TABLE journal_entries ADD COLUMN study_completed BOOLEAN DEFAULT 0;
+                `);
+            }
+
+            if (currentVersion < 7) {
+                await database.execAsync(`
+                    ALTER TABLE action_items ADD COLUMN is_pinned BOOLEAN DEFAULT 0;
                 `);
             }
 
@@ -1160,4 +1168,81 @@ export const shareReflectionToGroup = async (
         console.error('[shareReflectionToGroup] Error queuing shared reflection:', error);
         return false;
     }
+};
+
+/**
+ * Returns the single pinned action item, or null if none is pinned.
+ */
+export const getPinnedActionItem = async (): Promise<EnhancedActionItem | null> => {
+    return await withDatabase(async (database) => {
+        const result = await database.getFirstAsync<EnhancedActionItem>(`
+            SELECT 
+                ai.*, 
+                je.book_name, 
+                je.chapter_start, 
+                je.chapter_end,
+                datetime(je.created_at, 'localtime') as created_at
+            FROM action_items ai
+            JOIN journal_entries je ON ai.entry_id = je.id
+            WHERE ai.is_pinned = 1
+              AND (ai.action != '' OR ai.motivation != '')
+            LIMIT 1
+        `);
+        return result ?? null;
+    });
+};
+
+/**
+ * Pin or unpin an action item.
+ * Only one item can be pinned at a time — pinning a new one
+ * automatically unpins the previous one.
+ */
+export const toggleActionItemPin = async (id: number, pinned: boolean): Promise<void> => {
+    await withDatabase(async (database) => {
+        if (pinned) {
+            // Ensure only one item is pinned at a time
+            await database.runAsync(`UPDATE action_items SET is_pinned = 0`);
+        }
+        await database.runAsync(
+            `UPDATE action_items SET is_pinned = ? WHERE id = ?`,
+            [pinned ? 1 : 0, id]
+        );
+    });
+};
+
+/**
+ * Fetch all (non-pinned) action items whose parent entry falls within
+ * a given age window (in days ago).
+ *
+ * Examples:
+ *   getActionItemsForWindow(0, 7)   → this week
+ *   getActionItemsForWindow(7, 14)  → last week
+ *   getActionItemsForWindow(21, 35) → around a month ago
+ */
+export const getActionItemsForWindow = async (
+    newerDaysAgo: number,
+    olderDaysAgo: number
+): Promise<EnhancedActionItem[]> => {
+    return await withDatabase(async (database) => {
+        const newerBound = `-${newerDaysAgo} days`;
+        const olderBound = `-${olderDaysAgo} days`;
+
+        const query = `
+            SELECT 
+                ai.*, 
+                je.book_name, 
+                je.chapter_start, 
+                je.chapter_end,
+                datetime(je.created_at, 'localtime') as created_at
+            FROM action_items ai
+            JOIN journal_entries je ON ai.entry_id = je.id
+            WHERE DATE(je.created_at, 'localtime') <= DATE('now', 'localtime', ?)
+              AND DATE(je.created_at, 'localtime') >= DATE('now', 'localtime', ?)
+              AND (ai.action != '' OR ai.motivation != '')
+              AND ai.is_pinned = 0
+            ORDER BY je.created_at DESC, ai.sort_order ASC
+        `;
+
+        return await database.getAllAsync<EnhancedActionItem>(query, [newerBound, olderBound]);
+    });
 };
