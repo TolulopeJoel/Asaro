@@ -9,7 +9,7 @@ import {
     EnhancedActionItem,
     JournalEntry,
     getEntryById,
-    getPinnedActionItem,
+    getPinnedActionItems,
     getActionItemsForWindow,
 } from '../data/database';
 import { ScalePressable } from './ScalePressable';
@@ -167,26 +167,28 @@ ActionCard.displayName = 'ActionCard';
 
 export const ActionReminders: React.FC<ActionRemindersProps> = React.memo(({ onEntryPress }) => {
     const { colors } = useTheme();
-    const [pinnedItem, setPinnedItem] = useState<EnhancedActionItem | null>(null);
+    const [pinnedItems, setPinnedItems] = useState<EnhancedActionItem[]>([]);
     const [rotatingItems, setRotatingItems] = useState<EnhancedActionItem[]>([]);
     const [isExpanded, setIsExpanded] = useState(false);
     const [topCardHeight, setTopCardHeight] = useState(200);
 
     const loadItems = useCallback(async () => {
-        const [pinned, ...windowResults] = await Promise.all([
-            getPinnedActionItem(),
+        const [pinnedArray, ...windowResults] = await Promise.all([
+            getPinnedActionItems(),
             ...WINDOWS.map(w => getActionItemsForWindow(w.newerDays, w.olderDays)),
         ]);
 
-        setPinnedItem(pinned as EnhancedActionItem | null);
+        const pinned = pinnedArray as EnhancedActionItem[];
+        setPinnedItems(pinned);
 
-        const pinnedId = (pinned as EnhancedActionItem | null)?.id;
+        const pinnedIds = new Set(pinned.map(p => p.id));
         const rotating: EnhancedActionItem[] = [];
+        const selectedIds = new Set<number>();
 
         for (let i = 0; i < WINDOWS.length; i++) {
             const { slot } = WINDOWS[i];
             const pool = (windowResults[i] as EnhancedActionItem[])
-                .filter(item => item.id !== pinnedId);
+                .filter(item => !pinnedIds.has(item.id) && !selectedIds.has(item.id!));
 
             if (pool.length === 0) continue;
 
@@ -194,7 +196,10 @@ export const ActionReminders: React.FC<ActionRemindersProps> = React.memo(({ onE
             const selectedId = await getItemForSlot(slot, ids);
             if (selectedId !== null) {
                 const selected = pool.find(it => it.id === selectedId);
-                if (selected) rotating.push(selected);
+                if (selected) {
+                    rotating.push(selected);
+                    selectedIds.add(selected.id!);
+                }
             }
         }
 
@@ -211,9 +216,9 @@ export const ActionReminders: React.FC<ActionRemindersProps> = React.memo(({ onE
     const allItems = useMemo(() => {
         const items: { item: EnhancedActionItem; isPinned: boolean; windowLabel: string }[] = [];
 
-        if (pinnedItem) {
-            items.push({ item: pinnedItem, isPinned: true, windowLabel: 'PINNED REMINDER' });
-        }
+        pinnedItems.forEach(item => {
+            items.push({ item, isPinned: true, windowLabel: 'PINNED REMINDER' });
+        });
 
         rotatingItems.forEach(item => {
             const entryDate = new Date(item.created_at);
@@ -223,7 +228,7 @@ export const ActionReminders: React.FC<ActionRemindersProps> = React.memo(({ onE
         });
 
         return items;
-    }, [pinnedItem, rotatingItems]);
+    }, [pinnedItems, rotatingItems]);
 
     const PEEK_OFFSET = 14;
     const SCALE_STEP = 0.03;

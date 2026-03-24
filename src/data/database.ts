@@ -1230,11 +1230,11 @@ export const shareReflectionToGroup = async (
 };
 
 /**
- * Returns the single pinned action item, or null if none is pinned.
+ * Returns the pinned action items (up to 3).
  */
-export const getPinnedActionItem = async (): Promise<EnhancedActionItem | null> => {
+export const getPinnedActionItems = async (): Promise<EnhancedActionItem[]> => {
     return await withDatabase(async (database) => {
-        const result = await database.getFirstAsync<EnhancedActionItem>(`
+        const result = await database.getAllAsync<EnhancedActionItem>(`
             SELECT 
                 ai.*, 
                 je.book_name, 
@@ -1245,22 +1245,31 @@ export const getPinnedActionItem = async (): Promise<EnhancedActionItem | null> 
             JOIN journal_entries je ON ai.entry_id = je.id
             WHERE ai.is_pinned = 1
               AND (ai.action != '' OR ai.motivation != '')
-            LIMIT 1
+            ORDER BY ai.id DESC
+            LIMIT 3
         `);
-        return result ?? null;
+        return result ?? [];
     });
 };
 
 /**
  * Pin or unpin an action item.
- * Only one item can be pinned at a time — pinning a new one
- * automatically unpins the previous one.
+ * A max of 3 items can be pinned at a time.
+ * If 3 are already pinned and the user pins another, the oldest one is unpinned.
  */
 export const toggleActionItemPin = async (id: number, pinned: boolean): Promise<void> => {
     await withDatabase(async (database) => {
         if (pinned) {
-            // Ensure only one item is pinned at a time
-            await database.runAsync(`UPDATE action_items SET is_pinned = 0`);
+            const pinnedRows = await database.getAllAsync<{ id: number }>(`
+                SELECT id FROM action_items WHERE is_pinned = 1 ORDER BY id ASC
+            `);
+            if (pinnedRows.length >= 3) {
+                // Make room so that total pinned will be 3 including the new one
+                const itemsToUnpin = pinnedRows.slice(0, pinnedRows.length - 2);
+                for (const row of itemsToUnpin) {
+                    await database.runAsync(`UPDATE action_items SET is_pinned = 0 WHERE id = ?`, [row.id]);
+                }
+            }
         }
         await database.runAsync(
             `UPDATE action_items SET is_pinned = ? WHERE id = ?`,
