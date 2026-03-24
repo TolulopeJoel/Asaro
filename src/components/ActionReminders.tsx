@@ -34,6 +34,7 @@ interface ActionCardProps {
     isPinned: boolean;
     windowLabel?: string;
     stackedHeight?: number;
+    isTopStacked?: boolean;
     onEntryPress: (entry: JournalEntry) => void;
     onTogglePin: (id: number, pinned: boolean) => void;
 }
@@ -43,6 +44,7 @@ const ActionCard = React.memo(({
     isPinned,
     windowLabel,
     stackedHeight,
+    isTopStacked,
     onEntryPress,
     onTogglePin,
 }: ActionCardProps) => {
@@ -102,7 +104,10 @@ const ActionCard = React.memo(({
                             color={colors.accent}
                         />
                         <Text style={[styles.headerTitle, { color: colors.textSecondary }]}>
-                            {isPinned ? 'PINNED REMINDER' : (windowLabel ?? 'WHAT YOU SAID YOU\'D DO')}
+                            {isPinned
+                                ? 'PINNED REMINDER'
+                                : (isTopStacked ? "WHAT YOU SAID YOU'D DO" : windowLabel) ?? "WHAT YOU SAID YOU'D DO"
+                            }
                         </Text>
                     </View>
 
@@ -295,6 +300,13 @@ export const ActionReminders: React.FC<ActionRemindersProps> = React.memo(({ onE
                                     }
                                     : {
                                         marginBottom: index < totalCards - 1 ? Spacing.md : 0,
+                                        ...(!isExpanded && totalCards > 1 && index === 0 && {
+                                            shadowColor: '#000',
+                                            shadowOffset: { width: 0, height: 6 },
+                                            shadowOpacity: 0.12,
+                                            shadowRadius: 16,
+                                            elevation: totalCards,
+                                        }),
                                     },
                             ]}
                         >
@@ -303,6 +315,7 @@ export const ActionReminders: React.FC<ActionRemindersProps> = React.memo(({ onE
                                 isPinned={isPinned}
                                 windowLabel={windowLabel}
                                 stackedHeight={isStacked ? topCardHeight : undefined}
+                                isTopStacked={!isExpanded && index === 0 && totalCards > 1}
                                 onEntryPress={index === 0 || isExpanded ? onEntryPress : () => {
                                     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                                     setIsExpanded(true);
