@@ -102,9 +102,9 @@ const ActionCard = React.memo(({
                             color={colors.accent}
                         />
                         <Text style={[styles.headerTitle, { color: colors.textSecondary }]}>
-                            {isPinned
-                                ? 'PINNED REMINDER'
-                                : (isTopStacked ? "WHAT YOU SAID YOU'D DO" : windowLabel) ?? "WHAT YOU SAID YOU'D DO"
+                            {isTopStacked
+                                ? "WHAT YOU SAID YOU'D DO"
+                                : windowLabel ?? "WHAT YOU SAID YOU'D DO"
                             }
                         </Text>
                     </View>
