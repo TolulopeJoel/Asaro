@@ -67,67 +67,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
     const [tabContainerWidth, setTabContainerWidth] = useState(0);
     const searchTimeoutRef = useRef<any>(null);
 
-    useEffect(() => {
-        loadEntries();
-        if (initialViewMode === 'actions') loadActions();
-        if (initialViewMode === 'topics') loadTopics();
-    }, [initialViewMode]);
-
-    // Refresh entries when screen comes into focus (e.g., after edit/delete)
-    useFocusEffect(
-        useCallback(() => {
-            loadEntries();
-            if (viewMode === 'bookDetail' && selectedBook) {
-                loadBookEntries();
-            }
-            if (viewMode === 'actions') loadActions();
-            if (viewMode === 'topics') loadTopics();
-        }, [viewMode, selectedBook])
-    );
-
-    // Refresh when refreshTrigger changes (e.g., after modal close)
-    useEffect(() => {
-        if (refreshTrigger !== undefined && refreshTrigger > 0) {
-            loadEntries();
-            if (viewMode === 'bookDetail' && selectedBook) {
-                loadBookEntries();
-            }
-            if (viewMode === 'actions') loadActions();
-            if (viewMode === 'topics') loadTopics();
-        }
-    }, [refreshTrigger, viewMode, selectedBook]);
-
-
-    // Debounce search query
-    useEffect(() => {
-        if (searchTimeoutRef.current) {
-            clearTimeout(searchTimeoutRef.current);
-        }
-        searchTimeoutRef.current = setTimeout(() => {
-            setDebouncedSearchQuery(searchQuery);
-        }, 300);
-
-        return () => {
-            if (searchTimeoutRef.current) {
-                clearTimeout(searchTimeoutRef.current);
-            }
-        };
-    }, [searchQuery]);
-
-    useEffect(() => {
-        if (viewMode === 'recent') {
-            filterEntries();
-        }
-    }, [debouncedSearchQuery, entries, viewMode]);
-
-    useEffect(() => {
-        if (viewMode === 'bookDetail' && selectedBook) {
-            loadBookEntries();
-        }
-    }, [selectedBook, debouncedSearchQuery, viewMode]);
-
-
-    const loadEntries = async () => {
+    const loadEntries = useCallback(async () => {
         try {
             const dbEntries = await getJournalEntries(100, 0);
             setEntries(dbEntries);
@@ -147,7 +87,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         } catch (error) {
             console.error('Error loading entries:', error);
         }
-    };
+    }, []);
 
     const loadBookEntries = useCallback(async () => {
         if (!selectedBook) return;
@@ -168,25 +108,25 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         }
     }, [selectedBook, debouncedSearchQuery]);
 
-    const loadActions = async () => {
+    const loadActions = useCallback(async () => {
         try {
             const data = await getAllActionItems(200);
             setActionsList(data);
         } catch (error) {
             console.error('Error loading actions:', error);
         }
-    };
+    }, []);
 
-    const loadTopics = async () => {
+    const loadTopics = useCallback(async () => {
         try {
             const data = await getAllStudyTopics();
             setTopicsList(data);
         } catch (error) {
             console.error('Error loading topics:', error);
         }
-    };
+    }, []);
 
-    const handleToggleTopic = async (item: JournalEntry) => {
+    const handleToggleTopic = useCallback(async (item: JournalEntry) => {
         try {
             await toggleStudyTopicCompletion(item.id!, !item.study_completed);
             // Refresh the list
@@ -194,16 +134,16 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         } catch (error) {
             console.error('Error toggling study topic:', error);
         }
-    };
+    }, [loadTopics]);
 
-    const handleTogglePin = async (item: EnhancedActionItem) => {
+    const handleTogglePin = useCallback(async (item: EnhancedActionItem) => {
         try {
             await toggleActionItemPin(item.id!, !item.is_pinned);
             loadActions();
         } catch (error) {
             console.error('Error toggling pin:', error);
         }
-    };
+    }, [loadActions]);
 
     const filterEntries = useCallback(async () => {
         if (!debouncedSearchQuery.trim()) {
@@ -251,6 +191,65 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         setViewMode('bookDetail');
         setSearchQuery('');
     };
+
+    useEffect(() => {
+        loadEntries();
+        if (initialViewMode === 'actions') loadActions();
+        if (initialViewMode === 'topics') loadTopics();
+    }, [initialViewMode, loadEntries, loadActions, loadTopics]);
+
+    // Refresh entries when screen comes into focus (e.g., after edit/delete)
+    useFocusEffect(
+        useCallback(() => {
+            loadEntries();
+            if (viewMode === 'bookDetail' && selectedBook) {
+                loadBookEntries();
+            }
+            if (viewMode === 'actions') loadActions();
+            if (viewMode === 'topics') loadTopics();
+        }, [viewMode, selectedBook, loadEntries, loadBookEntries, loadActions, loadTopics])
+    );
+
+    // Refresh when refreshTrigger changes (e.g., after modal close)
+    useEffect(() => {
+        if (refreshTrigger !== undefined && refreshTrigger > 0) {
+            loadEntries();
+            if (viewMode === 'bookDetail' && selectedBook) {
+                loadBookEntries();
+            }
+            if (viewMode === 'actions') loadActions();
+            if (viewMode === 'topics') loadTopics();
+        }
+    }, [refreshTrigger, viewMode, selectedBook, loadEntries, loadBookEntries, loadActions, loadTopics]);
+
+
+    // Debounce search query
+    useEffect(() => {
+        if (searchTimeoutRef.current) {
+            clearTimeout(searchTimeoutRef.current);
+        }
+        searchTimeoutRef.current = setTimeout(() => {
+            setDebouncedSearchQuery(searchQuery);
+        }, 300);
+
+        return () => {
+            if (searchTimeoutRef.current) {
+                clearTimeout(searchTimeoutRef.current);
+            }
+        };
+    }, [searchQuery]);
+
+    useEffect(() => {
+        if (viewMode === 'recent') {
+            filterEntries();
+        }
+    }, [debouncedSearchQuery, entries, viewMode, filterEntries]);
+
+    useEffect(() => {
+        if (viewMode === 'bookDetail' && selectedBook) {
+            loadBookEntries();
+        }
+    }, [selectedBook, debouncedSearchQuery, viewMode, loadBookEntries]);
 
     const getBreadcrumbs = (): NavigationBreadcrumb[] => {
         const breadcrumbs: NavigationBreadcrumb[] = [];
@@ -466,7 +465,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                 </View>
             </Animated.View>
         );
-    }, [colors, formatDate, onEntryPress]);
+    }, [colors, formatDate, onEntryPress, handleTogglePin]);
 
     const renderTopicCard = useCallback((item: JournalEntry) => {
         const dynamic = getDynamicCardStyle(item.study_further || '');
@@ -674,7 +673,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         });
 
         return items;
-    }, [viewMode, filteredEntries, debouncedSearchQuery, availableBooks, bookEntries, selectedBook, groupEntriesByDate]);
+    }, [viewMode, filteredEntries, debouncedSearchQuery, availableBooks, bookEntries, selectedBook, groupEntriesByDate, actionsList, topicsList, isArchiveCollapsed]);
 
 
     const renderBreadcrumbs = () => {
