@@ -522,7 +522,7 @@ export default function MeditationSessionScreen() {
                         <View style={[styles.entryCardRule, { backgroundColor: colors.accent + '40' }]} />
 
                         <View style={styles.entryCardBody}>
-                            <Text style={[styles.entryCardLabel, { color: colors.textTertiary }]}>PASSAGE</Text>
+                            <Text style={[styles.entryCardLabel, { color: colors.textTertiary }]}>READ</Text>
                             <Text style={[styles.entryCardPassage, { color: colors.textPrimary }]}>{selectionSummary}</Text>
                             <View style={[styles.entryCardSeparator, { backgroundColor: colors.border + '60' }]} />
                             <Text style={[styles.entryCardDate, { color: colors.textSecondary }]}>{formattedDate}</Text>

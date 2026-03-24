@@ -631,9 +631,10 @@ export const getMissedDaysCount = async (month?: string): Promise<number> => {
  * Export all journal entries as a JSON string
  * The JSON format is:
  * {
- *   "version": 2,
+ *   "version": 3,
  *   "exportedAt": string,
- *   "entries": JournalEntry[] (with action_items)
+ *   "entries": JournalEntry[],
+ *   "readingProgress": number[]
  * }
  */
 export const exportJournalEntriesToJson = async (): Promise<string> => {
@@ -661,10 +662,15 @@ export const exportJournalEntriesToJson = async (): Promise<string> => {
 
         const entriesWithItems = await attachActionItems(database, entries);
 
+        const readingProgress = await database.getAllAsync<{ item_id: number }>(
+            `SELECT item_id FROM reading_progress`
+        );
+
         const payload = {
-            version: 2,
+            version: 3,
             exportedAt: new Date().toISOString(),
             entries: entriesWithItems,
+            readingProgress: readingProgress.map(rp => rp.item_id),
         };
 
         return JSON.stringify(payload, null, 2);
@@ -673,9 +679,14 @@ export const exportJournalEntriesToJson = async (): Promise<string> => {
 
 /**
  * Import journal entries from a JSON string previously created by exportJournalEntriesToJson.
- * This will REPLACE all existing journal entries with the ones from the backup.
+ * This will MERGE entries and reading progress with existing local data, skipping duplicates.
  */
-export const importJournalEntriesFromJson = async (json: string): Promise<{ imported: number; skipped: number }> => {
+export const importJournalEntriesFromJson = async (json: string): Promise<{
+    importedEntries: number;
+    skippedEntries: number;
+    importedReadingItems: number;
+    skippedReadingItems: number;
+}> => {
     let parsed: any;
     try {
         parsed = JSON.parse(json);
@@ -692,13 +703,16 @@ export const importJournalEntriesFromJson = async (json: string): Promise<{ impo
     return await withDatabase(async (database) => {
         await database.execAsync('BEGIN TRANSACTION');
         try {
-            let imported = 0;
-            let skipped = 0;
+            let importedEntries = 0;
+            let skippedEntries = 0;
+            let importedReadingItems = 0;
+            let skippedReadingItems = 0;
 
+            // 1. Process Journal Entries
             for (const entry of entries) {
                 if (!entry.book_name) continue;
 
-                // Check for duplicate: same book, chapter_start, and created_at
+                // Check for duplicate: same book, chapter_start, and date
                 const existing = await database.getFirstAsync<{ id: number }>(
                     `SELECT id FROM journal_entries
                      WHERE book_name = ? AND chapter_start IS ? AND DATE(created_at) = DATE(?)`,
@@ -706,7 +720,7 @@ export const importJournalEntriesFromJson = async (json: string): Promise<{ impo
                 );
 
                 if (existing) {
-                    skipped++;
+                    skippedEntries++;
                     continue;
                 }
 
@@ -721,8 +735,8 @@ export const importJournalEntriesFromJson = async (json: string): Promise<{ impo
                     `INSERT INTO journal_entries (
                         book_name, chapter_start, chapter_end, verse_start, verse_end,
                         reflection_1, reflection_2, reflection_3, reflection_4, notes,
-                        study_further, study_further_reminder, created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                        study_further, study_further_reminder, created_at, updated_at, study_completed
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                     [
                         entry.book_name,
                         entry.chapter_start ?? null,
@@ -735,6 +749,7 @@ export const importJournalEntriesFromJson = async (json: string): Promise<{ impo
                         entry.study_further_reminder ?? null,
                         entry.created_at ?? new Date().toISOString(),
                         entry.updated_at ?? new Date().toISOString(),
+                        entry.study_completed ? 1 : 0,
                     ]
                 );
 
@@ -743,17 +758,38 @@ export const importJournalEntriesFromJson = async (json: string): Promise<{ impo
                     for (let i = 0; i < entry.action_items.length; i++) {
                         const item = entry.action_items[i];
                         await database.runAsync(
-                            `INSERT INTO action_items (entry_id, action, motivation, sort_order) VALUES (?, ?, ?, ?)`,
-                            [newEntryId, item.action ?? '', item.motivation ?? '', item.sort_order ?? i]
+                            `INSERT INTO action_items (entry_id, action, motivation, sort_order, is_completed) VALUES (?, ?, ?, ?, ?)`,
+                            [newEntryId, item.action ?? '', item.motivation ?? '', item.sort_order ?? i, item.is_completed ? 1 : 0]
                         );
                     }
                 }
 
-                imported++;
+                importedEntries++;
+            }
+
+            // 2. Process Reading Progress (if version >= 3)
+            if (parsed.version >= 3 && Array.isArray(parsed.readingProgress)) {
+                for (const itemId of parsed.readingProgress) {
+                    const existing = await database.getFirstAsync<{ item_id: number }>(
+                        `SELECT item_id FROM reading_progress WHERE item_id = ?`,
+                        [itemId]
+                    );
+
+                    if (existing) {
+                        skippedReadingItems++;
+                        continue;
+                    }
+
+                    await database.runAsync(
+                        `INSERT INTO reading_progress (item_id) VALUES (?)`,
+                        [itemId]
+                    );
+                    importedReadingItems++;
+                }
             }
 
             await database.execAsync('COMMIT');
-            return { imported, skipped };
+            return { importedEntries, skippedEntries, importedReadingItems, skippedReadingItems };
         } catch (error) {
             await database.execAsync('ROLLBACK');
             throw error;

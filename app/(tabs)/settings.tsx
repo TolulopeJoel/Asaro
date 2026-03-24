@@ -8,7 +8,8 @@ import * as DocumentPicker from 'expo-document-picker';
 import { documentDirectory, writeAsStringAsync, readAsStringAsync } from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { Stack } from 'expo-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/src/components/Button';
@@ -24,6 +25,11 @@ export default function Settings() {
     const [tapCount, setTapCount] = useState(0);
     const [isExporting, setIsExporting] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
+    const [lastBackupDate, setLastBackupDate] = useState<string | null>(null);
+
+    useEffect(() => {
+        AsyncStorage.getItem('lastBackupDate').then(val => setLastBackupDate(val));
+    }, []);
 
     const handleNotificationTitleTap = () => {
         const newCount = tapCount + 1;
@@ -120,6 +126,10 @@ export default function Settings() {
 
             await writeAsStringAsync(uri, json);
 
+            const now = new Date().toISOString();
+            await AsyncStorage.setItem('lastBackupDate', now);
+            setLastBackupDate(now);
+
             if (await Sharing.isAvailableAsync()) {
                 await Sharing.shareAsync(uri, {
                     mimeType: 'application/json',
@@ -157,14 +167,17 @@ export default function Settings() {
             const asset = result.assets[0];
             const content = await readAsStringAsync(asset.uri);
 
-            const { imported, skipped } = await importJournalEntriesFromJson(content);
+            const { importedEntries, skippedEntries, importedReadingItems, skippedReadingItems } =
+                await importJournalEntriesFromJson(content);
 
-            Alert.alert(
-                'Import complete',
-                skipped > 0
-                    ? `Imported ${imported} new entries. Skipped ${skipped} duplicates.`
-                    : `Imported ${imported} entries from backup.`,
-            );
+            const entryMsg = skippedEntries > 0
+                ? `${importedEntries} new entries (${skippedEntries} duplicates skipped)`
+                : `${importedEntries} entries`;
+            const readingMsg = importedReadingItems > 0 || skippedReadingItems > 0
+                ? `\n${importedReadingItems} reading items (${skippedReadingItems} duplicates skipped)`
+                : '';
+
+            Alert.alert('Import complete', `Imported ${entryMsg}.${readingMsg}`);
         } catch (error: any) {
             console.error('Failed to import entries:', error);
             Alert.alert('Import failed', error?.message || 'Something went wrong while importing your backup.');
@@ -257,16 +270,21 @@ export default function Settings() {
                             disabled={isExporting}
                             style={[styles.actionButton, { backgroundColor: colors.buttonSecondary, borderColor: colors.buttonSecondaryBorder }]}
                         >
-                            {isExporting ? <ActivityIndicator size="small" color={colors.textSecondary} /> : <Ionicons name="download" size={20} color={colors.textSecondary} />}
+                            {isExporting ? <ActivityIndicator size="small" color={colors.textSecondary} /> : <Ionicons name="archive-outline" size={20} color={colors.textSecondary} />}
                         </ScalePressable>
                         <ScalePressable
                             onPress={handleImport}
                             disabled={isImporting}
                             style={[styles.actionButton, { backgroundColor: colors.buttonSecondary, borderColor: colors.buttonSecondaryBorder }]}
                         >
-                            {isImporting ? <ActivityIndicator size="small" color={colors.textSecondary} /> : <Ionicons name="cloud-upload" size={20} color={colors.textSecondary} />}
+                            {isImporting ? <ActivityIndicator size="small" color={colors.textSecondary} /> : <Ionicons name="cloud-download-outline" size={20} color={colors.textSecondary} />}
                         </ScalePressable>
                     </View>
+                    {lastBackupDate && (
+                        <Text style={[styles.lastBackupText, { color: colors.textMuted }]}>
+                            Last backup: {new Date(lastBackupDate).toLocaleString()}
+                        </Text>
+                    )}
                 </SettingsGroup>
 
                 {/* About */}
@@ -456,6 +474,13 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         padding: 12,
         gap: 10,
+    },
+    lastBackupText: {
+        fontSize: 11,
+        fontWeight: '500',
+        textAlign: 'center',
+        paddingBottom: 12,
+        letterSpacing: 0.2,
     },
     notificationsHeaderRow: {
         flexDirection: 'row',
