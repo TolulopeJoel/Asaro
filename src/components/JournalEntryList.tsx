@@ -572,7 +572,15 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
     // Convert grouped entries to flat list format
     const getFlatListData = useMemo(() => {
         if (viewMode === 'actions') {
-            return actionsList.map(action => ({ type: 'action' as const, action, id: `action-${action.id}` }));
+            const sortedActions = [...actionsList].sort((a, b) => {
+                const aPinned = !!a.is_pinned;
+                const bPinned = !!b.is_pinned;
+                if (aPinned !== bPinned) {
+                    return aPinned ? -1 : 1;
+                }
+                return new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime();
+            });
+            return sortedActions.map(action => ({ type: 'action' as const, action, id: `action-${action.id}` }));
         }
 
         if (viewMode === 'topics') {
