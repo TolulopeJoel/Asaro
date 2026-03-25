@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/src/components/Button';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { Ionicons } from '@expo/vector-icons';
+import { LoadingView } from '@/src/components/LoadingView';
 
 export default function Settings() {
     const { colors, theme, setTheme } = useTheme();
@@ -273,14 +274,14 @@ export default function Settings() {
                             disabled={isExporting}
                             style={[styles.actionButton, { backgroundColor: colors.buttonSecondary, borderColor: colors.buttonSecondaryBorder }]}
                         >
-                            {isExporting ? <ActivityIndicator size="small" color={colors.textSecondary} /> : <Ionicons name="archive-outline" size={20} color={colors.textSecondary} />}
+                            {isExporting ? <LoadingView size={20} /> : <Ionicons name="archive-outline" size={20} color={colors.textSecondary} />}
                         </ScalePressable>
                         <ScalePressable
                             onPress={handleImport}
                             disabled={isImporting}
                             style={[styles.actionButton, { backgroundColor: colors.buttonSecondary, borderColor: colors.buttonSecondaryBorder }]}
                         >
-                            {isImporting ? <ActivityIndicator size="small" color={colors.textSecondary} /> : <Ionicons name="cloud-download-outline" size={20} color={colors.textSecondary} />}
+                            {isImporting ? <LoadingView size={20} /> : <Ionicons name="cloud-download-outline" size={20} color={colors.textSecondary} />}
                         </ScalePressable>
                     </View>
                     {lastBackupDate && (

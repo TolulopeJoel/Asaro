@@ -19,6 +19,7 @@ import Animated, {
     runOnJS, LinearTransition,
 } from 'react-native-reanimated';
 import { ScalePressable } from '@/src/components/ScalePressable';
+import { LoadingView } from '@/src/components/LoadingView';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -905,7 +906,7 @@ export default function GroupDetailScreen() {
     if (loading) {
         return (
             <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
-                <Text style={{ color: colors.textSecondary }}>Loading...</Text>
+                <LoadingView size={40} />
             </View>
         );
     }

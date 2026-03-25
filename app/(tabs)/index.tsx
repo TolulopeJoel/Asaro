@@ -19,6 +19,7 @@ import { ScalePressable } from '@/src/components/ScalePressable';
 import { ActionReminders } from '@/src/components/ActionReminders';
 import { StudyReminders } from '@/src/components/StudyReminders';
 import { getDailyTitle } from '@/src/data/homeTitles';
+import { LoadingView } from '@/src/components/LoadingView';
 
 
 const DRAFT_KEY = "reflection_draft";
@@ -323,6 +324,7 @@ export default function Index() {
     const [draftExists, setDraftExists] = useState(false);
     const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
     const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
     const { colors } = useTheme();
     const router = useRouter();
 
@@ -346,6 +348,8 @@ export default function Index() {
             // Small delay to ensure AsyncStorage operations complete
             const timer = setTimeout(() => {
                 checkDraft();
+                // Simulate initial load if it's very fast
+                setTimeout(() => setIsLoading(false), 400);
             }, 100);
 
             return () => clearTimeout(timer);
@@ -372,12 +376,20 @@ export default function Index() {
                     </View>
                 </View>
 
-                <QuickStats />
-                <NextReading />
-                <StudyReminders onEntryPress={handleEntryPress} />
-                <WeeklyStreak />
-                <ActionReminders onEntryPress={handleEntryPress} />
-                <Flashback onEntryPress={handleEntryPress} />
+                {isLoading ? (
+                    <View style={{ height: 400, justifyContent: 'center' }}>
+                        <LoadingView size={48} />
+                    </View>
+                ) : (
+                    <>
+                        <QuickStats />
+                        <NextReading />
+                        <StudyReminders onEntryPress={handleEntryPress} />
+                        <WeeklyStreak />
+                        <ActionReminders onEntryPress={handleEntryPress} />
+                        <Flashback onEntryPress={handleEntryPress} />
+                    </>
+                )}
             </ScrollView>
 
             {!draftExists && <FloatingActionButton />}

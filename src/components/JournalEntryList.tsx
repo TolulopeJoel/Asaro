@@ -30,6 +30,7 @@ import {
     toggleActionItemPin
 } from '../data/database';
 import { ScalePressable } from './ScalePressable';
+import { LoadingView } from './LoadingView';
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 
 type ViewMode = 'recent' | 'books' | 'bookDetail' | 'actions' | 'topics';
@@ -69,9 +70,11 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
     const [topicsList, setTopicsList] = useState<JournalEntry[]>([]);
     const [isArchiveCollapsed, setIsArchiveCollapsed] = useState(true);
     const [tabContainerWidth, setTabContainerWidth] = useState(0);
+    const [isLoading, setIsLoading] = useState(true);
     const searchTimeoutRef = useRef<any>(null);
 
     const loadEntries = useCallback(async () => {
+        setIsLoading(true);
         try {
             const dbEntries = await getJournalEntries(100, 0);
             setEntries(dbEntries);
@@ -90,6 +93,8 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
             setAvailableBooks(booksWithEntries);
         } catch (error) {
             console.error('Error loading entries:', error);
+        } finally {
+            setIsLoading(false);
         }
     }, []);
 
@@ -878,22 +883,29 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
-            <Animated.FlatList
-                data={getFlatListData}
-                renderItem={renderListItem}
-                keyExtractor={(item) => item.id.toString()}
-                contentContainerStyle={[
-                    styles.scrollContent,
-                    getFlatListData.length === 0 && styles.emptyContainer
-                ]}
-                ListHeaderComponent={renderListHeader}
-                showsVerticalScrollIndicator={false}
-                initialNumToRender={10}
-                maxToRenderPerBatch={10}
-                windowSize={5}
-                removeClippedSubviews={Platform.OS === 'android'}
-                itemLayoutAnimation={LinearTransition}
-            />
+            {isLoading && entries.length === 0 ? (
+                <View style={{ flex: 1 }}>
+                    {renderListHeader()}
+                    <LoadingView style={{ marginTop: 100 }} />
+                </View>
+            ) : (
+                <Animated.FlatList
+                    data={getFlatListData}
+                    renderItem={renderListItem}
+                    keyExtractor={(item) => item.id.toString()}
+                    contentContainerStyle={[
+                        styles.scrollContent,
+                        getFlatListData.length === 0 && styles.emptyContainer
+                    ]}
+                    ListHeaderComponent={renderListHeader}
+                    showsVerticalScrollIndicator={false}
+                    initialNumToRender={10}
+                    maxToRenderPerBatch={10}
+                    windowSize={5}
+                    removeClippedSubviews={Platform.OS === 'android'}
+                    itemLayoutAnimation={LinearTransition}
+                />
+            )}
         </View>
     );
 };

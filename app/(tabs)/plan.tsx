@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react';
+import { LoadingView } from '@/src/components/LoadingView';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/src/theme/ThemeContext';
@@ -291,14 +292,20 @@ export default function PlanScreen() {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-            <FlatList
-                data={READING_PLAN_DATA}
-                renderItem={renderItem}
-                keyExtractor={(item) => item.id.toString()}
-                contentContainerStyle={styles.listContent}
-                ListHeaderComponent={renderHeader}
-                showsVerticalScrollIndicator={false}
-            />
+            {isInitialLoad ? (
+                <View style={{ flex: 1, justifyContent: 'center' }}>
+                    <LoadingView size={48} />
+                </View>
+            ) : (
+                <FlatList
+                    data={READING_PLAN_DATA}
+                    renderItem={renderItem}
+                    keyExtractor={(item) => item.id.toString()}
+                    contentContainerStyle={styles.listContent}
+                    ListHeaderComponent={renderHeader}
+                    showsVerticalScrollIndicator={false}
+                />
+            )}
         </SafeAreaView>
     );
 }

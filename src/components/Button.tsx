@@ -13,6 +13,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
 import { ScalePressable } from './ScalePressable';
+import { LoadingView } from './LoadingView';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
 export type ButtonSize = 'sm' | 'md' | 'lg';
@@ -161,7 +162,7 @@ export const Button: React.FC<ButtonProps> = ({
             style={combinedStyle as any}
         >
             {loading ? (
-                <ActivityIndicator size="small" color={iconColor as string} />
+                <LoadingView size={iconSize * 1.5} />
             ) : (
                 <View style={styles.content}>
                     {icon && iconPosition === 'left' && (

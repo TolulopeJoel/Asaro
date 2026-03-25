@@ -10,6 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import firestore from '@react-native-firebase/firestore';
 import { Button } from '@/src/components/Button';
+import { LoadingView } from '@/src/components/LoadingView';
 
 export default function GroupsScreen() {
     const { user, loading, displayName } = useAuth();
@@ -72,7 +73,7 @@ export default function GroupsScreen() {
     if (loading || checkingGroups) {
         return (
             <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
-                <Text style={{ color: colors.textSecondary }}>Checking groups...</Text>
+                <LoadingView size={40} />
             </View>
         );
     }
