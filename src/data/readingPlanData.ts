@@ -174,17 +174,17 @@ export const READING_PLAN_DATA: ReadingItem[] = [
     { id: 158, section: "The Jews Return from Exile", book: "Esther", chapters: "5-10", isKey: true },
 
     // THE WRITINGS OF MOSES (Part 2 - Job)
-    { id: 159, section: "The Writings of Moses", book: "Job", chapters: "1-5" },
-    { id: 160, section: "The Writings of Moses", book: "Job", chapters: "6-9" },
-    { id: 161, section: "The Writings of Moses", book: "Job", chapters: "10-14" },
-    { id: 162, section: "The Writings of Moses", book: "Job", chapters: "15-18" },
-    { id: 163, section: "The Writings of Moses", book: "Job", chapters: "19-20" },
-    { id: 164, section: "The Writings of Moses", book: "Job", chapters: "21-24" },
-    { id: 165, section: "The Writings of Moses", book: "Job", chapters: "25-29" },
-    { id: 166, section: "The Writings of Moses", book: "Job", chapters: "30-31" },
-    { id: 167, section: "The Writings of Moses", book: "Job", chapters: "32-34" },
-    { id: 168, section: "The Writings of Moses", book: "Job", chapters: "35-38" },
-    { id: 169, section: "The Writings of Moses", book: "Job", chapters: "39-42" },
+    { id: 159, section: "The Writings of Moses (2)", book: "Job", chapters: "1-5" },
+    { id: 160, section: "The Writings of Moses (2)", book: "Job", chapters: "6-9" },
+    { id: 161, section: "The Writings of Moses (2)", book: "Job", chapters: "10-14" },
+    { id: 162, section: "The Writings of Moses (2)", book: "Job", chapters: "15-18" },
+    { id: 163, section: "The Writings of Moses (2)", book: "Job", chapters: "19-20" },
+    { id: 164, section: "The Writings of Moses (2)", book: "Job", chapters: "21-24" },
+    { id: 165, section: "The Writings of Moses (2)", book: "Job", chapters: "25-29" },
+    { id: 166, section: "The Writings of Moses (2)", book: "Job", chapters: "30-31" },
+    { id: 167, section: "The Writings of Moses (2)", book: "Job", chapters: "32-34" },
+    { id: 168, section: "The Writings of Moses (2)", book: "Job", chapters: "35-38" },
+    { id: 169, section: "The Writings of Moses (2)", book: "Job", chapters: "39-42" },
 
     // BOOKS OF SONGS AND PRACTICAL WISDOM
     { id: 170, section: "Books of Songs and Practical Wisdom", book: "Psalms", chapters: "1-8" },
