@@ -298,10 +298,12 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         if (!dateString) return '';
         // SQLite local time string 'YYYY-MM-DD HH:MM:SS' needs 'T' for robust parsing
         const date = new Date(dateString.replace(' ', 'T'));
+        const isCurrentYear = date.getFullYear() === new Date().getFullYear();
+
         return date.toLocaleDateString('en-US', {
             month: 'short',
             day: 'numeric',
-            year: 'numeric',
+            year: isCurrentYear ? undefined : 'numeric',
         });
     }, []);
 
@@ -378,39 +380,65 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         return groups;
     }, []);
 
-    const renderEntryCard = useCallback((entry: JournalEntry) => (
-        <Animated.View entering={FadeIn.duration(400)} layout={LinearTransition}>
-            <ScalePressable
-                style={[styles.entryCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
-                onPress={() => onEntryPress(entry)}
-            >
-                <View style={styles.entryHeader}>
-                    <Text style={[styles.entryDate, { color: colors.textTertiary }]}>{formatDate(entry.created_at)}</Text>
-                    {entry.book_name && (
-                        <Text style={[styles.entryScripture, { color: colors.textSecondary }]}>{entry.book_name} {getChapterText(entry)}</Text>
-                    )}
-                </View>
-                <Text style={[styles.entryPreview, { color: colors.textPrimary }]}>
-                    {getPreviewText(entry)}
-                </Text>
+    const renderEntryCard = useCallback((entry: JournalEntry) => {
+        const previewText = getPreviewText(entry);
+        const dynamic = getDynamicCardStyle(previewText);
 
-                <View style={styles.entryFooter}>
-                    <View style={styles.reflectionIndicator}>
-                        {Array.from({ length: 4 }).map((_, idx) => (
-                            <View
-                                key={idx}
-                                style={[
-                                    styles.reflectionDot,
-                                    { backgroundColor: colors.border },
-                                    idx < getAnswerCount(entry) && [styles.reflectionDotActive, { backgroundColor: colors.accentSecondary }]
-                                ]}
-                            />
-                        ))}
+        return (
+            <Animated.View entering={FadeIn.duration(400)} layout={LinearTransition}>
+                <ScalePressable
+                    style={[styles.entryCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
+                    onPress={() => onEntryPress(entry)}
+                >
+                    <View style={styles.entryHeader}>
+                        <View style={styles.entryHeaderLeft}>
+                            <Text style={[styles.entryDate, { color: colors.textTertiary }]}>
+                                {formatDate(entry.created_at)}
+                            </Text>
+                            {entry.book_name && (
+                                <View style={[styles.refBadge, { backgroundColor: colors.accent + '12' }]}>
+                                    <Text style={[styles.entryScripture, { color: colors.accent }]}>
+                                        {entry.book_name} {getChapterText(entry)}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+                        <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
                     </View>
-                </View>
-            </ScalePressable>
-        </Animated.View>
-    ), [colors, onEntryPress, formatDate, getChapterText, getPreviewText, getAnswerCount]);
+
+                    <Text
+                        style={[
+                            styles.entryPreview,
+                            {
+                                color: colors.textPrimary,
+                                fontSize: dynamic.fontSize,
+                                lineHeight: dynamic.lineHeight,
+                                marginBottom: 16
+                            }
+                        ]}
+                        numberOfLines={3}
+                    >
+                        {previewText}
+                    </Text>
+
+                    <View style={styles.entryFooter}>
+                        <View style={styles.reflectionIndicator}>
+                            {Array.from({ length: 4 }).map((_, idx) => (
+                                <View
+                                    key={idx}
+                                    style={[
+                                        styles.reflectionDot,
+                                        { backgroundColor: colors.border },
+                                        idx < getAnswerCount(entry) && [styles.reflectionDotActive, { backgroundColor: colors.accentSecondary }]
+                                    ]}
+                                />
+                            ))}
+                        </View>
+                    </View>
+                </ScalePressable>
+            </Animated.View>
+        );
+    }, [colors, onEntryPress, formatDate, getChapterText, getPreviewText, getAnswerCount]);
 
     const getDynamicCardStyle = (text: string) => {
         const length = text.length;
@@ -428,22 +456,24 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         return (
             <Animated.View style={styles.bookCardWrapper} entering={FadeIn.duration(400)} layout={LinearTransition}>
                 <View style={[styles.entryCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder, marginBottom: 0, padding: dynamic.padding }]}>
-                    <View style={[styles.entryHeader, { marginBottom: 8 }]}>
-                        <Text style={[styles.entryDate, { color: colors.textTertiary }]}>{formatDate(item.created_at)}</Text>
-                        <ScalePressable onPress={async () => {
-                            try {
-                                const entry = await getEntryById(item.entry_id!);
-                                if (entry) onEntryPress(entry);
-                            } catch (e) {
-                                console.error(e);
-                            }
-                        }}>
-                            <View style={[styles.refBadge, { backgroundColor: colors.accent + '15' }]}>
-                                <Text style={[styles.entryScripture, { color: colors.accent }]}>
-                                    {item.book_name} {item.chapter_start}{item.chapter_end && item.chapter_end !== item.chapter_start ? `-${item.chapter_end}` : ''}
-                                </Text>
-                            </View>
-                        </ScalePressable>
+                    <View style={[styles.entryHeader, { marginBottom: 12 }]}>
+                        <View style={styles.entryHeaderLeft}>
+                            <Text style={[styles.entryDate, { color: colors.textTertiary }]}>{formatDate(item.created_at)}</Text>
+                            <ScalePressable onPress={async () => {
+                                try {
+                                    const entry = await getEntryById(item.entry_id!);
+                                    if (entry) onEntryPress(entry);
+                                } catch (e) {
+                                    console.error(e);
+                                }
+                            }}>
+                                <View style={[styles.refBadge, { backgroundColor: colors.accent + '12' }]}>
+                                    <Text style={[styles.entryScripture, { color: colors.accent }]}>
+                                        {item.book_name} {item.chapter_start}{item.chapter_end && item.chapter_end !== item.chapter_start ? `-${item.chapter_end}` : ''}
+                                    </Text>
+                                </View>
+                            </ScalePressable>
+                        </View>
                         <TouchableOpacity
                             onPress={() => handleTogglePin(item)}
                             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -496,61 +526,65 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                         opacity: isCompleted ? 0.6 : 1
                     }
                 ]}>
-                    <View style={[styles.entryHeader, { marginBottom: 8 }]}>
-                        <Text style={[styles.entryDate, { color: colors.textTertiary }]}>{formatDate(item.created_at)}</Text>
-                        <ScalePressable onPress={() => onEntryPress(item)}>
-                            <View style={[styles.refBadge, { backgroundColor: colors.accentSecondary + '15' }]}>
-                                <Text style={[styles.entryScripture, { color: colors.accentSecondary }]}>
-                                    {item.book_name} {item.chapter_start}{item.chapter_end && item.chapter_end !== item.chapter_start ? `-${item.chapter_end}` : ''}
+                    <View style={[styles.entryHeader, { marginBottom: 12 }]}>
+                        <View style={styles.entryHeaderLeft}>
+                            <Text style={[styles.entryDate, { color: colors.textTertiary }]}>{formatDate(item.created_at)}</Text>
+                            <ScalePressable onPress={() => onEntryPress(item)}>
+                                <View style={[styles.refBadge, { backgroundColor: colors.accentSecondary + '12' }]}>
+                                    <Text style={[styles.entryScripture, { color: colors.accentSecondary }]}>
+                                        {item.book_name} {item.chapter_start}{item.chapter_end && item.chapter_end !== item.chapter_start ? `-${item.chapter_end}` : ''}
+                                    </Text>
+                                </View>
+                            </ScalePressable>
+                        </View>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 16 }}>
+                        <View style={{ flex: 1 }}>
+                            <View style={styles.topicContentContainer}>
+                                <Text style={[
+                                    styles.entryPreview,
+                                    {
+                                        color: colors.textPrimary,
+                                        fontWeight: '600',
+                                        fontSize: dynamic.fontSize,
+                                        lineHeight: dynamic.lineHeight,
+                                        marginBottom: item.study_further_reminder ? 8 : 0,
+                                        textDecorationLine: isCompleted ? 'line-through' : 'none',
+                                    }
+                                ]}>
+                                    {item.study_further}
                                 </Text>
+                                {isCompleted && (
+                                    <View style={[styles.strikeThroughLine, { backgroundColor: colors.textPrimary, opacity: 0.4 }]} />
+                                )}
                             </View>
+                            {item.study_further_reminder && new Date(item.study_further_reminder) > new Date() ? (
+                                <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, backgroundColor: colors.backgroundSubtle, borderColor: colors.border, alignSelf: 'flex-start', marginTop: 8, gap: 4 }}>
+                                    <Ionicons name="notifications-outline" size={12} color={colors.textSecondary} />
+                                    <Text style={{ fontSize: 11, fontWeight: '500', color: colors.textSecondary }}>
+                                        {new Date(item.study_further_reminder).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                                    </Text>
+                                </View>
+                            ) : null}
+                        </View>
+
+                        <ScalePressable
+                            onPress={() => handleToggleTopic(item)}
+                            style={[
+                                styles.checkCircle,
+                                {
+                                    borderColor: isCompleted ? colors.accentSecondary : colors.border,
+                                    backgroundColor: isCompleted ? colors.accentSecondary + '20' : colors.backgroundSubtle + '40'
+                                }
+                            ]}
+                        >
+                            <Ionicons
+                                name={isCompleted ? "checkmark-circle" : "checkmark"}
+                                size={14}
+                                color={isCompleted ? colors.accentSecondary : colors.textTertiary}
+                            />
                         </ScalePressable>
                     </View>
-                    <View style={styles.topicContentContainer}>
-                        <Text style={[
-                            styles.entryPreview,
-                            {
-                                color: colors.textPrimary,
-                                fontWeight: '600',
-                                fontSize: dynamic.fontSize,
-                                lineHeight: dynamic.lineHeight,
-                                marginBottom: item.study_further_reminder ? 8 : 0,
-                                textDecorationLine: isCompleted ? 'line-through' : 'none',
-                            }
-                        ]}>
-                            {item.study_further}
-                        </Text>
-                        {isCompleted && (
-                            <View style={[styles.strikeThroughLine, { backgroundColor: colors.textPrimary, opacity: 0.4 }]} />
-                        )}
-                    </View>
-                    {item.study_further_reminder && new Date(item.study_further_reminder) > new Date() ? (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, backgroundColor: colors.backgroundSubtle, borderColor: colors.border, alignSelf: 'flex-start', marginTop: 8, gap: 4 }}>
-                            <Ionicons name="notifications-outline" size={12} color={colors.textSecondary} />
-                            <Text style={{ fontSize: 11, fontWeight: '500', color: colors.textSecondary }}>
-                                {new Date(item.study_further_reminder).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
-                            </Text>
-                        </View>
-                    ) : null}
-                    <ScalePressable
-                        onPress={() => handleToggleTopic(item)}
-                        style={[
-                            styles.checkCircle,
-                            {
-                                position: 'absolute',
-                                bottom: 16,
-                                right: 16,
-                                borderColor: isCompleted ? colors.accentSecondary : colors.border,
-                                backgroundColor: isCompleted ? colors.accentSecondary + '20' : colors.backgroundSubtle + '40'
-                            }
-                        ]}
-                    >
-                        <Ionicons
-                            name={isCompleted ? "checkmark-circle" : "checkmark"}
-                            size={14}
-                            color={isCompleted ? colors.accentSecondary : colors.textTertiary}
-                        />
-                    </ScalePressable>
                 </View>
             </Animated.View>
         );
@@ -577,7 +611,10 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
 
     const renderDateGroupHeader = useCallback((title: string) => (
         <View style={styles.dateGroup}>
-            <Text style={[styles.dateGroupTitle, { color: colors.textPrimary }]}>{title}</Text>
+            <View style={styles.dateGroupContent}>
+                <View style={[styles.dateGroupDot, { backgroundColor: colors.accent }]} />
+                <Text style={[styles.dateGroupTitle, { color: colors.textPrimary }]}>{title}</Text>
+            </View>
         </View>
     ), [colors]);
 
@@ -732,12 +769,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                 return renderEmptyState();
             case 'bookHeader':
                 return (
-                    <View style={[styles.bookDetailHeader, { borderBottomColor: colors.border }]}>
-                        <Text style={[styles.bookDetailTitle, { color: colors.textPrimary }]}>{item.bookName}</Text>
-                        <Text style={[styles.bookDetailSubtitle, { color: colors.textSecondary }]}>
-                            {item.entryCount} {item.entryCount === 1 ? 'entry' : 'entries'}
-                        </Text>
-                    </View>
+                    <View style={[styles.bookDetailHeader, { borderBottomColor: colors.border, }]}></View>
                 );
             case 'book':
                 return (
@@ -821,7 +853,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                             }
                         }}
                     >
-                        <View
+                        <Animated.View
                             style={[
                                 styles.tabIndicator,
                                 {
@@ -830,21 +862,22 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                                     left: viewMode === 'recent' ? '0%' : (viewMode === 'books' || viewMode === 'bookDetail') ? '25%' : viewMode === 'actions' ? '50%' : '75%',
                                 }
                             ]}
+                            layout={LinearTransition}
                         />
                         <ScalePressable style={styles.tab} onPress={navigateToRecent}>
-                            <Ionicons name="time-outline" size={20} color={viewMode === 'recent' ? colors.accent : colors.textTertiary} />
+                            <Ionicons name="time" size={20} color={viewMode === 'recent' ? colors.accent : colors.textTertiary} />
                         </ScalePressable>
 
                         <ScalePressable style={styles.tab} onPress={navigateToBooks}>
-                            <Ionicons name="library-outline" size={20} color={(viewMode === 'books' || viewMode === 'bookDetail') ? colors.accent : colors.textTertiary} />
+                            <Ionicons name="library" size={20} color={(viewMode === 'books' || viewMode === 'bookDetail') ? colors.accent : colors.textTertiary} />
                         </ScalePressable>
 
                         <ScalePressable style={styles.tab} onPress={navigateToActions}>
-                            <Ionicons name="flash-outline" size={20} color={viewMode === 'actions' ? colors.accent : colors.textTertiary} />
+                            <Ionicons name="flash" size={20} color={viewMode === 'actions' ? colors.accent : colors.textTertiary} />
                         </ScalePressable>
 
                         <ScalePressable style={styles.tab} onPress={navigateToTopics}>
-                            <Ionicons name="bookmark-outline" size={20} color={viewMode === 'topics' ? colors.accent : colors.textTertiary} />
+                            <Ionicons name="bookmark" size={20} color={viewMode === 'topics' ? colors.accent : colors.textTertiary} />
                         </ScalePressable>
                     </View>
                 </View>
@@ -942,8 +975,8 @@ const styles = StyleSheet.create({
         bottom: 0,
         left: 0,
         width: '25%',
-        height: 2,
-        borderRadius: 1,
+        height: 3,
+        borderRadius: 1.5,
     },
     tab: {
         flex: 1,
@@ -985,11 +1018,12 @@ const styles = StyleSheet.create({
     },
     searchInput: {
         flex: 1,
-        height: 48,
-        borderRadius: 6,
+        height: 52,
+        borderRadius: 12,
         paddingHorizontal: 16,
         fontSize: 16,
         borderWidth: 1,
+        fontWeight: '500',
     },
     clearSearch: {
         marginLeft: 12,
@@ -1017,40 +1051,55 @@ const styles = StyleSheet.create({
         // No extra horizontal padding here, handled by scrollContent
     },
     dateGroup: {
-        marginBottom: 32,
+        marginTop: 24,
+        marginBottom: 16,
+    },
+    dateGroupContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    dateGroupDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
     },
     dateGroupTitle: {
-        fontSize: 13,
-        fontWeight: '600',
-        marginBottom: 16,
-        letterSpacing: 1,
+        fontSize: 12,
+        fontWeight: '700',
+        letterSpacing: 0.5,
         textTransform: 'uppercase',
-        opacity: 0.7,
+        opacity: 0.5,
     },
     entryCard: {
-        borderRadius: 8, // Softened from 4
-        padding: 24,
-        marginBottom: 12,
+        borderRadius: 16,
+        padding: 20,
+        marginBottom: 16,
         borderWidth: 1,
     },
     entryHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'baseline',
-        marginBottom: 12,
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    entryHeaderLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
     },
     entryDate: {
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: '600',
         textTransform: 'uppercase',
-        letterSpacing: 0.8,
+        letterSpacing: 1,
     },
     entryPreview: {
         fontSize: 16,
         lineHeight: 26,
-        fontWeight: '400',
+        fontWeight: '500',
         marginBottom: 20,
-        letterSpacing: 0.1,
+        letterSpacing: -0.1,
     },
     entryFooter: {
         alignItems: 'flex-start',
@@ -1120,19 +1169,6 @@ const styles = StyleSheet.create({
         paddingBottom: 16,
         borderBottomWidth: 0.5,
     },
-    bookDetailTitle: {
-        fontSize: 34,
-        fontWeight: '800',
-        marginBottom: 8,
-        letterSpacing: -1,
-    },
-    bookDetailSubtitle: {
-        fontSize: 13,
-        fontWeight: '600',
-        textTransform: 'uppercase',
-        letterSpacing: 1,
-        opacity: 0.7,
-    },
     emptyState: {
         flex: 1,
         alignItems: 'center',
@@ -1141,19 +1177,19 @@ const styles = StyleSheet.create({
         paddingVertical: 100,
     },
     emptyIconContainer: {
-        width: 72,
-        height: 72,
-        borderRadius: 36,
+        width: 84,
+        height: 84,
+        borderRadius: 28,
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 24,
     },
     emptyStateText: {
         fontSize: 18,
-        fontWeight: '500',
+        fontWeight: '700',
         textAlign: 'center',
         marginBottom: 12,
-        letterSpacing: 0.2,
+        letterSpacing: -0.2,
     },
     emptyStateSubtext: {
         fontSize: 15,
