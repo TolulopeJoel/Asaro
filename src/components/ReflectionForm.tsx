@@ -81,17 +81,16 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
     }));
   };
 
-  const hasContent = (() => {
-    const { actionItems, studyFurtherReminder, ...textAnswers } = answers;
-    const hasText = Object.values(textAnswers).some(answer => typeof answer === 'string' && answer.trim().length > 0);
+  const hasPrimaryContent = (() => {
+    const { reflection1, reflection2, reflection4, notes, actionItems } = answers;
+    const hasText = [reflection1, reflection2, reflection4, notes].some(t => t.trim().length > 0);
     // An action item only counts if the action itself is filled (motivation alone is not enough)
     const hasActions = actionItems.some(item => item.action.trim().length > 0);
     return hasText || hasActions;
   })();
 
-
   const handleSave = () => {
-    if (!hasContent) return;
+    if (!hasPrimaryContent) return;
 
     // Check for motivation filled without a corresponding action
     const incompleteItem = answers.actionItems.find(
@@ -210,13 +209,13 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
 
       {!disabled && (
         <View style={styles.actionsContainer}>
-          {hasContent && (
+          {hasPrimaryContent && (
             <Button
               label={saveButtonText}
               variant="primary"
               size="lg"
               onPress={handleSave}
-              disabled={!hasContent}
+              disabled={!hasPrimaryContent}
               style={{ flex: 1 }}
             />
           )}
