@@ -1,5 +1,3 @@
-// src/data/bibleBooks.ts
-
 export interface BibleBook {
     name: string;
     abbrv: string

@@ -3,7 +3,6 @@ import { Alert, Linking, Platform } from 'react-native';
 import * as Device from 'expo-device';
 import * as IntentLauncher from 'expo-intent-launcher';
 import * as Battery from 'expo-battery';
-import { getTodayDateString } from './dateUtils';
 
 let isScheduling = false;
 

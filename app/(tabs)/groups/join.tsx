@@ -4,7 +4,6 @@ import firestore from '@react-native-firebase/firestore';
 import { useAuth } from '@/src/context/AuthContext';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
-import { Typography } from '@/src/theme/typography';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';

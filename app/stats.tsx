@@ -3,7 +3,6 @@ import { StatCard } from '@/src/components/stats/StatCard';
 import { getDailyEntryCounts, getFirstEntryDate } from '@/src/data/database';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
-import { Typography } from '@/src/theme/typography';
 import { formatDateToLocalString } from '@/src/utils/dateUtils';
 import { useFocusEffect, useNavigation } from 'expo-router';
 import React, { useCallback, useState } from 'react';

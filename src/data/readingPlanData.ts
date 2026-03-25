@@ -1,5 +1,3 @@
-// src/data/readingPlanData.ts
-
 export interface ReadingItem {
     id: number;
     section: string;

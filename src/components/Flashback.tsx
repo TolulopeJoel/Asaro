@@ -3,9 +3,8 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from 'expo-router';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Spacing } from '@/src/theme/spacing';
-import { Typography } from '@/src/theme/typography';
 import { StyleSheet, Text, View } from 'react-native';
 import { ScalePressable } from './ScalePressable';
 
