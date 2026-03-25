@@ -13,6 +13,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
 import { ALL_BIBLE_BOOKS, BibleBook } from '../data/bibleBooks';
+
+interface BookWithCount extends BibleBook {
+    entryCount: number;
+}
 import {
     JournalEntry,
     getEntriesByBook,
@@ -39,7 +43,7 @@ type ListItem =
     | { type: 'header'; title: string; id: string }
     | { type: 'entry'; entry: JournalEntry; id: number }
     | { type: 'bookHeader'; bookName: string; entryCount: number; id: string }
-    | { type: 'book'; book: BibleBook; id: string }
+    | { type: 'book'; book: BookWithCount; id: string }
     | { type: 'action'; action: EnhancedActionItem; id: string }
     | { type: 'topic'; topic: JournalEntry; id: string }
     | { type: 'topicHeader'; title: string; count: number; id: string }
@@ -60,7 +64,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
     const [selectedBook, setSelectedBook] = useState<BibleBook>();
     const [bookEntries, setBookEntries] = useState<JournalEntry[]>([]);
     const [filteredEntries, setFilteredEntries] = useState<JournalEntry[]>([]);
-    const [availableBooks, setAvailableBooks] = useState<BibleBook[]>([]);
+    const [availableBooks, setAvailableBooks] = useState<BookWithCount[]>([]);
     const [actionsList, setActionsList] = useState<EnhancedActionItem[]>([]);
     const [topicsList, setTopicsList] = useState<JournalEntry[]>([]);
     const [isArchiveCollapsed, setIsArchiveCollapsed] = useState(true);
@@ -737,9 +741,17 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                             style={[styles.bookCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
                             onPress={() => navigateToBookDetail(item.book)}
                         >
-                            <View style={styles.bookCardHeader}>
-                                <Text style={[styles.bookCardName, { color: colors.textPrimary }]}>{item.book.name}</Text>
+                            <View style={styles.bookCardContent}>
+                                <View style={styles.bookCardTextContainer}>
+                                    <Text style={[styles.bookCardName, { color: colors.textPrimary }]}>{item.book.name}</Text>
+                                </View>
+                                <View style={[styles.entryCountBadge, { backgroundColor: colors.accent + '15' }]}>
+                                    <Text style={[styles.entryCountText, { color: colors.accent }]}>
+                                        {item.book.entryCount} {item.book.entryCount === 1 ? 'entry' : 'entries'}
+                                    </Text>
+                                </View>
                             </View>
+                            <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
                         </ScalePressable>
                     </View>
                 );
@@ -1057,25 +1069,39 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     bookCard: {
-        borderRadius: 8, // Softened
+        borderRadius: 8,
         padding: 20,
-        marginHorizontal: 20,
-        marginBottom: 0, // Handled by gap
         borderWidth: 1,
         flexDirection: 'row',
         alignItems: 'center',
+        gap: 12,
     },
-    bookCardHeader: {
+    bookCardContent: {
         flex: 1,
-        justifyContent: 'center',
+        flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    bookCardTextContainer: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
+        gap: 8,
     },
     bookCardName: {
-        fontSize: 16,
-        fontWeight: '600',
-        marginBottom: 4,
-        letterSpacing: 0.2,
-        textAlign: 'center',
+        fontSize: 17,
+        fontWeight: '700',
+        letterSpacing: -0.3,
+    },
+    entryCountBadge: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    entryCountText: {
+        fontSize: 11,
+        fontWeight: '700',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
     bookDetailHeader: {
         marginBottom: 24,
@@ -1083,16 +1109,17 @@ const styles = StyleSheet.create({
         borderBottomWidth: 0.5,
     },
     bookDetailTitle: {
-        fontSize: 28,
-        fontWeight: '600',
+        fontSize: 34,
+        fontWeight: '800',
         marginBottom: 8,
-        letterSpacing: 0.2,
+        letterSpacing: -1,
     },
     bookDetailSubtitle: {
-        fontSize: 14,
-        fontWeight: '400',
-        textTransform: 'lowercase',
-        letterSpacing: 0.5,
+        fontSize: 13,
+        fontWeight: '600',
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+        opacity: 0.7,
     },
     emptyState: {
         flex: 1,
