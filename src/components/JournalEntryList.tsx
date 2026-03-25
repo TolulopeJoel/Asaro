@@ -287,7 +287,8 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
 
     const formatDate = useCallback((dateString?: string): string => {
         if (!dateString) return '';
-        const date = new Date(dateString);
+        // SQLite local time string 'YYYY-MM-DD HH:MM:SS' needs 'T' for robust parsing
+        const date = new Date(dateString.replace(' ', 'T'));
         return date.toLocaleDateString('en-US', {
             month: 'short',
             day: 'numeric',
@@ -329,13 +330,12 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         const today = getLocalMidnight();
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
-        yesterday.setHours(0, 0, 0, 0);
+
         const thisWeek = new Date(today);
         thisWeek.setDate(thisWeek.getDate() - 7);
-        thisWeek.setHours(0, 0, 0, 0);
+
         const thisMonth = new Date(today);
         thisMonth.setDate(thisMonth.getDate() - 30);
-        thisMonth.setHours(0, 0, 0, 0);
 
         const groups = {
             today: [] as JournalEntry[],
@@ -346,16 +346,20 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         };
 
         entries.forEach(entry => {
-            const entryDate = new Date(entry.created_at || '');
+            if (!entry.created_at) return;
+            // Ensure SQLite local time string is parsed correctly
+            const entryDate = new Date(entry.created_at.replace(' ', 'T'));
             const entryDateLocal = getLocalMidnight(entryDate);
+
+            const time = entryDateLocal.getTime();
 
             if (isSameDay(entryDateLocal, today)) {
                 groups.today.push(entry);
             } else if (isSameDay(entryDateLocal, yesterday)) {
                 groups.yesterday.push(entry);
-            } else if (entryDateLocal.getTime() >= thisWeek.getTime()) {
+            } else if (time >= thisWeek.getTime()) {
                 groups.thisWeek.push(entry);
-            } else if (entryDateLocal.getTime() >= thisMonth.getTime()) {
+            } else if (time >= thisMonth.getTime()) {
                 groups.thisMonth.push(entry);
             } else {
                 groups.older.push(entry);
