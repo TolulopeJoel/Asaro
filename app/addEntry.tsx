@@ -444,8 +444,8 @@ export default function MeditationSessionScreen() {
             <ScrollView key="step-reflection" style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.stepContent}>
                     <View style={styles.header}>
-                        <Text style={[styles.stepLabel, { color: colors.textTertiary }]}>REFLECT</Text>
-                        <Text style={[styles.title, { color: colors.textPrimary }]}>Reflections</Text>
+                        <Text style={[styles.stepLabel, { color: colors.textTertiary }]}>REFLECTING ON</Text>
+                        <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={2}>{selectionSummary}</Text>
                     </View>
                     {!isEditMode && (
                         <Text style={[styles.stepDescription, { color: colors.textSecondary }]}>
