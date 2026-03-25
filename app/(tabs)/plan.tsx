@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useRef } from 'react';
 import { LoadingView } from '@/src/components/LoadingView';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -138,6 +138,7 @@ export default function PlanScreen() {
     const [progress, setProgress] = useState(0);
     const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
     const [isInitialLoad, setIsInitialLoad] = useState(true);
+    const flatListRef = useRef<FlatList>(null);
 
     // Group items by section for easier progress calculation
     const sectionData = React.useMemo(() => {
@@ -249,6 +250,10 @@ export default function PlanScreen() {
         setCollapsedSections(newCollapsed);
     };
 
+    const scrollToFootnote = () => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+    };
+
     const renderItem = ({ item, index }: { item: ReadingItem; index: number }) => {
         const showHeader = index === 0 || READING_PLAN_DATA[index - 1].section !== item.section;
         const isCollapsed = collapsedSections.has(item.section);
@@ -279,7 +284,21 @@ export default function PlanScreen() {
     const renderHeader = () => (
         <View style={styles.header}>
             <View style={styles.progressHeaderRow}>
-                <Text style={[styles.title, { color: colors.textPrimary }]}>Bible Plan</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                    <Text style={[styles.title, { color: colors.textPrimary }]}>Bible Plan</Text>
+                    <TouchableOpacity
+                        onPress={scrollToFootnote}
+                        style={{ paddingHorizontal: 4, paddingTop: 4 }}
+                        activeOpacity={0.7}
+                    >
+                        <Text style={{
+                            fontSize: 18,
+                            fontWeight: '800',
+                            color: colors.accent,
+                            lineHeight: 24
+                        }}>*</Text>
+                    </TouchableOpacity>
+                </View>
                 <Text style={[styles.progressPercentage, { color: colors.accent }]}>{parseFloat(progress.toFixed(2))}%</Text>
             </View>
             <View style={styles.progressCard}>
@@ -298,11 +317,17 @@ export default function PlanScreen() {
                 </View>
             ) : (
                 <FlatList
+                    ref={flatListRef}
                     data={READING_PLAN_DATA}
                     renderItem={renderItem}
                     keyExtractor={(item) => item.id.toString()}
                     contentContainerStyle={styles.listContent}
                     ListHeaderComponent={renderHeader}
+                    ListFooterComponent={() => (
+                        <Text style={[styles.footnote, { color: colors.textSecondary }]}>
+                            *The Bible reading plan was adapted from the Bible Reading Plan found on https://www.jw.org/en/library/series/more-topics/bible-reading-plan/
+                        </Text>
+                    )}
                     showsVerticalScrollIndicator={false}
                 />
             )}
@@ -348,6 +373,13 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '800',
         letterSpacing: -0.5,
+    },
+    footnote: {
+        fontSize: 10,
+        lineHeight: 14,
+        opacity: 0.5,
+        marginTop: Spacing.xl,
+        fontStyle: 'italic',
     },
     listContent: {
         padding: Spacing.layout.screenPadding,
