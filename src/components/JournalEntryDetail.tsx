@@ -75,7 +75,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
         if (!hasChapterRange && hasVerses) {
             let result = entry.chapter_start.toString();
             if (entry.verse_start) {
-                result += `:${entry.verse_start} `;
+                result += `:${entry.verse_start}`;
                 if (entry.verse_end && entry.verse_end !== entry.verse_start) {
                     result += `–${entry.verse_end} `;
                 }
@@ -89,7 +89,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
             if (entry.verse_start) {
                 result += `:${entry.verse_start} `;
             }
-            result += `–${entry.chapter_end} `;
+            result += `– ${entry.chapter_end}`;
             if (entry.verse_end) {
                 result += `:${entry.verse_end} `;
             }
@@ -98,7 +98,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
 
         // Chapter range without verses: "3–5"
         if (hasChapterRange) {
-            return `${entry.chapter_start}–${entry.chapter_end} `;
+            return `${entry.chapter_start} – ${entry.chapter_end} `;
         }
 
         // Single chapter without verses: "3"
