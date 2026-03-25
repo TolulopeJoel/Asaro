@@ -1,12 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
     ScrollView,
     StyleSheet,
     Text,
-    TextInput,
     View,
 } from 'react-native';
-import { ALL_BIBLE_BOOKS, BibleBook, GREEK_BOOKS, HEBREW_BOOKS } from '../data/bibleBooks';
+import { BibleBook, GREEK_BOOKS, HEBREW_BOOKS } from '../data/bibleBooks';
 import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
@@ -24,15 +23,8 @@ export const BookPicker: React.FC<BookPickerProps> = React.memo(({
     availableBooks
 }) => {
     const { colors } = useTheme();
-    const [searchQuery, setSearchQuery] = useState('');
 
     const getFilteredBooks = (books: BibleBook[]): BibleBook[] => {
-        if (searchQuery.trim()) {
-            return books.filter(book =>
-                book.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                book.abbrv.toLowerCase().includes(searchQuery.toLowerCase())
-            );
-        }
         return books;
     };
 
@@ -86,40 +78,7 @@ export const BookPicker: React.FC<BookPickerProps> = React.memo(({
         );
     };
 
-    const renderSearchResults = () => {
-        const filteredBooks = getFilteredBooks(ALL_BIBLE_BOOKS);
-
-        if (filteredBooks.length === 0) {
-            return (
-                <View style={styles.emptyState}>
-                    <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>This Book no dey Bible o 👀😂</Text>
-                    <Text style={[styles.emptyStateSubtext, { color: colors.textTertiary }]}>
-                        Check your spelling or try a different search term
-                    </Text>
-                </View>
-            );
-        }
-
-        return (
-            <View style={styles.searchResults}>
-                <View style={styles.searchResultsGrid}>
-                    {filteredBooks.map(book => (
-                        <BookCard
-                            key={book.name}
-                            book={book}
-                            isSelected={selectedBook?.name === book.name}
-                        />
-                    ))}
-                </View>
-            </View>
-        );
-    };
-
     const renderContent = () => {
-        if (searchQuery.trim()) {
-            return renderSearchResults();
-        }
-
         if (availableBooks && availableBooks.length > 0) {
             return (
                 <View style={styles.booksContainer}>
@@ -146,16 +105,6 @@ export const BookPicker: React.FC<BookPickerProps> = React.memo(({
 
     return (
         <View style={styles.container}>
-            <TextInput
-                style={[styles.searchInput, { backgroundColor: colors.searchBackground, borderColor: colors.border, color: colors.textPrimary }]}
-                placeholder="Search..."
-                placeholderTextColor={colors.textTertiary}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                autoCapitalize="none"
-                autoCorrect={false}
-            />
-
             <ScrollView
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
@@ -173,16 +122,6 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         minHeight: 400,
-    },
-    searchInput: {
-        borderWidth: 1,
-        borderRadius: Spacing.borderRadius.lg,
-        paddingVertical: 14,
-        paddingHorizontal: Spacing.lg,
-        fontSize: Typography.size.md,
-        marginBottom: Spacing.xl,
-        fontWeight: Typography.weight.regular,
-        letterSpacing: 0.2,
     },
     scrollView: {
         flex: 1,
@@ -265,30 +204,5 @@ const styles = StyleSheet.create({
         width: 6,
         height: 6,
         borderRadius: 3,
-    },
-    searchResults: {
-        flex: 1,
-    },
-    searchResultsGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'space-between',
-        gap: Spacing.sm,
-    },
-    emptyState: {
-        alignItems: 'center',
-        paddingVertical: Spacing.xxxl,
-    },
-    emptyStateText: {
-        fontSize: Typography.size.md,
-        fontWeight: Typography.weight.medium,
-        marginBottom: Spacing.sm,
-        letterSpacing: 0.2,
-    },
-    emptyStateSubtext: {
-        fontSize: Typography.size.sm,
-        fontWeight: Typography.weight.regular,
-        letterSpacing: 0.3,
-        textAlign: 'center',
     },
 });
