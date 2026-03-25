@@ -11,6 +11,7 @@ import { Link, useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View, Alert } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { JournalEntryDetail } from '@/src/components/JournalEntryDetail';
 import { WavyAddIcon } from '@/src/components/WavyAddIcon';
 import { AnimatedModal } from '@/src/components/AnimatedModal';
@@ -26,11 +27,47 @@ type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 interface StatCardProps {
     icon: IoniconName;
     value: number;
-    label: string;
 }
 
-const StatCard = React.memo(({ icon, value, label }: StatCardProps) => {
+const AnimatedFlame = React.memo(({ size, color }: { size: number; color: string }) => {
+    const scale = useSharedValue(1);
+    const opacity = useSharedValue(0.9);
+
+    useEffect(() => {
+        scale.value = withRepeat(
+            withSequence(
+                withTiming(1.15, { duration: 600 }),
+                withTiming(1, { duration: 800 })
+            ),
+            -1,
+            true
+        );
+        opacity.value = withRepeat(
+            withSequence(
+                withTiming(1, { duration: 400 }),
+                withTiming(0.7, { duration: 600 })
+            ),
+            -1,
+            true
+        );
+    }, [scale, opacity]);
+
+    const animatedStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: scale.value }],
+        opacity: opacity.value,
+    }));
+
+    return (
+        <Animated.View style={animatedStyle}>
+            <Ionicons name="flame" size={size} color={color} />
+        </Animated.View>
+    );
+});
+
+const StatCard = React.memo(({ icon, value }: StatCardProps) => {
     const { colors } = useTheme();
+    const isFlame = icon === 'flame' && value > 0;
+
     return (
         <View
             style={[
@@ -41,12 +78,16 @@ const StatCard = React.memo(({ icon, value, label }: StatCardProps) => {
                 },
             ]}
         >
-            <View style={[styles.statIconContainer, { backgroundColor: colors.accent + '10' }]}>
-                <Ionicons
-                    name={icon}
-                    size={20}
-                    color={colors.accent}
-                />
+            <View style={[styles.statIconContainer, { backgroundColor: isFlame ? colors.accent + '20' : colors.accent + '10' }]}>
+                {isFlame ? (
+                    <AnimatedFlame size={20} color={colors.accent} />
+                ) : (
+                    <Ionicons
+                        name={icon}
+                        size={20}
+                        color={colors.accent}
+                    />
+                )}
             </View>
 
             <View style={styles.statInfo}>
@@ -95,8 +136,8 @@ const QuickStats = React.memo(() => {
 
     return (
         <View style={styles.statsContainer}>
-            <StatCard icon="flame" value={totalEntries} label="Entries" />
-            <StatCard icon="rainy" value={missedDays} label="Missed" />
+            <StatCard icon="flame" value={totalEntries} />
+            <StatCard icon="rainy" value={missedDays} />
         </View>
     );
 });
