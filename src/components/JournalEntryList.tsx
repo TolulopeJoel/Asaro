@@ -3,12 +3,14 @@ import { getLocalMidnight, isSameDay } from '@/src/utils/dateUtils';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+    DeviceEventEmitter,
     Platform,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
     View,
+    FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
@@ -72,6 +74,15 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
     const [tabContainerWidth, setTabContainerWidth] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
     const searchTimeoutRef = useRef<any>(null);
+    const flatListRef = useRef<FlatList>(null);
+
+    // Scroll to top on tab press
+    useEffect(() => {
+        const subscription = DeviceEventEmitter.addListener('tab-press-top-browse', () => {
+            flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+        });
+        return () => subscription.remove();
+    }, []);
 
     const loadEntries = useCallback(async () => {
         setIsLoading(true);
@@ -385,7 +396,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         const dynamic = getDynamicCardStyle(previewText);
 
         return (
-            <Animated.View entering={FadeIn.duration(400)} layout={LinearTransition}>
+            <Animated.View entering={FadeIn.duration(400)}>
                 <ScalePressable
                     style={[styles.entryCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
                     onPress={() => onEntryPress(entry)}
@@ -454,7 +465,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
     const renderActionCard = useCallback((item: EnhancedActionItem) => {
         const dynamic = getDynamicCardStyle(item.action);
         return (
-            <Animated.View style={styles.bookCardWrapper} entering={FadeIn.duration(400)} layout={LinearTransition}>
+            <Animated.View style={styles.bookCardWrapper} entering={FadeIn.duration(400)}>
                 <View style={[styles.entryCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder, marginBottom: 0, padding: dynamic.padding }]}>
                     <View style={[styles.entryHeader, { marginBottom: 12 }]}>
                         <View style={styles.entryHeaderLeft}>
@@ -515,7 +526,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         const isCompleted = !!item.study_completed;
 
         return (
-            <Animated.View style={styles.bookCardWrapper} entering={FadeIn.duration(400)} layout={LinearTransition}>
+            <Animated.View style={styles.bookCardWrapper} entering={FadeIn.duration(400)}>
                 <View style={[
                     styles.entryCard,
                     {
@@ -936,7 +947,6 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                     maxToRenderPerBatch={10}
                     windowSize={5}
                     removeClippedSubviews={Platform.OS === 'android'}
-                    itemLayoutAnimation={LinearTransition}
                 />
             )}
         </View>

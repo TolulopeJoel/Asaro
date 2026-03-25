@@ -1,6 +1,6 @@
-import React, { useCallback, useState, useRef } from 'react';
+import React, { useCallback, useState, useRef, useEffect } from 'react';
 import { LoadingView } from '@/src/components/LoadingView';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, DeviceEventEmitter } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
@@ -169,6 +169,14 @@ export default function PlanScreen() {
         }
     }, [isInitialLoad]);
 
+    // Scroll to top on tab press
+    useEffect(() => {
+        const subscription = DeviceEventEmitter.addListener('tab-press-top-plan', () => {
+            flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+        });
+        return () => subscription.remove();
+    }, []);
+
     useFocusEffect(
         useCallback(() => {
             loadProgress();
@@ -260,7 +268,7 @@ export default function PlanScreen() {
         const sectionStats = sectionData[item.section] || { completed: 0, total: 0 };
 
         return (
-            <Animated.View layout={LinearTransition}>
+            <View>
                 {showHeader && (
                     <SectionHeader
                         title={item.section}
@@ -277,7 +285,7 @@ export default function PlanScreen() {
                         onToggle={handleToggle}
                     />
                 )}
-            </Animated.View>
+            </View>
         );
     };
 

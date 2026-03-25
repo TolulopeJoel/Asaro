@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import {
     View, Text, StyleSheet, ScrollView,
-    LayoutAnimation, Platform, UIManager, Modal, Pressable, Dimensions,
+    LayoutAnimation, Platform, UIManager, Modal, Pressable, Dimensions, DeviceEventEmitter
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useTheme } from '@/src/theme/ThemeContext';
@@ -14,9 +14,10 @@ import { useAuth } from '@/src/context/AuthContext';
 import { checkInactiveMembers, getISOWeekString } from '@/src/utils/syncActivities';
 import { getTodayDateString } from '@/src/utils/dateUtils';
 import { ALL_BADGES } from '@/src/utils/badges';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import Animated, {
     useSharedValue, useAnimatedStyle, withSpring, withTiming,
-    runOnJS, LinearTransition,
+    runOnJS, LinearTransition, useAnimatedRef,
 } from 'react-native-reanimated';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { LoadingView } from '@/src/components/LoadingView';
@@ -533,7 +534,7 @@ const MemberProfileSheet = ({
                     <View style={[sheetStyles.handleBar, { backgroundColor: colors.border }]} />
                 </View>
 
-                <Animated.ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: Spacing.xl }} layout={LinearTransition}>
+                <Animated.ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: Spacing.xl }}>
 
                     {/* ── Avatar + name ── */}
                     <View style={sheetStyles.header}>
@@ -772,8 +773,17 @@ export default function GroupDetailScreen() {
     const [loading, setLoading] = React.useState(true);
     const [isOffline, setIsOffline] = React.useState(false);
     const [selectedMember, setSelectedMember] = React.useState<any>(null);
-    const [expandedDigests, setExpandedDigests] = React.useState<Set<string>>(new Set());
-    const [activeTab, setActiveTab] = React.useState<'feed' | 'accountability' | 'members'>('feed');
+    const [expandedDigests, setExpandedDigests] = useState<Set<string>>(new Set());
+    const [activeTab, setActiveTab] = useState<'feed' | 'accountability' | 'members'>('feed');
+    const scrollViewRef = useRef<any>(null);
+
+    // Scroll to top on tab press
+    useEffect(() => {
+        const subscription = DeviceEventEmitter.addListener('tab-press-top-groups', () => {
+            scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        });
+        return () => subscription.remove();
+    }, []);
 
     const today = useMemo(() => getTodayDateString(), []);
 
@@ -821,9 +831,6 @@ export default function GroupDetailScreen() {
             .onSnapshot(
                 (querySnapshot) => {
                     const feed = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    if (activities.length > 0) {
-                        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                    }
                     setActivities(feed);
                     markResolved();
                 },
@@ -905,9 +912,12 @@ export default function GroupDetailScreen() {
 
     if (loading) {
         return (
-            <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
+            <ScrollView
+                ref={scrollViewRef}
+                style={[styles.container, { backgroundColor: colors.background }]}
+                contentContainerStyle={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                 <LoadingView size={40} />
-            </View>
+            </ScrollView>
         );
     }
 
@@ -929,7 +939,11 @@ export default function GroupDetailScreen() {
                 </View>
             )}
 
-            <Animated.ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} layout={LinearTransition}>
+            <Animated.ScrollView
+                ref={scrollViewRef}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+            >
 
                 {/* ── Members who read today ── */}
                 <View style={styles.sectionHeader}>
@@ -1051,7 +1065,6 @@ export default function GroupDetailScreen() {
                                         : digest.names.join(' & ');
 
                                     const toggleDigest = () => {
-                                        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                                         setExpandedDigests(prev => {
                                             const next = new Set(prev);
                                             if (next.has(digest.id)) next.delete(digest.id);

@@ -2,15 +2,19 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StyleSheet, View } from 'react-native';
-import { Tabs } from 'expo-router';
+import { DeviceEventEmitter, StyleSheet, View } from 'react-native';
+import { Tabs, useRouter } from 'expo-router';
 import { ScalePressable } from '@/src/components/ScalePressable';
+import { useRef } from 'react';
 
 export default function TabLayout() {
     const { colors } = useTheme();
     const insets = useSafeAreaInsets();
     const barHeight = 60 + insets.bottom;
     const waveHeight = 18;
+    const router = useRouter();
+    const lastPressTime = useRef<number>(0);
+    const lastPressTab = useRef<string | null>(null);
 
     return (
         <Tabs
@@ -54,13 +58,35 @@ export default function TabLayout() {
                             const isFocused = props.state.index === index;
 
                             const onPress = () => {
+                                const now = Date.now();
+                                const isSameTab = props.state.index === index;
+
+                                if (isSameTab) {
+                                    // 1. Always emit scroll-to-top event
+                                    DeviceEventEmitter.emit(`tab-press-top-${route.name}`);
+
+                                    // 2. Double tap logic (within 500ms)
+                                    if (route.name === 'groups' && now - lastPressTime.current < 500) {
+                                        // Reset groups tab to root
+                                        router.replace('/(tabs)/groups');
+                                    }
+
+                                    lastPressTime.current = now;
+                                    lastPressTab.current = route.name;
+                                    return;
+                                }
+
+                                // Normal navigation
+                                lastPressTime.current = now;
+                                lastPressTab.current = route.name;
+
                                 const event = props.navigation.emit({
                                     type: 'tabPress',
                                     target: route.key,
                                     canPreventDefault: true,
                                 });
 
-                                if (!isFocused && !event.defaultPrevented) {
+                                if (!isSameTab && !event.defaultPrevented) {
                                     props.navigation.navigate(route.name);
                                 }
                             };

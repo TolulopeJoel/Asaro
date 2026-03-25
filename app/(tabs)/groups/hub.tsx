@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, DeviceEventEmitter } from 'react-native';
 import { useAuth } from '@/src/context/AuthContext';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
@@ -16,11 +16,20 @@ export default function GroupsScreen() {
     const { user, loading, displayName } = useAuth();
     const { colors } = useTheme();
     const router = useRouter();
-    const [joinedGroups, setJoinedGroups] = React.useState<any[]>([]);
-    const [checkingGroups, setCheckingGroups] = React.useState(true);
-    const [isOffline, setIsOffline] = React.useState(false);
+    const [joinedGroups, setJoinedGroups] = useState<any[]>([]);
+    const [checkingGroups, setCheckingGroups] = useState(true);
+    const [isOffline, setIsOffline] = useState(false);
+    const scrollViewRef = useRef<ScrollView>(null);
 
-    React.useEffect(() => {
+    // Scroll to top on tab press
+    useEffect(() => {
+        const subscription = DeviceEventEmitter.addListener('tab-press-top-groups', () => {
+            scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        });
+        return () => subscription.remove();
+    }, []);
+
+    useEffect(() => {
         if (!user) {
             setCheckingGroups(false);
             return;
@@ -82,6 +91,7 @@ export default function GroupsScreen() {
         return (
             <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
                 <ScrollView
+                    ref={scrollViewRef}
                     contentContainerStyle={styles.authScroll}
                     showsVerticalScrollIndicator={false}
                 >
@@ -124,6 +134,7 @@ export default function GroupsScreen() {
                     </View>
                 )}
                 <ScrollView
+                    ref={scrollViewRef}
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
                 >
@@ -202,6 +213,7 @@ export default function GroupsScreen() {
                 </View>
             )}
             <ScrollView
+                ref={scrollViewRef}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >

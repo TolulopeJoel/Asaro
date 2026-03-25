@@ -26,22 +26,23 @@ export const ScalePressable: React.FC<ScalePressableProps> = ({
     onPressOut,
     ...props
 }) => {
-    const pressed = useSharedValue(0);
+    const progress = useSharedValue(0);
+    const config = { damping: 15, stiffness: 300 };
 
     const animatedStyle = useAnimatedStyle(() => {
         return {
-            transform: [{ scale: withSpring(interpolate(pressed.value, [0, 1], [1, scaleTo]), { damping: 15, stiffness: 300 }) }],
-            opacity: withSpring(interpolate(pressed.value, [0, 1], [1, activeOpacity])),
+            transform: [{ scale: interpolate(progress.value, [0, 1], [1, scaleTo]) }],
+            opacity: interpolate(progress.value, [0, 1], [1, activeOpacity]),
         };
     });
 
     const handlePressIn = (e: any) => {
-        if (!disabled) pressed.value = 1;
+        if (!disabled) progress.value = withSpring(1, config);
         onPressIn?.(e);
     };
 
     const handlePressOut = (e: any) => {
-        pressed.value = 0;
+        progress.value = withSpring(0, config);
         onPressOut?.(e);
     };
 
