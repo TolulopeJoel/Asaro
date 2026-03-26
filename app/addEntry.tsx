@@ -12,6 +12,7 @@ import { BookPicker } from '../src/components/BookPicker';
 import { ChapterPicker } from '../src/components/ChapterPicker';
 import { ReflectionAnswers, ReflectionForm } from '../src/components/ReflectionForm';
 import { ScalePressable } from '../src/components/ScalePressable';
+import { LoadingView } from '../src/components/LoadingView';
 import { BibleBook, getBookByName } from '../src/data/bibleBooks';
 import { setupDailyNotifications, scheduleReminderNotification } from '../src/utils/notifications';
 import { syncPendingActivities } from '../src/utils/syncActivities';
@@ -564,7 +565,7 @@ export default function MeditationSessionScreen() {
         return (
             <View style={[styles.container, { backgroundColor: colors.background }]}>
                 <View style={styles.loadingContainer}>
-                    <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading…</Text>
+                    <LoadingView size={32} />
                 </View>
             </View>
         );

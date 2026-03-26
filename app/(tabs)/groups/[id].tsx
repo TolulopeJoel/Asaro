@@ -742,7 +742,9 @@ const MemberProfileSheet = ({
                         {/* Recent Reads */}
                         {activeSheetTab === 'reads' && (
                             loadingReads ? (
-                                <Text style={[sheetStyles.emptyText, { color: colors.textTertiary, marginTop: Spacing.md }]}>Loading...</Text>
+                                <View style={{ marginTop: Spacing.xl, alignItems: 'center' }}>
+                                    <LoadingView size={24} />
+                                </View>
                             ) : pastReads.length > 0 ? (
                                 <View style={{ gap: Spacing.md, marginTop: Spacing.md }}>
                                     {pastReads.map((read) => (
