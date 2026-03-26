@@ -1,6 +1,6 @@
-import React, { useCallback, useState, useRef, useEffect } from 'react';
+import React, { useCallback, useMemo, useState, useRef, useEffect } from 'react';
 import { LoadingView } from '@/src/components/LoadingView';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, DeviceEventEmitter } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, DeviceEventEmitter, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
@@ -9,9 +9,12 @@ import { READING_PLAN_DATA, ReadingItem } from '@/src/data/readingPlanData';
 import { getReadingProgress, toggleReadingItem, checkEntryCoversChapters } from '@/src/data/database';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { ScalePressable } from '@/src/components/ScalePressable';
-import Animated, { LinearTransition } from 'react-native-reanimated';
 
-const SectionHeader = ({
+type ListDataItem =
+    | { type: 'sectionHeader'; section: string; id: string }
+    | { type: 'reading'; item: ReadingItem; id: string };
+
+const SectionHeader = React.memo(({
     title,
     isCollapsed,
     onToggle,
@@ -61,9 +64,9 @@ const SectionHeader = ({
             </View>
         </TouchableOpacity>
     );
-};
+});
 
-const ReadingCard = ({
+const ReadingCard = React.memo(({
     item,
     isCompleted,
     onToggle
@@ -129,7 +132,7 @@ const ReadingCard = ({
             </View>
         </ScalePressable>
     );
-};
+});
 
 export default function PlanScreen() {
     const { colors } = useTheme();
@@ -183,7 +186,7 @@ export default function PlanScreen() {
         }, [loadProgress])
     );
 
-    const handleToggle = async (id: number, completed: boolean) => {
+    const handleToggle = useCallback(async (id: number, completed: boolean) => {
         if (completed) {
             const item = READING_PLAN_DATA.find(i => i.id === id);
             if (!item) return;
@@ -246,46 +249,64 @@ export default function PlanScreen() {
             setCompletedItems(newCompleted);
             setProgress(parseFloat(((newCompleted.size / READING_PLAN_DATA.length) * 100).toFixed(2)));
         }
-    };
+    }, [completedItems, router]);
 
-    const toggleSection = (section: string) => {
-        const newCollapsed = new Set(collapsedSections);
-        if (newCollapsed.has(section)) {
-            newCollapsed.delete(section);
-        } else {
-            newCollapsed.add(section);
+    const toggleSection = useCallback((section: string) => {
+        setCollapsedSections(prev => {
+            const newCollapsed = new Set(prev);
+            if (newCollapsed.has(section)) {
+                newCollapsed.delete(section);
+            } else {
+                newCollapsed.add(section);
+            }
+            return newCollapsed;
+        });
+    }, []);
+
+    // Pre-filter data: only include section headers + items from expanded sections
+    const flatListData = useMemo(() => {
+        const result: ListDataItem[] = [];
+        let lastSection = '';
+
+        for (const item of READING_PLAN_DATA) {
+            if (item.section !== lastSection) {
+                // Always include section headers
+                result.push({ type: 'sectionHeader', section: item.section, id: `section-${item.section}` });
+                lastSection = item.section;
+            }
+            // Only include reading items from expanded sections
+            if (!collapsedSections.has(item.section)) {
+                result.push({ type: 'reading', item, id: `reading-${item.id}` });
+            }
         }
-        setCollapsedSections(newCollapsed);
-    };
 
-    const renderItem = ({ item, index }: { item: ReadingItem; index: number }) => {
-        const showHeader = index === 0 || READING_PLAN_DATA[index - 1].section !== item.section;
-        const isCollapsed = collapsedSections.has(item.section);
-        const sectionStats = sectionData[item.section] || { completed: 0, total: 0 };
+        return result;
+    }, [collapsedSections]);
+
+    const renderItem = useCallback(({ item }: { item: ListDataItem }) => {
+        if (item.type === 'sectionHeader') {
+            const stats = sectionData[item.section] || { completed: 0, total: 0 };
+            return (
+                <SectionHeader
+                    title={item.section}
+                    isCollapsed={collapsedSections.has(item.section)}
+                    onToggle={() => toggleSection(item.section)}
+                    completedCount={stats.completed}
+                    totalCount={stats.total}
+                />
+            );
+        }
 
         return (
-            <View>
-                {showHeader && (
-                    <SectionHeader
-                        title={item.section}
-                        isCollapsed={isCollapsed}
-                        onToggle={() => toggleSection(item.section)}
-                        completedCount={sectionStats.completed}
-                        totalCount={sectionStats.total}
-                    />
-                )}
-                {!isCollapsed && (
-                    <ReadingCard
-                        item={item}
-                        isCompleted={completedItems.has(item.id)}
-                        onToggle={handleToggle}
-                    />
-                )}
-            </View>
+            <ReadingCard
+                item={item.item}
+                isCompleted={completedItems.has(item.item.id)}
+                onToggle={handleToggle}
+            />
         );
-    };
+    }, [sectionData, collapsedSections, completedItems, handleToggle, toggleSection]);
 
-    const renderHeader = () => (
+    const renderHeader = useCallback(() => (
         <View style={styles.header}>
             <View style={styles.progressHeaderRow}>
                 <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
@@ -300,7 +321,15 @@ export default function PlanScreen() {
                 </View>
             </View>
         </View>
-    );
+    ), [colors, progress]);
+
+    const renderFooter = useCallback(() => (
+        <Text style={[styles.footnote, { color: colors.textSecondary }]}>
+            * The Bible reading plan was adapted from the Bible Reading Plan found on https://www.jw.org/en/library/series/more-topics/bible-reading-plan/
+        </Text>
+    ), [colors.textSecondary]);
+
+    const keyExtractor = useCallback((item: ListDataItem) => item.id, []);
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -311,17 +340,17 @@ export default function PlanScreen() {
             ) : (
                 <FlatList
                     ref={flatListRef}
-                    data={READING_PLAN_DATA}
+                    data={flatListData}
                     renderItem={renderItem}
-                    keyExtractor={(item) => item.id.toString()}
+                    keyExtractor={keyExtractor}
                     contentContainerStyle={styles.listContent}
                     ListHeaderComponent={renderHeader}
-                    ListFooterComponent={() => (
-                        <Text style={[styles.footnote, { color: colors.textSecondary }]}>
-                            * The Bible reading plan was adapted from the Bible Reading Plan found on https://www.jw.org/en/library/series/more-topics/bible-reading-plan/
-                        </Text>
-                    )}
+                    ListFooterComponent={renderFooter}
                     showsVerticalScrollIndicator={false}
+                    initialNumToRender={15}
+                    maxToRenderPerBatch={15}
+                    windowSize={7}
+                    removeClippedSubviews={Platform.OS === 'android'}
                 />
             )}
         </SafeAreaView>
