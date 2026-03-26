@@ -59,6 +59,7 @@ export default function JoinGroupScreen() {
                 userId: user.uid,
                 displayName: displayName || user.email?.split('@')[0] || 'User',
                 gender: userGender || 'm',
+                photoURL: userDocData.photoURL || null,
                 joinedAt: firestore.FieldValue.serverTimestamp(),
                 lastActive: firestore.FieldValue.serverTimestamp(),
             });

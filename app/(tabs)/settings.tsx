@@ -8,7 +8,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { documentDirectory, writeAsStringAsync, readAsStringAsync } from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { Stack } from 'expo-router';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, DeviceEventEmitter } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,6 +16,72 @@ import { Button } from '@/src/components/Button';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { Ionicons } from '@expo/vector-icons';
 import { LoadingView } from '@/src/components/LoadingView';
+import firestore from '@react-native-firebase/firestore';
+import { useAuth } from '@/src/context/AuthContext';
+import { Avatar } from './groups/[id]';
+import { TextInput } from 'react-native';
+import React from 'react';
+
+// ─── Profile Photo Card ──────────────────────────────────────────────────────
+// Isolated in its own component so typing the URL doesn't re-render the whole
+// Settings screen (which would dismiss the keyboard on every keystroke).
+
+const ProfilePhotoCard = React.memo(({
+    user, colors, initialURL, onSave, isSaving,
+}: {
+    user: any; colors: any; initialURL: string;
+    onSave: (url: string) => void; isSaving: boolean;
+}) => {
+    const [draft, setDraft] = useState(initialURL);
+
+    // Keep draft in sync if the stored URL changes (e.g. first load)
+    useEffect(() => { setDraft(initialURL); }, [initialURL]);
+
+    return (
+        <View style={{ padding: 20, alignItems: 'center', gap: 20 }}>
+            <View style={{ alignItems: 'center', gap: 10 }}>
+                <Avatar id={user?.uid} name={user?.displayName || 'User'} url={draft} size={80} radius={24} />
+                <View style={{ alignItems: 'center', gap: 3 }}>
+                    <Text style={{ fontSize: 17, fontWeight: '700', color: colors.textPrimary }}>{user?.displayName}</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: colors.accent, letterSpacing: 1 }}>PRIVILEGED ADMIN</Text>
+                </View>
+            </View>
+
+            <View style={{ width: '100%', gap: 8 }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textTertiary, letterSpacing: 1 }}>PROFILE PHOTO URL</Text>
+                <TextInput
+                    style={{
+                        backgroundColor: colors.buttonSecondary,
+                        padding: 14,
+                        borderRadius: 14,
+                        color: colors.textPrimary,
+                        fontSize: 14,
+                        borderWidth: 1,
+                        borderColor: colors.buttonSecondaryBorder,
+                    }}
+                    value={draft}
+                    onChangeText={setDraft}
+                    placeholder="Paste a photo link here"
+                    placeholderTextColor={colors.textTertiary}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType="url"
+                />
+            </View>
+
+            <Button
+                label={isSaving ? 'Saving...' : 'Save Changes'}
+                onPress={() => onSave(draft)}
+                disabled={isSaving}
+                loading={isSaving}
+                variant="primary"
+                fullWidth
+                size="md"
+                style={{ borderRadius: 14 }}
+            />
+        </View>
+    );
+});
 
 export default function Settings() {
     const { colors, theme, setTheme } = useTheme();
@@ -28,6 +94,39 @@ export default function Settings() {
     const [isImporting, setIsImporting] = useState(false);
     const [lastBackupDate, setLastBackupDate] = useState<string | null>(null);
     const scrollViewRef = useRef<ScrollView>(null);
+    const { user } = useAuth();
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [photoURL, setPhotoURL] = useState('');
+    const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+    const handleSaveProfileURL = useCallback(async (url: string) => {
+        if (!user?.uid) return;
+        setIsSavingProfile(true);
+        try {
+            await firestore().collection('users').doc(user.uid).set({ photoURL: url.trim() }, { merge: true });
+            const userDoc = await firestore().collection('users').doc(user.uid).get();
+            if (userDoc.exists()) {
+                const groupIds = userDoc.data()?.groupIds || [];
+                if (groupIds.length > 0) {
+                    const batch = firestore().batch();
+                    groupIds.forEach((groupId: string) => {
+                        batch.set(
+                            firestore().collection('groups').doc(groupId).collection('members').doc(user.uid),
+                            { photoURL: url.trim() }, { merge: true }
+                        );
+                    });
+                    await batch.commit();
+                }
+            }
+            setPhotoURL(url.trim());
+            Alert.alert('Success', 'Profile photo updated successfully');
+        } catch (error) {
+            console.error('Failed to save profile:', error);
+            Alert.alert('Error', 'Failed to update profile photo');
+        } finally {
+            setIsSavingProfile(false);
+        }
+    }, [user?.uid]);
 
     // Scroll to top on tab press
     useEffect(() => {
@@ -39,7 +138,62 @@ export default function Settings() {
 
     useEffect(() => {
         AsyncStorage.getItem('lastBackupDate').then(val => setLastBackupDate(val));
-    }, []);
+
+        if (user?.uid) {
+            // Check if user is an admin in any group
+            const unsubscribe = firestore()
+                .collectionGroup('members')
+                .where('userId', '==', user.uid)
+                .where('role', '==', 'admin')
+                .onSnapshot(snapshot => {
+                    setIsAdmin(!snapshot.empty);
+                });
+
+            // Fetch current user's photoURL
+            firestore().collection('users').doc(user.uid).get().then(doc => {
+                if (doc.exists()) {
+                    setPhotoURL(doc.data()?.photoURL || '');
+                }
+            });
+
+            return () => unsubscribe();
+        }
+    }, [user?.uid]);
+
+    const handleSaveProfile = async () => {
+        if (!user?.uid) return;
+        setIsSavingProfile(true);
+        try {
+            await firestore().collection('users').doc(user.uid).set({
+                photoURL: photoURL.trim()
+            }, { merge: true });
+
+            // Update all groups the user is part of
+            const userDoc = await firestore().collection('users').doc(user.uid).get();
+            if (userDoc.exists()) {
+                const groupIds = userDoc.data()?.groupIds || [];
+                if (groupIds.length > 0) {
+                    const batch = firestore().batch();
+                    groupIds.forEach((groupId: string) => {
+                        const memberRef = firestore()
+                            .collection('groups')
+                            .doc(groupId)
+                            .collection('members')
+                            .doc(user.uid);
+                        batch.set(memberRef, { photoURL: photoURL.trim() }, { merge: true });
+                    });
+                    await batch.commit();
+                }
+            }
+
+            Alert.alert('Success', 'Profile photo updated successfully');
+        } catch (error) {
+            console.error('Failed to save profile:', error);
+            Alert.alert('Error', 'Failed to update profile photo');
+        } finally {
+            setIsSavingProfile(false);
+        }
+    };
 
     const handleNotificationTitleTap = () => {
         const newCount = tapCount + 1;
@@ -252,6 +406,19 @@ export default function Settings() {
                         <Text style={[styles.title, { color: colors.textPrimary }]}>Engine Room</Text>
                     </View>
                 </View>
+
+                {/* Profile Section for Admins */}
+                {isAdmin && (
+                    <SettingsGroup title="Profile">
+                        <ProfilePhotoCard
+                            user={user}
+                            colors={colors}
+                            initialURL={photoURL}
+                            onSave={handleSaveProfileURL}
+                            isSaving={isSavingProfile}
+                        />
+                    </SettingsGroup>
+                )}
 
                 {/* Appearance */}
                 <SettingsGroup title="Appearance">

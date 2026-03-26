@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import firestore from '@react-native-firebase/firestore';
 import { Button } from '@/src/components/Button';
 import { LoadingView } from '@/src/components/LoadingView';
+import { Avatar } from './[id]';
 
 export default function GroupsScreen() {
     const { user, loading, displayName } = useAuth();
@@ -159,12 +160,10 @@ export default function GroupsScreen() {
                                 onPress={() => router.push(`/(tabs)/groups/${group.id}` as any)}
                             >
                                 <View style={styles.groupCardTop}>
-                                    <View style={[styles.groupIcon, { backgroundColor: colors.accentSecondaryLight + '40' }]}>
-                                        <Ionicons name="people" size={24} color={colors.accentSecondary} />
-                                    </View>
+                                    <Avatar id={group.id} name={group.name} url={group.photoURL} size={48} radius={14} />
                                     <View style={styles.groupInfo}>
                                         <Text style={[styles.groupName, { color: colors.textPrimary }]}>{group.name}</Text>
-                                        <Text style={[styles.groupDesc, { color: colors.textSecondary }]} numberOfLines={1}>
+                                        <Text style={[styles.groupDesc, { color: colors.textSecondary }]}>
                                             {group.description || 'Consistency is key. Read together!'}
                                         </Text>
                                     </View>
