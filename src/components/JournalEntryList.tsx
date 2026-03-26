@@ -639,6 +639,10 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                 // Among unpinned: most recently created entry first
                 return new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime();
             });
+
+            if (sortedActions.length === 0) {
+                return [{ type: 'emptyState' as const, id: 'empty-actions' }];
+            }
             return sortedActions.map(action => ({ type: 'action' as const, action, id: `action-${action.id}` }));
         }
 
@@ -675,6 +679,9 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         }
 
         if (viewMode === 'books') {
+            if (availableBooks.length === 0) {
+                return [{ type: 'emptyState' as const, id: 'empty-books' }];
+            }
             return availableBooks.map(book => ({ type: 'book' as const, book, id: book.name }));
         }
 
@@ -694,18 +701,28 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                 }
                 return new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime();
             });
-            sorted.forEach(entry => {
-                items.push({ type: 'entry', entry, id: entry.id! });
-            });
+
+            if (sorted.length === 0) {
+                items.push({ type: 'emptyState', id: 'empty-book-detail' });
+            } else {
+                sorted.forEach(entry => {
+                    items.push({ type: 'entry', entry, id: entry.id! });
+                });
+            }
             return items;
         }
 
         // Recent view
         if (debouncedSearchQuery.trim()) {
             // Search results - no grouping
-            return filteredEntries
+            const results = filteredEntries
                 .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())
                 .map(entry => ({ type: 'entry' as const, entry, id: entry.id! }));
+
+            if (results.length === 0) {
+                return [{ type: 'emptyState' as const, id: 'empty-search' }];
+            }
+            return results;
         }
 
         // Grouped entries
@@ -731,6 +748,10 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                 });
             }
         });
+
+        if (items.length === 0) {
+            items.push({ type: 'emptyState', id: 'empty-recent' });
+        }
 
         return items;
     }, [viewMode, filteredEntries, debouncedSearchQuery, availableBooks, bookEntries, selectedBook, groupEntriesByDate, actionsList, topicsList, isArchiveCollapsed]);
