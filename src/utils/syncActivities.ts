@@ -104,19 +104,24 @@ const incrementStreak = (
 /**
  * Computes the updated group streak given the current state on the group doc
  * and the date of the new activity.
+ *
+ * Returns null when activityDateStr is the same or older than the last recorded
+ * date — in this case, the streak should NOT be updated (handles same-day reads
+ * from multiple members and out-of-order queue flushes).
  */
 const computeGroupStreak = (
     existingStreak: number,
     lastDateStr: string | undefined,
     activityDateStr: string
-): { groupStreak: number; groupStreakLastDate: string } => {
+): { groupStreak: number; groupStreakLastDate: string } | null => {
+    // Same-day or stale activity — do not mutate the streak
+    if (lastDateStr && activityDateStr <= lastDateStr) return null;
+
     if (!lastDateStr) {
         return { groupStreak: 1, groupStreakLastDate: activityDateStr };
     }
     const groupStreak = incrementStreak(existingStreak, lastDateStr, activityDateStr);
-    // Same-day case: streak unchanged, keep the existing last date
-    const groupStreakLastDate = groupStreak === existingStreak ? lastDateStr : activityDateStr;
-    return { groupStreak, groupStreakLastDate };
+    return { groupStreak, groupStreakLastDate: activityDateStr };
 };
 
 // ─── Badge Helpers ────────────────────────────────────────────────────────────
@@ -265,7 +270,7 @@ export const syncPendingActivities = async (): Promise<void> => {
                     );
 
                     // ── Group streak ────────────────────────────────────────
-                    const { groupStreak, groupStreakLastDate } = computeGroupStreak(
+                    const groupStreakResult = computeGroupStreak(
                         groupData.groupStreak || 0,
                         groupData.groupStreakLastDate,
                         activityLocalDateStr
@@ -355,13 +360,16 @@ export const syncPendingActivities = async (): Promise<void> => {
                             }
 
                             // Group streak + readToday
-                            batch.set(groupRef, {
-                                groupStreak,
-                                groupStreakLastDate,
+                            const groupUpdate: Record<string, any> = {
                                 readTodayCount,
                                 readTodayDate: activityLocalDateStr,
                                 memberCount,
-                            }, { merge: true });
+                            };
+                            if (groupStreakResult) {
+                                groupUpdate.groupStreak = groupStreakResult.groupStreak;
+                                groupUpdate.groupStreakLastDate = groupStreakResult.groupStreakLastDate;
+                            }
+                            batch.set(groupRef, groupUpdate, { merge: true });
 
                             // All-members-read-today badge
                             const allMembersReadToday =
@@ -380,10 +388,11 @@ export const syncPendingActivities = async (): Promise<void> => {
 
                             // Group streak milestone badges
                             const existingGroupBadgeIds: string[] = groupData.badges || [];
+                            const currentGroupStreak = groupStreakResult?.groupStreak ?? (groupData.groupStreak || 0);
                             const groupStreakCandidates = GROUP_BADGES.filter(
                                 b => b.id.startsWith('group_streak') &&
                                     b.threshold! > (groupData.groupStreak || 0) &&
-                                    b.threshold! <= groupStreak
+                                    b.threshold! <= currentGroupStreak
                             );
 
                             applyNewBadges(

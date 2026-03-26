@@ -101,6 +101,7 @@ export interface ActionItem {
     sort_order: number;
     is_completed?: boolean;
     is_pinned?: boolean;
+    pinned_at?: string | null;
 }
 
 export interface JournalEntry {
@@ -139,7 +140,7 @@ export interface JournalEntryInput {
 
 let db: SQLite.SQLiteDatabase | null = null;
 
-const CURRENT_DB_VERSION = 7;
+const CURRENT_DB_VERSION = 8;
 
 const getDb = async () => {
     if (!db) {
@@ -314,6 +315,12 @@ export const initializeDatabase = async () => {
             if (currentVersion < 7) {
                 await database.execAsync(`
                     ALTER TABLE action_items ADD COLUMN is_pinned BOOLEAN DEFAULT 0;
+                `);
+            }
+
+            if (currentVersion < 8) {
+                await database.execAsync(`
+                    ALTER TABLE action_items ADD COLUMN pinned_at DATETIME DEFAULT NULL;
                 `);
             }
 
@@ -1260,7 +1267,7 @@ export const getPinnedActionItems = async (): Promise<EnhancedActionItem[]> => {
             JOIN journal_entries je ON ai.entry_id = je.id
             WHERE ai.is_pinned = 1
               AND (ai.action != '' OR ai.motivation != '')
-            ORDER BY ai.id DESC
+            ORDER BY ai.pinned_at DESC, ai.id DESC
             LIMIT 3
         `);
         return result ?? [];
@@ -1282,13 +1289,13 @@ export const toggleActionItemPin = async (id: number, pinned: boolean): Promise<
                 // Make room so that total pinned will be 3 including the new one
                 const itemsToUnpin = pinnedRows.slice(0, pinnedRows.length - 2);
                 for (const row of itemsToUnpin) {
-                    await database.runAsync(`UPDATE action_items SET is_pinned = 0 WHERE id = ?`, [row.id]);
+                    await database.runAsync(`UPDATE action_items SET is_pinned = 0, pinned_at = NULL WHERE id = ?`, [row.id]);
                 }
             }
         }
         await database.runAsync(
-            `UPDATE action_items SET is_pinned = ? WHERE id = ?`,
-            [pinned ? 1 : 0, id]
+            `UPDATE action_items SET is_pinned = ?, pinned_at = CASE WHEN ? = 1 THEN CURRENT_TIMESTAMP ELSE NULL END WHERE id = ?`,
+            [pinned ? 1 : 0, pinned ? 1 : 0, id]
         );
     });
 };

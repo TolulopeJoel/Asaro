@@ -51,11 +51,12 @@ export const isSameDay = (date1: Date, date2: Date): boolean => {
 };
 
 /**
- * Get the difference in days between two dates (local timezone)
+ * Get the difference in days between two dates (date2 - date1, local timezone).
+ * Returns a positive number if date2 is after date1, negative if before.
  */
 export const getDaysDifference = (date1: Date, date2: Date): number => {
     const d1 = getLocalMidnight(date1);
     const d2 = getLocalMidnight(date2);
-    const diffTime = Math.abs(d1.getTime() - d2.getTime());
-    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    const diffTime = d2.getTime() - d1.getTime();
+    return Math.round(diffTime / (1000 * 60 * 60 * 24));
 };

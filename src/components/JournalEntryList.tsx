@@ -635,9 +635,15 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
             const sortedActions = [...actionsList].sort((a, b) => {
                 const aPinned = !!a.is_pinned;
                 const bPinned = !!b.is_pinned;
-                if (aPinned !== bPinned) {
-                    return aPinned ? -1 : 1;
+                // Pinned items float to the top
+                if (aPinned !== bPinned) return aPinned ? -1 : 1;
+                // Among pinned items: most recently pinned first
+                if (aPinned && bPinned) {
+                    const aTime = a.pinned_at ? new Date(a.pinned_at.replace(' ', 'T')).getTime() : (a.id ?? 0);
+                    const bTime = b.pinned_at ? new Date(b.pinned_at.replace(' ', 'T')).getTime() : (b.id ?? 0);
+                    return bTime - aTime;
                 }
+                // Among unpinned: most recently created entry first
                 return new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime();
             });
             return sortedActions.map(action => ({ type: 'action' as const, action, id: `action-${action.id}` }));
