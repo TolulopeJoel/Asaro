@@ -3,14 +3,12 @@ import { getLocalMidnight, isSameDay } from '@/src/utils/dateUtils';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    DeviceEventEmitter,
     Platform,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
     View,
-    FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
@@ -74,15 +72,6 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
     const [tabContainerWidth, setTabContainerWidth] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
     const searchTimeoutRef = useRef<any>(null);
-    const flatListRef = useRef<FlatList>(null);
-
-    // Scroll to top on tab press
-    useEffect(() => {
-        const subscription = DeviceEventEmitter.addListener('tab-press-top-browse', () => {
-            flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
-        });
-        return () => subscription.remove();
-    }, []);
 
     const loadEntries = useCallback(async () => {
         setIsLoading(true);
