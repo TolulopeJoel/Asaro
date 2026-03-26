@@ -14,7 +14,9 @@ import { Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '@/src/theme/ThemeContext';
 import { AuthProvider } from '@/src/context/AuthContext';
+import { AlertProvider } from '@/src/context/AlertContext';
 import { LoadingView } from '@/src/components/LoadingView';
+import { CustomAlert } from '@/src/components/CustomAlert';
 
 function StackNavigator() {
   const { colors } = useTheme();
@@ -154,18 +156,21 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <ThemeProvider>
-          {!dbInitialized ? (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-              <LoadingView size={48} />
-            </View>
-          ) : (
-            <>
-              <StackNavigator />
-              <StatusBar hidden={true} />
-            </>
-          )}
-        </ThemeProvider>
+        <AlertProvider>
+          <ThemeProvider>
+            {!dbInitialized ? (
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <LoadingView size={48} />
+              </View>
+            ) : (
+              <>
+                <StackNavigator />
+                <CustomAlert />
+                <StatusBar hidden={true} />
+              </>
+            )}
+          </ThemeProvider>
+        </AlertProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );
