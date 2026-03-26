@@ -3,6 +3,7 @@ import { Alert, Linking, Platform } from 'react-native';
 import * as Device from 'expo-device';
 import * as IntentLauncher from 'expo-intent-launcher';
 import * as Battery from 'expo-battery';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 let isScheduling = false;
 
@@ -229,6 +230,60 @@ function isToday(date: Date): boolean {
   return today.getTime() === checkDate.getTime();
 }
 
+/**
+ * Dynamically calculates notification times based on the user's sleep schedule.
+ * Ensuring slots are spaced out and logic is simple.
+ */
+async function getDynamicNotificationTimes() {
+  const sleepTimeStr = await AsyncStorage.getItem('sleep_time');
+  let sleepHour = 22;
+  let sleepMin = 0;
+
+  if (sleepTimeStr) {
+    try {
+      const sleepDate = new Date(sleepTimeStr);
+      sleepHour = sleepDate.getHours();
+      sleepMin = sleepDate.getMinutes();
+    } catch (e) {
+      console.error('[getDynamicNotificationTimes] Error parsing sleep time:', e);
+    }
+  }
+
+  const morningMin = 11 * 60 + 59; // 11:59 AM
+  const eveningMin = 17 * 60 + 30; // 05:30 PM (Earliest evening start)
+
+  // Final is 1 hour before sleep
+  const finalMin = ((sleepHour - 1 + 24) % 24) * 60 + sleepMin;
+
+  // Late is 3 hours before sleep
+  const lateMin = ((sleepHour - 3 + 24) % 24) * 60 + sleepMin;
+
+  const rawSlots = [
+    { totalMin: morningMin, reminders: morningReminders, name: 'Morning' },
+    { totalMin: eveningMin, reminders: eveningReminders, name: 'Evening' },
+    { totalMin: lateMin, reminders: lateReminders, name: 'Late' },
+    { totalMin: finalMin, reminders: finalReminders, name: 'Final' },
+  ];
+
+  // Logic: Only keep slots that are at least 60 mins apart, 
+  // prioritizing later slots (Final > Late > Evening > Morning)
+  const sortedRaw = rawSlots.sort((a, b) => b.totalMin - a.totalMin);
+  const finalSlots: any[] = [];
+
+  for (const slot of sortedRaw) {
+    const isTooClose = finalSlots.some(s => Math.abs(s.totalMin - slot.totalMin) < 60);
+    if (!isTooClose) {
+      finalSlots.push(slot);
+    }
+  }
+
+  return finalSlots.map(s => ({
+    hour: Math.floor(s.totalMin / 60),
+    minute: s.totalMin % 60,
+    reminders: s.reminders,
+    name: s.name
+  })).sort((a, b) => (a.hour * 60 + a.minute) - (b.hour * 60 + b.minute));
+}
 // Cancel all scheduled notifications for the remainder of today
 export async function cancelRemainingNotificationsForToday(): Promise<void> {
   if (!await hasNotificationPermissions()) {
@@ -288,12 +343,7 @@ export async function addNotificationsForNewDay(): Promise<void> {
     newDay.setDate(newDay.getDate() + 1);
     newDay.setHours(0, 0, 0, 0);
 
-    const notificationTimes = [
-      { hour: 12, minute: 0, reminders: morningReminders, name: 'Morning' },
-      { hour: 19, minute: 0, reminders: eveningReminders, name: 'Evening' },
-      { hour: 21, minute: 0, reminders: lateReminders, name: 'Late' },
-      { hour: 23, minute: 0, reminders: finalReminders, name: 'Final' },
-    ];
+    const notificationTimes = await getDynamicNotificationTimes();
 
     for (const notif of notificationTimes) {
       const scheduledTime = new Date(newDay);
@@ -328,15 +378,17 @@ export async function addNotificationsForNewDay(): Promise<void> {
 export async function setupDailyNotifications(startFromTomorrow: boolean = false): Promise<boolean> {
   // Check permissions without requesting
   if (!await hasNotificationPermissions()) {
-
     return false;
   }
 
+  if (isScheduling) {
+    return false;
+  }
+  isScheduling = true;
+
   try {
-    // Check if we already have notifications scheduled
     const existingNotifications = await getAllScheduledNotifications();
 
-    // Count how many future date-based notifications we have
     const now = new Date();
     const futureDateNotifications = existingNotifications.filter(n => {
       const trigger = n.trigger as any;
@@ -350,33 +402,12 @@ export async function setupDailyNotifications(startFromTomorrow: boolean = false
       return false;
     });
 
-    // If we have enough date-based notifications, skip
-    // If startFromTomorrow is true, we might be resetting to cancel today's, so we shouldn't skip based on count alone if the count includes today's
     if (!startFromTomorrow && futureDateNotifications.length >= 12) {
-
       return true;
     }
 
-    if (isScheduling) {
-      return false;
-    }
-    isScheduling = true;
-
-    // Cancel all existing scheduled notifications to start fresh
     await cancelAllScheduledNotifications();
-
-
-    const notificationTimes = [
-      { hour: 11, minute: 59, reminders: morningReminders, name: 'Morning' },
-      { hour: 19, minute: 0, reminders: eveningReminders, name: 'Evening' },
-      { hour: 21, minute: 0, reminders: lateReminders, name: 'Late' },
-      { hour: 23, minute: 0, reminders: finalReminders, name: 'Final' },
-    ];
-
-    // ========================================
-    // PART 2: Schedule DATE-BASED notifications for 7 days
-    // ========================================
-
+    const notificationTimes = await getDynamicNotificationTimes();
 
     const startDate = new Date();
     startDate.setHours(0, 0, 0, 0);
@@ -387,19 +418,17 @@ export async function setupDailyNotifications(startFromTomorrow: boolean = false
       const targetDate = new Date(startDate);
       targetDate.setDate(startDate.getDate() + dayOffset);
 
-      const dayPromises: Promise<any>[] = [];
       for (const notif of notificationTimes) {
         const scheduledTime = new Date(targetDate);
         scheduledTime.setHours(notif.hour, notif.minute, 0, 0);
 
-        // Skip if the time has already passed
         if (scheduledTime <= now) {
           continue;
         }
 
         const reminder = getRandomReminder(notif.reminders);
 
-        dayPromises.push(Notifications.scheduleNotificationAsync({
+        await Notifications.scheduleNotificationAsync({
           content: {
             ...createNotificationContent(`${reminder.title}`, reminder.body),
             categoryIdentifier: 'reminder',
@@ -415,11 +444,9 @@ export async function setupDailyNotifications(startFromTomorrow: boolean = false
             date: scheduledTime,
             channelId: Platform.OS === 'android' ? 'asaro-reminders' : undefined,
           },
-        }));
+        });
       }
-      await Promise.all(dayPromises);
     }
-
 
     return true;
   } catch (error) {
