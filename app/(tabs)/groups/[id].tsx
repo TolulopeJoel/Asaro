@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
 import {
     View, Text, StyleSheet, ScrollView,
-    Platform, UIManager, Modal, Pressable, Dimensions, DeviceEventEmitter, TextInput, Alert, Image
+    Platform, UIManager, Modal, Pressable, Dimensions, DeviceEventEmitter, TextInput, Image
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useTheme } from '@/src/theme/ThemeContext';
+import { useAlert } from '@/src/context/AlertContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -341,6 +342,7 @@ const GroupEditModal = ({
     const [description, setDescription] = useState(groupData?.description || '');
     const [photoURL, setPhotoURL] = useState(groupData?.photoURL || '');
     const [saving, setSaving] = useState(false);
+    const { showAlert } = useAlert();
 
     useEffect(() => {
         if (visible) {
@@ -352,7 +354,7 @@ const GroupEditModal = ({
 
     const handleSave = async () => {
         if (!name.trim()) {
-            Alert.alert('Error', 'Group name cannot be empty');
+            showAlert({ title: 'Error', message: 'Group name cannot be empty' });
             return;
         }
 
@@ -366,7 +368,7 @@ const GroupEditModal = ({
             onClose();
         } catch (error: any) {
             console.error('[GroupEditModal] Error updating group:', error);
-            Alert.alert('Error', 'Failed to update group details');
+            showAlert({ title: 'Error', message: 'Failed to update group details' });
         } finally {
             setSaving(false);
         }

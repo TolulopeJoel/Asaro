@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, ScrollView } from 'react-native';
 import firestore from '@react-native-firebase/firestore';
 import { useAuth } from '@/src/context/AuthContext';
 import { useTheme } from '@/src/theme/ThemeContext';
+import { useAlert } from '@/src/context/AlertContext';
 import { Spacing } from '@/src/theme/spacing';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,6 +17,7 @@ export default function JoinGroupScreen() {
     const [loading, setLoading] = useState(false);
     const { user, displayName } = useAuth();
     const { colors } = useTheme();
+    const { showAlert } = useAlert();
     const router = useRouter();
 
     const handleJoin = async () => {
@@ -34,7 +36,7 @@ export default function JoinGroupScreen() {
                 .get();
 
             if (groupQuery.empty) {
-                Alert.alert('Invalid Code', 'No group found with this access code. Please check and try again.');
+                showAlert({ title: 'Invalid Code', message: 'No group found with this access code. Please check and try again.' });
                 setLoading(false);
                 return;
             }
@@ -99,11 +101,11 @@ export default function JoinGroupScreen() {
                     timestamp: firestore.FieldValue.serverTimestamp(),
                 });
 
-            Alert.alert('Welcome!', `You have joined "${groupData.name}".`);
+            showAlert({ title: 'Welcome!', message: `You have joined "${groupData.name}".` });
             router.replace('/(tabs)/groups' as any);
         } catch (error: any) {
             console.error(error);
-            Alert.alert('Error', 'Failed to join group: ' + error.message);
+            showAlert({ title: 'Error', message: 'Failed to join group: ' + error.message });
         } finally {
             setLoading(false);
         }

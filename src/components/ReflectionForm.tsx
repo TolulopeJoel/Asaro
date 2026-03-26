@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Alert,
   Platform,
   StyleSheet,
   Text,
@@ -8,6 +7,7 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTheme } from '../theme/ThemeContext';
+import { useAlert } from '../context/AlertContext';
 import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
 import { TextArea } from './TextArea';
@@ -40,6 +40,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
   saveButtonText = 'Save It',
 }) => {
   const { colors } = useTheme();
+  const { showAlert } = useAlert();
   const [answers, setAnswers] = useState<ReflectionAnswers>({
     reflection1: initialAnswers?.reflection1 || '',
     reflection2: initialAnswers?.reflection2 || '',
@@ -97,10 +98,10 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
       item => item.motivation.trim().length > 0 && item.action.trim().length === 0
     );
     if (incompleteItem) {
-      Alert.alert(
-        'Missing Action',
-        'You\'ve added a "Motivated by" note but haven\'t written the action you want to take. Please add the action, or clear the motivation.'
-      );
+      showAlert({
+        title: 'Missing Action',
+        message: 'You\'ve added a "Motivated by" note but haven\'t written the action you want to take. Please add the action, or clear the motivation.'
+      });
       return;
     }
 

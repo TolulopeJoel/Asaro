@@ -1,4 +1,5 @@
 import { useTheme } from '@/src/theme/ThemeContext';
+import { useAlert } from '@/src/context/AlertContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { getAllScheduledNotifications, setupDailyNotifications, sendTestNotification } from '@/src/utils/notifications';
@@ -10,7 +11,7 @@ import * as Sharing from 'expo-sharing';
 import { Stack } from 'expo-router';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, DeviceEventEmitter } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, DeviceEventEmitter } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/src/components/Button';
 import { ScalePressable } from '@/src/components/ScalePressable';
@@ -85,6 +86,7 @@ const ProfilePhotoCard = React.memo(({
 
 export default function Settings() {
     const { colors, theme, setTheme } = useTheme();
+    const { showAlert } = useAlert();
 
     const [scheduledNotifications, setScheduledNotifications] = useState<any[]>([]);
     const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
@@ -122,10 +124,10 @@ export default function Settings() {
                 }
             }
             setPhotoURL(url.trim());
-            Alert.alert('Success', 'Profile photo updated successfully');
+            showAlert({ title: 'Success', message: 'Profile photo updated successfully' });
         } catch (error) {
             console.error('Failed to save profile:', error);
-            Alert.alert('Error', 'Failed to update profile photo');
+            showAlert({ title: 'Error', message: 'Failed to update profile photo' });
         } finally {
             setIsSavingProfile(false);
         }
@@ -191,10 +193,10 @@ export default function Settings() {
                 }
             }
 
-            Alert.alert('Success', 'Profile photo updated successfully');
+            showAlert({ title: 'Success', message: 'Profile photo updated successfully' });
         } catch (error) {
             console.error('Failed to save profile:', error);
-            Alert.alert('Error', 'Failed to update profile photo');
+            showAlert({ title: 'Error', message: 'Failed to update profile photo' });
         } finally {
             setIsSavingProfile(false);
         }
@@ -217,7 +219,7 @@ export default function Settings() {
             await sendTestNotification();
         } catch (error) {
             console.error('Failed to send test notification:', error);
-            Alert.alert('Error', 'Failed to send test notification.');
+            showAlert({ title: 'Error', message: 'Failed to send test notification.' });
         }
     };
 
@@ -227,9 +229,9 @@ export default function Settings() {
             const success = await setupDailyNotifications(false);
             if (success) {
                 await loadScheduledNotifications();
-                Alert.alert('Success', 'Notifications have been rescheduled.');
+                showAlert({ title: 'Success', message: 'Notifications have been rescheduled.' });
             } else {
-                Alert.alert('Error', 'Failed to reschedule notifications.');
+                showAlert({ title: 'Error', message: 'Failed to reschedule notifications.' });
             }
         } catch (error) {
             console.error('Failed to reschedule notifications:', error);
@@ -308,14 +310,14 @@ export default function Settings() {
                     dialogTitle: 'Share entries backup',
                 });
             } else {
-                Alert.alert(
-                    'Backup created',
-                    'Your entries backup has been saved on this device.',
-                );
+                showAlert({
+                    title: 'Backup created',
+                    message: 'Your entries backup has been saved on this device.',
+                });
             }
         } catch (error: any) {
             console.error('Failed to export entries:', error);
-            Alert.alert('Export failed', error?.message || 'Something went wrong while exporting your entries.');
+            showAlert({ title: 'Export failed', message: error?.message || 'Something went wrong while exporting your entries.' });
         } finally {
             setIsExporting(false);
         }
@@ -331,26 +333,26 @@ export default function Settings() {
             const diffDays = (now.getTime() - lastChange.getTime()) / (1000 * 60 * 60 * 24);
             if (diffDays < 30) {
                 const daysLeft = Math.ceil(30 - diffDays);
-                Alert.alert(
-                    'Patience o! ✋',
-                    `Trying to change your sleep time already? That's suspicious 🤨. You still have ${daysLeft} days to suffer your current schedule. Àṣàrò sees everything! 😉`
-                );
+                showAlert({
+                    title: 'Patience o! ✋',
+                    message: `Trying to change your sleep time already? That's suspicious 🤨. You still have ${daysLeft} days to suffer your current schedule. Àṣàrò sees everything! 😉`
+                });
                 return;
             }
         }
 
         const pickMinute = (h24: number, hourLabel: string) => {
-            Alert.alert(
-                `Select Minute for ${hourLabel}`,
-                'Àṣàrò is waiting...',
-                [
+            showAlert({
+                title: `Select Minute for ${hourLabel}`,
+                message: 'Àṣàrò is waiting...',
+                buttons: [
                     { text: ':00', onPress: () => finalizeSleepTimeChange(h24, 0) },
                     { text: ':15', onPress: () => finalizeSleepTimeChange(h24, 15) },
                     { text: ':30', onPress: () => finalizeSleepTimeChange(h24, 30) },
                     { text: ':45', onPress: () => finalizeSleepTimeChange(h24, 45) },
                 ],
-                { cancelable: true }
-            );
+                cancelable: true
+            });
         };
 
         const finalizeSleepTimeChange = async (h24: number, min: number) => {
@@ -369,28 +371,28 @@ export default function Settings() {
                 setSleepTime(iso);
                 setLastSleepChangeAt(nowIso);
 
-                Alert.alert('Success! ✅', 'Your sleep time has been locked in for the next month. I\'ve adjusted your notification schedule. Don\'t sleep too much o!');
+                showAlert({ title: 'Success! ✅', message: 'Your sleep time has been locked in for the next month. I\'ve adjusted your notification schedule. Don\'t sleep too much o!' });
                 await setupDailyNotifications(false);
             } catch (error) {
                 console.error('Failed to save sleep time:', error);
-                Alert.alert('Error', 'Failed to save your new schedule. Please try again.');
+                showAlert({ title: 'Error', message: 'Failed to save your new schedule. Please try again.' });
             } finally {
                 setIsUpdatingSleep(false);
             }
         };
 
-        Alert.alert(
-            'Select Sleep Hour',
-            'I only allow sleep after 8:00 PM. Anything earlier is just laziness! 😌',
-            [
+        showAlert({
+            title: 'Select Sleep Hour',
+            message: 'I only allow sleep after 8:00 PM. Anything earlier is just laziness! 😌',
+            buttons: [
                 { text: '08 PM', onPress: () => pickMinute(20, '08:00 PM') },
                 { text: '09 PM', onPress: () => pickMinute(21, '09:00 PM') },
                 { text: '10 PM', onPress: () => pickMinute(22, '10:00 PM') },
                 { text: '11 PM', onPress: () => pickMinute(23, '11:00 PM') },
                 { text: 'Cancel', style: 'cancel' }
             ],
-            { cancelable: true }
-        );
+            cancelable: true
+        });
     };
 
     const formatSleepTime = (iso: string | null) => {
@@ -435,10 +437,10 @@ export default function Settings() {
                 ? `\n${importedReadingItems} reading items (${skippedReadingItems} duplicates skipped)`
                 : '';
 
-            Alert.alert('Import complete', `Imported ${entryMsg}.${readingMsg}`);
+            showAlert({ title: 'Import complete', message: `Imported ${entryMsg}.${readingMsg}` });
         } catch (error: any) {
             console.error('Failed to import entries:', error);
-            Alert.alert('Import failed', error?.message || 'Something went wrong while importing your backup.');
+            showAlert({ title: 'Import failed', message: error?.message || 'Something went wrong while importing your backup.' });
         } finally {
             setIsImporting(false);
         }

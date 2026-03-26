@@ -100,26 +100,6 @@ export async function requestNotificationPermissions(): Promise<boolean> {
     return true;
   }
 
-  // Request permission
-  const { status } = await Notifications.requestPermissionsAsync();
-
-  if (status !== 'granted') {
-    Alert.alert(
-      'Can I Check Up On You? 😏',
-      'Hi, I\'m Àṣàrò. I will disturb you small if you miss your Bible reading. I won\'t let your phone rest\n\nBut, I care! If I don\'t see you, I\'ll check up on you to make sure your relationship with Jehovah is intact 😌',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Open Notification Settings',
-          onPress: () => openNotificationSettings()
-        },
-      ]
-    );
-    return false;
-  }
-
-
-
   return true;
 }
 

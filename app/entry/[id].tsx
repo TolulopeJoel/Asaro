@@ -3,12 +3,14 @@ import { getEntryById } from '@/src/data/database';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, StyleSheet } from 'react-native';
+import { useAlert } from '@/src/context/AlertContext';
+import { StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { JournalEntry } from '@/src/data/database';
 
 export default function EntryDetailScreen() {
     const { colors } = useTheme();
+    const { showAlert } = useAlert();
     const router = useRouter();
     const params = useLocalSearchParams();
     const entryId = params.id ? Number(params.id) : undefined;
@@ -18,7 +20,7 @@ export default function EntryDetailScreen() {
     useEffect(() => {
         const loadEntry = async () => {
             if (!entryId) {
-                Alert.alert('Error', 'Entry ID is missing');
+                showAlert({ title: 'Error', message: 'Entry ID is missing' });
                 router.back();
                 return;
             }
@@ -26,14 +28,14 @@ export default function EntryDetailScreen() {
             try {
                 const loadedEntry = await getEntryById(entryId);
                 if (!loadedEntry) {
-                    Alert.alert('Error', 'Entry not found');
+                    showAlert({ title: 'Error', message: 'Entry not found' });
                     router.back();
                     return;
                 }
                 setEntry(loadedEntry);
             } catch (error) {
                 console.error('Error loading entry:', error);
-                Alert.alert('Error', 'Failed to load entry');
+                showAlert({ title: 'Error', message: 'Failed to load entry' });
                 router.back();
             } finally {
                 setIsLoading(false);

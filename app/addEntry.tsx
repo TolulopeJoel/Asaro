@@ -5,7 +5,7 @@ import { Typography } from '@/src/theme/typography';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Animated, AppState, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, AppState, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { BookPicker } from '../src/components/BookPicker';
@@ -16,6 +16,8 @@ import { LoadingView } from '../src/components/LoadingView';
 import { BibleBook, getBookByName } from '../src/data/bibleBooks';
 import { setupDailyNotifications, scheduleReminderNotification } from '../src/utils/notifications';
 import { syncPendingActivities } from '../src/utils/syncActivities';
+import { useAlert } from '@/src/context/AlertContext';
+import { useAuth } from '@/src/context/AuthContext';
 
 interface ChapterRange {
     start: number;
@@ -127,6 +129,8 @@ function useStepFade(currentStep: Step) {
 
 export default function MeditationSessionScreen() {
     const { colors } = useTheme();
+    const { user } = useAuth();
+    const { showAlert } = useAlert();
     const router = useRouter();
     const params = useLocalSearchParams();
 
@@ -161,7 +165,7 @@ export default function MeditationSessionScreen() {
                 if (isEditMode && entryId) {
                     const entry = await getEntryById(entryId);
                     if (!entry) {
-                        Alert.alert('Error', 'Entry not found');
+                        showAlert({ title: 'Error', message: 'Entry not found' });
                         router.back();
                         return;
                     }
@@ -250,15 +254,15 @@ export default function MeditationSessionScreen() {
 
     const handleContinueToReflection = useCallback(() => {
         if (!selectedChapters || selectedChapters.start === 0) {
-            Alert.alert('Please select a chapter', 'You need to select at least one chapter to continue.');
+            showAlert({ title: 'Please select a chapter', message: 'You need to select at least one chapter to continue.' });
             return;
         }
         changeStep('reflection');
-    }, [selectedChapters, changeStep]);
+    }, [selectedChapters, changeStep, showAlert]);
 
     const handleSaveReflection = useCallback(async (answers: ReflectionAnswers) => {
         if (!selectedBook || !selectedChapters || selectedChapters.start === 0) {
-            Alert.alert('Incomplete', 'Please select a book and chapter first.');
+            showAlert({ title: 'Incomplete', message: 'Please select a book and chapter first.' });
             return;
         }
         if (isSaving.current) return;
@@ -289,7 +293,7 @@ export default function MeditationSessionScreen() {
                 if (answers.studyFurtherReminder && new Date(answers.studyFurtherReminder) > new Date()) {
                     await scheduleReminderNotification(new Date(answers.studyFurtherReminder), '📖 Study Reminder', `Time to study further: ${answers.studyFurther || 'your topic'}`);
                 }
-                Alert.alert('Success', 'Entry updated successfully');
+                showAlert({ title: 'Success', message: 'Entry updated successfully' });
                 router.back();
             } else {
                 const newEntryId = await createJournalEntry(entryData);
@@ -304,11 +308,11 @@ export default function MeditationSessionScreen() {
             }
         } catch (error) {
             console.error('Error saving entry:', error);
-            Alert.alert('Error', `Failed to ${isEditMode ? 'update' : 'save'} your entry. Please try again.`);
+            showAlert({ title: 'Error', message: `Failed to ${isEditMode ? 'update' : 'save'} your entry. Please try again.` });
         } finally {
             isSaving.current = false;
         }
-    }, [selectedBook, selectedChapters, verseRange, isEditMode, entryId, router, changeStep, params.readingItemId]);
+    }, [selectedBook, selectedChapters, verseRange, isEditMode, entryId, router, changeStep, params.readingItemId, showAlert]);
 
     const handleDone = useCallback(() => {
         if (createdEntryId) {
@@ -328,10 +332,10 @@ export default function MeditationSessionScreen() {
     }, [changeStep]);
 
     const handleDiscardDraft = useCallback(() => {
-        Alert.alert(
-            'Discard Draft?',
-            'Are you sure you want to discard your draft and start fresh?',
-            [
+        showAlert({
+            title: 'Discard Draft?',
+            message: 'Are you sure you want to discard your draft and start fresh?',
+            buttons: [
                 { text: 'Keep Writing', style: 'cancel' },
                 {
                     text: 'Discard',
@@ -350,8 +354,8 @@ export default function MeditationSessionScreen() {
                     },
                 },
             ]
-        );
-    }, [router]);
+        });
+    }, [router, setSelectedBook, setSelectedChapters, setVerseRange, setReflectionAnswers, showAlert]);
 
     const selectionSummary = useMemo(() => {
         if (!selectedBook) return 'No selection yet';

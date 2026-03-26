@@ -7,6 +7,7 @@ import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/src/theme/ThemeContext';
+import { useAlert } from '@/src/context/AlertContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { Button } from '@/src/components/Button';
@@ -97,17 +98,18 @@ export default function AuthScreen() {
     const [gender, setGender] = useState<'m' | 'f' | null>(null);
     const [loading, setLoading] = useState(false);
     const { colors } = useTheme();
+    const { showAlert } = useAlert();
     const router = useRouter();
 
     const handleAuth = async () => {
         if (!email || !password) {
-            Alert.alert('Error', 'Please enter email and password');
+            showAlert({ title: 'Error', message: 'Please enter email and password' });
             return;
         }
 
         if (isSignUp && (!gender || password !== confirmPassword)) {
-            if (!gender) Alert.alert('Error', 'Please select if you are a Gentleman or a Lady');
-            else Alert.alert('Error', 'Passwords do not match');
+            if (!gender) showAlert({ title: 'Error', message: 'Please select if you are a Gentleman or a Lady' });
+            else showAlert({ title: 'Error', message: 'Passwords do not match' });
             return;
         }
 
@@ -141,14 +143,14 @@ export default function AuthScreen() {
                     }
                 }
 
-                Alert.alert('Success', 'Account created successfully!');
+                showAlert({ title: 'Success', message: 'Account created successfully!' });
             } else {
                 await auth().signInWithEmailAndPassword(email, password);
             }
             router.back();
         } catch (error: any) {
             console.error(error);
-            Alert.alert('Auth Error', error.message || 'An error occurred during authentication');
+            showAlert({ title: 'Auth Error', message: error.message || 'An error occurred during authentication' });
         } finally {
             setLoading(false);
         }

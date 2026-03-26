@@ -2,7 +2,6 @@ import { JournalEntry, deleteJournalEntry, shareReflectionToGroup } from '@/src/
 import { getDaysDifference, getLocalMidnight } from '@/src/utils/dateUtils';
 import React, { useState } from 'react';
 import {
-    Alert,
     ScrollView,
     Share,
     StyleSheet,
@@ -11,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
+import { useAlert } from '../context/AlertContext';
 import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
 import { ScalePressable } from './ScalePressable';
@@ -40,6 +40,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
     onClose,
 }) => {
     const { colors } = useTheme();
+    const { showAlert } = useAlert();
     const [isDeleting, setIsDeleting] = useState(false);
     const [isSharing, setIsSharing] = useState(false);
 
@@ -106,10 +107,10 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
     };
 
     const handleDelete = () => {
-        Alert.alert(
-            'Delete Entry',
-            'Are you sure you want to delete this entry? This action cannot be undone.',
-            [
+        showAlert({
+            title: 'Delete Entry',
+            message: 'Are you sure you want to delete this entry? This action cannot be undone.',
+            buttons: [
                 { text: 'Keep', style: 'cancel' },
                 {
                     text: 'Delete',
@@ -119,13 +120,16 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                         try {
                             await deleteJournalEntry(entry.id!);
                             onDelete?.();
-                        } catch {
+                        } catch (error) {
+                            console.error("Error deleting entry:", error);
+                            showAlert({ title: 'Error', message: 'Failed to delete entry.' });
+                        } finally {
                             setIsDeleting(false);
                         }
                     },
                 },
-            ]
-        );
+            ],
+        });
     };
 
     const handleShare = async () => {
@@ -184,10 +188,10 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
     };
 
     const handleShareReflection = (reflectionText: string, questionIndex: number) => {
-        Alert.alert(
-            'Share with Group',
-            'Share this specific reflection to your group feed?',
-            [
+        showAlert({
+            title: 'Share with Group',
+            message: 'Share this specific reflection to your group feed?',
+            buttons: [
                 { text: 'Cancel', style: 'cancel' },
                 {
                     text: 'Share',
@@ -196,19 +200,19 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                         try {
                             const success = await shareReflectionToGroup(entry, reflectionText.trim(), REFLECTION_QUESTIONS[questionIndex]);
                             if (success) {
-                                Alert.alert('Success', 'Reflection shared to your group!');
+                                showAlert({ title: 'Success', message: 'Reflection shared to your group!' });
                             } else {
-                                Alert.alert('Notice', 'Could not share reflection. Make sure you are in a group.');
+                                showAlert({ title: 'Notice', message: 'Could not share reflection. Make sure you are in a group.' });
                             }
                         } catch (e) {
-                            Alert.alert('Error', 'An error occurred while sharing.');
+                            showAlert({ title: 'Error', message: 'An error occurred while sharing.' });
                         } finally {
                             setIsSharing(false);
                         }
                     }
                 }
             ]
-        );
+        });
     };
 
     const handleShareActionItems = () => {
