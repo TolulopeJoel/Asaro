@@ -288,7 +288,7 @@ export default function Settings() {
             const now = new Date();
             const dateStr = now.toISOString().split('T')[0];
             const timeStr = now.getHours().toString().padStart(2, '0') + '-' + now.getMinutes().toString().padStart(2, '0');
-            const fileName = `Asaro_Backup_${dateStr}_${timeStr}.json`;
+            const fileName = `AsaroBackup_${dateStr}_${timeStr}.json`;
             const uri = `${documentDirectory || ''}${fileName}`;
 
             await writeAsStringAsync(uri, json);

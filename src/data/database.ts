@@ -140,7 +140,7 @@ export interface JournalEntryInput {
 
 let db: SQLite.SQLiteDatabase | null = null;
 
-const CURRENT_DB_VERSION = 8;
+const CURRENT_DB_VERSION = 4;
 
 const getDb = async () => {
     if (!db) {
@@ -287,41 +287,27 @@ export const initializeDatabase = async () => {
             };
 
             if (currentVersion < 4) {
-                // Migration to v4: Create reading_progress table
+                // Migration to v4: Add reading_progress table, add is_pinned to action_items table
+                // Add study related columns to journal_entries table
                 await database.execAsync(`
                     CREATE TABLE IF NOT EXISTS reading_progress (
                         item_id INTEGER PRIMARY KEY,
                         completed_at DATETIME DEFAULT CURRENT_TIMESTAMP
                     );
                 `);
-            };
 
-            if (currentVersion < 5) {
-                // Migration to v5: Add study_further columns
-                await database.execAsync(`
-                    ALTER TABLE journal_entries ADD COLUMN study_further TEXT;
-                    ALTER TABLE journal_entries ADD COLUMN study_further_reminder TEXT;
-                `);
-            };
+                // Helper to add columns safely without crashing if they exist (e.g. for dev environments)
+                const addCol = async (table: string, colDef: string) => {
+                    try { await database.runAsync(`ALTER TABLE ${table} ADD COLUMN ${colDef}`); } catch (e) { /* ignore if exists */ }
+                };
 
-            if (currentVersion < 6) {
-                // Migration to v6: Add completion status
-                await database.execAsync(`
-                    ALTER TABLE action_items ADD COLUMN is_completed BOOLEAN DEFAULT 0;
-                    ALTER TABLE journal_entries ADD COLUMN study_completed BOOLEAN DEFAULT 0;
-                `);
-            }
+                await addCol('journal_entries', 'study_further TEXT');
+                await addCol('journal_entries', 'study_further_reminder TEXT');
+                await addCol('journal_entries', 'study_completed BOOLEAN DEFAULT 0');
 
-            if (currentVersion < 7) {
-                await database.execAsync(`
-                    ALTER TABLE action_items ADD COLUMN is_pinned BOOLEAN DEFAULT 0;
-                `);
-            }
-
-            if (currentVersion < 8) {
-                await database.execAsync(`
-                    ALTER TABLE action_items ADD COLUMN pinned_at DATETIME DEFAULT NULL;
-                `);
+                await addCol('action_items', 'is_completed BOOLEAN DEFAULT 0');
+                await addCol('action_items', 'is_pinned BOOLEAN DEFAULT 0');
+                await addCol('action_items', 'pinned_at DATETIME DEFAULT NULL');
             }
 
             // Set to current version
