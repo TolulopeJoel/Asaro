@@ -258,10 +258,6 @@ export default function PlanScreen() {
         setCollapsedSections(newCollapsed);
     };
 
-    const scrollToFootnote = () => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-    };
-
     const renderItem = ({ item, index }: { item: ReadingItem; index: number }) => {
         const showHeader = index === 0 || READING_PLAN_DATA[index - 1].section !== item.section;
         const isCollapsed = collapsedSections.has(item.section);
@@ -294,18 +290,7 @@ export default function PlanScreen() {
             <View style={styles.progressHeaderRow}>
                 <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
                     <Text style={[styles.title, { color: colors.textPrimary }]}>Bible Plan</Text>
-                    <TouchableOpacity
-                        onPress={scrollToFootnote}
-                        style={{ paddingHorizontal: 4, paddingTop: 4 }}
-                        activeOpacity={0.7}
-                    >
-                        <Text style={{
-                            fontSize: 18,
-                            fontWeight: '800',
-                            color: colors.accent,
-                            lineHeight: 24
-                        }}>*</Text>
-                    </TouchableOpacity>
+                    <Text style={{ fontSize: 18, fontWeight: '800', color: colors.textPrimary, lineHeight: 24 }}>*</Text>
                 </View>
                 <Text style={[styles.progressPercentage, { color: colors.accent }]}>{parseFloat(progress.toFixed(2))}%</Text>
             </View>
@@ -333,7 +318,7 @@ export default function PlanScreen() {
                     ListHeaderComponent={renderHeader}
                     ListFooterComponent={() => (
                         <Text style={[styles.footnote, { color: colors.textSecondary }]}>
-                            *The Bible reading plan was adapted from the Bible Reading Plan found on https://www.jw.org/en/library/series/more-topics/bible-reading-plan/
+                            * The Bible reading plan was adapted from the Bible Reading Plan found on https://www.jw.org/en/library/series/more-topics/bible-reading-plan/
                         </Text>
                     )}
                     showsVerticalScrollIndicator={false}
@@ -413,11 +398,13 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: Spacing.sm,
         flex: 1,
+        paddingRight: Spacing.md,
     },
     sectionTitle: {
         fontSize: 12,
         fontWeight: '800',
         letterSpacing: 1,
+        flexShrink: 1,
     },
     sectionBadge: {
         paddingHorizontal: 8,

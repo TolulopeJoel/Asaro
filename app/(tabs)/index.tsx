@@ -239,7 +239,7 @@ const NextReading = React.memo(() => {
                             <Text style={[styles.nextReadingLabel, { color: colors.background }]}>NEXT READING</Text>
                         </View>
                         <View style={[styles.nextReadingSectionPill, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
-                            <Text style={[styles.nextReadingSection, { color: colors.background }]}>
+                            <Text style={[styles.nextReadingSection, { color: colors.background }]} numberOfLines={1}>
                                 {nextItem.section}
                             </Text>
                         </View>
@@ -606,6 +606,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        gap: Spacing.sm,
     },
     nextReadingLabelContainer: {
         flexDirection: 'row',
@@ -628,11 +629,13 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
         paddingVertical: 4,
         borderRadius: Spacing.borderRadius.round,
+        flexShrink: 1,
     },
     nextReadingSection: {
         fontSize: 10,
         fontWeight: '700',
         letterSpacing: 0.5,
+        flexShrink: 1,
     },
     nextReadingContent: {
         flexDirection: 'row',
