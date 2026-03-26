@@ -87,11 +87,13 @@ export default function BatteryOptimizationScreen() {
                         To ensure you receive your daily reflections, Àṣàrò needs to run in the background.
                     </Text>
 
-                    <View style={[styles.infoBox, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
-                        <Ionicons name="information-circle-outline" size={Typography.size.xl} color={colors.textSecondary} style={{ marginRight: Spacing.sm }} />
-                        <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-                            Please disable battery optimization for this app.
-                        </Text>
+                    <View style={[styles.infoBox, { backgroundColor: colors.cardBackground, borderColor: colors.border, flexDirection: 'column', alignItems: 'flex-start', gap: Spacing.md }]}>
+                        <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                            <Ionicons name="battery-dead-outline" size={Typography.size.xl} color={colors.textSecondary} style={{ marginRight: Spacing.sm }} />
+                            <Text style={[styles.infoText, { color: colors.textSecondary, fontStyle: 'italic', opacity: 0.8 }]}>
+                                Your phone will probably lie to you about how bad this is for your battery. But do you think Àṣàrò would ever harm you? 🥹
+                            </Text>
+                        </View>
                     </View>
                 </View>
 
