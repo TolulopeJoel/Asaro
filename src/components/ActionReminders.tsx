@@ -13,8 +13,9 @@ import {
     getPinnedActionItems,
     getActionItemsForWindow,
 } from '../data/database';
+export type { EnhancedActionItem };
 import { ScalePressable } from './ScalePressable';
-import { getItemForSlot, SlotKey } from '../utils/actionRemindersRotation';
+import { getItemsForSlots, SlotKey } from '../utils/actionRemindersRotation';
 
 // ─── Window definitions ──────────────────────────────────────────────────────
 const WINDOWS: { slot: SlotKey; newerDays: number; olderDays: number; label: string }[] = [
@@ -26,7 +27,50 @@ const WINDOWS: { slot: SlotKey; newerDays: number; olderDays: number; label: str
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface ActionRemindersProps {
     onEntryPress: (entry: JournalEntry) => void;
+    pinnedItems?: EnhancedActionItem[];
+    rotatingItems?: EnhancedActionItem[];
 }
+
+export const fetchActionRemindersData = async (): Promise<{ pinned: EnhancedActionItem[], rotating: EnhancedActionItem[] }> => {
+    const [pinnedArray, ...windowResults] = await Promise.all([
+        getPinnedActionItems(),
+        ...WINDOWS.map(w => getActionItemsForWindow(w.newerDays, w.olderDays)),
+    ]);
+
+    const pinned = pinnedArray as EnhancedActionItem[];
+    const pinnedIds = new Set(pinned.map(p => p.id));
+    const rotating: EnhancedActionItem[] = [];
+    const selectedIds = new Set<number>();
+
+    // Build slot requests (filter pools first)
+    const slotRequests: { slot: SlotKey; availableIds: number[]; pool: EnhancedActionItem[] }[] = [];
+    for (let i = 0; i < WINDOWS.length; i++) {
+        const { slot } = WINDOWS[i];
+        const pool = (windowResults[i] as EnhancedActionItem[])
+            .filter(item => !pinnedIds.has(item.id) && !selectedIds.has(item.id!));
+        if (pool.length === 0) continue;
+        const ids = pool.map(it => it.id!).filter(Boolean);
+        slotRequests.push({ slot, availableIds: ids, pool });
+    }
+
+    // Single batched AsyncStorage read/write for all slots
+    const slotResults = await getItemsForSlots(
+        slotRequests.map(r => ({ slot: r.slot, availableIds: r.availableIds }))
+    );
+
+    for (const { slot, pool } of slotRequests) {
+        const selectedId = slotResults.get(slot) ?? null;
+        if (selectedId !== null) {
+            const selected = pool.find(it => it.id === selectedId);
+            if (selected) {
+                rotating.push(selected);
+                selectedIds.add(selected.id!);
+            }
+        }
+    }
+
+    return { pinned, rotating };
+};
 
 // ─── Single card ─────────────────────────────────────────────────────────────
 interface ActionCardProps {
@@ -182,51 +226,25 @@ const ActionCard = React.memo(({
 
 ActionCard.displayName = 'ActionCard';
 
-export const ActionReminders: React.FC<ActionRemindersProps> = React.memo(({ onEntryPress }) => {
+export const ActionReminders: React.FC<ActionRemindersProps> = React.memo(({ onEntryPress, pinnedItems: pinnedProp, rotatingItems: rotatingProp }) => {
     const { colors } = useTheme();
-    const [pinnedItems, setPinnedItems] = useState<EnhancedActionItem[]>([]);
-    const [rotatingItems, setRotatingItems] = useState<EnhancedActionItem[]>([]);
+    const [pinnedItemsState, setPinnedItems] = useState<EnhancedActionItem[]>([]);
+    const [rotatingItemsState, setRotatingItems] = useState<EnhancedActionItem[]>([]);
+    const pinnedItems = pinnedProp || pinnedItemsState;
+    const rotatingItems = rotatingProp || rotatingItemsState;
     const [isExpanded, setIsExpanded] = useState(false);
     const [topCardHeight, setTopCardHeight] = useState(200);
 
     const loadItems = useCallback(async () => {
-        const [pinnedArray, ...windowResults] = await Promise.all([
-            getPinnedActionItems(),
-            ...WINDOWS.map(w => getActionItemsForWindow(w.newerDays, w.olderDays)),
-        ]);
-
-        const pinned = pinnedArray as EnhancedActionItem[];
+        const { pinned, rotating } = await fetchActionRemindersData();
         setPinnedItems(pinned);
-
-        const pinnedIds = new Set(pinned.map(p => p.id));
-        const rotating: EnhancedActionItem[] = [];
-        const selectedIds = new Set<number>();
-
-        for (let i = 0; i < WINDOWS.length; i++) {
-            const { slot } = WINDOWS[i];
-            const pool = (windowResults[i] as EnhancedActionItem[])
-                .filter(item => !pinnedIds.has(item.id) && !selectedIds.has(item.id!));
-
-            if (pool.length === 0) continue;
-
-            const ids = pool.map(it => it.id!).filter(Boolean);
-            const selectedId = await getItemForSlot(slot, ids);
-            if (selectedId !== null) {
-                const selected = pool.find(it => it.id === selectedId);
-                if (selected) {
-                    rotating.push(selected);
-                    selectedIds.add(selected.id!);
-                }
-            }
-        }
-
         setRotatingItems(rotating);
     }, []);
 
     useFocusEffect(
         useCallback(() => {
-            loadItems();
-        }, [loadItems])
+            if (!pinnedProp && !rotatingProp) loadItems();
+        }, [loadItems, pinnedProp, rotatingProp])
     );
 
     // Consolidate items for map rendering

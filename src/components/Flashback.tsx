@@ -10,63 +10,68 @@ import { ScalePressable } from './ScalePressable';
 
 interface FlashbackProps {
     onEntryPress: (entry: JournalEntry) => void;
+    flashbackData?: { entry: JournalEntry, type: 'year' | 'month' | 'random' } | null;
 }
 
-export const Flashback: React.FC<FlashbackProps> = React.memo(({ onEntryPress }) => {
+export const fetchFlashbackData = async (): Promise<{ entry: JournalEntry, type: 'year' | 'month' | 'random' } | null> => {
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const cacheKey = `flashback_${today}`;
+    const historyKey = 'flashback_history';
+    const MAX_HISTORY = 30;
+
+    // Try to get cached flashback for today
+    const cached = await AsyncStorage.getItem(cacheKey);
+    if (cached) {
+        try {
+            return JSON.parse(cached);
+        } catch {
+            // If parsing fails, continue to fetch new
+        }
+    }
+
+    // Get history of recently shown entry IDs (queue of last 30)
+    const historyJson = await AsyncStorage.getItem(historyKey);
+    let history: number[] = [];
+    if (historyJson) {
+        try {
+            history = JSON.parse(historyJson);
+        } catch {
+            history = [];
+        }
+    }
+
+    // Fetch new flashback (excluding recently shown)
+    const data = await getFlashbackEntry(history);
+    if (data) {
+        // Add to history queue
+        history.push(data.entry.id!);
+
+        // Keep only last 30 entries (pop oldest if needed)
+        if (history.length > MAX_HISTORY) {
+            history.shift(); // Remove oldest
+        }
+
+        await AsyncStorage.setItem(historyKey, JSON.stringify(history));
+        // Cache it for today
+        await AsyncStorage.setItem(cacheKey, JSON.stringify(data));
+    }
+    return data;
+};
+
+export const Flashback: React.FC<FlashbackProps> = React.memo(({ onEntryPress, flashbackData: flashbackProp }) => {
     const { colors } = useTheme();
-    const [flashbackData, setFlashbackData] = useState<{ entry: JournalEntry, type: 'year' | 'month' | 'random' } | null>(null);
+    const [flashbackDataState, setFlashbackData] = useState<{ entry: JournalEntry, type: 'year' | 'month' | 'random' } | null>(null);
+    const flashbackData = flashbackProp !== undefined ? flashbackProp : flashbackDataState;
 
     const loadFlashback = useCallback(async () => {
-        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-        const cacheKey = `flashback_${today}`;
-        const historyKey = 'flashback_history';
-        const MAX_HISTORY = 30;
-
-        // Try to get cached flashback for today
-        const cached = await AsyncStorage.getItem(cacheKey);
-        if (cached) {
-            try {
-                const parsedCache = JSON.parse(cached);
-                setFlashbackData(parsedCache);
-                return;
-            } catch {
-                // If parsing fails, continue to fetch new
-            }
-        }
-
-        // Get history of recently shown entry IDs (queue of last 30)
-        const historyJson = await AsyncStorage.getItem(historyKey);
-        let history: number[] = [];
-        if (historyJson) {
-            try {
-                history = JSON.parse(historyJson);
-            } catch {
-                history = [];
-            }
-        }
-
-        // Fetch new flashback (excluding recently shown)
-        const data = await getFlashbackEntry(history);
-        if (data) {
-            // Add to history queue
-            history.push(data.entry.id!);
-
-            // Keep only last 30 entries (pop oldest if needed)
-            if (history.length > MAX_HISTORY) {
-                history.shift(); // Remove oldest
-            }
-
-            await AsyncStorage.setItem(historyKey, JSON.stringify(history));
-            // Cache it for today
-            await AsyncStorage.setItem(cacheKey, JSON.stringify(data));
-        }
+        const data = await fetchFlashbackData();
         setFlashbackData(data);
     }, []);
 
     useFocusEffect(
         useCallback(() => {
-            loadFlashback();
-        }, [loadFlashback])
+            if (flashbackProp === undefined) loadFlashback();
+        }, [loadFlashback, flashbackProp])
     );
 
 

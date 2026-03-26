@@ -3,12 +3,12 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import { formatDateToLocalString, getLocalMidnight } from '@/src/utils/dateUtils';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence } from 'react-native-reanimated';
 import { ScalePressable } from './ScalePressable';
 
-interface DayStatus {
+export interface DayStatus {
     date: Date;
     dayName: string;
     dayNumber: number;
@@ -17,49 +17,57 @@ interface DayStatus {
     isFuture: boolean;
 }
 
-export const WeeklyStreak = React.memo(() => {
+export const fetchWeeklyStreakData = async (): Promise<DayStatus[]> => {
+    const today = new Date();
+    const currentDay = today.getDay();
+
+    const sunday = new Date(today);
+    sunday.setDate(today.getDate() - currentDay);
+    sunday.setHours(0, 0, 0, 0);
+
+    const saturday = new Date(sunday);
+    saturday.setDate(sunday.getDate() + 6);
+    saturday.setHours(0, 0, 0, 0);
+
+    const todayReset = getLocalMidnight();
+
+    const startDateStr = formatDateToLocalString(sunday);
+    const endDateStr = formatDateToLocalString(saturday);
+
+    const counts = await getDailyEntryCounts(startDateStr, endDateStr);
+
+    const days: DayStatus[] = [];
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(sunday);
+        d.setDate(sunday.getDate() + i);
+        d.setHours(0, 0, 0, 0);
+
+        const dateStr = formatDateToLocalString(d);
+        const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+
+        days.push({
+            date: d,
+            dayName,
+            dayNumber: d.getDate(),
+            hasEntry: (counts[dateStr] || 0) > 0,
+            isToday: d.getTime() === todayReset.getTime(),
+            isFuture: d.getTime() > todayReset.getTime()
+        });
+    }
+    return days;
+};
+
+export const WeeklyStreak = React.memo(({ weekDays: weekDaysProp }: { weekDays?: DayStatus[] }) => {
     const { colors } = useTheme();
-    const [weekDays, setWeekDays] = useState<DayStatus[]>([]);
+    const [weekDaysState, setWeekDays] = useState<DayStatus[]>([]);
+    const weekDays = weekDaysProp || weekDaysState;
+    const hasAnimated = useRef(false);
 
     const fetchWeekData = useCallback(async () => {
-        const today = new Date();
-        const currentDay = today.getDay();
-
-        const sunday = new Date(today);
-        sunday.setDate(today.getDate() - currentDay);
-        sunday.setHours(0, 0, 0, 0);
-
-        const saturday = new Date(sunday);
-        saturday.setDate(sunday.getDate() + 6);
-        saturday.setHours(0, 0, 0, 0);
-
-        const todayReset = getLocalMidnight();
-
-        const startDateStr = formatDateToLocalString(sunday);
-        const endDateStr = formatDateToLocalString(saturday);
-
         try {
-            const counts = await getDailyEntryCounts(startDateStr, endDateStr);
-
-            const days: DayStatus[] = [];
-            for (let i = 0; i < 7; i++) {
-                const d = new Date(sunday);
-                d.setDate(sunday.getDate() + i);
-                d.setHours(0, 0, 0, 0);
-
-                const dateStr = formatDateToLocalString(d);
-                const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
-
-                days.push({
-                    date: d,
-                    dayName,
-                    dayNumber: d.getDate(),
-                    hasEntry: (counts[dateStr] || 0) > 0,
-                    isToday: d.getTime() === todayReset.getTime(),
-                    isFuture: d.getTime() > todayReset.getTime()
-                });
-            }
+            const days = await fetchWeeklyStreakData();
             setWeekDays(days);
+            hasAnimated.current = true;
         } catch (error) {
             console.error('Error fetching weekly streak:', error);
         }
@@ -67,8 +75,9 @@ export const WeeklyStreak = React.memo(() => {
 
     useFocusEffect(
         useCallback(() => {
-            fetchWeekData();
-        }, [fetchWeekData])
+            if (!weekDaysProp) fetchWeekData();
+            else hasAnimated.current = true;
+        }, [fetchWeekData, weekDaysProp])
     );
 
     const router = useRouter();
@@ -102,7 +111,7 @@ export const WeeklyStreak = React.memo(() => {
                 {weekDays.map((day, index) => (
                     <Animated.View
                         key={index}
-                        entering={FadeInDown.delay(index * 60).duration(400)}
+                        entering={hasAnimated.current ? undefined : FadeInDown.delay(index * 60).duration(400)}
                         style={styles.dayItem}
                     >
                         <Text style={[

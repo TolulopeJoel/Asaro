@@ -10,6 +10,7 @@ import { ScalePressable } from './ScalePressable';
 
 interface StudyRemindersProps {
     onEntryPress: (entry: JournalEntry) => void;
+    topics?: JournalEntry[];
 }
 
 interface StudyCardProps {
@@ -149,9 +150,9 @@ const StudyCard = React.memo(({
 
 StudyCard.displayName = 'StudyCard';
 
-export const StudyReminders: React.FC<StudyRemindersProps> = React.memo(({ onEntryPress }) => {
+export const StudyReminders: React.FC<StudyRemindersProps> = React.memo(({ onEntryPress, topics }) => {
     const { colors } = useTheme();
-    const [topics, setTopics] = useState<JournalEntry[]>([]);
+    const [internalTopics, setTopics] = useState<JournalEntry[]>([]);
     const [isExpanded, setIsExpanded] = useState(false);
     const [topCardHeight, setTopCardHeight] = useState(200);
 
@@ -162,19 +163,18 @@ export const StudyReminders: React.FC<StudyRemindersProps> = React.memo(({ onEnt
 
     useFocusEffect(
         useCallback(() => {
-            loadTopics();
-        }, [loadTopics])
+            if (!topics) loadTopics();
+        }, [loadTopics, topics])
     );
 
     const PEEK_OFFSET = 14;
     const SCALE_STEP = 0.03;
     const OPACITY_STEP = 0.18;
 
-    if (topics.length === 0) return null;
-
-    // Limit to 3 cards maximum, just like ActionReminders does visibly
-    const displayTopics = topics.slice(0, 3);
+    const displayTopics = (topics || internalTopics).slice(0, 3);
     const totalCards = displayTopics.length;
+
+    if (displayTopics.length === 0) return null;
 
     const toggleDeck = () => {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);

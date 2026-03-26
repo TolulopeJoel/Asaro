@@ -8,7 +8,7 @@ import { ScalePressable } from '@/src/components/ScalePressable';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import firestore from '@react-native-firebase/firestore';
+import firestore, { Filter } from '@react-native-firebase/firestore';
 import { Button } from '@/src/components/Button';
 import { LoadingView } from '@/src/components/LoadingView';
 import { Avatar } from './[id]';
@@ -49,15 +49,21 @@ export default function GroupsScreen() {
 
                     if (groupIds.length > 0) {
                         try {
-                            // Fetch basic info for each group — Firestore cache serves these offline
-                            const groupsData = await Promise.all(
-                                groupIds.map(async (id: string) => {
-                                    const groupDoc = await firestore()
+                            // Batch fetch groups using 'in' query (max 30 per query)
+                            const chunks: string[][] = [];
+                            for (let i = 0; i < groupIds.length; i += 30) {
+                                chunks.push(groupIds.slice(i, i + 30));
+                            }
+                            const snapshots = await Promise.all(
+                                chunks.map(chunk =>
+                                    firestore()
                                         .collection('groups')
-                                        .doc(id)
-                                        .get({ source: 'default' }); // uses cache when offline
-                                    return { id: groupDoc.id, ...groupDoc.data() };
-                                })
+                                        .where(firestore.FieldPath.documentId(), 'in', chunk)
+                                        .get({ source: 'default' })
+                                )
+                            );
+                            const groupsData = snapshots.flatMap(snap =>
+                                snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
                             );
                             setJoinedGroups(groupsData);
                         } catch (error) {

@@ -31,7 +31,7 @@ import {
 } from '../data/database';
 import { ScalePressable } from './ScalePressable';
 import { LoadingView } from './LoadingView';
-import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
+import Animated, { LinearTransition } from 'react-native-reanimated';
 
 type ViewMode = 'recent' | 'books' | 'bookDetail' | 'actions' | 'topics';
 
@@ -71,17 +71,24 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
     const [isArchiveCollapsed, setIsArchiveCollapsed] = useState(true);
     const [tabContainerWidth, setTabContainerWidth] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(true);
     const searchTimeoutRef = useRef<any>(null);
+    const PAGE_SIZE = 30;
 
-    const loadEntries = useCallback(async () => {
-        setIsLoading(true);
+    const loadEntries = useCallback(async (reset = true) => {
+        if (reset) setIsLoading(true);
         try {
-            const dbEntries = await getJournalEntries(100, 0);
-            setEntries(dbEntries);
+            const offset = reset ? 0 : entries.length;
+            const dbEntries = await getJournalEntries(PAGE_SIZE, offset);
+
+            const updated = reset ? dbEntries : [...entries, ...dbEntries];
+            setEntries(updated);
+            setHasMore(dbEntries.length === PAGE_SIZE);
 
             // Get available books with entry counts
             const bookCounts = new Map<string, number>();
-            dbEntries.forEach(entry => {
+            updated.forEach(entry => {
                 bookCounts.set(entry.book_name, (bookCounts.get(entry.book_name) || 0) + 1);
             });
 
@@ -95,8 +102,9 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
             console.error('Error loading entries:', error);
         } finally {
             setIsLoading(false);
+            setIsLoadingMore(false);
         }
-    }, []);
+    }, [entries]);
 
     const loadBookEntries = useCallback(async () => {
         if (!selectedBook) return;
@@ -201,35 +209,31 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         setSearchQuery('');
     };
 
-    useEffect(() => {
-        loadEntries();
-        if (initialViewMode === 'actions') loadActions();
-        if (initialViewMode === 'topics') loadTopics();
-    }, [initialViewMode, loadEntries, loadActions, loadTopics]);
+    // Note: useFocusEffect below handles initial + subsequent loads
 
     // Refresh entries when screen comes into focus (e.g., after edit/delete)
     useFocusEffect(
         useCallback(() => {
-            loadEntries();
+            loadEntries(true);
             if (viewMode === 'bookDetail' && selectedBook) {
                 loadBookEntries();
             }
             if (viewMode === 'actions') loadActions();
             if (viewMode === 'topics') loadTopics();
-        }, [viewMode, selectedBook, loadEntries, loadBookEntries, loadActions, loadTopics])
+        }, [viewMode, selectedBook, loadBookEntries, loadActions, loadTopics])
     );
 
     // Refresh when refreshTrigger changes (e.g., after modal close)
     useEffect(() => {
         if (refreshTrigger !== undefined && refreshTrigger > 0) {
-            loadEntries();
+            loadEntries(true);
             if (viewMode === 'bookDetail' && selectedBook) {
                 loadBookEntries();
             }
             if (viewMode === 'actions') loadActions();
             if (viewMode === 'topics') loadTopics();
         }
-    }, [refreshTrigger, viewMode, selectedBook, loadEntries, loadBookEntries, loadActions, loadTopics]);
+    }, [refreshTrigger]);
 
 
     // Debounce search query
@@ -385,7 +389,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         const dynamic = getDynamicCardStyle(previewText);
 
         return (
-            <Animated.View entering={FadeIn.duration(400)}>
+            <View>
                 <ScalePressable
                     style={[styles.entryCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
                     onPress={() => onEntryPress(entry)}
@@ -436,7 +440,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                         </View>
                     </View>
                 </ScalePressable>
-            </Animated.View>
+            </View>
         );
     }, [colors, onEntryPress, formatDate, getChapterText, getPreviewText, getAnswerCount]);
 
@@ -454,7 +458,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
     const renderActionCard = useCallback((item: EnhancedActionItem) => {
         const dynamic = getDynamicCardStyle(item.action);
         return (
-            <Animated.View style={styles.bookCardWrapper} entering={FadeIn.duration(400)}>
+            <View style={styles.bookCardWrapper}>
                 <View style={[styles.entryCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder, marginBottom: 0, padding: dynamic.padding }]}>
                     <View style={[styles.entryHeader, { marginBottom: 12 }]}>
                         <View style={styles.entryHeaderLeft}>
@@ -506,7 +510,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                         </View>
                     ) : null}
                 </View>
-            </Animated.View>
+            </View>
         );
     }, [colors, formatDate, onEntryPress, handleTogglePin]);
 
@@ -515,7 +519,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         const isCompleted = !!item.study_completed;
 
         return (
-            <Animated.View style={styles.bookCardWrapper} entering={FadeIn.duration(400)}>
+            <View style={styles.bookCardWrapper}>
                 <View style={[
                     styles.entryCard,
                     {
@@ -586,7 +590,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                         </ScalePressable>
                     </View>
                 </View>
-            </Animated.View>
+            </View>
         );
     }, [colors, formatDate, onEntryPress, handleToggleTopic]);
 
@@ -942,6 +946,13 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                     maxToRenderPerBatch={10}
                     windowSize={5}
                     removeClippedSubviews={Platform.OS === 'android'}
+                    onEndReached={() => {
+                        if (viewMode === 'recent' && !debouncedSearchQuery.trim() && hasMore && !isLoadingMore) {
+                            setIsLoadingMore(true);
+                            loadEntries(false);
+                        }
+                    }}
+                    onEndReachedThreshold={0.5}
                 />
             )}
         </View>

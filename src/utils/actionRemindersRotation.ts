@@ -92,6 +92,57 @@ export const getItemForSlot = async (
     return current;
 };
 
+/**
+ * Batch version: picks items for multiple slots in one load/save cycle.
+ * Avoids N separate AsyncStorage reads.
+ */
+export const getItemsForSlots = async (
+    requests: { slot: SlotKey; availableIds: number[] }[]
+): Promise<Map<SlotKey, number | null>> => {
+    const results = new Map<SlotKey, number | null>();
+    if (requests.length === 0) return results;
+
+    const today = getTodayString();
+    const state = await loadState();
+    let didChange = false;
+
+    for (const { slot, availableIds } of requests) {
+        if (availableIds.length === 0) {
+            results.set(slot, null);
+            continue;
+        }
+        if (availableIds.length === 1) {
+            results.set(slot, availableIds[0]);
+            continue;
+        }
+
+        let s = state[slot];
+        const available = new Set(availableIds);
+        let queue = s.queue.filter(id => available.has(id));
+        let current = s.current !== null && available.has(s.current) ? s.current : null;
+        const isNewDay = s.date !== today;
+
+        if (isNewDay || current === null) {
+            if (queue.length === 0) {
+                queue = shuffled(availableIds.filter(id => id !== current));
+            }
+            if (queue.length === 0) queue = availableIds;
+            current = queue[0];
+            queue = queue.slice(1);
+            state[slot] = { current, queue, date: today };
+            didChange = true;
+        } else if (queue.length !== s.queue.length) {
+            state[slot] = { current, queue, date: today };
+            didChange = true;
+        }
+
+        results.set(slot, current);
+    }
+
+    if (didChange) await saveState(state);
+    return results;
+};
+
 /** Call when the set of available IDs for a slot has changed substantially
  *  (e.g. user deleted entries). Forces a fresh cycle next load. */
 export const invalidateSlot = async (slot: SlotKey): Promise<void> => {

@@ -1,6 +1,15 @@
 import { Flashback } from '@/src/components/Flashback';
 import { WeeklyStreak } from '@/src/components/WeeklyStreak';
-import { getMissedDaysCount, getTotalEntryCount, JournalEntry, getReadingProgress, getLastCompletedReadingItemId, checkEntryCoversChapters, toggleReadingItem } from "@/src/data/database";
+import {
+    getMissedDaysCount,
+    getTotalEntryCount,
+    JournalEntry,
+    getReadingProgress,
+    getLastCompletedReadingItemId,
+    checkEntryCoversChapters,
+    toggleReadingItem,
+    getRecentStudyTopics, // Added import
+} from "@/src/data/database";
 import { READING_PLAN_DATA, ReadingItem } from "@/src/data/readingPlanData";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { Spacing } from "@/src/theme/spacing";
@@ -16,10 +25,12 @@ import { JournalEntryDetail } from '@/src/components/JournalEntryDetail';
 import { WavyAddIcon } from '@/src/components/WavyAddIcon';
 import { AnimatedModal } from '@/src/components/AnimatedModal';
 import { ScalePressable } from '@/src/components/ScalePressable';
-import { ActionReminders } from '@/src/components/ActionReminders';
-import { StudyReminders } from '@/src/components/StudyReminders';
-import { getDailyTitle } from '@/src/data/homeTitles';
 import { LoadingView } from '@/src/components/LoadingView';
+import { fetchWeeklyStreakData, DayStatus } from '@/src/components/WeeklyStreak';
+import { ActionReminders, fetchActionRemindersData, EnhancedActionItem } from '@/src/components/ActionReminders';
+import { StudyReminders } from '@/src/components/StudyReminders';
+import { fetchFlashbackData } from '@/src/components/Flashback';
+import { getDailyTitle } from '@/src/data/homeTitles';
 
 
 const DRAFT_KEY = "reflection_draft";
@@ -105,36 +116,12 @@ const StatCard = React.memo(({ icon, value }: StatCardProps) => {
     );
 });
 
-const QuickStats = React.memo(() => {
-    const [stats, setStats] = useState({
-        totalEntries: 0,
-        missedDays: 0,
-    });
+interface QuickStatsProps {
+    totalEntries: number;
+    missedDays: number;
+}
 
-    const loadStats = useCallback(async () => {
-        const currentMonth = new Date().toISOString().slice(0, 7);
-        const [totalEntries, missedDays] = await Promise.all([
-            getTotalEntryCount(currentMonth),
-            getMissedDaysCount(currentMonth),
-        ]);
-
-        setStats({ totalEntries, missedDays });
-    }, []);
-
-    // Load stats on mount
-    useEffect(() => {
-        loadStats();
-    }, [loadStats]);
-
-    // Reload stats when screen comes into focus
-    useFocusEffect(
-        useCallback(() => {
-            loadStats();
-        }, [loadStats])
-    );
-
-    const { totalEntries, missedDays } = stats;
-
+const QuickStats = React.memo(({ totalEntries, missedDays }: QuickStatsProps) => {
     return (
         <View style={styles.statsContainer}>
             <StatCard icon="flame" value={totalEntries} />
@@ -143,44 +130,14 @@ const QuickStats = React.memo(() => {
     );
 });
 
-const NextReading = React.memo(() => {
+interface NextReadingProps {
+    nextItem: ReadingItem | null;
+    onRefresh: () => void;
+}
+
+const NextReading = React.memo(({ nextItem, onRefresh }: NextReadingProps) => {
     const { colors } = useTheme();
     const router = useRouter();
-    const [nextItem, setNextItem] = useState<ReadingItem | null>(null);
-
-    const loadNextReading = useCallback(async () => {
-        const [completedIds, lastCompletedId] = await Promise.all([
-            getReadingProgress(),
-            getLastCompletedReadingItemId(),
-        ]);
-        const completedSet = new Set(completedIds);
-
-        let nextItem: ReadingItem | undefined;
-
-        if (lastCompletedId != null) {
-            // Find where the last-completed item sits in the plan
-            const lastIndex = READING_PLAN_DATA.findIndex(item => item.id === lastCompletedId);
-            if (lastIndex >= 0) {
-                // First uncompleted item after the one you read last
-                nextItem = READING_PLAN_DATA
-                    .slice(lastIndex + 1)
-                    .find(item => !completedSet.has(item.id));
-            }
-        }
-
-        // Fall back: first uncompleted item anywhere in the plan
-        if (!nextItem) {
-            nextItem = READING_PLAN_DATA.find(item => !completedSet.has(item.id));
-        }
-
-        setNextItem(nextItem || null);
-    }, []);
-
-    useFocusEffect(
-        useCallback(() => {
-            loadNextReading();
-        }, [loadNextReading])
-    );
 
     const handlePress = useCallback(async () => {
         if (!nextItem) return;
@@ -211,7 +168,7 @@ const NextReading = React.memo(() => {
         if (isCovered) {
             // Entry already covers this — mark as completed and move on
             await toggleReadingItem(nextItem.id, true);
-            loadNextReading();
+            onRefresh();
         } else {
             // No entry yet — go write one
             router.push({
@@ -223,7 +180,7 @@ const NextReading = React.memo(() => {
                 }
             });
         }
-    }, [nextItem, router, loadNextReading]);
+    }, [nextItem, router, onRefresh]);
 
     if (!nextItem) return null;
 
@@ -321,6 +278,12 @@ const DraftBar = React.memo(() => {
 });
 
 export default function Index() {
+    const [stats, setStats] = useState({ totalEntries: 0, missedDays: 0 });
+    const [nextReading, setNextReading] = useState<ReadingItem | null>(null);
+    const [topics, setTopics] = useState<JournalEntry[]>([]);
+    const [weekDays, setWeekDays] = useState<DayStatus[]>([]);
+    const [actionReminders, setActionReminders] = useState<{ pinned: EnhancedActionItem[], rotating: EnhancedActionItem[] } | null>(null);
+    const [flashbackEntry, setFlashbackEntry] = useState<{ entry: JournalEntry, type: 'year' | 'month' | 'random' } | null>(null);
     const [draftExists, setDraftExists] = useState(false);
     const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
     const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
@@ -328,6 +291,66 @@ export default function Index() {
     const scrollViewRef = useRef<ScrollView>(null);
     const { colors } = useTheme();
     const router = useRouter();
+
+    const loadStats = useCallback(async () => {
+        const currentMonth = new Date().toISOString().slice(0, 7);
+        const [totalEntries, missedDays] = await Promise.all([
+            getTotalEntryCount(currentMonth),
+            getMissedDaysCount(currentMonth),
+        ]);
+        return { totalEntries, missedDays };
+    }, []);
+
+    const loadNextReading = useCallback(async () => {
+        const [completedIds, lastCompletedId] = await Promise.all([
+            getReadingProgress(),
+            getLastCompletedReadingItemId(),
+        ]);
+        const completedSet = new Set(completedIds);
+        let nextItem: ReadingItem | undefined;
+
+        if (lastCompletedId != null) {
+            const lastIndex = READING_PLAN_DATA.findIndex(item => item.id === lastCompletedId);
+            if (lastIndex >= 0) {
+                nextItem = READING_PLAN_DATA.slice(lastIndex + 1).find(item => !completedSet.has(item.id));
+            }
+        }
+
+        if (!nextItem) {
+            nextItem = READING_PLAN_DATA.find(item => !completedSet.has(item.id));
+        }
+
+        return nextItem || null;
+    }, []);
+
+    const loadHomeData = useCallback(async () => {
+        try {
+            const [
+                newStats,
+                newNextReading,
+                newTopics,
+                newWeekDays,
+                newActionReminders,
+                newFlashback
+            ] = await Promise.all([
+                loadStats(),
+                loadNextReading(),
+                getRecentStudyTopics(7),
+                fetchWeeklyStreakData(),
+                fetchActionRemindersData(),
+                fetchFlashbackData()
+            ]);
+
+            setStats(newStats);
+            setNextReading(newNextReading);
+            setTopics(newTopics);
+            setWeekDays(newWeekDays);
+            setActionReminders(newActionReminders);
+            setFlashbackEntry(newFlashback);
+        } catch (error) {
+            console.error('Error loading home data:', error);
+        }
+    }, [loadStats, loadNextReading]);
 
     // Scroll to top on tab press
     useEffect(() => {
@@ -354,15 +377,15 @@ export default function Index() {
 
     useFocusEffect(
         useCallback(() => {
-            // Small delay to ensure AsyncStorage operations complete
-            const timer = setTimeout(() => {
-                checkDraft();
-                // Simulate initial load if it's very fast
-                setTimeout(() => setIsLoading(false), 400);
-            }, 100);
+            loadHomeData();
+            checkDraft();
 
-            return () => clearTimeout(timer);
-        }, [checkDraft])
+            // Simulate initial load if it's very fast
+            if (isLoading) {
+                const timer = setTimeout(() => setIsLoading(false), 400);
+                return () => clearTimeout(timer);
+            }
+        }, [loadHomeData, checkDraft, isLoading])
     );
 
     return (
@@ -392,12 +415,16 @@ export default function Index() {
                     </View>
                 ) : (
                     <>
-                        <QuickStats />
-                        <NextReading />
-                        <StudyReminders onEntryPress={handleEntryPress} />
-                        <WeeklyStreak />
-                        <ActionReminders onEntryPress={handleEntryPress} />
-                        <Flashback onEntryPress={handleEntryPress} />
+                        <QuickStats totalEntries={stats.totalEntries} missedDays={stats.missedDays} />
+                        <NextReading nextItem={nextReading} onRefresh={loadHomeData} />
+                        <StudyReminders topics={topics} onEntryPress={handleEntryPress} />
+                        <WeeklyStreak weekDays={weekDays} />
+                        <ActionReminders
+                            pinnedItems={actionReminders?.pinned}
+                            rotatingItems={actionReminders?.rotating}
+                            onEntryPress={handleEntryPress}
+                        />
+                        <Flashback flashbackData={flashbackEntry} onEntryPress={handleEntryPress} />
                     </>
                 )}
             </ScrollView>

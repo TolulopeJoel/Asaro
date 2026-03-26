@@ -387,6 +387,7 @@ export async function setupDailyNotifications(startFromTomorrow: boolean = false
       const targetDate = new Date(startDate);
       targetDate.setDate(startDate.getDate() + dayOffset);
 
+      const dayPromises: Promise<any>[] = [];
       for (const notif of notificationTimes) {
         const scheduledTime = new Date(targetDate);
         scheduledTime.setHours(notif.hour, notif.minute, 0, 0);
@@ -398,7 +399,7 @@ export async function setupDailyNotifications(startFromTomorrow: boolean = false
 
         const reminder = getRandomReminder(notif.reminders);
 
-        await Notifications.scheduleNotificationAsync({
+        dayPromises.push(Notifications.scheduleNotificationAsync({
           content: {
             ...createNotificationContent(`${reminder.title}`, reminder.body),
             categoryIdentifier: 'reminder',
@@ -414,10 +415,9 @@ export async function setupDailyNotifications(startFromTomorrow: boolean = false
             date: scheduledTime,
             channelId: Platform.OS === 'android' ? 'asaro-reminders' : undefined,
           },
-        });
-
-
+        }));
       }
+      await Promise.all(dayPromises);
     }
 
 
