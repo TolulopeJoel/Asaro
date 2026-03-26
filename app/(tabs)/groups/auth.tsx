@@ -165,7 +165,7 @@ export default function AuthScreen() {
                         {isSignUp ? 'Create Account' : 'Welcome Back'}
                     </Text>
                     <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                        {isSignUp ? 'Start your accountability journey.' : 'Continue w/ friends'}
+                        {isSignUp ? 'Ready to get serious? No more hiding.' : "Welcome back. Let's see what you've been up to."}
                     </Text>
 
                     <View style={styles.form}>

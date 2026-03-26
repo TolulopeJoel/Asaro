@@ -461,9 +461,20 @@ export default function Settings() {
                             {isImporting ? <LoadingView size={20} /> : <Ionicons name="cloud-download-outline" size={20} color={colors.textSecondary} />}
                         </ScalePressable>
                     </View>
-                    {lastBackupDate && (
-                        <Text style={[styles.lastBackupText, { color: colors.textMuted }]}>
-                            Last backup: {new Date(lastBackupDate).toLocaleString()}
+                    {lastBackupDate ? (
+                        <View>
+                            <Text style={[styles.lastBackupText, { color: colors.textMuted }]}>
+                                Last backup: {new Date(lastBackupDate).toLocaleString()}
+                            </Text>
+                            {(new Date().getTime() - new Date(lastBackupDate).getTime() > 7 * 24 * 60 * 60 * 1000) && (
+                                <Text style={[styles.lastBackupText, { color: colors.accentSecondary || '#E67E22', fontStyle: 'italic', marginTop: -8, paddingHorizontal: 20 }]}>
+                                    It's been a while since your last backup! If your phone crashes, please don't cry to me o
+                                </Text>
+                            )}
+                        </View>
+                    ) : (
+                        <Text style={[styles.lastBackupText, { color: colors.accentSecondary || '#E67E22', fontStyle: 'italic', paddingHorizontal: 20 }]}>
+                            You haven't backed up your data. If you lose everything, please don't cry to me o
                         </Text>
                     )}
                 </SettingsGroup>

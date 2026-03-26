@@ -225,7 +225,7 @@ export default function GroupsScreen() {
                 <View style={styles.welcomeHeader}>
                     <Text style={[styles.label, { color: colors.accentSecondary }]}>HELLO, {displayName?.toUpperCase() || 'READER'}</Text>
                     <Text style={[styles.subtitle, { color: colors.textSecondary, textAlign: 'left', paddingHorizontal: 0 }]}>
-                        You haven't joined any groups yet.
+                        Flying solo, I see?
                     </Text>
                 </View>
 
@@ -235,7 +235,7 @@ export default function GroupsScreen() {
                     </View>
                     {/* <Text style={[styles.emptyStateTitle, { color: colors.textPrimary }]}>No groups yet</Text> */}
                     <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>
-                        Accountability is the "secret sauce" to consistency. Join a group to start reading together.
+                        Accountability is a team sport. Join a group or create one so we can make sure you're actually reading.
                     </Text>
 
                     <Button

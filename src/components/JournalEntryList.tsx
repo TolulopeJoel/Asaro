@@ -805,29 +805,29 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
 
     const renderEmptyState = useCallback(() => {
         let iconName: any = "journal-outline";
-        let title = "No entries yet";
-        let subtext = "Start your first reflection to see it here";
+        let title = "It's awful quiet in here...";
+        let subtext = "Don't just stare at the screen. Read your Bible and tell me about it!";
 
         if (viewMode === 'books') {
             iconName = "library-outline";
-            title = "No books studied yet";
-            subtext = "Create your first reflection to see books here";
+            title = "Empty shelves";
+            subtext = "Read a book of the Bible so we can put something here.";
         } else if (viewMode === 'actions') {
             iconName = "flash-outline";
             title = "No actions recorded";
-            subtext = "Write actions in your reflections to see them here";
+            subtext = "You didn't learn anything practical today? Write an action step";
         } else if (viewMode === 'topics') {
             iconName = "bookmark-outline";
             title = "No study topics";
-            subtext = "Add topics to study further in your reflections";
+            subtext = "Is there really nothing more you want to study? Add a topic.";
         } else if (debouncedSearchQuery) {
             iconName = "search-outline";
-            title = "No matches found";
-            subtext = "Try adjusting your search terms";
+            title = "Nothing to see here";
+            subtext = "I couldn't find what you're looking for. Try another search.";
         } else if (viewMode === 'bookDetail') {
             iconName = "book-outline";
             title = "Empty book";
-            subtext = "Create your first entry for this book";
+            subtext = "You haven't read this book yet. Go read it!";
         }
 
         return (
