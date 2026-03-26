@@ -168,47 +168,47 @@ export async function scheduleReminderNotification(
 
 // Notification messages organized by time of day
 const morningReminders = [
-  { title: "Good morning o", body: "Àṣàrò here. You haven't read your Bible yet? Ehn ehn, we're starting like this?" },
-  { title: "Morning check", body: "I'm not asking you, I'm telling you - open that Bible now" },
-  { title: "Early call", body: "So you woke up and the first thing wasn't your Bible? Interesting 🤔" },
-  { title: "Rise and shine", body: "Jehovah is waiting. You know say I no dey joke with these things" },
-  { title: "Morning reminder", body: "Don't let me start disturbing you from morning o. Just read it" },
+  { title: "Good afternoon o", body: "Àṣàrò here. You haven't read your Bible yet? Ehn ehn, we're starting like this?" },
+  { title: "Afternoon check", body: "I'm not asking you, I'm telling you — open that Bible now" },
+  { title: "Early call", body: "So you woke up and the first thing wasn't your Bible? Interesting" },
+  { title: "Rise and shine", body: "Jehovah is waiting. You know I don't joke with these things" },
+  { title: "Afternoon reminder", body: "Don't make me start disturbing you this early. Just read it" },
   { title: "Àṣàrò checking in", body: "I've been watching you since you woke up. Where's your Bible?" },
-  { title: "Fresh start", body: "New day, same excuses? Abeg, make we no do like this" },
-  { title: "Early warning", body: "You think say I forget? I never forget. Go and read that Bible" },
+  { title: "Fresh start", body: "New day, same excuses? Please, let's not do this" },
+  { title: "Early warning", body: "You think I forgot? I never forget. Go and read that Bible" },
 ];
 
 const eveningReminders = [
-  { title: "Evening o", body: "The whole day don pass and you never read? What kind of thing be this?" },
-  { title: "Àṣàrò is asking", body: "So we're doing hide and seek with the Bible today abi? I'm not playing with you" },
-  { title: "Serious question", body: "If Jehovah ask you wetin you read today, wetin you go talk?" },
+  { title: "Evening o", body: "The whole day has passed and you still haven't read? What's going on?" },
+  { title: "Àṣàrò is asking", body: "So we're playing hide and seek with the Bible today? I don't have enegy to hide o" },
+  { title: "Serious question", body: "If you were asked what you read today, what would you say?" },
   { title: "Evening check", body: "I've been patient since morning. My patience is running out o 😌" },
-  { title: "Reality check", body: "You're scrolling phone but Bible you cannot read? Make sense na" },
+  { title: "Reality check", body: "You're scrolling on your phone but you can't read your Bible? Make it make sense" },
   { title: "Not impressed", body: "Àṣàrò is very disappointed. But there's still time to fix it" },
   { title: "Evening tap", body: "Don't make me come back here again. You know how I can be 👀" },
-  { title: "Just so you know", body: "I'm keeping record o. Every single day wey you miss, I dey write am down" },
+  { title: "Just so you know", body: "I'm keeping absolute record. Every single day you miss, I'm writing it down" },
 ];
 
 const lateReminders = [
-  { title: "Àṣàrò again", body: "You thought I was joking? See me here again. Open that Bible sharp sharp" },
-  { title: "Late warning", body: "Your mates are sleeping with clear conscience. You sef, you no want?" },
+  { title: "Àṣàrò again", body: "You thought I was joking? Here I am again. Open that Bible right now" },
+  { title: "Late warning", body: "Your friends are sleeping with a clear conscience. Don't you want the same?" },
   { title: "Not playing", body: "This stubbornness, where is it taking you? Just 15 minutes of reading, is it too much?" },
   { title: "Getting serious", body: "I've come three times today. Don't test me o 😂" },
-  { title: "Persistence mode", body: "You think say if you ignore me I go disappear? You don't know Àṣàrò" },
-  { title: "Accountability time", body: "So we made a commitment and now you're forming busy abi? Abeg read that Bible" },
-  { title: "No excuses", body: "Tired? Busy? Stressed? Jehovah too get time for you. Balance it" },
-  { title: "Late check", body: "The day is almost over and you want to sleep like this? Ah ah" },
+  { title: "Persistence mode", body: "You think if you ignore me I'll disappear? You don't know me o 😂😂😂" },
+  { title: "Accountability time", body: "So we made a commitment and now you're forming busy abi? Please open your Bible" },
+  { title: "No excuses", body: "Tired? Busy? Stressed? Jehovah has time for you. Balance it out" },
+  { title: "Late check", body: "The day is almost over and you want to sleep like this? Oh, wow" },
 ];
 
 const finalReminders = [
   { title: "Final warning", body: "This is the last time I'm asking nicely. Tomorrow I'm coming earlier 😅" },
   { title: "Midnight call", body: "You really want to sleep without reading? You're a strong person o" },
-  { title: "Last chance", body: "Àṣàrò doesn't give up. If you sleep now, just know say I tried my best" },
-  { title: "Bedtime", body: "Even 5 minutes sef you cannot give Jehovah? Okay o, we'll see tomorrow" },
+  { title: "Last chance", body: "Àṣàrò doesn't give up. If you sleep now, just know I tried my best" },
+  { title: "Bedtime", body: "You can't even give Jehovah 15 minutes? Okay o, we'll see tomorrow" },
   { title: "Serious now", body: "I'm not joking anymore. Your spiritual life needs this. Please read" },
-  { title: "Almost done", body: "You've ignored me all day. Fine. But remember say I care, that's why I disturb" },
-  { title: "Àṣàrò's plea", body: "I'm begging you with all my heart - just open that Bible before you sleep" },
-  { title: "Goodnight", body: "Okay, sleep. But know that tomorrow, I'm not taking it easy with you at all 😌" },
+  { title: "Almost done", body: "You've ignored me all day. Fine. But remember I care, that's why I disturb" },
+  { title: "Àṣàrò's plea", body: "I'm begging you with all my heart — just open that Bible before you sleep" },
+  { title: "Goodnight", body: "Okay, sleep. But know that tomorrow, I'm not taking it easy on you at all 😌" },
 ];
 
 function getRandomReminder(reminders: { title: string, body: string }[]) {
@@ -367,7 +367,7 @@ export async function setupDailyNotifications(startFromTomorrow: boolean = false
 
 
     const notificationTimes = [
-      { hour: 7, minute: 0, reminders: morningReminders, name: 'Morning' },
+      { hour: 11, minute: 59, reminders: morningReminders, name: 'Morning' },
       { hour: 19, minute: 0, reminders: eveningReminders, name: 'Evening' },
       { hour: 21, minute: 0, reminders: lateReminders, name: 'Late' },
       { hour: 23, minute: 0, reminders: finalReminders, name: 'Final' },
