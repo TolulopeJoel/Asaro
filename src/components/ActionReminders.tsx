@@ -262,6 +262,11 @@ export const ActionReminders: React.FC<ActionRemindersProps> = React.memo(({ onE
             items.push({ item, isPinned: false, windowLabel });
         });
 
+        // Force the title to "WHAT YOU SAID YOU'D DO" if there is only one item and it is not pinned
+        if (items.length === 1 && !items[0].isPinned) {
+            items[0].windowLabel = "WHAT YOU SAID YOU'D DO";
+        }
+
         return items;
     }, [pinnedItems, rotatingItems]);
 
