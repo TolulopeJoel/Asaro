@@ -290,14 +290,13 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         return entry.chapter_start?.toString() || '';
     }, []);
 
-    const getAnswerCount = useCallback((entry: JournalEntry): number => {
-        let count = [entry.reflection_1, entry.reflection_2, entry.reflection_4]
-            .filter(r => (r ?? '').trim().length > 0).length;
-        // Count action items as Q3
-        if (entry.action_items && entry.action_items.some(item => item.action.trim() || item.motivation.trim())) {
-            count++;
-        }
-        return count;
+    const getAnsweredStatus = useCallback((entry: JournalEntry): boolean[] => {
+        return [
+            (entry.reflection_1 ?? '').trim().length > 0,
+            (entry.reflection_2 ?? '').trim().length > 0,
+            (entry.action_items && entry.action_items.some(item => item.action.trim() || item.motivation.trim())) || false,
+            (entry.reflection_4 ?? '').trim().length > 0,
+        ];
     }, []);
 
     const formatDate = useCallback((dateString?: string): string => {
@@ -437,13 +436,13 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
 
                     <View style={styles.entryFooter}>
                         <View style={styles.reflectionIndicator}>
-                            {Array.from({ length: 4 }).map((_, idx) => (
+                            {getAnsweredStatus(entry).map((answered, idx) => (
                                 <View
                                     key={idx}
                                     style={[
                                         styles.reflectionDot,
                                         { backgroundColor: colors.border },
-                                        idx < getAnswerCount(entry) && [styles.reflectionDotActive, { backgroundColor: colors.accentSecondary }]
+                                        answered && [styles.reflectionDotActive, { backgroundColor: colors.accentSecondary }]
                                     ]}
                                 />
                             ))}
@@ -452,7 +451,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                 </ScalePressable>
             </View>
         );
-    }, [colors, onEntryPress, formatDate, getChapterText, getPreviewText, getAnswerCount]);
+    }, [colors, onEntryPress, formatDate, getChapterText, getPreviewText, getAnsweredStatus]);
 
     const getDynamicCardStyle = (text: string) => {
         const length = text.length;
