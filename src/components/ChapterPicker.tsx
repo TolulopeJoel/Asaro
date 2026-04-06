@@ -205,7 +205,6 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = React.memo(({
                             backgroundColor: colors.accent + '08',
                             borderColor: colors.accent,
                         },
-                        isFirst && styles.chapterButtonSingle,
                         borderRadiusStyle,
                         isMiddle && styles.chapterButtonMiddle,
                         isRangeEnd && styles.chapterButtonRangeEnd,
@@ -404,15 +403,6 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    chapterButtonSingle: {
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
     },
     chapterButtonMiddle: {
         marginLeft: -6,

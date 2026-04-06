@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TextInput, Alert, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TextInput, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,6 +11,7 @@ import { useAlert } from '@/src/context/AlertContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { Button } from '@/src/components/Button';
+import { ScalePressable } from '@/src/components/ScalePressable';
 import Animated, {
     useAnimatedStyle,
     withSpring,
@@ -33,11 +34,9 @@ const GenderOption = ({
     icon: any;
     colors: any;
 }) => {
-    const scale = useSharedValue(1);
     const progress = useSharedValue(selected ? 1 : 0);
 
     React.useEffect(() => {
-        scale.value = withSpring(selected ? 1.05 : 1);
         progress.value = withTiming(selected ? 1 : 0, { duration: 250 });
     }, [selected]);
 
@@ -45,7 +44,7 @@ const GenderOption = ({
         const backgroundColor = interpolateColor(
             progress.value,
             [0, 1],
-            [colors.cardBackground, colors.accentSecondaryLight]
+            [colors.cardBackground, colors.accentSecondaryLight + '40'] // Subtle accent background
         );
         const borderColor = interpolateColor(
             progress.value,
@@ -56,28 +55,24 @@ const GenderOption = ({
         return {
             backgroundColor,
             borderColor,
-            transform: [{ scale: scale.value }],
         };
     });
 
     return (
-        <TouchableOpacity
-            activeOpacity={0.8}
+        <ScalePressable
             onPress={onPress}
             style={{ flex: 1 }}
         >
             <Animated.View style={[styles.genderOption, animatedStyle]}>
-                <View style={styles.genderIconContainer}>
+                <View style={[
+                    styles.genderIconWrapper,
+                    { backgroundColor: selected ? colors.accent + '15' : colors.cardHover }
+                ]}>
                     <Ionicons
                         name={icon}
-                        size={22}
+                        size={32}
                         color={selected ? colors.accent : colors.textTertiary}
                     />
-                    {selected && (
-                        <Animated.View style={styles.checkIndicator}>
-                            <Ionicons name="checkmark-circle" size={14} color={colors.accent} />
-                        </Animated.View>
-                    )}
                 </View>
                 <Text style={[
                     styles.genderLabel,
@@ -86,7 +81,7 @@ const GenderOption = ({
                     {label}
                 </Text>
             </Animated.View>
-        </TouchableOpacity>
+        </ScalePressable>
     );
 };
 
@@ -300,26 +295,24 @@ const styles = StyleSheet.create({
         marginTop: Spacing.xs,
     },
     genderOption: {
-        flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: Spacing.sm,
-        paddingVertical: Spacing.md,
-        borderRadius: Spacing.borderRadius.md,
-        borderWidth: 1.5,
+        paddingVertical: Spacing.xl,
+        borderRadius: Spacing.borderRadius.xl,
+        borderWidth: 2,
+        gap: Spacing.md,
+        minHeight: 140,
     },
-    genderIconContainer: {
-        position: 'relative',
-    },
-    checkIndicator: {
-        position: 'absolute',
-        top: -8,
-        right: -8,
-        backgroundColor: 'white',
-        borderRadius: 10,
+    genderIconWrapper: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     genderLabel: {
-        fontSize: Typography.size.sm,
-        fontWeight: Typography.weight.semibold,
+        fontSize: Typography.size.md,
+        fontWeight: Typography.weight.bold,
+        letterSpacing: 0.2,
     },
 });

@@ -93,7 +93,7 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
-        versionName "2026.JAN"
+        versionName "2026.MAR"
         resConfigs "en"
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
@@ -104,6 +104,7 @@ android {
             universalApk false
             include "arm64-v8a"  // Modern 64-bit ARM (covers most devices 2017+)
             // include "armeabi-v7a"
+            // include ""arm64-v8a""
         }
     }
     signingConfigs {

@@ -226,13 +226,16 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
 
                 {/* Expand button */}
                 {!disabled && (
-                    <Button
-                        variant="secondary"
+                    <TouchableOpacity
+                        style={[styles.expandButton, { backgroundColor: colors.background, borderColor: colors.border }]}
                         onPress={handleExpand}
-                        style={styles.expandButton}
-                        icon="expand-outline"
-                        size="sm"
-                    />
+                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                        activeOpacity={0.7}
+                    >
+                        <View style={styles.expandIcon}>
+                            <View style={[styles.expandIconInner, { borderColor: colors.textSecondary }]} />
+                        </View>
+                    </TouchableOpacity>
                 )}
             </View>
 

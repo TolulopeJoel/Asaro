@@ -62,8 +62,8 @@ export const CustomAlert: React.FC = () => {
                                     label={btn.text}
                                     variant={btn.style === 'destructive' ? 'danger' : btn.style === 'cancel' ? 'outline' : 'primary'}
                                     onPress={() => {
-                                        if (btn.onPress) btn.onPress();
                                         hideAlert();
+                                        if (btn.onPress) btn.onPress();
                                     }}
                                     style={styles.button}
                                 />

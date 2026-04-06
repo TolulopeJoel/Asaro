@@ -1,5 +1,5 @@
 import * as Notifications from 'expo-notifications';
-import { Alert, Linking, Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import * as Device from 'expo-device';
 import * as IntentLauncher from 'expo-intent-launcher';
 import * as Battery from 'expo-battery';
@@ -98,6 +98,13 @@ export async function requestNotificationPermissions(): Promise<boolean> {
   // Already granted, return immediately
   if (existingStatus === 'granted') {
     return true;
+  }
+
+  // Request permission
+  const { status } = await Notifications.requestPermissionsAsync();
+
+  if (status !== 'granted') {
+    return false;
   }
 
   return true;
