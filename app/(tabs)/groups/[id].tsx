@@ -23,6 +23,7 @@ import Animated, {
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { LoadingView } from '@/src/components/LoadingView';
 import { Button } from '@/src/components/Button';
+import { HyperlinkedText } from '@/src/components/HyperlinkedText';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -793,9 +794,7 @@ const MemberProfileSheet = ({
                                                     {formatRelativeTime(item.timestamp)}
                                                 </Text>
                                             </View>
-                                            <Text style={[sheetStyles.reflectionText, { color: colors.textPrimary }]}>
-                                                {item.sharedReflectionText || item.preview}
-                                            </Text>
+                                            <HyperlinkedText style={[sheetStyles.reflectionText, { color: colors.textPrimary }]} text={item.sharedReflectionText || item.preview} />
                                         </View>
                                     ))}
                                 </View>
@@ -1292,9 +1291,11 @@ export default function GroupDetailScreen() {
                                                         read {activity.bookName} {activity.chapters}
                                                     </Text>
                                                     {activity.preview && (
-                                                        <Text style={[styles.reflectionPreview, { color: colors.textTertiary, borderLeftColor: colors.accentSecondaryLight }]}>
-                                                            "{activity.preview}"
-                                                        </Text>
+                                                        <HyperlinkedText
+                                                            style={[styles.reflectionPreview, { color: colors.textTertiary, borderLeftColor: colors.accentSecondaryLight }]}
+                                                            numberOfLines={2}
+                                                            text={`"${activity.preview}"`}
+                                                        />
                                                     )}
                                                 </>
                                             )}
@@ -1309,9 +1310,10 @@ export default function GroupDetailScreen() {
                                                                 {activity.sharedQuestionTitle}
                                                             </Text>
                                                         )}
-                                                        <Text style={{ fontSize: Typography.size.sm, color: colors.textPrimary, lineHeight: 20 }}>
-                                                            {activity.sharedReflectionText || activity.preview}
-                                                        </Text>
+                                                        <HyperlinkedText
+                                                            style={{ fontSize: Typography.size.sm, color: colors.textPrimary, lineHeight: 20 }}
+                                                            text={activity.sharedReflectionText || activity.preview}
+                                                        />
                                                     </View>
                                                 </>
                                             )}
