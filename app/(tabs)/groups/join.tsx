@@ -53,6 +53,11 @@ export default function JoinGroupScreen() {
                 .doc(user.uid);
 
             const existingMember = await memberRef.get();
+            if (existingMember.exists()) {
+                showAlert({ title: 'Already a Member', message: `You are already part of "${groupData.name}".` });
+                router.replace('/(tabs)/groups' as any);
+                return;
+            }
 
             const userDocData = (await firestore().collection('users').doc(user.uid).get()).data() || {};
             const userGender = userDocData.gender;
@@ -66,13 +71,11 @@ export default function JoinGroupScreen() {
                 lastActive: firestore.FieldValue.serverTimestamp(),
             });
 
-            // Keep memberCount accurate on the group doc (only increment for new members)
-            if (!existingMember.exists) {
-                await firestore()
-                    .collection('groups')
-                    .doc(groupId)
-                    .set({ memberCount: firestore.FieldValue.increment(1) }, { merge: true });
-            }
+            // Keep memberCount accurate on the group doc
+            await firestore()
+                .collection('groups')
+                .doc(groupId)
+                .set({ memberCount: firestore.FieldValue.increment(1) }, { merge: true });
 
             // Also keep track of groups the user is in at the user level
             await firestore()
@@ -84,10 +87,6 @@ export default function JoinGroupScreen() {
                 }, { merge: true });
 
             // 5. Success - Trigger joined activity
-            // Source of truth priority:
-            // 1. displayName from context (Reactive)
-            // 2. user.displayName from Auth profile (Direct)
-            // 3. user.email prefix (Fallback)
             const resolvedName = displayName || user.displayName || user.email?.split('@')[0] || 'User';
 
             await firestore()
