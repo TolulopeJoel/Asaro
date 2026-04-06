@@ -299,7 +299,6 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                                 styles.fieldInput,
                                 { color: colors.text, minHeight: Math.max(40, hAction || 40) }
                             ]}
-                            value={item.action}
                             onChangeText={(text) => handleActionChange(text, index, isModal)}
                             onContentSizeChange={(e) => {
                                 const h = e.nativeEvent.contentSize.height;
@@ -353,7 +352,6 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                                 styles.fieldInput,
                                 { color: colors.text, minHeight: Math.max(40, hMotiv || 40) }
                             ]}
-                            value={item.motivation}
                             onChangeText={(text) => handleMotivationChange(text, index, isModal)}
                             onContentSizeChange={(e) => {
                                 const h = e.nativeEvent.contentSize.height;

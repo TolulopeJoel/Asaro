@@ -256,14 +256,16 @@ const ActionCard = React.memo(({ item, onEntryPress, handleTogglePin }: { item: 
                         </Svg>
                     </TouchableOpacity>
                 </View>
-                <Text style={[styles.entryPreview, { color: colors.textPrimary, fontWeight: '600', fontSize: dynamic.fontSize, lineHeight: dynamic.lineHeight, marginBottom: item.motivation ? 8 : 0 }]}>
-                    {item.action}
-                </Text>
+                <HyperlinkedText
+                    style={[styles.entryPreview, { color: colors.textPrimary, fontWeight: '600', fontSize: dynamic.fontSize, lineHeight: dynamic.lineHeight, marginBottom: item.motivation ? 8 : 0 }]}
+                    text={item.action}
+                />
                 {item.motivation ? (
                     <View style={{ marginTop: 8, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.border + '30' }}>
-                        <Text style={[styles.entryPreview, { color: colors.textSecondary, fontStyle: 'italic', marginBottom: 0, fontSize: Math.max(13, dynamic.fontSize - 2) }]}>
-                            {item.motivation}
-                        </Text>
+                        <HyperlinkedText
+                            style={[styles.entryPreview, { color: colors.textSecondary, fontStyle: 'italic', marginBottom: 0, fontSize: Math.max(13, dynamic.fontSize - 2) }]}
+                            text={item.motivation}
+                        />
                     </View>
                 ) : null}
             </View>
@@ -311,19 +313,20 @@ const TopicCard = React.memo(({ item, onEntryPress, handleToggleTopic }: { item:
                 <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 16 }}>
                     <View style={{ flex: 1 }}>
                         <View style={styles.topicContentContainer}>
-                            <Text style={[
-                                styles.entryPreview,
-                                {
-                                    color: colors.textPrimary,
-                                    fontWeight: '600',
-                                    fontSize: dynamic.fontSize,
-                                    lineHeight: dynamic.lineHeight,
-                                    marginBottom: item.study_further_reminder ? 8 : 0,
-                                    textDecorationLine: isCompleted ? 'line-through' : 'none',
-                                }
-                            ]}>
-                                {item.study_further}
-                            </Text>
+                            <HyperlinkedText
+                                style={[
+                                    styles.entryPreview,
+                                    {
+                                        color: colors.textPrimary,
+                                        fontWeight: '600',
+                                        fontSize: dynamic.fontSize,
+                                        lineHeight: dynamic.lineHeight,
+                                        marginBottom: item.study_further_reminder ? 8 : 0,
+                                        textDecorationLine: isCompleted ? 'line-through' : 'none',
+                                    }
+                                ]}
+                                text={item.study_further || ''}
+                            />
                             {isCompleted && (
                                 <View style={[styles.strikeThroughLine, { backgroundColor: colors.textPrimary, opacity: 0.4 }]} />
                             )}
