@@ -85,6 +85,10 @@ const TextArea: React.FC<{
                     setShowRefPicker(false);
                     setRefStartIndex(-1);
                     setRefQuery('');
+                } else if (text.endsWith(' ')) {
+                    // Finalize on space
+                    const partialRef = text.slice(refStartIndex).trim();
+                    handleReferenceSelect(partialRef);
                 }
                 return;
             }
@@ -108,6 +112,10 @@ const TextArea: React.FC<{
                     setShowRefPickerModal(false);
                     setRefStartIndexModal(-1);
                     setRefQueryModal('');
+                } else if (text.endsWith(' ')) {
+                    // Finalize on space
+                    const partialRef = text.slice(refStartIndexModal).trim();
+                    handleReferenceSelectModal(partialRef);
                 }
                 return;
             }
@@ -240,7 +248,6 @@ const TextArea: React.FC<{
                         <KeyboardAvoidingView
                             style={fullScreenStyles.keyboardView}
                             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                            keyboardVerticalOffset={0}
                         >
                             <View style={fullScreenStyles.content}>
                                 <TouchableOpacity

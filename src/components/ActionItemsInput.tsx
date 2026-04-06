@@ -88,6 +88,10 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                 if (isModal) setRefStartIndexModal(-1);
                 else setRefStartIndex(-1);
                 setRefQuery('');
+            } else if (text.endsWith(' ')) {
+                // Finalize on space
+                const partialRef = text.slice(currentStartIndex).trim();
+                handleReferenceSelect(partialRef);
             }
             return;
         }
@@ -409,7 +413,6 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                     <KeyboardAvoidingView
                         style={fullScreenStyles.keyboardView}
                         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                        keyboardVerticalOffset={0}
                     >
                         <View style={fullScreenStyles.header}>
                             <Button
