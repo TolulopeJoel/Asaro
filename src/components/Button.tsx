@@ -15,6 +15,8 @@ import { Typography } from '../theme/typography';
 import { ScalePressable } from './ScalePressable';
 import { LoadingView } from './LoadingView';
 
+import { BouncingDots } from './BouncingDots';
+
 export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
@@ -155,16 +157,17 @@ export const Button: React.FC<ButtonProps> = ({
     const iconSize = size === 'sm' ? 16 : size === 'lg' ? 24 : 20;
     const iconColor = (getVariantLabelStyles() as TextStyle).color;
 
+    // Use white dots for primary/secondary/danger, and theme accent for outline/ghost
+    const dotColor = (variant === 'outline' || variant === 'ghost') ? colors.accent : '#FFFFFF';
+
     return (
         <ScalePressable
             onPress={onPress}
             disabled={disabled || loading}
             style={combinedStyle as any}
         >
-            {loading ? (
-                <LoadingView size={iconSize * 1.5} />
-            ) : (
-                <View style={styles.content}>
+            <View style={styles.content}>
+                <View style={[styles.innerContent, loading && { opacity: 0 }]}>
                     {icon && iconPosition === 'left' && (
                         <Ionicons
                             name={icon}
@@ -183,7 +186,12 @@ export const Button: React.FC<ButtonProps> = ({
                         />
                     )}
                 </View>
-            )}
+                {loading && (
+                    <View style={styles.loaderContainer}>
+                        <BouncingDots color={dotColor} size={size === 'sm' ? 4 : 6} />
+                    </View>
+                )}
+            </View>
         </ScalePressable>
     );
 };
@@ -194,6 +202,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderWidth: 1,
         borderColor: 'transparent',
+        overflow: 'hidden',
     },
     labelBase: {
         textAlign: 'center',
@@ -203,6 +212,16 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    innerContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    loaderContainer: {
+        ...StyleSheet.absoluteFillObject,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     fullWidth: {
         width: '100%',
