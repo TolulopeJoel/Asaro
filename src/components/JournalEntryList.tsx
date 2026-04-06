@@ -58,6 +58,332 @@ interface JournalEntryListProps {
     initialViewMode?: ViewMode;
 }
 
+const getChapterText = (entry: JournalEntry): string => {
+    if (entry.chapter_end && entry.chapter_end !== entry.chapter_start) {
+        return `${entry.chapter_start}–${entry.chapter_end}`;
+    }
+    return entry.chapter_start?.toString() || '';
+};
+
+const getAnsweredStatus = (entry: JournalEntry): boolean[] => {
+    return [
+        (entry.reflection_1 ?? '').trim().length > 0,
+        (entry.reflection_2 ?? '').trim().length > 0,
+        (entry.action_items && entry.action_items.some(item => item.action.trim() || item.motivation.trim())) || false,
+        (entry.reflection_4 ?? '').trim().length > 0,
+    ];
+};
+
+const formatDate = (dateString?: string): string => {
+    if (!dateString) return '';
+    const date = new Date(dateString.replace(' ', 'T'));
+    const isCurrentYear = date.getFullYear() === new Date().getFullYear();
+    return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: isCurrentYear ? undefined : 'numeric',
+    });
+};
+
+const getPreviewText = (entry: JournalEntry): string => {
+    const reflections = [entry.reflection_1, entry.reflection_2, entry.reflection_4]
+        .filter((r): r is string => !!r && r.trim().length > 0);
+    const substantialReflection = reflections.sort((a, b) => (b?.length || 0) - (a?.length || 0))[0];
+    if (substantialReflection) {
+        return substantialReflection.length > 80
+            ? substantialReflection.substring(0, 80) + '...'
+            : substantialReflection;
+    }
+    if (entry.action_items && entry.action_items.length > 0) {
+        const firstAction = entry.action_items.find(i => i.action.trim());
+        if (firstAction) {
+            const text = `→ ${firstAction.action.trim()}`;
+            return text.length > 80 ? text.substring(0, 80) + '...' : text;
+        }
+    }
+    if (entry.notes?.trim()) {
+        return entry.notes.length > 80
+            ? entry.notes.substring(0, 80) + '...'
+            : entry.notes;
+    }
+    return 'No reflection recorded';
+};
+
+const getDynamicCardStyle = (text: string) => {
+    const length = text.length;
+    if (length < 60) return { fontSize: 18, lineHeight: 28, padding: 24 };
+    if (length < 120) return { fontSize: 16, lineHeight: 24, padding: 20 };
+    return { fontSize: 14, lineHeight: 22, padding: 16 };
+};
+
+const DateGroupHeader = React.memo(({ title }: { title: string }) => {
+    const { colors } = useTheme();
+    return (
+        <View style={styles.dateGroup}>
+            <View style={styles.dateGroupContent}>
+                <View style={[styles.dateGroupDot, { backgroundColor: colors.accent }]} />
+                <Text style={[styles.dateGroupTitle, { color: colors.textPrimary }]}>{title}</Text>
+            </View>
+        </View>
+    );
+});
+
+const TopicHeader = React.memo(({ title, count, isArchiveCollapsed, onToggleCollapse }: { title: string, count: number, isArchiveCollapsed: boolean, onToggleCollapse: () => void }) => {
+    const { colors } = useTheme();
+    return (
+        <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={onToggleCollapse}
+            style={[styles.archiveHeader, { borderTopColor: colors.border }]}
+        >
+            <View style={styles.archiveHeaderContent}>
+                <Text style={[styles.archiveHeaderText, { color: colors.textTertiary }]}>
+                    {title} ({count})
+                </Text>
+                <Ionicons name={isArchiveCollapsed ? "chevron-down" : "chevron-up"} size={16} color={colors.textTertiary} />
+            </View>
+        </TouchableOpacity>
+    );
+});
+
+const EntryCard = React.memo(({ entry, onEntryPress }: { entry: JournalEntry, onEntryPress: (entry: JournalEntry) => void }) => {
+    const { colors } = useTheme();
+    const previewText = getPreviewText(entry);
+    const dynamic = getDynamicCardStyle(previewText);
+
+    return (
+        <View>
+            <ScalePressable
+                style={[styles.entryCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
+                onPress={() => onEntryPress(entry)}
+            >
+                <View style={styles.entryHeader}>
+                    <View style={styles.entryHeaderLeft}>
+                        <Text style={[styles.entryDate, { color: colors.textTertiary }]}>
+                            {formatDate(entry.created_at)}
+                        </Text>
+                        {entry.book_name && (
+                            <ScalePressable
+                                onPress={() => openBibleReference(
+                                    entry.book_name!,
+                                    entry.chapter_start,
+                                    entry.verse_start,
+                                    entry.chapter_end,
+                                    entry.verse_end
+                                )}
+                                style={[styles.refBadge, { backgroundColor: colors.accent + '12' }]}
+                            >
+                                <Text style={[styles.entryScripture, { color: colors.accent }]}>
+                                    {entry.book_name} {getChapterText(entry)}
+                                </Text>
+                            </ScalePressable>
+                        )}
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+                </View>
+                <HyperlinkedText
+                    style={[
+                        styles.entryPreview,
+                        {
+                            color: colors.textPrimary,
+                            fontSize: dynamic.fontSize,
+                            lineHeight: dynamic.lineHeight,
+                            marginBottom: 16
+                        }
+                    ]}
+                    numberOfLines={3}
+                    text={previewText}
+                />
+                <View style={styles.entryFooter}>
+                    <View style={styles.reflectionIndicator}>
+                        {getAnsweredStatus(entry).map((answered, idx) => (
+                            <View
+                                key={idx}
+                                style={[
+                                    styles.reflectionDot,
+                                    { backgroundColor: colors.border },
+                                    answered && [styles.reflectionDotActive, { backgroundColor: colors.accentSecondary }]
+                                ]}
+                            />
+                        ))}
+                    </View>
+                </View>
+            </ScalePressable>
+        </View>
+    );
+});
+
+const ActionCard = React.memo(({ item, onEntryPress, handleTogglePin }: { item: EnhancedActionItem, onEntryPress: (entry: JournalEntry) => void, handleTogglePin: (item: EnhancedActionItem) => void }) => {
+    const { colors } = useTheme();
+    const dynamic = getDynamicCardStyle(item.action);
+    return (
+        <View style={styles.bookCardWrapper}>
+            <View style={[styles.entryCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder, marginBottom: 0, padding: dynamic.padding }]}>
+                <View style={[styles.entryHeader, { marginBottom: 12 }]}>
+                    <View style={styles.entryHeaderLeft}>
+                        <Text style={[styles.entryDate, { color: colors.textTertiary }]}>{formatDate(item.created_at)}</Text>
+                        <ScalePressable onPress={async () => {
+                            try {
+                                const entry = await getEntryById(item.entry_id!);
+                                if (entry) onEntryPress(entry);
+                            } catch (e) {
+                                console.error(e);
+                            }
+                        }}>
+                            <ScalePressable onPress={() => openBibleReference(
+                                item.book_name!,
+                                item.chapter_start,
+                                undefined,
+                                item.chapter_end,
+                                undefined
+                            )}>
+                                <View style={[styles.refBadge, { backgroundColor: colors.accent + '12' }]}>
+                                    <Text style={[styles.entryScripture, { color: colors.accent }]}>
+                                        {item.book_name} {item.chapter_start}{item.chapter_end && item.chapter_end !== item.chapter_start ? `-${item.chapter_end}` : ''}
+                                    </Text>
+                                </View>
+                            </ScalePressable>
+                        </ScalePressable>
+                    </View>
+                    <TouchableOpacity
+                        onPress={() => handleTogglePin(item)}
+                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                        style={{ marginLeft: 'auto' }}
+                    >
+                        <Svg width="18" height="18" viewBox="0 0 24 24" fill={item.is_pinned ? colors.accent : 'none'} stroke={item.is_pinned ? colors.accent : colors.textTertiary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: [{ rotate: '30deg' }] }}>
+                            <Path d="M12 17v5" />
+                            <Path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
+                        </Svg>
+                    </TouchableOpacity>
+                </View>
+                <Text style={[styles.entryPreview, { color: colors.textPrimary, fontWeight: '600', fontSize: dynamic.fontSize, lineHeight: dynamic.lineHeight, marginBottom: item.motivation ? 8 : 0 }]}>
+                    {item.action}
+                </Text>
+                {item.motivation ? (
+                    <View style={{ marginTop: 8, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.border + '30' }}>
+                        <Text style={[styles.entryPreview, { color: colors.textSecondary, fontStyle: 'italic', marginBottom: 0, fontSize: Math.max(13, dynamic.fontSize - 2) }]}>
+                            {item.motivation}
+                        </Text>
+                    </View>
+                ) : null}
+            </View>
+        </View>
+    );
+});
+
+const TopicCard = React.memo(({ item, onEntryPress, handleToggleTopic }: { item: JournalEntry, onEntryPress: (entry: JournalEntry) => void, handleToggleTopic: (item: JournalEntry) => void }) => {
+    const { colors } = useTheme();
+    const dynamic = getDynamicCardStyle(item.study_further || '');
+    const isCompleted = !!item.study_completed;
+
+    return (
+        <View style={styles.bookCardWrapper}>
+            <View style={[
+                styles.entryCard,
+                {
+                    backgroundColor: colors.cardBackground,
+                    borderColor: colors.cardBorder,
+                    marginBottom: 0,
+                    padding: dynamic.padding,
+                    opacity: isCompleted ? 0.6 : 1
+                }
+            ]}>
+                <View style={[styles.entryHeader, { marginBottom: 12 }]}>
+                    <View style={styles.entryHeaderLeft}>
+                        <Text style={[styles.entryDate, { color: colors.textTertiary }]}>{formatDate(item.created_at)}</Text>
+                        <ScalePressable onPress={() => onEntryPress(item)}>
+                            <ScalePressable onPress={() => openBibleReference(
+                                item.book_name!,
+                                item.chapter_start,
+                                undefined,
+                                item.chapter_end,
+                                undefined
+                            )}>
+                                <View style={[styles.refBadge, { backgroundColor: colors.accentSecondary + '12' }]}>
+                                    <Text style={[styles.entryScripture, { color: colors.accentSecondary }]}>
+                                        {item.book_name} {item.chapter_start}{item.chapter_end && item.chapter_end !== item.chapter_start ? `-${item.chapter_end}` : ''}
+                                    </Text>
+                                </View>
+                            </ScalePressable>
+                        </ScalePressable>
+                    </View>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 16 }}>
+                    <View style={{ flex: 1 }}>
+                        <View style={styles.topicContentContainer}>
+                            <Text style={[
+                                styles.entryPreview,
+                                {
+                                    color: colors.textPrimary,
+                                    fontWeight: '600',
+                                    fontSize: dynamic.fontSize,
+                                    lineHeight: dynamic.lineHeight,
+                                    marginBottom: item.study_further_reminder ? 8 : 0,
+                                    textDecorationLine: isCompleted ? 'line-through' : 'none',
+                                }
+                            ]}>
+                                {item.study_further}
+                            </Text>
+                            {isCompleted && (
+                                <View style={[styles.strikeThroughLine, { backgroundColor: colors.textPrimary, opacity: 0.4 }]} />
+                            )}
+                        </View>
+                        {item.study_further_reminder && new Date(item.study_further_reminder) > new Date() ? (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, backgroundColor: colors.backgroundSubtle, borderColor: colors.border, alignSelf: 'flex-start', marginTop: 8, gap: 4 }}>
+                                <Ionicons name="notifications-outline" size={12} color={colors.textSecondary} />
+                                <Text style={{ fontSize: 11, fontWeight: '500', color: colors.textSecondary }}>
+                                    {new Date(item.study_further_reminder).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                                </Text>
+                            </View>
+                        ) : null}
+                    </View>
+
+                    <ScalePressable
+                        onPress={() => handleToggleTopic(item)}
+                        style={[
+                            styles.checkCircle,
+                            {
+                                borderColor: isCompleted ? colors.accentSecondary : colors.border,
+                                backgroundColor: isCompleted ? colors.accentSecondary + '20' : colors.backgroundSubtle + '40'
+                            }
+                        ]}
+                    >
+                        <Ionicons
+                            name={isCompleted ? "checkmark-circle" : "checkmark"}
+                            size={14}
+                            color={isCompleted ? colors.accentSecondary : colors.textTertiary}
+                        />
+                    </ScalePressable>
+                </View>
+            </View>
+        </View>
+    );
+});
+
+const BookCard = React.memo(({ book, onNavigate }: { book: BookWithCount, onNavigate: (book: BibleBook) => void }) => {
+    const { colors } = useTheme();
+    return (
+        <View style={styles.bookCardWrapper}>
+            <ScalePressable
+                style={[styles.bookCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
+                onPress={() => onNavigate(book)}
+            >
+                <View style={styles.bookCardContent}>
+                    <View style={styles.bookCardTextContainer}>
+                        <Text style={[styles.bookCardName, { color: colors.textPrimary }]}>{book.name}</Text>
+                    </View>
+                    <View style={[styles.entryCountBadge, { backgroundColor: colors.accent + '15' }]}>
+                        <Text style={[styles.entryCountText, { color: colors.accent }]}>
+                            {book.entryCount} {book.entryCount === 1 ? 'entry' : 'entries'}
+                        </Text>
+                    </View>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+            </ScalePressable>
+        </View>
+    );
+});
+
 export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress, refreshTrigger, initialViewMode = 'recent' }) => {
     const { colors } = useTheme();
     const [entries, setEntries] = useState<JournalEntry[]>([]);
@@ -283,64 +609,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         return breadcrumbs;
     };
 
-    const getChapterText = useCallback((entry: JournalEntry): string => {
-        if (entry.chapter_end && entry.chapter_end !== entry.chapter_start) {
-            return `${entry.chapter_start}–${entry.chapter_end}`;
-        }
-        return entry.chapter_start?.toString() || '';
-    }, []);
-
-    const getAnsweredStatus = useCallback((entry: JournalEntry): boolean[] => {
-        return [
-            (entry.reflection_1 ?? '').trim().length > 0,
-            (entry.reflection_2 ?? '').trim().length > 0,
-            (entry.action_items && entry.action_items.some(item => item.action.trim() || item.motivation.trim())) || false,
-            (entry.reflection_4 ?? '').trim().length > 0,
-        ];
-    }, []);
-
-    const formatDate = useCallback((dateString?: string): string => {
-        if (!dateString) return '';
-        // SQLite local time string 'YYYY-MM-DD HH:MM:SS' needs 'T' for robust parsing
-        const date = new Date(dateString.replace(' ', 'T'));
-        const isCurrentYear = date.getFullYear() === new Date().getFullYear();
-
-        return date.toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: isCurrentYear ? undefined : 'numeric',
-        });
-    }, []);
-
-    const getPreviewText = useCallback((entry: JournalEntry): string => {
-        const reflections = [entry.reflection_1, entry.reflection_2, entry.reflection_4]
-            .filter(r => r && r.trim().length > 0);
-
-        const substantialReflection = reflections.sort((a, b) => (b?.length || 0) - (a?.length || 0))[0];
-
-        if (substantialReflection) {
-            return substantialReflection.length > 80
-                ? substantialReflection.substring(0, 80) + '...'
-                : substantialReflection;
-        }
-
-        // Show action items preview
-        if (entry.action_items && entry.action_items.length > 0) {
-            const firstAction = entry.action_items.find(i => i.action.trim());
-            if (firstAction) {
-                const text = `→ ${firstAction.action.trim()}`;
-                return text.length > 80 ? text.substring(0, 80) + '...' : text;
-            }
-        }
-
-        if (entry.notes?.trim()) {
-            return entry.notes.length > 80
-                ? entry.notes.substring(0, 80) + '...'
-                : entry.notes;
-        }
-
-        return 'No reflection recorded';
-    }, []);
+    // Helper functions moved outside component scope
 
     const groupEntriesByDate = useCallback((entries: JournalEntry[]) => {
         const today = getLocalMidnight();
@@ -385,267 +654,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         return groups;
     }, []);
 
-    const renderEntryCard = useCallback((entry: JournalEntry) => {
-        const previewText = getPreviewText(entry);
-        const dynamic = getDynamicCardStyle(previewText);
-
-        return (
-            <View>
-                <ScalePressable
-                    style={[styles.entryCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
-                    onPress={() => onEntryPress(entry)}
-                >
-                    <View style={styles.entryHeader}>
-                        <View style={styles.entryHeaderLeft}>
-                            <Text style={[styles.entryDate, { color: colors.textTertiary }]}>
-                                {formatDate(entry.created_at)}
-                            </Text>
-                            {entry.book_name && (
-                                <ScalePressable
-                                    onPress={() => openBibleReference(
-                                        entry.book_name,
-                                        entry.chapter_start,
-                                        entry.verse_start,
-                                        entry.chapter_end,
-                                        entry.verse_end
-                                    )}
-                                    style={[styles.refBadge, { backgroundColor: colors.accent + '12' }]}
-                                >
-                                    <Text style={[styles.entryScripture, { color: colors.accent }]}>
-                                        {entry.book_name} {getChapterText(entry)}
-                                    </Text>
-                                </ScalePressable>
-                            )}
-                        </View>
-                        <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
-                    </View>
-
-                    <HyperlinkedText
-                        style={[
-                            styles.entryPreview,
-                            {
-                                color: colors.textPrimary,
-                                fontSize: dynamic.fontSize,
-                                lineHeight: dynamic.lineHeight,
-                                marginBottom: 16
-                            }
-                        ]}
-                        numberOfLines={3}
-                        text={previewText}
-                    />
-
-                    <View style={styles.entryFooter}>
-                        <View style={styles.reflectionIndicator}>
-                            {getAnsweredStatus(entry).map((answered, idx) => (
-                                <View
-                                    key={idx}
-                                    style={[
-                                        styles.reflectionDot,
-                                        { backgroundColor: colors.border },
-                                        answered && [styles.reflectionDotActive, { backgroundColor: colors.accentSecondary }]
-                                    ]}
-                                />
-                            ))}
-                        </View>
-                    </View>
-                </ScalePressable>
-            </View>
-        );
-    }, [colors, onEntryPress, formatDate, getChapterText, getPreviewText, getAnsweredStatus]);
-
-    const getDynamicCardStyle = (text: string) => {
-        const length = text.length;
-        if (length < 60) {
-            return { fontSize: 18, lineHeight: 28, padding: 24 };
-        } else if (length < 120) {
-            return { fontSize: 16, lineHeight: 24, padding: 20 };
-        } else {
-            return { fontSize: 14, lineHeight: 22, padding: 16 };
-        }
-    };
-
-    const renderActionCard = useCallback((item: EnhancedActionItem) => {
-        const dynamic = getDynamicCardStyle(item.action);
-        return (
-            <View style={styles.bookCardWrapper}>
-                <View style={[styles.entryCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder, marginBottom: 0, padding: dynamic.padding }]}>
-                    <View style={[styles.entryHeader, { marginBottom: 12 }]}>
-                        <View style={styles.entryHeaderLeft}>
-                            <Text style={[styles.entryDate, { color: colors.textTertiary }]}>{formatDate(item.created_at)}</Text>
-                            <ScalePressable onPress={async () => {
-                                try {
-                                    const entry = await getEntryById(item.entry_id!);
-                                    if (entry) onEntryPress(entry);
-                                } catch (e) {
-                                    console.error(e);
-                                }
-                            }}>
-                                <ScalePressable onPress={() => openBibleReference(
-                                    item.book_name,
-                                    item.chapter_start,
-                                    undefined,
-                                    item.chapter_end,
-                                    undefined
-                                )}>
-                                    <View style={[styles.refBadge, { backgroundColor: colors.accent + '12' }]}>
-                                        <Text style={[styles.entryScripture, { color: colors.accent }]}>
-                                            {item.book_name} {item.chapter_start}{item.chapter_end && item.chapter_end !== item.chapter_start ? `-${item.chapter_end}` : ''}
-                                        </Text>
-                                    </View>
-                                </ScalePressable>
-                            </ScalePressable>
-                        </View>
-                        <TouchableOpacity
-                            onPress={() => handleTogglePin(item)}
-                            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                            style={{ marginLeft: 'auto' }}
-                        >
-                            <Svg
-                                width="18"
-                                height="18"
-                                viewBox="0 0 24 24"
-                                fill={item.is_pinned ? colors.accent : 'none'}
-                                stroke={item.is_pinned ? colors.accent : colors.textTertiary}
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                style={{ transform: [{ rotate: '30deg' }] }}
-                            >
-                                <Path d="M12 17v5" />
-                                <Path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
-                            </Svg>
-                        </TouchableOpacity>
-                    </View>
-                    <Text style={[styles.entryPreview, { color: colors.textPrimary, fontWeight: '600', fontSize: dynamic.fontSize, lineHeight: dynamic.lineHeight, marginBottom: item.motivation ? 8 : 0 }]}>
-                        {item.action}
-                    </Text>
-                    {item.motivation ? (
-                        <View style={{ marginTop: 8, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.border + '30' }}>
-                            <Text style={[styles.entryPreview, { color: colors.textSecondary, fontStyle: 'italic', marginBottom: 0, fontSize: Math.max(13, dynamic.fontSize - 2) }]}>
-                                {item.motivation}
-                            </Text>
-                        </View>
-                    ) : null}
-                </View>
-            </View>
-        );
-    }, [colors, formatDate, onEntryPress, handleTogglePin]);
-
-    const renderTopicCard = useCallback((item: JournalEntry) => {
-        const dynamic = getDynamicCardStyle(item.study_further || '');
-        const isCompleted = !!item.study_completed;
-
-        return (
-            <View style={styles.bookCardWrapper}>
-                <View style={[
-                    styles.entryCard,
-                    {
-                        backgroundColor: colors.cardBackground,
-                        borderColor: colors.cardBorder,
-                        marginBottom: 0,
-                        padding: dynamic.padding,
-                        opacity: isCompleted ? 0.6 : 1
-                    }
-                ]}>
-                    <View style={[styles.entryHeader, { marginBottom: 12 }]}>
-                        <View style={styles.entryHeaderLeft}>
-                            <Text style={[styles.entryDate, { color: colors.textTertiary }]}>{formatDate(item.created_at)}</Text>
-                            <ScalePressable onPress={() => onEntryPress(item)}>
-                                <ScalePressable onPress={() => openBibleReference(
-                                    item.book_name,
-                                    item.chapter_start,
-                                    undefined,
-                                    item.chapter_end,
-                                    undefined
-                                )}>
-                                    <View style={[styles.refBadge, { backgroundColor: colors.accentSecondary + '12' }]}>
-                                        <Text style={[styles.entryScripture, { color: colors.accentSecondary }]}>
-                                            {item.book_name} {item.chapter_start}{item.chapter_end && item.chapter_end !== item.chapter_start ? `-${item.chapter_end}` : ''}
-                                        </Text>
-                                    </View>
-                                </ScalePressable>
-                            </ScalePressable>
-                        </View>
-                    </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 16 }}>
-                        <View style={{ flex: 1 }}>
-                            <View style={styles.topicContentContainer}>
-                                <Text style={[
-                                    styles.entryPreview,
-                                    {
-                                        color: colors.textPrimary,
-                                        fontWeight: '600',
-                                        fontSize: dynamic.fontSize,
-                                        lineHeight: dynamic.lineHeight,
-                                        marginBottom: item.study_further_reminder ? 8 : 0,
-                                        textDecorationLine: isCompleted ? 'line-through' : 'none',
-                                    }
-                                ]}>
-                                    {item.study_further}
-                                </Text>
-                                {isCompleted && (
-                                    <View style={[styles.strikeThroughLine, { backgroundColor: colors.textPrimary, opacity: 0.4 }]} />
-                                )}
-                            </View>
-                            {item.study_further_reminder && new Date(item.study_further_reminder) > new Date() ? (
-                                <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, backgroundColor: colors.backgroundSubtle, borderColor: colors.border, alignSelf: 'flex-start', marginTop: 8, gap: 4 }}>
-                                    <Ionicons name="notifications-outline" size={12} color={colors.textSecondary} />
-                                    <Text style={{ fontSize: 11, fontWeight: '500', color: colors.textSecondary }}>
-                                        {new Date(item.study_further_reminder).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
-                                    </Text>
-                                </View>
-                            ) : null}
-                        </View>
-
-                        <ScalePressable
-                            onPress={() => handleToggleTopic(item)}
-                            style={[
-                                styles.checkCircle,
-                                {
-                                    borderColor: isCompleted ? colors.accentSecondary : colors.border,
-                                    backgroundColor: isCompleted ? colors.accentSecondary + '20' : colors.backgroundSubtle + '40'
-                                }
-                            ]}
-                        >
-                            <Ionicons
-                                name={isCompleted ? "checkmark-circle" : "checkmark"}
-                                size={14}
-                                color={isCompleted ? colors.accentSecondary : colors.textTertiary}
-                            />
-                        </ScalePressable>
-                    </View>
-                </View>
-            </View>
-        );
-    }, [colors, formatDate, onEntryPress, handleToggleTopic]);
-
-    const renderTopicHeader = useCallback((title: string, count: number) => (
-        <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => setIsArchiveCollapsed(!isArchiveCollapsed)}
-            style={[styles.archiveHeader, { borderTopColor: colors.border }]}
-        >
-            <View style={styles.archiveHeaderContent}>
-                <Text style={[styles.archiveHeaderText, { color: colors.textTertiary }]}>
-                    {title} ({count})
-                </Text>
-                <Ionicons
-                    name={isArchiveCollapsed ? "chevron-down" : "chevron-up"}
-                    size={16}
-                    color={colors.textTertiary}
-                />
-            </View>
-        </TouchableOpacity>
-    ), [colors, isArchiveCollapsed]);
-
-    const renderDateGroupHeader = useCallback((title: string) => (
-        <View style={styles.dateGroup}>
-            <View style={styles.dateGroupContent}>
-                <View style={[styles.dateGroupDot, { backgroundColor: colors.accent }]} />
-                <Text style={[styles.dateGroupTitle, { color: colors.textPrimary }]}>{title}</Text>
-            </View>
-        </View>
-    ), [colors]);
+    // Card components moved to React.memo outside component scope
 
     // Convert grouped entries to flat list format
     const getFlatListData = useMemo(() => {
@@ -809,50 +818,6 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         );
     };
 
-    const renderListItem = useCallback(({ item }: { item: ListItem }) => {
-        switch (item.type) {
-            case 'header':
-                return renderDateGroupHeader(item.title);
-            case 'entry':
-                return renderEntryCard(item.entry);
-            case 'action':
-                return renderActionCard(item.action);
-            case 'topic':
-                return renderTopicCard(item.topic);
-            case 'topicHeader':
-                return renderTopicHeader(item.title, item.count);
-            case 'emptyState':
-                return renderEmptyState();
-            case 'bookHeader':
-                return (
-                    <View style={[styles.bookDetailHeader, { borderBottomColor: colors.border, }]}></View>
-                );
-            case 'book':
-                return (
-                    <View style={styles.bookCardWrapper}>
-                        <ScalePressable
-                            style={[styles.bookCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
-                            onPress={() => navigateToBookDetail(item.book)}
-                        >
-                            <View style={styles.bookCardContent}>
-                                <View style={styles.bookCardTextContainer}>
-                                    <Text style={[styles.bookCardName, { color: colors.textPrimary }]}>{item.book.name}</Text>
-                                </View>
-                                <View style={[styles.entryCountBadge, { backgroundColor: colors.accent + '15' }]}>
-                                    <Text style={[styles.entryCountText, { color: colors.accent }]}>
-                                        {item.book.entryCount} {item.book.entryCount === 1 ? 'entry' : 'entries'}
-                                    </Text>
-                                </View>
-                            </View>
-                            <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
-                        </ScalePressable>
-                    </View>
-                );
-            default:
-                return null;
-        }
-    }, [colors, renderDateGroupHeader, renderEntryCard, renderActionCard, renderTopicCard, renderTopicHeader, navigateToBookDetail]);
-
     const renderEmptyState = useCallback(() => {
         let iconName: any = "journal-outline";
         let title = "It's awful quiet in here...";
@@ -890,6 +855,29 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
             </View>
         );
     }, [viewMode, debouncedSearchQuery, colors]);
+
+    const renderListItem = useCallback(({ item }: { item: ListItem }) => {
+        switch (item.type) {
+            case 'header':
+                return <DateGroupHeader title={item.title} />;
+            case 'entry':
+                return <EntryCard entry={item.entry} onEntryPress={onEntryPress} />;
+            case 'action':
+                return <ActionCard item={item.action} onEntryPress={onEntryPress} handleTogglePin={handleTogglePin} />;
+            case 'topic':
+                return <TopicCard item={item.topic} onEntryPress={onEntryPress} handleToggleTopic={handleToggleTopic} />;
+            case 'topicHeader':
+                return <TopicHeader title={item.title} count={item.count} isArchiveCollapsed={isArchiveCollapsed} onToggleCollapse={() => setIsArchiveCollapsed(!isArchiveCollapsed)} />;
+            case 'emptyState':
+                return renderEmptyState();
+            case 'bookHeader':
+                return <View style={[styles.bookDetailHeader, { borderBottomColor: colors.border, }]}></View>;
+            case 'book':
+                return <BookCard book={item.book} onNavigate={navigateToBookDetail} />;
+            default:
+                return null;
+        }
+    }, [colors, isArchiveCollapsed, onEntryPress, handleTogglePin, handleToggleTopic, navigateToBookDetail, renderEmptyState]);
 
     const renderListHeader = () => (
         <View style={{ backgroundColor: colors.background }}>
@@ -986,7 +974,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                         styles.scrollContent,
                         getFlatListData.length === 0 && styles.emptyContainer
                     ]}
-                    ListHeaderComponent={renderListHeader}
+                    ListHeaderComponent={renderListHeader()}
                     showsVerticalScrollIndicator={false}
                     initialNumToRender={10}
                     maxToRenderPerBatch={10}

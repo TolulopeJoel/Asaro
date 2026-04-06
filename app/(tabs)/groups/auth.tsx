@@ -89,6 +89,7 @@ export default function AuthScreen() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [isSignUp, setIsSignUp] = useState(false);
     const [gender, setGender] = useState<'m' | 'f' | null>(null);
     const [loading, setLoading] = useState(false);
@@ -187,8 +188,13 @@ export default function AuthScreen() {
                                 placeholderTextColor={colors.textMuted}
                                 value={password}
                                 onChangeText={setPassword}
-                                secureTextEntry
+                                secureTextEntry={!showPassword}
                             />
+                            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ padding: Spacing.sm }}>
+                                <Text style={{ color: colors.textSecondary, fontWeight: '700', fontSize: 12, letterSpacing: 0.5 }}>
+                                    {showPassword ? "HIDE" : "SHOW"}
+                                </Text>
+                            </TouchableOpacity>
                         </View>
 
                         {isSignUp && (
@@ -201,7 +207,7 @@ export default function AuthScreen() {
                                         placeholderTextColor={colors.textMuted}
                                         value={confirmPassword}
                                         onChangeText={setConfirmPassword}
-                                        secureTextEntry
+                                        secureTextEntry={!showPassword}
                                     />
                                 </View>
 
