@@ -18,6 +18,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
 import { BibleReferencePicker } from './BibleReferencePicker';
+import { getBibleStyledParts } from '../utils/bibleUtils';
 
 export interface ActionItemPair {
     action: string;
@@ -158,9 +159,10 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
         const currentText = updated[index][field];
         const currentStartIndex = isModal ? refStartIndexModal : refStartIndex;
 
+        const taggedRef = `[[${ref}]]`;
         // Use the tracked start index for precise replacement
         const insertAt = currentStartIndex >= 0 ? currentStartIndex : currentText.lastIndexOf('@');
-        updated[index] = { ...updated[index], [field]: currentText.slice(0, insertAt >= 0 ? insertAt : 0) + ref };
+        updated[index] = { ...updated[index], [field]: currentText.slice(0, insertAt >= 0 ? insertAt : 0) + taggedRef };
         setRefQuery('');
 
         if (isModal) setTempItems(updated);
@@ -312,7 +314,21 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                             blurOnSubmit={false}
                             multiline={true}
                             scrollEnabled={false}
-                        />
+                        >
+                            {getBibleStyledParts(item.action).map((part, index) => (
+                                <Text key={index} style={part.isReference ? { color: colors.accent, fontWeight: '600' } : {}}>
+                                    {part.isReference ? (
+                                        <Text>
+                                            <Text style={{ color: colors.textTertiary, fontWeight: '400' }}>[[</Text>
+                                            {part.refContent}
+                                            <Text style={{ color: colors.textTertiary, fontWeight: '400' }}>]]</Text>
+                                        </Text>
+                                    ) : (
+                                        part.text
+                                    )}
+                                </Text>
+                            ))}
+                        </TextInput>
                     </View>
 
                     {/* Dashed divider between action and motivation */}
@@ -352,7 +368,21 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                             blurOnSubmit={false}
                             multiline={true}
                             scrollEnabled={false}
-                        />
+                        >
+                            {getBibleStyledParts(item.motivation).map((part, index) => (
+                                <Text key={index} style={part.isReference ? { color: colors.accent, fontWeight: '600' } : {}}>
+                                    {part.isReference ? (
+                                        <Text>
+                                            <Text style={{ color: colors.textTertiary, fontWeight: '400' }}>[[</Text>
+                                            {part.refContent}
+                                            <Text style={{ color: colors.textTertiary, fontWeight: '400' }}>]]</Text>
+                                        </Text>
+                                    ) : (
+                                        part.text
+                                    )}
+                                </Text>
+                            ))}
+                        </TextInput>
                     </View>
                 </View>
             </View>

@@ -14,6 +14,8 @@ import { useAlert } from '../context/AlertContext';
 import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
 import { ScalePressable } from './ScalePressable';
+import { openBibleReference } from '../utils/bibleUtils';
+import { HyperlinkedText } from './HyperlinkedText';
 
 interface JournalEntryDetailProps {
     entry: JournalEntry;
@@ -293,13 +295,11 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                     </View>
                     <View style={styles.answerContainer}>
                         {paragraphs.map((paragraph, pIndex) => (
-                            <Text key={pIndex} style={[
+                            <HyperlinkedText key={pIndex} style={[
                                 styles.answerText,
                                 { color: colors.textPrimary },
                                 pIndex > 0 && styles.answerParagraph
-                            ]}>
-                                {paragraph.trim()}
-                            </Text>
+                            ]} text={paragraph.trim()} />
                         ))}
                     </View>
                     {entry.study_further_reminder && new Date(entry.study_further_reminder) > new Date() && (
@@ -328,13 +328,11 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                 </View>
                 <View style={styles.answerContainer}>
                     {paragraphs.map((paragraph, pIndex) => (
-                        <Text key={pIndex} style={[
+                        <HyperlinkedText key={pIndex} style={[
                             styles.answerText,
                             { color: colors.textPrimary },
                             pIndex > 0 && styles.answerParagraph
-                        ]}>
-                            {paragraph.trim()}
-                        </Text>
+                        ]} text={paragraph.trim()} />
                     ))}
                 </View>
             </View>
@@ -373,12 +371,22 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                         <Text style={[styles.dateText, { color: colors.badgeText }]}>{formatDate(entry.created_at)}</Text>
                     </View>
 
-                    <Text style={[styles.reference, { color: colors.textPrimary }]}>
-                        {entry.book_name}
-                    </Text>
-                    <Text style={[styles.verseReference, { color: colors.accent }]}>
-                        {formatChapterAndVerses()}
-                    </Text>
+                    <ScalePressable
+                        onPress={() => openBibleReference(
+                            entry.book_name,
+                            entry.chapter_start,
+                            entry.verse_start,
+                            entry.chapter_end,
+                            entry.verse_end
+                        )}
+                    >
+                        <Text style={[styles.reference, { color: colors.textPrimary }]}>
+                            {entry.book_name}
+                        </Text>
+                        <Text style={[styles.verseReference, { color: colors.accent }]}>
+                            {formatChapterAndVerses()}
+                        </Text>
+                    </ScalePressable>
                 </View>
 
                 {/* Content */}
@@ -404,7 +412,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                         <View style={[styles.notesSection, { borderLeftColor: colors.accentSecondary }]}>
                             <Text style={[styles.notesTitle, { color: colors.accent }]}>Additional Thoughts</Text>
                             <View style={[styles.notesContent, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
-                                <Text style={[styles.notesText, { color: colors.textPrimary }]}>{entry.notes.trim()}</Text>
+                                <HyperlinkedText style={[styles.notesText, { color: colors.textPrimary }]} text={entry.notes.trim()} />
                             </View>
                         </View>
                     )}

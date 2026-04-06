@@ -31,6 +31,8 @@ import {
 } from '../data/database';
 import { ScalePressable } from './ScalePressable';
 import { LoadingView } from './LoadingView';
+import { openBibleReference } from '../utils/bibleUtils';
+import { HyperlinkedText } from './HyperlinkedText';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 
 type ViewMode = 'recent' | 'books' | 'bookDetail' | 'actions' | 'topics';
@@ -400,17 +402,26 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                                 {formatDate(entry.created_at)}
                             </Text>
                             {entry.book_name && (
-                                <View style={[styles.refBadge, { backgroundColor: colors.accent + '12' }]}>
+                                <ScalePressable
+                                    onPress={() => openBibleReference(
+                                        entry.book_name,
+                                        entry.chapter_start,
+                                        entry.verse_start,
+                                        entry.chapter_end,
+                                        entry.verse_end
+                                    )}
+                                    style={[styles.refBadge, { backgroundColor: colors.accent + '12' }]}
+                                >
                                     <Text style={[styles.entryScripture, { color: colors.accent }]}>
                                         {entry.book_name} {getChapterText(entry)}
                                     </Text>
-                                </View>
+                                </ScalePressable>
                             )}
                         </View>
                         <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
                     </View>
 
-                    <Text
+                    <HyperlinkedText
                         style={[
                             styles.entryPreview,
                             {
@@ -421,9 +432,8 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                             }
                         ]}
                         numberOfLines={3}
-                    >
-                        {previewText}
-                    </Text>
+                        text={previewText}
+                    />
 
                     <View style={styles.entryFooter}>
                         <View style={styles.reflectionIndicator}>
@@ -471,11 +481,19 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                                     console.error(e);
                                 }
                             }}>
-                                <View style={[styles.refBadge, { backgroundColor: colors.accent + '12' }]}>
-                                    <Text style={[styles.entryScripture, { color: colors.accent }]}>
-                                        {item.book_name} {item.chapter_start}{item.chapter_end && item.chapter_end !== item.chapter_start ? `-${item.chapter_end}` : ''}
-                                    </Text>
-                                </View>
+                                <ScalePressable onPress={() => openBibleReference(
+                                    item.book_name,
+                                    item.chapter_start,
+                                    undefined,
+                                    item.chapter_end,
+                                    undefined
+                                )}>
+                                    <View style={[styles.refBadge, { backgroundColor: colors.accent + '12' }]}>
+                                        <Text style={[styles.entryScripture, { color: colors.accent }]}>
+                                            {item.book_name} {item.chapter_start}{item.chapter_end && item.chapter_end !== item.chapter_start ? `-${item.chapter_end}` : ''}
+                                        </Text>
+                                    </View>
+                                </ScalePressable>
                             </ScalePressable>
                         </View>
                         <TouchableOpacity
@@ -534,11 +552,19 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                         <View style={styles.entryHeaderLeft}>
                             <Text style={[styles.entryDate, { color: colors.textTertiary }]}>{formatDate(item.created_at)}</Text>
                             <ScalePressable onPress={() => onEntryPress(item)}>
-                                <View style={[styles.refBadge, { backgroundColor: colors.accentSecondary + '12' }]}>
-                                    <Text style={[styles.entryScripture, { color: colors.accentSecondary }]}>
-                                        {item.book_name} {item.chapter_start}{item.chapter_end && item.chapter_end !== item.chapter_start ? `-${item.chapter_end}` : ''}
-                                    </Text>
-                                </View>
+                                <ScalePressable onPress={() => openBibleReference(
+                                    item.book_name,
+                                    item.chapter_start,
+                                    undefined,
+                                    item.chapter_end,
+                                    undefined
+                                )}>
+                                    <View style={[styles.refBadge, { backgroundColor: colors.accentSecondary + '12' }]}>
+                                        <Text style={[styles.entryScripture, { color: colors.accentSecondary }]}>
+                                            {item.book_name} {item.chapter_start}{item.chapter_end && item.chapter_end !== item.chapter_start ? `-${item.chapter_end}` : ''}
+                                        </Text>
+                                    </View>
+                                </ScalePressable>
                             </ScalePressable>
                         </View>
                     </View>

@@ -14,6 +14,7 @@ import {
 import { useTheme } from '../theme/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BibleReferencePicker } from './BibleReferencePicker';
+import { getBibleStyledParts } from '../utils/bibleUtils';
 
 const TextArea: React.FC<{
     label: string;
@@ -154,7 +155,8 @@ const TextArea: React.FC<{
 
         const handleReferenceSelect = (ref: string) => {
             const insertAt = refStartIndex >= 0 ? refStartIndex : value.lastIndexOf('@');
-            const updated = value.slice(0, insertAt >= 0 ? insertAt : 0) + ref;
+            const taggedRef = `[[${ref}]]`;
+            const updated = value.slice(0, insertAt >= 0 ? insertAt : 0) + taggedRef;
             onChange(updated);
             setShowRefPicker(false);
             setRefQuery('');
@@ -164,7 +166,8 @@ const TextArea: React.FC<{
 
         const handleReferenceSelectModal = (ref: string) => {
             const insertAt = refStartIndexModal >= 0 ? refStartIndexModal : tempValue.lastIndexOf('@');
-            setTempValue(tempValue.slice(0, insertAt >= 0 ? insertAt : 0) + ref);
+            const taggedRef = `[[${ref}]]`;
+            setTempValue(tempValue.slice(0, insertAt >= 0 ? insertAt : 0) + taggedRef);
             setShowRefPickerModal(false);
             setRefQueryModal('');
             setRefStartIndexModal(-1);
@@ -197,7 +200,6 @@ const TextArea: React.FC<{
                             ]}
                             placeholder={placeholder}
                             placeholderTextColor={colors.textTertiary}
-                            value={value}
                             onChangeText={handleInlineChange}
                             onContentSizeChange={(e) => setContentHeight(e.nativeEvent.contentSize.height)}
                             multiline={true}
@@ -205,7 +207,21 @@ const TextArea: React.FC<{
                             textAlignVertical="top"
                             editable={!disabled}
                             scrollEnabled={false}
-                        />
+                        >
+                            {getBibleStyledParts(value).map((part, index) => (
+                                <Text key={index} style={part.isReference ? { color: colors.accent, fontWeight: '600' } : {}}>
+                                    {part.isReference ? (
+                                        <Text>
+                                            <Text style={{ color: colors.textTertiary, fontWeight: '400' }}>[[</Text>
+                                            {part.refContent}
+                                            <Text style={{ color: colors.textTertiary, fontWeight: '400' }}>]]</Text>
+                                        </Text>
+                                    ) : (
+                                        part.text
+                                    )}
+                                </Text>
+                            ))}
+                        </TextInput>
                         {isAnswered && <View style={[textAreaStyles.answeredIndicator, { backgroundColor: colors.primary }]} />}
 
                         {!disabled && (
@@ -277,7 +293,6 @@ const TextArea: React.FC<{
                                         ]}
                                         placeholder={placeholder || "..."}
                                         placeholderTextColor={colors.textTertiary}
-                                        value={tempValue}
                                         onChangeText={handleModalInputChange}
                                         onContentSizeChange={(e) => setContentHeightModal(e.nativeEvent.contentSize.height)}
                                         multiline={true}
@@ -286,7 +301,21 @@ const TextArea: React.FC<{
                                         blurOnSubmit={false}
                                         scrollEnabled={false}
                                         returnKeyType="default"
-                                    />
+                                    >
+                                        {getBibleStyledParts(tempValue).map((part, index) => (
+                                            <Text key={index} style={part.isReference ? { color: colors.accent, fontWeight: '600' } : {}}>
+                                                {part.isReference ? (
+                                                    <Text>
+                                                        <Text style={{ color: colors.textTertiary, fontWeight: '400' }}>[[</Text>
+                                                        {part.refContent}
+                                                        <Text style={{ color: colors.textTertiary, fontWeight: '400' }}>]]</Text>
+                                                    </Text>
+                                                ) : (
+                                                    part.text
+                                                )}
+                                            </Text>
+                                        ))}
+                                    </TextInput>
                                 </ScrollView>
 
                                 <TouchableOpacity
