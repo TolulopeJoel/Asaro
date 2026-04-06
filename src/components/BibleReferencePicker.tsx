@@ -5,6 +5,7 @@ import {
     ScrollView,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
@@ -40,6 +41,9 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
     const [selectedBook, setSelectedBook] = useState<BibleBook | null>(null);
     const slideAnim = useRef(new Animated.Value(0)).current;
     const fadeAnim = useRef(new Animated.Value(1)).current;
+    const CHIP_THRESHOLD = 30;
+    const [chapterInput, setChapterInput] = useState('');
+    const chapterInputRef = useRef<TextInput>(null);
 
     useEffect(() => {
         Animated.spring(slideAnim, {
@@ -52,6 +56,7 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
         if (!visible) {
             setTimeout(() => {
                 setSelectedBook(null);
+                setChapterInput('');
                 fadeAnim.setValue(1);
             }, 200);
         }
@@ -133,25 +138,71 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
                             <>
                                 <TouchableOpacity
                                     onPressIn={() => onInteraction?.()}
-                                    onPress={() => setSelectedBook(null)}
+                                    onPress={() => { setSelectedBook(null); setChapterInput(''); }}
                                     style={[styles.pill, styles.backPill, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '30' }]}
                                 >
                                     <Ionicons name="chevron-back" size={14} color={colors.primary} />
                                     <Text style={[styles.pillText, { color: colors.primary, fontWeight: '700' }]}>{selectedBook.abbrv}</Text>
                                 </TouchableOpacity>
 
-                                {Array.from({ length: selectedBook.chapters }, (_, i) => i + 1).map((ch) => (
-                                    <TouchableOpacity
-                                        key={ch}
-                                        onPressIn={() => onInteraction?.()}
-                                        onPress={() => handleChapterSelect(ch)}
-                                        onLongPress={() => handleChapterSelect(ch, true)}
-                                        delayLongPress={250}
-                                        style={[styles.pill, { backgroundColor: colors.background, borderColor: colors.border }]}
-                                    >
-                                        <Text style={[styles.pillText, { color: colors.text }]}>{ch}</Text>
-                                    </TouchableOpacity>
-                                ))}
+                                {selectedBook.chapters <= CHIP_THRESHOLD ? (
+                                    // Short book — chip scroll
+                                    Array.from({ length: selectedBook.chapters }, (_, i) => i + 1).map((ch) => (
+                                        <TouchableOpacity
+                                            key={ch}
+                                            onPressIn={() => onInteraction?.()}
+                                            onPress={() => handleChapterSelect(ch)}
+                                            onLongPress={() => handleChapterSelect(ch, true)}
+                                            delayLongPress={250}
+                                            style={[styles.pill, { backgroundColor: colors.background, borderColor: colors.border }]}
+                                        >
+                                            <Text style={[styles.pillText, { color: colors.text }]}>{ch}</Text>
+                                        </TouchableOpacity>
+                                    ))
+                                ) : (
+                                    // Long book — number input
+                                    <View style={styles.chapterInputWrapper}>
+                                        <TextInput
+                                            ref={chapterInputRef}
+                                            style={[styles.chapterInput, { color: colors.text, borderColor: colors.border }]}
+                                            placeholder={`1–${selectedBook.chapters}`}
+                                            placeholderTextColor={colors.textTertiary}
+                                            keyboardType="number-pad"
+                                            value={chapterInput}
+                                            autoFocus={true}
+                                            onChangeText={(text) => {
+                                                // Strip non-numeric
+                                                const clean = text.replace(/[^0-9]/g, '');
+                                                setChapterInput(clean);
+                                            }}
+                                            onSubmitEditing={() => {
+                                                const ch = parseInt(chapterInput, 10);
+                                                if (ch >= 1 && ch <= selectedBook.chapters) {
+                                                    handleChapterSelect(ch);
+                                                    setChapterInput('');
+                                                }
+                                            }}
+                                            returnKeyType="done"
+                                            maxLength={3}
+                                        />
+                                        <TouchableOpacity
+                                            onPressIn={() => onInteraction?.()}
+                                            onPress={() => {
+                                                const ch = parseInt(chapterInput, 10);
+                                                if (ch >= 1 && ch <= selectedBook.chapters) {
+                                                    handleChapterSelect(ch);
+                                                    setChapterInput('');
+                                                }
+                                            }}
+                                            style={[styles.pill, {
+                                                backgroundColor: chapterInput ? colors.primary : colors.background,
+                                                borderColor: chapterInput ? colors.primary : colors.border
+                                            }]}
+                                        >
+                                            <Ionicons name="arrow-forward" size={14} color={chapterInput ? '#fff' : colors.textTertiary} />
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
                             </>
                         )}
                     </ScrollView>
@@ -219,6 +270,22 @@ const styles = StyleSheet.create({
         fontSize: Typography.size.xs,
         fontWeight: '500',
         paddingHorizontal: Spacing.md,
+    },
+    chapterInputWrapper: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.xs,
+        paddingHorizontal: Spacing.xs,
+    },
+    chapterInput: {
+        fontSize: Typography.size.sm,
+        fontWeight: '500',
+        width: 64,
+        height: 36,
+        borderWidth: 1,
+        borderRadius: 20,
+        paddingHorizontal: 14,
+        letterSpacing: 0.1,
     },
 });
 
