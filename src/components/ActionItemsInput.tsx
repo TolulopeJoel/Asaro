@@ -61,6 +61,12 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
     const [refQuery, setRefQuery] = useState('');
     const refPickerTarget = useRef<RefPickerTarget | null>(null);
 
+    // Tracks the character index of the '@' that opened the picker.
+    // While this is set (>= 0), the picker stays open and onPreview
+    // replaces text from this index forward.
+    const [refStartIndex, setRefStartIndex] = useState(-1);
+    const [refStartIndexModal, setRefStartIndexModal] = useState(-1);
+
     // Track dynamic heights for growth
     const [actionHeights, setActionHeights] = useState<{ [key: number]: number }>({});
     const [motivationHeights, setMotivationHeights] = useState<{ [key: number]: number }>({});
@@ -73,11 +79,31 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
     // ─── @ trigger detection ──────────────────────────────────────────────────
 
     const checkAtTrigger = (text: string, index: number, field: 'action' | 'motivation', isModal: boolean) => {
+        // If we're already building a reference, only close picker if user
+        // deleted back past the @ position.
+        const currentStartIndex = isModal ? refStartIndexModal : refStartIndex;
+        if (currentStartIndex >= 0) {
+            if (text.length <= currentStartIndex) {
+                setRefPickerMode(null);
+                if (isModal) setRefStartIndexModal(-1);
+                else setRefStartIndex(-1);
+                setRefQuery('');
+            }
+            return;
+        }
+
+        // Detect a fresh @ trigger at end of text
         const match = text.match(/@(\w[\w\s]*)$/);
         if (match) {
             refPickerTarget.current = { index, field, isModal };
             setRefQuery(match[1]);
-            setRefPickerMode(isModal ? 'modal' : 'inline');
+            if (isModal) {
+                setRefStartIndexModal(text.length - match[0].length);
+                setRefPickerMode('modal');
+            } else {
+                setRefStartIndex(text.length - match[0].length);
+                setRefPickerMode('inline');
+            }
         } else {
             // only clear the mode if it matches this source to avoid cross-clearing
             setRefPickerMode(prev => {
@@ -90,16 +116,47 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
         }
     };
 
+    // ─── Preview (live, keeps picker open) ───────────────────────────────────
+
+    /**
+     * Called on every step by BibleReferencePicker.
+     * Replaces text from the @ position onward with the partial ref,
+     * so the user sees the reference being built live in the TextInput.
+     */
+    const handlePreview = (partialRef: string) => {
+        const target = refPickerTarget.current;
+        if (!target) return;
+
+        const { index, field, isModal } = target;
+        const currentStartIndex = isModal ? refStartIndexModal : refStartIndex;
+        if (currentStartIndex < 0) return;
+
+        const currentItems = isModal ? tempItems : items;
+        const updated = [...currentItems];
+        const currentText = updated[index][field];
+        updated[index] = { ...updated[index], [field]: currentText.slice(0, currentStartIndex) + partialRef };
+
+        if (isModal) setTempItems(updated);
+        else onChange(updated);
+
+        handlePickerInteraction();
+    };
+
     const handleReferenceSelect = (ref: string) => {
         const target = refPickerTarget.current;
         setRefPickerMode(null);
+        if (target?.isModal) setRefStartIndexModal(-1); else setRefStartIndex(-1);
         if (!target) return;
 
         const { index, field, isModal } = target;
         const currentItems = isModal ? tempItems : items;
         const updated = [...currentItems];
-        const current = updated[index][field];
-        updated[index] = { ...updated[index], [field]: current.replace(/@\w[\w\s]*$/, ref) };
+        const currentText = updated[index][field];
+        const currentStartIndex = isModal ? refStartIndexModal : refStartIndex;
+
+        // Use the tracked start index for precise replacement
+        const insertAt = currentStartIndex >= 0 ? currentStartIndex : currentText.lastIndexOf('@');
+        updated[index] = { ...updated[index], [field]: currentText.slice(0, insertAt >= 0 ? insertAt : 0) + ref };
         setRefQuery('');
 
         if (isModal) setTempItems(updated);
@@ -110,7 +167,9 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
     };
 
     const handleReferenceDismiss = () => {
+        const isModal = refPickerMode === 'modal';
         setRefPickerMode(null);
+        if (isModal) setRefStartIndexModal(-1); else setRefStartIndex(-1);
         setRefQuery('');
         handlePickerInteraction();
     };
@@ -332,6 +391,7 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
             <BibleReferencePicker
                 visible={refPickerMode === 'inline'}
                 query={refQuery}
+                onPreview={handlePreview}
                 onSelect={handleReferenceSelect}
                 onDismiss={handleReferenceDismiss}
                 onInteraction={handlePickerInteraction}
@@ -395,6 +455,7 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                         <BibleReferencePicker
                             visible={refPickerMode === 'modal'}
                             query={refQuery}
+                            onPreview={handlePreview}
                             onSelect={handleReferenceSelect}
                             onDismiss={handleReferenceDismiss}
                             onInteraction={handlePickerInteraction}
@@ -529,4 +590,3 @@ const fullScreenStyles = StyleSheet.create({
         paddingHorizontal: 24,
     },
 });
-

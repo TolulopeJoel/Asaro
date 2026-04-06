@@ -15,35 +15,70 @@ import { Typography } from '../theme/typography';
 import { ALL_BIBLE_BOOKS, BibleBook } from '../data/bibleBooks';
 import { Ionicons } from '@expo/vector-icons';
 
+const CHIP_THRESHOLD = 30;
+
+/**
+ * Phase flow:
+ *
+ *   book → chapter → suffix ──→ Done
+ *                         ├──→ :Verse → verse → verse-suffix ──→ Done
+ *                         │                             └──→ –Range → end-chapter → end-verse
+ *                         └──→ –Range → end-chapter (no verse = Done, has verse → end-verse)
+ *
+ * The key difference from a wizard: every tap/input immediately updates the
+ * TextInput via onPreview so the user sees the reference being built in real time.
+ * onSelect is only called once — at the very end.
+ */
+type Phase =
+    | 'book'
+    | 'chapter'
+    | 'suffix'
+    | 'verse'
+    | 'verse-suffix'
+    | 'end-chapter'
+    | 'end-verse';
+
 interface BibleReferencePickerProps {
     visible: boolean;
     query?: string;
-    onSelect: (ref: string) => void;
+    onPreview: (partialRef: string) => void;
+    onSelect: (finalRef: string) => void;
     onDismiss: () => void;
     onInteraction?: () => void;
 }
 
-/**
- * A minimalist horizontal suggestion ribbon for Bible references.
- * Phase 1: Book chips (filtered by @query)
- * Phase 2: Chapter chips (shown after book selection)
- * Tapping a chapter completes the reference.
- * Long-pressing a chapter adds a colon for verse entry.
- */
 export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
     visible,
     query = '',
+    onPreview,
     onSelect,
     onDismiss,
     onInteraction,
 }) => {
     const { colors } = useTheme();
+
+    const [phase, setPhase] = useState<Phase>('book');
     const [selectedBook, setSelectedBook] = useState<BibleBook | null>(null);
+    const [startChapter, setStartChapter] = useState<number | null>(null);
+    const [startVerse, setStartVerse] = useState('');
+    const [endChapter, setEndChapter] = useState<number | null>(null);
+    const [chapterInput, setChapterInput] = useState('');
+    const [verseInput, setVerseInput] = useState('');
+
     const slideAnim = useRef(new Animated.Value(0)).current;
     const fadeAnim = useRef(new Animated.Value(1)).current;
-    const CHIP_THRESHOLD = 30;
-    const [chapterInput, setChapterInput] = useState('');
+    const verseInputRef = useRef<TextInput>(null);
     const chapterInputRef = useRef<TextInput>(null);
+
+    const resetState = () => {
+        setPhase('book');
+        setSelectedBook(null);
+        setStartChapter(null);
+        setStartVerse('');
+        setEndChapter(null);
+        setChapterInput('');
+        setVerseInput('');
+    };
 
     useEffect(() => {
         Animated.spring(slideAnim, {
@@ -52,17 +87,11 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
             tension: 80,
             friction: 12,
         }).start();
-
         if (!visible) {
-            setTimeout(() => {
-                setSelectedBook(null);
-                setChapterInput('');
-                fadeAnim.setValue(1);
-            }, 200);
+            setTimeout(() => { resetState(); fadeAnim.setValue(1); }, 200);
         }
     }, [visible, slideAnim, fadeAnim]);
 
-    // Filter books by the letters typed after @
     const filteredBooks = useMemo(() => {
         if (!query.trim()) return ALL_BIBLE_BOOKS;
         const q = query.toLowerCase();
@@ -72,21 +101,349 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
         );
     }, [query]);
 
-    const handleBookSelect = (book: BibleBook) => {
-        // Morph animation: fade out, switch, fade in
+    const morph = (fn: () => void) => {
         Animated.sequence([
             Animated.timing(fadeAnim, { toValue: 0, duration: 100, useNativeDriver: true }),
             Animated.timing(fadeAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
         ]).start();
-
-        setTimeout(() => setSelectedBook(book), 100);
+        setTimeout(fn, 100);
     };
 
-    const handleChapterSelect = (chapter: number, includeColon: boolean = false) => {
+    // ── Handlers ──────────────────────────────────────────────────────────────
+
+    const handleBookSelect = (book: BibleBook) => {
         onInteraction?.();
-        const ref = `${selectedBook?.name} ${chapter}${includeColon ? ':' : ''}`;
+        onPreview(book.name); // "@Rom" → "Romans" live in TextInput
+        morph(() => { setSelectedBook(book); setPhase('chapter'); });
+    };
+
+    const handleChapterSelect = (ch: number) => {
+        onInteraction?.();
+        onPreview(`${selectedBook!.name} ${ch}`); // "Romans" → "Romans 5"
+        morph(() => { setStartChapter(ch); setChapterInput(''); setPhase('suffix'); });
+    };
+
+    const handleDone = () => {
+        const book = selectedBook!.name;
+        const sc = startChapter!;
+        // verse-suffix Done also reaches here
+        onSelect(startVerse ? `${book} ${sc}:${startVerse}` : `${book} ${sc}`);
+        resetState();
+    };
+
+    const handleAddVerse = () => {
+        onInteraction?.();
+        onPreview(`${selectedBook!.name} ${startChapter!}:`); // "Romans 5" → "Romans 5:"
+        morph(() => { setVerseInput(''); setPhase('verse'); });
+    };
+
+    const handleAddRange = () => {
+        onInteraction?.();
+        const book = selectedBook!.name;
+        const sc = startChapter!;
+        const sv = startVerse;
+        // "Romans 5" → "Romans 5–"  or  "Romans 5:3" → "Romans 5:3–"
+        onPreview(sv ? `${book} ${sc}:${sv}-` : `${book} ${sc}-`);
+        morph(() => { setChapterInput(''); setPhase('end-chapter'); });
+    };
+
+    // Live: fires on every keystroke in the verse input
+    const handleVerseInputChange = (v: string) => {
+        setVerseInput(v);
+        onPreview(`${selectedBook!.name} ${startChapter!}:${v}`); // "Romans 5:" → "Romans 5:3"
+    };
+
+    const handleVerseConfirm = () => {
+        if (!verseInput.trim()) return;
+        morph(() => { setStartVerse(verseInput); setVerseInput(''); setPhase('verse-suffix'); });
+    };
+
+    const handleEndChapterSelect = (ch: number) => {
+        onInteraction?.();
+        const book = selectedBook!.name;
+        const sc = startChapter!;
+        const sv = startVerse;
+
+        if (!sv) {
+            // Pure chapter range — we're done: "Romans 5–6"
+            onSelect(`${book} ${sc}-${ch}`);
+            resetState();
+        } else {
+            // Has start verse — need end verse: "Romans 13:12–14:"
+            onPreview(`${book} ${sc}:${sv}-${ch}:`);
+            morph(() => { setEndChapter(ch); setVerseInput(''); setPhase('end-verse'); });
+        }
+    };
+
+    // Live: fires on every keystroke in the end-verse input
+    const handleEndVerseInputChange = (v: string) => {
+        setVerseInput(v);
+        const book = selectedBook!.name;
+        const sc = startChapter!;
+        const sv = startVerse;
+        const ec = endChapter ?? sc;
+        // "Romans 5:1–7" or "Romans 13:12–14:1"
+        onPreview(ec === sc ? `${book} ${sc}:${sv}-${v}` : `${book} ${sc}:${sv}-${ec}:${v}`);
+    };
+
+    const handleEndVerseConfirm = () => {
+        if (!verseInput.trim()) return;
+        const book = selectedBook!.name;
+        const sc = startChapter!;
+        const sv = startVerse;
+        const ec = endChapter ?? sc;
+        const ref = ec === sc
+            ? `${book} ${sc}:${sv}-${verseInput}`
+            : `${book} ${sc}:${sv}-${ec}:${verseInput}`;
         onSelect(ref);
-        setSelectedBook(null);
+        resetState();
+    };
+
+    // ── Back navigation ───────────────────────────────────────────────────────
+
+    const goBack = () => {
+        onInteraction?.();
+        const book = selectedBook?.name ?? '';
+        const sc = startChapter;
+        const sv = startVerse;
+
+        morph(() => {
+            switch (phase) {
+                case 'chapter':
+                    // Don't touch text — user can select different book and it'll overwrite
+                    setPhase('book');
+                    setSelectedBook(null);
+                    break;
+                case 'suffix':
+                    onPreview(book); // "Romans 5" → "Romans"
+                    setPhase('chapter');
+                    setStartChapter(null);
+                    break;
+                case 'verse':
+                    onPreview(`${book} ${sc}`); // "Romans 5:" → "Romans 5"
+                    setVerseInput('');
+                    setPhase('suffix');
+                    break;
+                case 'verse-suffix':
+                    // Restore verse input so user can edit it
+                    onPreview(`${book} ${sc}:${sv}`); // stays the same
+                    setVerseInput(sv);
+                    setStartVerse('');
+                    setPhase('verse');
+                    break;
+                case 'end-chapter':
+                    setChapterInput('');
+                    if (sv) {
+                        onPreview(`${book} ${sc}:${sv}`); // "Romans 5:3–" → "Romans 5:3"
+                        setPhase('verse-suffix');
+                    } else {
+                        onPreview(`${book} ${sc}`); // "Romans 5–" → "Romans 5"
+                        setPhase('suffix');
+                    }
+                    break;
+                case 'end-verse':
+                    onPreview(`${book} ${sc}:${sv}-`); // "Romans 13:12–14:1" → "Romans 13:12–"
+                    setEndChapter(null);
+                    setVerseInput('');
+                    setPhase('end-chapter');
+                    break;
+            }
+        });
+    };
+
+    // ── Shared sub-components ─────────────────────────────────────────────────
+
+    const BackPill = ({ label }: { label: string }) => (
+        <TouchableOpacity
+            onPressIn={() => onInteraction?.()}
+            onPress={goBack}
+            style={[styles.pill, styles.backPill, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '30' }]}
+        >
+            <Ionicons name="chevron-back" size={14} color={colors.primary} />
+            <Text style={[styles.pillText, { color: colors.primary, fontWeight: '700' }]}>{label}</Text>
+        </TouchableOpacity>
+    );
+
+    const ActionPill = ({ label, onPress }: { label: string; onPress: () => void }) => (
+        <TouchableOpacity
+            onPressIn={() => onInteraction?.()}
+            onPress={onPress}
+            style={[styles.pill, { backgroundColor: colors.background, borderColor: colors.border }]}
+        >
+            <Text style={[styles.pillText, { color: colors.text }]}>{label}</Text>
+        </TouchableOpacity>
+    );
+
+    /**
+     * A number input that calls onChange on every keystroke (for live preview)
+     * and onSubmit when user confirms.
+     */
+    const LiveNumberInput = ({
+        inputRef,
+        value,
+        onChange,
+        placeholder,
+        onSubmit,
+        confirmIcon = 'checkmark',
+    }: {
+        inputRef: React.RefObject<TextInput | null>;
+        value: string;
+        onChange: (v: string) => void;
+        placeholder: string;
+        onSubmit: () => void;
+        confirmIcon?: string;
+    }) => (
+        <View style={styles.inputWrapper}>
+            <TextInput
+                ref={inputRef}
+                style={[styles.numberInput, { color: colors.text, borderColor: colors.border }]}
+                placeholder={placeholder}
+                placeholderTextColor={colors.textTertiary}
+                keyboardType="number-pad"
+                value={value}
+                onChangeText={(t) => onChange(t.replace(/[^0-9]/g, ''))}
+                onSubmitEditing={onSubmit}
+                returnKeyType="done"
+                maxLength={3}
+                autoFocus
+            />
+            <TouchableOpacity
+                onPressIn={() => onInteraction?.()}
+                onPress={onSubmit}
+                style={[styles.pill, {
+                    backgroundColor: value ? colors.primary : colors.background,
+                    borderColor: value ? colors.primary : colors.border,
+                }]}
+            >
+                <Ionicons name={confirmIcon as any} size={14} color={value ? '#fff' : colors.textTertiary} />
+            </TouchableOpacity>
+        </View>
+    );
+
+    const ChapterPills = ({
+        book,
+        onChapterSelect,
+    }: {
+        book: BibleBook;
+        onChapterSelect: (ch: number) => void;
+    }) => {
+        if (book.chapters <= CHIP_THRESHOLD) {
+            return (
+                <>
+                    {Array.from({ length: book.chapters }, (_, i) => i + 1).map((ch) => (
+                        <TouchableOpacity
+                            key={ch}
+                            onPressIn={() => onInteraction?.()}
+                            onPress={() => onChapterSelect(ch)}
+                            style={[styles.pill, { backgroundColor: colors.background, borderColor: colors.border }]}
+                        >
+                            <Text style={[styles.pillText, { color: colors.text }]}>{ch}</Text>
+                        </TouchableOpacity>
+                    ))}
+                </>
+            );
+        }
+        // Long book (Psalms etc.) — number input, no live preview until confirmed
+        return (
+            <LiveNumberInput
+                inputRef={chapterInputRef}
+                value={chapterInput}
+                onChange={setChapterInput}
+                placeholder={`1–${book.chapters}`}
+                onSubmit={() => {
+                    const ch = parseInt(chapterInput, 10);
+                    if (ch >= 1 && ch <= book.chapters) onChapterSelect(ch);
+                }}
+                confirmIcon="arrow-forward"
+            />
+        );
+    };
+
+    // ── Phase content ─────────────────────────────────────────────────────────
+
+    const renderContent = () => {
+        if (!selectedBook && phase !== 'book') return null;
+        const book = selectedBook!;
+        const sc = startChapter!;
+
+        switch (phase) {
+            case 'book':
+                return filteredBooks.length === 0
+                    ? <Text style={[styles.emptyText, { color: colors.textTertiary }]}>No matching book</Text>
+                    : filteredBooks.map((b) => (
+                        <TouchableOpacity
+                            key={b.name}
+                            onPressIn={() => onInteraction?.()}
+                            onPress={() => handleBookSelect(b)}
+                            style={[styles.pill, { backgroundColor: colors.background, borderColor: colors.border }]}
+                        >
+                            <Text style={[styles.pillText, { color: colors.text }]}>{b.name}</Text>
+                        </TouchableOpacity>
+                    ));
+
+            case 'chapter':
+                return (
+                    <>
+                        <BackPill label={book.abbrv} />
+                        <ChapterPills book={book} onChapterSelect={handleChapterSelect} />
+                    </>
+                );
+
+            case 'suffix':
+                return (
+                    <>
+                        <BackPill label={`${book.abbrv} ${sc}`} />
+                        <ActionPill label=": Verse" onPress={handleAddVerse} />
+                        <ActionPill label="– Range" onPress={handleAddRange} />
+                        <ActionPill label="Done ✓" onPress={handleDone} />
+                    </>
+                );
+
+            case 'verse':
+                return (
+                    <>
+                        <BackPill label={`${book.abbrv} ${sc}:`} />
+                        <LiveNumberInput
+                            inputRef={verseInputRef}
+                            value={verseInput}
+                            onChange={handleVerseInputChange}
+                            placeholder="verse"
+                            onSubmit={handleVerseConfirm}
+                        />
+                    </>
+                );
+
+            case 'verse-suffix':
+                return (
+                    <>
+                        <BackPill label={`${book.abbrv} ${sc}:${startVerse}`} />
+                        <ActionPill label="– Range" onPress={handleAddRange} />
+                        <ActionPill label="Done ✓" onPress={handleDone} />
+                    </>
+                );
+
+            case 'end-chapter':
+                return (
+                    <>
+                        <BackPill label={startVerse ? `${book.abbrv} ${sc}:${startVerse}–` : `${book.abbrv} ${sc}–`} />
+                        <ChapterPills book={book} onChapterSelect={handleEndChapterSelect} />
+                    </>
+                );
+
+            case 'end-verse':
+                return (
+                    <>
+                        <BackPill label={`${book.abbrv} ${sc}:${startVerse}–${endChapter}:`} />
+                        <LiveNumberInput
+                            inputRef={verseInputRef}
+                            value={verseInput}
+                            onChange={handleEndVerseInputChange}
+                            placeholder="verse"
+                            onSubmit={handleEndVerseConfirm}
+                        />
+                    </>
+                );
+        }
     };
 
     if (!visible) return null;
@@ -102,7 +459,6 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
             ]}
         >
             <View style={[styles.ribbon, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
-                {/* Close button - always visible on the left */}
                 <TouchableOpacity
                     onPress={onDismiss}
                     style={[styles.closeBtn, { borderRightColor: colors.border }]}
@@ -117,94 +473,7 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
                         keyboardShouldPersistTaps="always"
                         contentContainerStyle={styles.scrollContent}
                     >
-                        {!selectedBook ? (
-                            // Phase 1: Book Suggestions
-                            filteredBooks.length === 0 ? (
-                                <Text style={[styles.emptyText, { color: colors.textTertiary }]}>No matching book</Text>
-                            ) : (
-                                filteredBooks.map((book) => (
-                                    <TouchableOpacity
-                                        key={book.name}
-                                        onPressIn={() => onInteraction?.()}
-                                        onPress={() => handleBookSelect(book)}
-                                        style={[styles.pill, { backgroundColor: colors.background, borderColor: colors.border }]}
-                                    >
-                                        <Text style={[styles.pillText, { color: colors.text }]}>{book.name}</Text>
-                                    </TouchableOpacity>
-                                ))
-                            )
-                        ) : (
-                            // Phase 2: Chapter Suggestions
-                            <>
-                                <TouchableOpacity
-                                    onPressIn={() => onInteraction?.()}
-                                    onPress={() => { setSelectedBook(null); setChapterInput(''); }}
-                                    style={[styles.pill, styles.backPill, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '30' }]}
-                                >
-                                    <Ionicons name="chevron-back" size={14} color={colors.primary} />
-                                    <Text style={[styles.pillText, { color: colors.primary, fontWeight: '700' }]}>{selectedBook.abbrv}</Text>
-                                </TouchableOpacity>
-
-                                {selectedBook.chapters <= CHIP_THRESHOLD ? (
-                                    // Short book — chip scroll
-                                    Array.from({ length: selectedBook.chapters }, (_, i) => i + 1).map((ch) => (
-                                        <TouchableOpacity
-                                            key={ch}
-                                            onPressIn={() => onInteraction?.()}
-                                            onPress={() => handleChapterSelect(ch)}
-                                            onLongPress={() => handleChapterSelect(ch, true)}
-                                            delayLongPress={250}
-                                            style={[styles.pill, { backgroundColor: colors.background, borderColor: colors.border }]}
-                                        >
-                                            <Text style={[styles.pillText, { color: colors.text }]}>{ch}</Text>
-                                        </TouchableOpacity>
-                                    ))
-                                ) : (
-                                    // Long book — number input
-                                    <View style={styles.chapterInputWrapper}>
-                                        <TextInput
-                                            ref={chapterInputRef}
-                                            style={[styles.chapterInput, { color: colors.text, borderColor: colors.border }]}
-                                            placeholder={`1–${selectedBook.chapters}`}
-                                            placeholderTextColor={colors.textTertiary}
-                                            keyboardType="number-pad"
-                                            value={chapterInput}
-                                            autoFocus={true}
-                                            onChangeText={(text) => {
-                                                // Strip non-numeric
-                                                const clean = text.replace(/[^0-9]/g, '');
-                                                setChapterInput(clean);
-                                            }}
-                                            onSubmitEditing={() => {
-                                                const ch = parseInt(chapterInput, 10);
-                                                if (ch >= 1 && ch <= selectedBook.chapters) {
-                                                    handleChapterSelect(ch);
-                                                    setChapterInput('');
-                                                }
-                                            }}
-                                            returnKeyType="done"
-                                            maxLength={3}
-                                        />
-                                        <TouchableOpacity
-                                            onPressIn={() => onInteraction?.()}
-                                            onPress={() => {
-                                                const ch = parseInt(chapterInput, 10);
-                                                if (ch >= 1 && ch <= selectedBook.chapters) {
-                                                    handleChapterSelect(ch);
-                                                    setChapterInput('');
-                                                }
-                                            }}
-                                            style={[styles.pill, {
-                                                backgroundColor: chapterInput ? colors.primary : colors.background,
-                                                borderColor: chapterInput ? colors.primary : colors.border
-                                            }]}
-                                        >
-                                            <Ionicons name="arrow-forward" size={14} color={chapterInput ? '#fff' : colors.textTertiary} />
-                                        </TouchableOpacity>
-                                    </View>
-                                )}
-                            </>
-                        )}
+                        {renderContent()}
                     </ScrollView>
                 </Animated.View>
             </View>
@@ -219,7 +488,7 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         zIndex: 1000,
-        paddingBottom: Platform.OS === 'ios' ? 8 : 4, // Safety padding
+        paddingBottom: Platform.OS === 'ios' ? 8 : 4,
     },
     ribbon: {
         height: 52,
@@ -228,7 +497,6 @@ const styles = StyleSheet.create({
         borderRadius: 26,
         borderWidth: 1,
         overflow: 'hidden',
-        // Premium shadow
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.15,
@@ -271,13 +539,13 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         paddingHorizontal: Spacing.md,
     },
-    chapterInputWrapper: {
+    inputWrapper: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: Spacing.xs,
         paddingHorizontal: Spacing.xs,
     },
-    chapterInput: {
+    numberInput: {
         fontSize: Typography.size.sm,
         fontWeight: '500',
         width: 64,

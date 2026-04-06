@@ -43,6 +43,12 @@ const TextArea: React.FC<{
         const regularTextInputRef = useRef<TextInput>(null);
         const expandedTextInputRef = useRef<TextInput>(null);
 
+        // Tracks the character index of the '@' that opened the picker.
+        // While this is set (>= 0), the picker stays open and onPreview
+        // replaces text from this index forward.
+        const [refStartIndex, setRefStartIndex] = useState(-1);
+        const [refStartIndexModal, setRefStartIndexModal] = useState(-1);
+
         useEffect(() => {
             if (isExpanded) {
                 setTempValue(value);
@@ -69,17 +75,25 @@ const TextArea: React.FC<{
 
         // ─── @ trigger ────────────────────────────────────────────────────────────
 
-        // Extracts the text typed after @ (at least one letter required to open panel)
-        const extractQuery = (text: string): string | null => {
-            const match = text.match(/@(\w[\w\s]*)$/);
-            return match ? match[1] : null;
-        };
-
         const handleInlineChange = (text: string) => {
             onChange(text);
-            const q = extractQuery(text);
-            if (q !== null) {
-                setRefQuery(q);
+
+            // If we're already building a reference, only close picker if user
+            // deleted back past the @ position.
+            if (refStartIndex >= 0) {
+                if (text.length <= refStartIndex) {
+                    setShowRefPicker(false);
+                    setRefStartIndex(-1);
+                    setRefQuery('');
+                }
+                return;
+            }
+
+            // Detect a fresh @ trigger at end of text
+            const match = text.match(/@(\w[\w\s]*)$/);
+            if (match) {
+                setRefQuery(match[1]);
+                setRefStartIndex(text.length - match[0].length);
                 setShowRefPicker(true);
             } else {
                 setShowRefPicker(false);
@@ -88,30 +102,65 @@ const TextArea: React.FC<{
 
         const handleModalInputChange = (text: string) => {
             setTempValue(text);
-            const q = extractQuery(text);
-            if (q !== null) {
-                setRefQueryModal(q);
+
+            if (refStartIndexModal >= 0) {
+                if (text.length <= refStartIndexModal) {
+                    setShowRefPickerModal(false);
+                    setRefStartIndexModal(-1);
+                    setRefQueryModal('');
+                }
+                return;
+            }
+
+            const match = text.match(/@(\w[\w\s]*)$/);
+            if (match) {
+                setRefQueryModal(match[1]);
+                setRefStartIndexModal(text.length - match[0].length);
                 setShowRefPickerModal(true);
             } else {
                 setShowRefPickerModal(false);
             }
         };
 
+        // ─── Preview (live, keeps picker open) ───────────────────────────────────
+
+        /**
+         * Called on every step by BibleReferencePicker.
+         * Replaces text from the @ position onward with the partial ref,
+         * so the user sees the reference being built live in the TextInput.
+         */
+        const handlePreview = (partialRef: string) => {
+            if (refStartIndex < 0) return;
+            const updated = value.slice(0, refStartIndex) + partialRef;
+            onChange(updated);
+            regularTextInputRef.current?.focus();
+        };
+
+        const handlePreviewModal = (partialRef: string) => {
+            if (refStartIndexModal < 0) return;
+            setTempValue(tempValue.slice(0, refStartIndexModal) + partialRef);
+            expandedTextInputRef.current?.focus();
+        };
+
+        // ─── Select (final — closes picker) ──────────────────────────────────────
+
         const handleReferenceSelect = (ref: string) => {
+            const insertAt = refStartIndex >= 0 ? refStartIndex : value.lastIndexOf('@');
+            const updated = value.slice(0, insertAt >= 0 ? insertAt : 0) + ref;
+            onChange(updated);
             setShowRefPicker(false);
             setRefQuery('');
-            const updated = value.replace(/@\w[\w\s]*$/, ref);
-            onChange(updated);
-            // Re-focus after final selection
-            handlePickerInteraction(false);
+            setRefStartIndex(-1);
+            setTimeout(() => regularTextInputRef.current?.focus(), 50);
         };
 
         const handleReferenceSelectModal = (ref: string) => {
+            const insertAt = refStartIndexModal >= 0 ? refStartIndexModal : tempValue.lastIndexOf('@');
+            setTempValue(tempValue.slice(0, insertAt >= 0 ? insertAt : 0) + ref);
             setShowRefPickerModal(false);
             setRefQueryModal('');
-            setTempValue(prev => prev.replace(/@\w[\w\s]*$/, ref));
-            // Re-focus after final selection
-            handlePickerInteraction(true);
+            setRefStartIndexModal(-1);
+            setTimeout(() => expandedTextInputRef.current?.focus(), 50);
         };
 
         const handlePickerInteraction = (isModal: boolean) => {
@@ -165,12 +214,16 @@ const TextArea: React.FC<{
                         )}
                     </View>
 
-                    {/* Floating ribbon at the bottom of the component (inline) */}
                     <BibleReferencePicker
                         visible={showRefPicker}
                         query={refQuery}
+                        onPreview={handlePreview}
                         onSelect={handleReferenceSelect}
-                        onDismiss={() => { setShowRefPicker(false); setRefQuery(''); }}
+                        onDismiss={() => {
+                            setShowRefPicker(false);
+                            setRefQuery('');
+                            setRefStartIndex(-1);
+                        }}
                         onInteraction={() => handlePickerInteraction(false)}
                     />
                 </View>
@@ -238,12 +291,16 @@ const TextArea: React.FC<{
                                 </TouchableOpacity>
                             </View>
 
-                            {/* Floating ribbon at the bottom of the modal (above keyboard) */}
                             <BibleReferencePicker
                                 visible={showRefPickerModal}
                                 query={refQueryModal}
+                                onPreview={handlePreviewModal}
                                 onSelect={handleReferenceSelectModal}
-                                onDismiss={() => { setShowRefPickerModal(false); setRefQueryModal(''); }}
+                                onDismiss={() => {
+                                    setShowRefPickerModal(false);
+                                    setRefQueryModal('');
+                                    setRefStartIndexModal(-1);
+                                }}
                                 onInteraction={() => handlePickerInteraction(true)}
                             />
                         </KeyboardAvoidingView>
