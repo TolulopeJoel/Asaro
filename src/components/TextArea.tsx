@@ -102,12 +102,23 @@ const TextArea: React.FC<{
             setRefQuery('');
             const updated = value.replace(/@\w[\w\s]*$/, ref);
             onChange(updated);
+            // Re-focus after final selection
+            handlePickerInteraction(false);
         };
 
         const handleReferenceSelectModal = (ref: string) => {
             setShowRefPickerModal(false);
             setRefQueryModal('');
             setTempValue(prev => prev.replace(/@\w[\w\s]*$/, ref));
+            // Re-focus after final selection
+            handlePickerInteraction(true);
+        };
+
+        const handlePickerInteraction = (isModal: boolean) => {
+            setTimeout(() => {
+                if (isModal) expandedTextInputRef.current?.focus();
+                else regularTextInputRef.current?.focus();
+            }, 50);
         };
 
         return (
@@ -152,14 +163,16 @@ const TextArea: React.FC<{
                                 </View>
                             </TouchableOpacity>
                         )}
-
-                        <BibleReferencePicker
-                            visible={showRefPicker}
-                            query={refQuery}
-                            onSelect={handleReferenceSelect}
-                            onDismiss={() => { setShowRefPicker(false); setRefQuery(''); }}
-                        />
                     </View>
+
+                    {/* Floating ribbon at the bottom of the component (inline) */}
+                    <BibleReferencePicker
+                        visible={showRefPicker}
+                        query={refQuery}
+                        onSelect={handleReferenceSelect}
+                        onDismiss={() => { setShowRefPicker(false); setRefQuery(''); }}
+                        onInteraction={() => handlePickerInteraction(false)}
+                    />
                 </View>
 
                 {/* ── Full-screen expand modal ── */}
@@ -193,7 +206,7 @@ const TextArea: React.FC<{
 
                                 <ScrollView
                                     style={{ flex: 1 }}
-                                    keyboardShouldPersistTaps="handled"
+                                    keyboardShouldPersistTaps="always"
                                     showsVerticalScrollIndicator={false}
                                 >
                                     <TextInput
@@ -214,13 +227,6 @@ const TextArea: React.FC<{
                                         scrollEnabled={false}
                                         returnKeyType="default"
                                     />
-
-                                    <BibleReferencePicker
-                                        visible={showRefPickerModal}
-                                        query={refQueryModal}
-                                        onSelect={handleReferenceSelectModal}
-                                        onDismiss={() => { setShowRefPickerModal(false); setRefQueryModal(''); }}
-                                    />
                                 </ScrollView>
 
                                 <TouchableOpacity
@@ -231,6 +237,15 @@ const TextArea: React.FC<{
                                     <Text style={[fullScreenStyles.saveText, { color: colors.textSecondary }]}>Save</Text>
                                 </TouchableOpacity>
                             </View>
+
+                            {/* Floating ribbon at the bottom of the modal (above keyboard) */}
+                            <BibleReferencePicker
+                                visible={showRefPickerModal}
+                                query={refQueryModal}
+                                onSelect={handleReferenceSelectModal}
+                                onDismiss={() => { setShowRefPickerModal(false); setRefQueryModal(''); }}
+                                onInteraction={() => handlePickerInteraction(true)}
+                            />
                         </KeyboardAvoidingView>
                     </SafeAreaView>
                 </Modal>
@@ -241,6 +256,7 @@ const TextArea: React.FC<{
 const textAreaStyles = StyleSheet.create({
     container: {
         marginBottom: 8,
+        position: 'relative',
     },
     inputContainer: {
         borderRadius: 10,
@@ -297,6 +313,7 @@ const fullScreenStyles = StyleSheet.create({
     },
     keyboardView: {
         flex: 1,
+        position: 'relative',
     },
     labelContainer: {
         paddingTop: 20,

@@ -1,222 +1,45 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     Animated,
-    FlatList,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
-    TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
-import { ALL_BIBLE_BOOKS, BibleBook, getChapterNumbers } from '../data/bibleBooks';
-import { ScalePressable } from './ScalePressable';
+import { ALL_BIBLE_BOOKS, BibleBook } from '../data/bibleBooks';
+import { Ionicons } from '@expo/vector-icons';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface ChapterRange {
-    start: number;
-    end?: number;
-}
-
-interface VerseRange {
-    start: string;
-    end: string;
-}
-
-export interface BibleReferencePickerProps {
+interface BibleReferencePickerProps {
     visible: boolean;
-    query?: string;           // letters typed after @, used to pre-filter books
-    onSelect: (reference: string) => void;
+    query?: string;
+    onSelect: (ref: string) => void;
     onDismiss: () => void;
+    onInteraction?: () => void;
 }
 
-// ─── Reference formatter ──────────────────────────────────────────────────────
-
-function formatReference(book: BibleBook, chapters: ChapterRange, verses: VerseRange | null): string {
-    const { start, end } = chapters;
-    const hasRange = end !== undefined && end !== start;
-
-    if (!verses) {
-        return hasRange ? `${book.name} ${start}–${end}` : `${book.name} ${start}`;
-    }
-
-    const { start: vs, end: ve } = verses;
-    if (hasRange) {
-        const sp = vs ? `:${vs}` : '';
-        const ep = ve ? `:${ve}` : '';
-        return `${book.name} ${start}${sp}–${end}${ep}`;
-    }
-    if (vs && ve) return `${book.name} ${start}:${vs}–${ve}`;
-    if (vs) return `${book.name} ${start}:${vs}`;
-    return `${book.name} ${start}`;
-}
-
-// ─── Chapter step ─────────────────────────────────────────────────────────────
-
-function ChapterStep({
-    book,
-    onBack,
-    onConfirm,
-}: {
-    book: BibleBook;
-    onBack: () => void;
-    onConfirm: (ref: string) => void;
-}) {
-    const { colors } = useTheme();
-    const [sel, setSel] = useState<ChapterRange>({ start: 0 });
-    const [specifyVerses, setSpecifyVerses] = useState(false);
-    const [startVerse, setStartVerse] = useState('');
-    const [endVerse, setEndVerse] = useState('');
-
-    const chapters = getChapterNumbers(book.name);
-    const hasSelection = sel.start > 0;
-    const hasRange = !!(sel.end && sel.end !== sel.start);
-
-    const handleChapterPress = (ch: number) => {
-        if (sel.start === 0) { setSel({ start: ch }); return; }
-        if (sel.start === ch && !sel.end) { setSel({ start: 0 }); return; }
-        const inRange = ch >= sel.start && ch <= (sel.end ?? sel.start);
-        if (inRange) { setSel({ start: ch }); return; }
-        if (ch < sel.start) { setSel({ start: ch, end: sel.end ?? sel.start }); return; }
-        setSel({ start: sel.start, end: ch });
-    };
-
-    const isInSel = (ch: number) => {
-        if (sel.start === 0) return false;
-        return ch >= sel.start && ch <= (sel.end ?? sel.start);
-    };
-
-    const getLabel = () => {
-        if (!hasSelection) return '';
-        const { start, end } = sel;
-        if (!end || end === start) {
-            const vStr = specifyVerses && startVerse ? `:${startVerse}${endVerse ? `–${endVerse}` : ''}` : '';
-            return `${book.name} ${start}${vStr}`;
-        }
-        if (specifyVerses) {
-            const s = startVerse ? `:${startVerse}` : '';
-            const e = endVerse ? `:${endVerse}` : '';
-            return `${book.name} ${start}${s}–${end}${e}`;
-        }
-        return `${book.name} ${start}–${end}`;
-    };
-
-    const handleInsert = () => {
-        const verses: VerseRange | null = specifyVerses ? { start: startVerse, end: endVerse } : null;
-        onConfirm(formatReference(book, sel, verses));
-    };
-
-    return (
-        <View style={{ flex: 1 }}>
-            {/* Back + book name row */}
-            <View style={panelStyles.chapterHeader}>
-                <TouchableOpacity onPress={onBack} style={panelStyles.backBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                    <Ionicons name="chevron-back" size={16} color={colors.textSecondary} />
-                    <Text style={[panelStyles.backText, { color: colors.textSecondary }]}>books</Text>
-                </TouchableOpacity>
-                <Text style={[panelStyles.bookLabel, { color: colors.textPrimary }]}>{book.name}</Text>
-            </View>
-
-            {/* Chapter grid – scrollable */}
-            <ScrollView
-                showsVerticalScrollIndicator={false}
-                style={panelStyles.chapterScroll}
-                contentContainerStyle={panelStyles.chaptersGrid}
-                keyboardShouldPersistTaps="always"
-            >
-                {chapters.map((ch) => {
-                    const selected = isInSel(ch);
-                    const isStart = sel.start === ch;
-                    const isEnd = sel.end === ch;
-                    const isMiddle = selected && !isStart && !isEnd && hasRange;
-                    let r = {};
-                    if (hasRange) {
-                        if (isStart) r = { borderTopLeftRadius: 8, borderBottomLeftRadius: 8, borderTopRightRadius: 2, borderBottomRightRadius: 2 };
-                        else if (isEnd) r = { borderTopLeftRadius: 2, borderBottomLeftRadius: 2, borderTopRightRadius: 8, borderBottomRightRadius: 8 };
-                        else if (isMiddle) r = { borderRadius: 2 };
-                    }
-                    return (
-                        <ScalePressable
-                            key={ch}
-                            style={[
-                                panelStyles.chBtn,
-                                { backgroundColor: colors.cardBackground, borderColor: colors.border + '60' },
-                                selected && { backgroundColor: colors.accent + '18', borderColor: colors.accent },
-                                r,
-                                isMiddle && panelStyles.chBtnMiddle,
-                            ] as any}
-                            onPress={() => handleChapterPress(ch)}
-                        >
-                            <Text style={[panelStyles.chBtnText, { color: selected ? colors.textPrimary : colors.textSecondary }, selected && { fontWeight: '700' }]}>
-                                {ch}
-                            </Text>
-                        </ScalePressable>
-                    );
-                })}
-            </ScrollView>
-
-            {/* Verse toggle + verse inputs row */}
-            {hasSelection && (
-                <View style={panelStyles.verseRow}>
-                    <TouchableOpacity style={panelStyles.verseToggle} onPress={() => setSpecifyVerses(v => !v)}>
-                        <View style={[panelStyles.checkbox, { borderColor: colors.border }, specifyVerses && { backgroundColor: colors.accent, borderColor: colors.accent }]}>
-                            {specifyVerses && <Ionicons name="checkmark" size={11} color={colors.buttonPrimaryText} />}
-                        </View>
-                        <Text style={[panelStyles.verseToggleText, { color: colors.textTertiary }]}>verses</Text>
-                    </TouchableOpacity>
-
-                    {specifyVerses && (
-                        <View style={panelStyles.verseInputsRow}>
-                            <TextInput
-                                style={[panelStyles.verseInput, { backgroundColor: colors.cardBackground, borderColor: colors.border, color: colors.textPrimary }]}
-                                value={startVerse}
-                                onChangeText={setStartVerse}
-                                keyboardType="numeric"
-                                placeholder={hasRange ? 'from' : 'v.'}
-                                placeholderTextColor={colors.textTertiary}
-                            />
-                            <Text style={[{ color: colors.textTertiary, fontSize: 12 }]}>–</Text>
-                            <TextInput
-                                style={[panelStyles.verseInput, { backgroundColor: colors.cardBackground, borderColor: colors.border, color: colors.textPrimary }]}
-                                value={endVerse}
-                                onChangeText={setEndVerse}
-                                keyboardType="numeric"
-                                placeholder="to"
-                                placeholderTextColor={colors.textTertiary}
-                            />
-                        </View>
-                    )}
-
-                    {hasSelection && (
-                        <ScalePressable
-                            style={[panelStyles.insertBtn, { backgroundColor: colors.accent }]}
-                            onPress={handleInsert}
-                        >
-                            <Text style={[panelStyles.insertBtnText, { color: colors.buttonPrimaryText }]}>Insert</Text>
-                        </ScalePressable>
-                    )}
-                </View>
-            )}
-        </View>
-    );
-}
-
-// ─── Main inline picker ───────────────────────────────────────────────────────
-
+/**
+ * A minimalist horizontal suggestion ribbon for Bible references.
+ * Phase 1: Book chips (filtered by @query)
+ * Phase 2: Chapter chips (shown after book selection)
+ * Tapping a chapter completes the reference.
+ * Long-pressing a chapter adds a colon for verse entry.
+ */
 export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
     visible,
     query = '',
     onSelect,
     onDismiss,
+    onInteraction,
 }) => {
     const { colors } = useTheme();
     const [selectedBook, setSelectedBook] = useState<BibleBook | null>(null);
     const slideAnim = useRef(new Animated.Value(0)).current;
+    const fadeAnim = useRef(new Animated.Value(1)).current;
 
     useEffect(() => {
         Animated.spring(slideAnim, {
@@ -225,12 +48,14 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
             tension: 80,
             friction: 12,
         }).start();
+
         if (!visible) {
             setTimeout(() => {
                 setSelectedBook(null);
+                fadeAnim.setValue(1);
             }, 200);
         }
-    }, [visible]);
+    }, [visible, slideAnim, fadeAnim]);
 
     // Filter books by the letters typed after @
     const filteredBooks = useMemo(() => {
@@ -242,9 +67,21 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
         );
     }, [query]);
 
-    const handleSelect = (ref: string) => {
-        setSelectedBook(null);
+    const handleBookSelect = (book: BibleBook) => {
+        // Morph animation: fade out, switch, fade in
+        Animated.sequence([
+            Animated.timing(fadeAnim, { toValue: 0, duration: 100, useNativeDriver: true }),
+            Animated.timing(fadeAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
+        ]).start();
+
+        setTimeout(() => setSelectedBook(book), 100);
+    };
+
+    const handleChapterSelect = (chapter: number, includeColon: boolean = false) => {
+        onInteraction?.();
+        const ref = `${selectedBook?.name} ${chapter}${includeColon ? ':' : ''}`;
         onSelect(ref);
+        setSelectedBook(null);
     };
 
     if (!visible) return null;
@@ -252,216 +89,137 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
     return (
         <Animated.View
             style={[
-                panelStyles.panel,
+                styles.ribbonContainer,
                 {
-                    backgroundColor: colors.cardBackground,
-                    borderColor: colors.border,
-                    shadowColor: '#000',
                     opacity: slideAnim,
-                    transform: [{ translateY: slideAnim.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] }) }],
+                    transform: [{ translateY: slideAnim.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }],
                 },
             ]}
         >
-            {/* Dismiss strip */}
-            <View style={panelStyles.panelHeader}>
-                <Text style={[panelStyles.panelHint, { color: colors.textTertiary }]}>
-                    {selectedBook ? `${selectedBook.name} — tap chapters` : 'Reference a passage'}
-                </Text>
-                <TouchableOpacity onPress={onDismiss} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                    <Ionicons name="close" size={16} color={colors.textTertiary} />
-                </TouchableOpacity>
-            </View>
-
-            {!selectedBook ? (
-                /* ── Book list (no search bar — filtered by @query) ── */
-                <ScrollView
-                    style={{ maxHeight: 200 }}
-                    keyboardShouldPersistTaps="always"
-                    showsVerticalScrollIndicator={false}
+            <View style={[styles.ribbon, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
+                {/* Close button - always visible on the left */}
+                <TouchableOpacity
+                    onPress={onDismiss}
+                    style={[styles.closeBtn, { borderRightColor: colors.border }]}
                 >
-                    {filteredBooks.length === 0 ? (
-                        <Text style={[panelStyles.emptyText, { color: colors.textTertiary }]}>No matching book</Text>
-                    ) : (
-                        filteredBooks.map((item, index) => (
-                            <ScalePressable
-                                key={item.name}
-                                style={[panelStyles.bookRow, index > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border + '40' }]}
-                                onPress={() => setSelectedBook(item)}
-                            >
-                                <Text style={[panelStyles.bookName, { color: colors.textPrimary }]}>{item.name}</Text>
-                                <Text style={[panelStyles.bookChapters, { color: colors.textTertiary }]}>{item.chapters} ch</Text>
-                            </ScalePressable>
-                        ))
-                    )}
-                </ScrollView>
-            ) : (
-                /* ── Chapter picker ── */
-                <View style={{ maxHeight: 280 }}>
-                    <ChapterStep
-                        book={selectedBook}
-                        onBack={() => setSelectedBook(null)}
-                        onConfirm={handleSelect}
-                    />
-                </View>
-            )}
+                    <Ionicons name="close" size={18} color={colors.textTertiary} />
+                </TouchableOpacity>
+
+                <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        keyboardShouldPersistTaps="always"
+                        contentContainerStyle={styles.scrollContent}
+                    >
+                        {!selectedBook ? (
+                            // Phase 1: Book Suggestions
+                            filteredBooks.length === 0 ? (
+                                <Text style={[styles.emptyText, { color: colors.textTertiary }]}>No matching book</Text>
+                            ) : (
+                                filteredBooks.map((book) => (
+                                    <TouchableOpacity
+                                        key={book.name}
+                                        onPressIn={() => onInteraction?.()}
+                                        onPress={() => handleBookSelect(book)}
+                                        style={[styles.pill, { backgroundColor: colors.background, borderColor: colors.border }]}
+                                    >
+                                        <Text style={[styles.pillText, { color: colors.text }]}>{book.name}</Text>
+                                    </TouchableOpacity>
+                                ))
+                            )
+                        ) : (
+                            // Phase 2: Chapter Suggestions
+                            <>
+                                <TouchableOpacity
+                                    onPressIn={() => onInteraction?.()}
+                                    onPress={() => setSelectedBook(null)}
+                                    style={[styles.pill, styles.backPill, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '30' }]}
+                                >
+                                    <Ionicons name="chevron-back" size={14} color={colors.primary} />
+                                    <Text style={[styles.pillText, { color: colors.primary, fontWeight: '700' }]}>{selectedBook.abbrv}</Text>
+                                </TouchableOpacity>
+
+                                {Array.from({ length: selectedBook.chapters }, (_, i) => i + 1).map((ch) => (
+                                    <TouchableOpacity
+                                        key={ch}
+                                        onPressIn={() => onInteraction?.()}
+                                        onPress={() => handleChapterSelect(ch)}
+                                        onLongPress={() => handleChapterSelect(ch, true)}
+                                        delayLongPress={250}
+                                        style={[styles.pill, { backgroundColor: colors.background, borderColor: colors.border }]}
+                                    >
+                                        <Text style={[styles.pillText, { color: colors.text }]}>{ch}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </>
+                        )}
+                    </ScrollView>
+                </Animated.View>
+            </View>
         </Animated.View>
     );
 };
 
-BibleReferencePicker.displayName = 'BibleReferencePicker';
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
-const panelStyles = StyleSheet.create({
-    panel: {
+const styles = StyleSheet.create({
+    ribbonContainer: {
         position: 'absolute',
-        top: '100%',
+        bottom: 0,
         left: 0,
         right: 0,
         zIndex: 1000,
-        marginTop: 4,
-        borderRadius: Spacing.borderRadius.md,
+        paddingBottom: Platform.OS === 'ios' ? 8 : 4, // Safety padding
+    },
+    ribbon: {
+        height: 52,
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderRadius: 26,
         borderWidth: 1,
+        overflow: 'hidden',
+        // Premium shadow
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 12,
-        elevation: 8,
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 6,
     },
-    panelHeader: {
-        flexDirection: 'row',
+    closeBtn: {
+        width: 44,
+        height: '100%',
+        justifyContent: 'center',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.sm,
-        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderRightWidth: 1,
     },
-    panelHint: {
-        fontSize: Typography.size.xs,
-        fontWeight: '600',
-        letterSpacing: 0.8,
-        textTransform: 'uppercase',
-    },
-    bookRow: {
-        flexDirection: 'row',
+    scrollContent: {
         alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.sm,
+        paddingHorizontal: Spacing.sm,
+        gap: Spacing.xs,
     },
-    bookName: {
-        fontSize: Typography.size.md,
-        fontWeight: '500',
-    },
-    bookChapters: {
-        fontSize: Typography.size.xs,
-        fontWeight: '400',
-    },
-    emptyText: {
-        fontSize: Typography.size.sm,
-        fontWeight: '400',
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.md,
-    },
-    // Chapter step
-    chapterHeader: {
-        flexDirection: 'row',
+    pill: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        borderWidth: 1,
+        justifyContent: 'center',
         alignItems: 'center',
-        paddingHorizontal: Spacing.md,
-        paddingTop: Spacing.sm,
-        paddingBottom: Spacing.xs,
-        gap: Spacing.sm,
+        minWidth: 44,
     },
-    backBtn: {
+    backPill: {
         flexDirection: 'row',
-        alignItems: 'center',
+        paddingLeft: 10,
         gap: 2,
     },
-    backText: {
-        fontSize: Typography.size.xs,
-        fontWeight: '500',
-    },
-    bookLabel: {
-        fontSize: Typography.size.md,
-        fontWeight: '700',
-        letterSpacing: -0.2,
-    },
-    chapterScroll: {
-        flexGrow: 0,
-    },
-    chaptersGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 6,
-        paddingHorizontal: Spacing.md,
-        paddingBottom: Spacing.sm,
-    },
-    chBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: 8,
-        borderWidth: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    chBtnMiddle: {
-        marginLeft: -3,
-        marginRight: -3,
-    },
-    chBtnText: {
-        fontSize: 13,
-        fontWeight: '500',
-    },
-    // Verse row
-    verseRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.sm,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.sm,
-        borderTopWidth: StyleSheet.hairlineWidth,
-    },
-    verseToggle: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-    },
-    checkbox: {
-        width: 18,
-        height: 18,
-        borderRadius: 4,
-        borderWidth: 1.5,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    verseToggleText: {
-        fontSize: Typography.size.xs,
-        fontWeight: '500',
-        letterSpacing: 0.3,
-    },
-    verseInputsRow: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-    },
-    verseInput: {
-        width: 44,
-        height: 32,
-        borderWidth: 1,
-        borderRadius: 6,
-        textAlign: 'center',
-        fontSize: 12,
-        fontWeight: '600',
-    },
-    insertBtn: {
-        paddingHorizontal: Spacing.md,
-        paddingVertical: 7,
-        borderRadius: Spacing.borderRadius.sm,
-        marginLeft: 'auto',
-    },
-    insertBtnText: {
+    pillText: {
         fontSize: Typography.size.sm,
-        fontWeight: '700',
-        letterSpacing: 0.3,
+        fontWeight: '500',
+        letterSpacing: 0.1,
+    },
+    emptyText: {
+        fontSize: Typography.size.xs,
+        fontWeight: '500',
+        paddingHorizontal: Spacing.md,
     },
 });
+
+BibleReferencePicker.displayName = 'BibleReferencePicker';

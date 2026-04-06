@@ -61,7 +61,7 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
     const [refQuery, setRefQuery] = useState('');
     const refPickerTarget = useRef<RefPickerTarget | null>(null);
 
-    // Track dynamic heights for better picker proximity
+    // Track dynamic heights for growth
     const [actionHeights, setActionHeights] = useState<{ [key: number]: number }>({});
     const [motivationHeights, setMotivationHeights] = useState<{ [key: number]: number }>({});
     const [actionHeightsModal, setActionHeightsModal] = useState<{ [key: number]: number }>({});
@@ -104,11 +104,25 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
 
         if (isModal) setTempItems(updated);
         else onChange(updated);
+
+        // Re-focus after final selection
+        handlePickerInteraction();
     };
 
     const handleReferenceDismiss = () => {
         setRefPickerMode(null);
         setRefQuery('');
+        handlePickerInteraction();
+    };
+
+    const handlePickerInteraction = () => {
+        const target = refPickerTarget.current;
+        if (!target) return;
+        const { index, field } = target;
+        setTimeout(() => {
+            if (field === 'action') actionRefs.current[index]?.focus();
+            else motivationRefs.current[index]?.focus();
+        }, 50);
     };
 
     // ─── Field change handlers ────────────────────────────────────────────────
@@ -189,12 +203,6 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
         }
     };
 
-    const showRemove = (index: number, currentItems: ActionItemPair[]) => {
-        if (disabled) return false;
-        if (currentItems.length > 1) return true;
-        return currentItems[0].action.trim().length > 0 || currentItems[0].motivation.trim().length > 0;
-    };
-
     const renderActionItemPair = (item: ActionItemPair, index: number, isModal: boolean, currentItems: ActionItemPair[]) => {
         const hAction = isModal ? actionHeightsModal[index] : actionHeights[index];
         const hMotiv = isModal ? motivationHeightsModal[index] : motivationHeights[index];
@@ -242,12 +250,6 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                             multiline={true}
                             scrollEnabled={false}
                         />
-                        <BibleReferencePicker
-                            visible={refPickerMode === (isModal ? 'modal' : 'inline') && refPickerTarget.current?.index === index && refPickerTarget.current?.field === 'action'}
-                            query={refQuery}
-                            onSelect={handleReferenceSelect}
-                            onDismiss={handleReferenceDismiss}
-                        />
                     </View>
 
                     {/* Dashed divider between action and motivation */}
@@ -288,12 +290,6 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                             multiline={true}
                             scrollEnabled={false}
                         />
-                        <BibleReferencePicker
-                            visible={refPickerMode === (isModal ? 'modal' : 'inline') && refPickerTarget.current?.index === index && refPickerTarget.current?.field === 'motivation'}
-                            query={refQuery}
-                            onSelect={handleReferenceSelect}
-                            onDismiss={handleReferenceDismiss}
-                        />
                     </View>
                 </View>
             </View>
@@ -332,6 +328,15 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                 />
             )}
 
+            {/* Global Inline Picker (Keyboard Accessory style) */}
+            <BibleReferencePicker
+                visible={refPickerMode === 'inline'}
+                query={refQuery}
+                onSelect={handleReferenceSelect}
+                onDismiss={handleReferenceDismiss}
+                onInteraction={handlePickerInteraction}
+            />
+
             {/* Full-screen Modal */}
             <Modal
                 visible={isExpanded}
@@ -362,7 +367,11 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                             />
                         </View>
 
-                        <ScrollView style={fullScreenStyles.content} showsVerticalScrollIndicator={false}>
+                        <ScrollView
+                            style={fullScreenStyles.content}
+                            showsVerticalScrollIndicator={false}
+                            keyboardShouldPersistTaps="always"
+                        >
                             {label && (
                                 <View style={fullScreenStyles.labelContainer}>
                                     <Text style={[fullScreenStyles.label, { color: colors.textSecondary }]}>{label}</Text>
@@ -381,6 +390,15 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                                 style={[styles.addButton, { marginBottom: Spacing.xxl }]}
                             />
                         </ScrollView>
+
+                        {/* Global Modal Picker (Keyboard Accessory style) */}
+                        <BibleReferencePicker
+                            visible={refPickerMode === 'modal'}
+                            query={refQuery}
+                            onSelect={handleReferenceSelect}
+                            onDismiss={handleReferenceDismiss}
+                            onInteraction={handlePickerInteraction}
+                        />
                     </KeyboardAvoidingView>
                 </SafeAreaView>
             </Modal>

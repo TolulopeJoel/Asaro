@@ -446,7 +446,7 @@ export default function MeditationSessionScreen() {
 
     const renderReflectionStep = useCallback(() => (
         <View style={styles.stepContainer}>
-            <ScrollView key="step-reflection" style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <ScrollView key="step-reflection" style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 <View style={styles.stepContent}>
                     <View style={styles.header}>
                         <Text style={[styles.stepLabel, { color: colors.textTertiary }]}>REFLECTING ON</Text>
