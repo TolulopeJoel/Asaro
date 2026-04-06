@@ -8,12 +8,12 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    View
+    View,
+    ScrollView
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-
+import { BibleReferencePicker } from './BibleReferencePicker';
 
 const TextArea: React.FC<{
     label: string;
@@ -34,10 +34,15 @@ const TextArea: React.FC<{
         const { colors, isDark } = useTheme();
         const [isExpanded, setIsExpanded] = useState(false);
         const [tempValue, setTempValue] = useState('');
+        const [showRefPicker, setShowRefPicker] = useState(false);
+        const [refQuery, setRefQuery] = useState('');
+        const [showRefPickerModal, setShowRefPickerModal] = useState(false);
+        const [refQueryModal, setRefQueryModal] = useState('');
+        const [contentHeight, setContentHeight] = useState(0);
+        const [contentHeightModal, setContentHeightModal] = useState(0);
         const regularTextInputRef = useRef<TextInput>(null);
         const expandedTextInputRef = useRef<TextInput>(null);
 
-        // Sync temp value with actual value when modal opens
         useEffect(() => {
             if (isExpanded) {
                 setTempValue(value);
@@ -54,28 +59,60 @@ const TextArea: React.FC<{
         const handleSave = () => {
             onChange(tempValue);
             setIsExpanded(false);
-
-            // Return focus to original TextArea after a brief delay
-            setTimeout(() => {
-                regularTextInputRef.current?.focus();
-            }, 300);
+            setTimeout(() => { regularTextInputRef.current?.focus(); }, 300);
         };
 
         const handleCancel = () => {
             setIsExpanded(false);
-            // Return focus to original TextArea after a brief delay
-            setTimeout(() => {
-                regularTextInputRef.current?.focus();
-            }, 300);
+            setTimeout(() => { regularTextInputRef.current?.focus(); }, 300);
         };
 
-        const handleTempChange = (text: string) => {
+        // ─── @ trigger ────────────────────────────────────────────────────────────
+
+        // Extracts the text typed after @ (at least one letter required to open panel)
+        const extractQuery = (text: string): string | null => {
+            const match = text.match(/@(\w[\w\s]*)$/);
+            return match ? match[1] : null;
+        };
+
+        const handleInlineChange = (text: string) => {
+            onChange(text);
+            const q = extractQuery(text);
+            if (q !== null) {
+                setRefQuery(q);
+                setShowRefPicker(true);
+            } else {
+                setShowRefPicker(false);
+            }
+        };
+
+        const handleModalInputChange = (text: string) => {
             setTempValue(text);
+            const q = extractQuery(text);
+            if (q !== null) {
+                setRefQueryModal(q);
+                setShowRefPickerModal(true);
+            } else {
+                setShowRefPickerModal(false);
+            }
+        };
+
+        const handleReferenceSelect = (ref: string) => {
+            setShowRefPicker(false);
+            setRefQuery('');
+            const updated = value.replace(/@\w[\w\s]*$/, ref);
+            onChange(updated);
+        };
+
+        const handleReferenceSelectModal = (ref: string) => {
+            setShowRefPickerModal(false);
+            setRefQueryModal('');
+            setTempValue(prev => prev.replace(/@\w[\w\s]*$/, ref));
         };
 
         return (
             <>
-                {/* Regular TextArea */}
+                {/* ── Inline compact view ── */}
                 <View style={textAreaStyles.container}>
                     <View style={[
                         textAreaStyles.inputContainer,
@@ -87,21 +124,22 @@ const TextArea: React.FC<{
                             ref={regularTextInputRef}
                             style={[
                                 textAreaStyles.input,
-                                { color: colors.text },
+                                { color: colors.text, minHeight: Math.max(100, contentHeight) },
                                 disabled && { color: colors.textSecondary },
                             ]}
                             placeholder={placeholder}
                             placeholderTextColor={colors.textTertiary}
                             value={value}
-                            onChangeText={onChange}
+                            onChangeText={handleInlineChange}
+                            onContentSizeChange={(e) => setContentHeight(e.nativeEvent.contentSize.height)}
                             multiline={true}
                             numberOfLines={5}
                             textAlignVertical="top"
                             editable={!disabled}
+                            scrollEnabled={false}
                         />
                         {isAnswered && <View style={[textAreaStyles.answeredIndicator, { backgroundColor: colors.primary }]} />}
 
-                        {/* Expand button */}
                         {!disabled && (
                             <TouchableOpacity
                                 style={[textAreaStyles.expandButton, { backgroundColor: colors.background, borderColor: colors.border }]}
@@ -114,10 +152,17 @@ const TextArea: React.FC<{
                                 </View>
                             </TouchableOpacity>
                         )}
+
+                        <BibleReferencePicker
+                            visible={showRefPicker}
+                            query={refQuery}
+                            onSelect={handleReferenceSelect}
+                            onDismiss={() => { setShowRefPicker(false); setRefQuery(''); }}
+                        />
                     </View>
                 </View>
 
-                {/* Full-screen Modal */}
+                {/* ── Full-screen expand modal ── */}
                 <Modal
                     visible={isExpanded}
                     animationType="slide"
@@ -146,19 +191,37 @@ const TextArea: React.FC<{
                                     </View>
                                 )}
 
-                                <TextInput
-                                    ref={expandedTextInputRef}
-                                    style={[fullScreenStyles.textInput, { color: colors.text }]}
-                                    placeholder={placeholder || "..."}
-                                    placeholderTextColor={colors.textTertiary}
-                                    value={tempValue}
-                                    onChangeText={handleTempChange}
-                                    multiline={true}
-                                    textAlignVertical="top"
-                                    autoFocus={true}
-                                    blurOnSubmit={false}
-                                    returnKeyType="default"
-                                />
+                                <ScrollView
+                                    style={{ flex: 1 }}
+                                    keyboardShouldPersistTaps="handled"
+                                    showsVerticalScrollIndicator={false}
+                                >
+                                    <TextInput
+                                        ref={expandedTextInputRef}
+                                        style={[
+                                            fullScreenStyles.textInput,
+                                            { color: colors.text, minHeight: Math.max(100, contentHeightModal) }
+                                        ]}
+                                        placeholder={placeholder || "..."}
+                                        placeholderTextColor={colors.textTertiary}
+                                        value={tempValue}
+                                        onChangeText={handleModalInputChange}
+                                        onContentSizeChange={(e) => setContentHeightModal(e.nativeEvent.contentSize.height)}
+                                        multiline={true}
+                                        textAlignVertical="top"
+                                        autoFocus={true}
+                                        blurOnSubmit={false}
+                                        scrollEnabled={false}
+                                        returnKeyType="default"
+                                    />
+
+                                    <BibleReferencePicker
+                                        visible={showRefPickerModal}
+                                        query={refQueryModal}
+                                        onSelect={handleReferenceSelectModal}
+                                        onDismiss={() => { setShowRefPickerModal(false); setRefQueryModal(''); }}
+                                    />
+                                </ScrollView>
 
                                 <TouchableOpacity
                                     style={fullScreenStyles.saveButton}
@@ -183,20 +246,20 @@ const textAreaStyles = StyleSheet.create({
         borderRadius: 10,
         borderWidth: 1,
         position: 'relative',
+        paddingBottom: 4,
     },
     input: {
         padding: 20,
-        paddingRight: 20, // Make room for expand button
+        paddingBottom: 4,
         fontSize: 16,
         fontWeight: '400',
         lineHeight: 24,
         letterSpacing: 0.1,
-        minHeight: 250,
     },
     answeredIndicator: {
         position: 'absolute',
         top: 12,
-        right: 48, // Adjust position to not overlap with expand button
+        right: 48,
         width: 8,
         height: 8,
         borderRadius: 4,
@@ -258,6 +321,7 @@ const fullScreenStyles = StyleSheet.create({
     saveButton: {
         alignSelf: 'flex-end',
         paddingHorizontal: 20,
+        marginTop: 10,
     },
     saveText: {
         fontSize: 15,
@@ -265,13 +329,13 @@ const fullScreenStyles = StyleSheet.create({
         letterSpacing: 0.1,
     },
     textInput: {
-        flex: 1,
         fontSize: 16,
         fontWeight: '400',
         lineHeight: 28,
         letterSpacing: 0.1,
         backgroundColor: 'transparent',
         textAlignVertical: 'top',
+        paddingTop: 8,
     },
 });
 

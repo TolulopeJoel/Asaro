@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
+import { BibleReferencePicker } from './BibleReferencePicker';
 
 export interface ActionItemPair {
     action: string;
@@ -30,6 +31,16 @@ interface ActionItemsInputProps {
     placeholder?: string;
     disabled?: boolean;
 }
+
+// Which field triggered the reference picker
+interface RefPickerTarget {
+    index: number;
+    field: 'action' | 'motivation';
+    isModal: boolean;
+}
+
+// Track both inline + modal picker visibility separately
+type RefPickerMode = 'inline' | 'modal' | null;
 
 /**
  * A dynamic list of action+motivation pairs inside one bordered card.
@@ -46,56 +57,93 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
     const { colors, isDark } = useTheme();
     const [isExpanded, setIsExpanded] = useState(false);
     const [tempItems, setTempItems] = useState<ActionItemPair[]>([]);
+    const [refPickerMode, setRefPickerMode] = useState<RefPickerMode>(null);
+    const [refQuery, setRefQuery] = useState('');
+    const refPickerTarget = useRef<RefPickerTarget | null>(null);
+
+    // Track dynamic heights for better picker proximity
+    const [actionHeights, setActionHeights] = useState<{ [key: number]: number }>({});
+    const [motivationHeights, setMotivationHeights] = useState<{ [key: number]: number }>({});
+    const [actionHeightsModal, setActionHeightsModal] = useState<{ [key: number]: number }>({});
+    const [motivationHeightsModal, setMotivationHeightsModal] = useState<{ [key: number]: number }>({});
 
     const actionRefs = useRef<(TextInput | null)[]>([]);
     const motivationRefs = useRef<(TextInput | null)[]>([]);
+
+    // ─── @ trigger detection ──────────────────────────────────────────────────
+
+    const checkAtTrigger = (text: string, index: number, field: 'action' | 'motivation', isModal: boolean) => {
+        const match = text.match(/@(\w[\w\s]*)$/);
+        if (match) {
+            refPickerTarget.current = { index, field, isModal };
+            setRefQuery(match[1]);
+            setRefPickerMode(isModal ? 'modal' : 'inline');
+        } else {
+            // only clear the mode if it matches this source to avoid cross-clearing
+            setRefPickerMode(prev => {
+                if ((isModal && prev === 'modal') || (!isModal && prev === 'inline')) return null;
+                return prev;
+            });
+            if ((isModal && refPickerMode === 'modal') || (!isModal && refPickerMode === 'inline')) {
+                setRefQuery('');
+            }
+        }
+    };
+
+    const handleReferenceSelect = (ref: string) => {
+        const target = refPickerTarget.current;
+        setRefPickerMode(null);
+        if (!target) return;
+
+        const { index, field, isModal } = target;
+        const currentItems = isModal ? tempItems : items;
+        const updated = [...currentItems];
+        const current = updated[index][field];
+        updated[index] = { ...updated[index], [field]: current.replace(/@\w[\w\s]*$/, ref) };
+        setRefQuery('');
+
+        if (isModal) setTempItems(updated);
+        else onChange(updated);
+    };
+
+    const handleReferenceDismiss = () => {
+        setRefPickerMode(null);
+        setRefQuery('');
+    };
+
+    // ─── Field change handlers ────────────────────────────────────────────────
 
     const handleActionChange = (text: string, index: number, isModal: boolean = false) => {
         const currentItems = isModal ? tempItems : items;
         const updated = [...currentItems];
         updated[index] = { ...updated[index], action: text };
-
-        if (isModal) {
-            setTempItems(updated);
-        } else {
-            onChange(updated);
-        }
+        if (isModal) setTempItems(updated);
+        else onChange(updated);
+        checkAtTrigger(text, index, 'action', isModal);
     };
 
     const handleMotivationChange = (text: string, index: number, isModal: boolean = false) => {
         const currentItems = isModal ? tempItems : items;
         const updated = [...currentItems];
         updated[index] = { ...updated[index], motivation: text };
-
-        if (isModal) {
-            setTempItems(updated);
-        } else {
-            onChange(updated);
-        }
+        if (isModal) setTempItems(updated);
+        else onChange(updated);
+        checkAtTrigger(text, index, 'motivation', isModal);
     };
 
     const clearField = (index: number, field: keyof ActionItemPair, isModal: boolean = false) => {
         const currentItems = isModal ? tempItems : items;
         const updated = [...currentItems];
         updated[index] = { ...updated[index], [field]: '' };
-
-        if (isModal) {
-            setTempItems(updated);
-        } else {
-            onChange(updated);
-        }
+        if (isModal) setTempItems(updated);
+        else onChange(updated);
     };
 
     const handleAdd = (isModal: boolean = false) => {
         const currentItems = isModal ? tempItems : items;
         const updated = [...currentItems, { action: '', motivation: '' }];
-
-        if (isModal) {
-            setTempItems(updated);
-        } else {
-            onChange(updated);
-        }
-
+        if (isModal) setTempItems(updated);
+        else onChange(updated);
         setTimeout(() => {
             actionRefs.current[updated.length - 1]?.focus();
         }, 50);
@@ -109,7 +157,6 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
             else onChange(cleared);
             return;
         }
-
         const filtered = currentItems.filter((_, i) => i !== index);
         if (isModal) setTempItems(filtered);
         else onChange(filtered);
@@ -148,75 +195,110 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
         return currentItems[0].action.trim().length > 0 || currentItems[0].motivation.trim().length > 0;
     };
 
-    const renderActionItemPair = (item: ActionItemPair, index: number, isModal: boolean, currentItems: ActionItemPair[]) => (
-        <View key={index}>
-            {/* Solid divider between pairs */}
-            {index > 0 && (
-                <View style={[styles.pairDivider, { backgroundColor: colors.border }]} />
-            )}
+    const renderActionItemPair = (item: ActionItemPair, index: number, isModal: boolean, currentItems: ActionItemPair[]) => {
+        const hAction = isModal ? actionHeightsModal[index] : actionHeights[index];
+        const hMotiv = isModal ? motivationHeightsModal[index] : motivationHeights[index];
 
-            <View style={styles.pairContainer}>
-                {/* Action field */}
-                <View style={styles.fieldContainer}>
-                    <View style={styles.fieldHeader}>
-                        <Text style={[styles.fieldLabel, { color: colors.textTertiary }]}>action</Text>
-                        {!disabled && item.action.length > 0 && (
-                            <TouchableOpacity
-                                onPress={() => clearField(index, 'action', isModal)}
-                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                            >
-                                <Ionicons name="close-circle" size={16} color={colors.textTertiary} />
-                            </TouchableOpacity>
-                        )}
+        return (
+            <View key={index}>
+                {/* Solid divider between pairs */}
+                {index > 0 && (
+                    <View style={[styles.pairDivider, { backgroundColor: colors.border }]} />
+                )}
+
+                <View style={styles.pairContainer}>
+                    {/* Action field */}
+                    <View style={styles.fieldContainer}>
+                        <View style={styles.fieldHeader}>
+                            <Text style={[styles.fieldLabel, { color: colors.textTertiary }]}>action</Text>
+                            {!disabled && item.action.length > 0 && (
+                                <TouchableOpacity
+                                    onPress={() => clearField(index, 'action', isModal)}
+                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                >
+                                    <Ionicons name="close-circle" size={16} color={colors.textTertiary} />
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                        <TextInput
+                            ref={(ref) => { actionRefs.current[index] = ref; }}
+                            style={[
+                                styles.fieldInput,
+                                { color: colors.text, minHeight: Math.max(40, hAction || 40) }
+                            ]}
+                            value={item.action}
+                            onChangeText={(text) => handleActionChange(text, index, isModal)}
+                            onContentSizeChange={(e) => {
+                                const h = e.nativeEvent.contentSize.height;
+                                if (isModal) setActionHeightsModal(prev => ({ ...prev, [index]: h }));
+                                else setActionHeights(prev => ({ ...prev, [index]: h }));
+                            }}
+                            placeholder="I will..."
+                            placeholderTextColor={colors.textTertiary}
+                            editable={!disabled}
+                            returnKeyType="next"
+                            onSubmitEditing={() => handleActionSubmit(index)}
+                            blurOnSubmit={false}
+                            multiline={true}
+                            scrollEnabled={false}
+                        />
+                        <BibleReferencePicker
+                            visible={refPickerMode === (isModal ? 'modal' : 'inline') && refPickerTarget.current?.index === index && refPickerTarget.current?.field === 'action'}
+                            query={refQuery}
+                            onSelect={handleReferenceSelect}
+                            onDismiss={handleReferenceDismiss}
+                        />
                     </View>
-                    <TextInput
-                        ref={(ref) => { actionRefs.current[index] = ref; }}
-                        style={[styles.fieldInput, { color: colors.text }]}
-                        value={item.action}
-                        onChangeText={(text) => handleActionChange(text, index, isModal)}
-                        placeholder="I will..."
-                        placeholderTextColor={colors.textTertiary}
-                        editable={!disabled}
-                        returnKeyType="next"
-                        onSubmitEditing={() => handleActionSubmit(index)}
-                        blurOnSubmit={false}
-                        multiline={true}
-                    />
-                </View>
 
-                {/* Dashed divider between action and motivation */}
-                <View style={[styles.dashedDivider, { borderColor: colors.border }]} />
+                    {/* Dashed divider between action and motivation */}
+                    <View style={[styles.dashedDivider, { borderColor: colors.border }]} />
 
-                {/* Motivation field */}
-                <View style={styles.fieldContainer}>
-                    <View style={styles.fieldHeader}>
-                        <Text style={[styles.fieldLabel, { color: colors.textTertiary }]}>motivated by</Text>
-                        {!disabled && item.motivation.length > 0 && (
-                            <TouchableOpacity
-                                onPress={() => clearField(index, 'motivation', isModal)}
-                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                            >
-                                <Ionicons name="close-circle" size={16} color={colors.textTertiary} />
-                            </TouchableOpacity>
-                        )}
+                    {/* Motivation field */}
+                    <View style={styles.fieldContainer}>
+                        <View style={styles.fieldHeader}>
+                            <Text style={[styles.fieldLabel, { color: colors.textTertiary }]}>motivated by</Text>
+                            {!disabled && item.motivation.length > 0 && (
+                                <TouchableOpacity
+                                    onPress={() => clearField(index, 'motivation', isModal)}
+                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                >
+                                    <Ionicons name="close-circle" size={16} color={colors.textTertiary} />
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                        <TextInput
+                            ref={(ref) => { motivationRefs.current[index] = ref; }}
+                            style={[
+                                styles.fieldInput,
+                                { color: colors.text, minHeight: Math.max(40, hMotiv || 40) }
+                            ]}
+                            value={item.motivation}
+                            onChangeText={(text) => handleMotivationChange(text, index, isModal)}
+                            onContentSizeChange={(e) => {
+                                const h = e.nativeEvent.contentSize.height;
+                                if (isModal) setMotivationHeightsModal(prev => ({ ...prev, [index]: h }));
+                                else setMotivationHeights(prev => ({ ...prev, [index]: h }));
+                            }}
+                            placeholder="Because..."
+                            placeholderTextColor={colors.textTertiary}
+                            editable={!disabled}
+                            returnKeyType="next"
+                            onSubmitEditing={() => handleMotivationSubmit(index, isModal)}
+                            blurOnSubmit={false}
+                            multiline={true}
+                            scrollEnabled={false}
+                        />
+                        <BibleReferencePicker
+                            visible={refPickerMode === (isModal ? 'modal' : 'inline') && refPickerTarget.current?.index === index && refPickerTarget.current?.field === 'motivation'}
+                            query={refQuery}
+                            onSelect={handleReferenceSelect}
+                            onDismiss={handleReferenceDismiss}
+                        />
                     </View>
-                    <TextInput
-                        ref={(ref) => { motivationRefs.current[index] = ref; }}
-                        style={[styles.fieldInput, { color: colors.text }]}
-                        value={item.motivation}
-                        onChangeText={(text) => handleMotivationChange(text, index, isModal)}
-                        placeholder="Because..."
-                        placeholderTextColor={colors.textTertiary}
-                        editable={!disabled}
-                        returnKeyType="next"
-                        onSubmitEditing={() => handleMotivationSubmit(index, isModal)}
-                        blurOnSubmit={false}
-                        multiline={true}
-                    />
                 </View>
             </View>
-        </View>
-    );
+        );
+    };
 
     return (
         <View style={styles.container}>
@@ -313,7 +395,6 @@ const styles = StyleSheet.create({
     card: {
         borderRadius: Spacing.borderRadius.md,
         borderWidth: 1,
-        overflow: 'hidden',
         position: 'relative',
     },
     pairContainer: {
@@ -339,7 +420,6 @@ const styles = StyleSheet.create({
         lineHeight: Typography.lineHeight.lg,
         letterSpacing: 0.1,
         paddingVertical: Spacing.xs,
-        minHeight: 100,
         textAlignVertical: 'top',
     },
     fieldHeader: {
@@ -390,26 +470,6 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderStyle: 'dashed',
     },
-    addIcon: {
-        width: 22,
-        height: 22,
-        borderRadius: 11,
-        borderWidth: 1.5,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    addIconText: {
-        fontSize: Typography.size.md,
-        fontWeight: Typography.weight.medium,
-        lineHeight: 22,
-        textAlign: 'center',
-        marginTop: -1,
-    },
-    addLabel: {
-        fontSize: Typography.size.sm,
-        fontWeight: Typography.weight.regular,
-        letterSpacing: 0.3,
-    },
 });
 
 const fullScreenStyles = StyleSheet.create({
@@ -451,3 +511,4 @@ const fullScreenStyles = StyleSheet.create({
         paddingHorizontal: 24,
     },
 });
+
