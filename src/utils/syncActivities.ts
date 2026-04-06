@@ -187,7 +187,11 @@ export const queueActivity = async (activity: PendingActivity): Promise<void> =>
  * Successfully pushed items are removed from the queue.
  * Safe to call at any time — silently exits if not online or not signed in.
  */
+let isSyncing = false;
+
 export const syncPendingActivities = async (): Promise<void> => {
+    if (isSyncing) return;
+    isSyncing = true;
     try {
         const existing = await AsyncStorage.getItem(PENDING_ACTIVITIES_KEY);
         if (!existing) return;
@@ -439,6 +443,8 @@ export const syncPendingActivities = async (): Promise<void> => {
         }
     } catch (error) {
         console.error('[syncActivities] Sync failed:', error);
+    } finally {
+        isSyncing = false;
     }
 };
 

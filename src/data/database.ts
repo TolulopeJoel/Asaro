@@ -370,10 +370,6 @@ export const createJournalEntry = async (data: JournalEntryInput) => {
                 const user = auth().currentUser;
                 if (!user) return;
 
-                const userDoc = await firestore().collection('users').doc(user.uid).get();
-                const userData = userDoc.data();
-                if (!userData?.groupIds?.length) return;
-
                 const chapters = data.chapterEnd && data.chapterEnd !== data.chapterStart
                     ? `${data.chapterStart}-${data.chapterEnd}`
                     : `${data.chapterStart}`;
@@ -1207,10 +1203,6 @@ export const shareReflectionToGroup = async (
         const user = auth().currentUser;
         if (!user) return false;
 
-        const userDoc = await firestore().collection('users').doc(user.uid).get();
-        const userData = userDoc.data();
-        if (!userData?.groupIds?.length) return false;
-
         const chapters = entry.chapter_end && entry.chapter_end !== entry.chapter_start
             ? `${entry.chapter_start}-${entry.chapter_end}`
             : `${entry.chapter_start}`;
@@ -1229,7 +1221,7 @@ export const shareReflectionToGroup = async (
         };
 
         await queueActivity(activity);
-        await syncPendingActivities();
+        void syncPendingActivities(); // Runs sync in background
         return true;
     } catch (error) {
         console.error('[shareReflectionToGroup] Error queuing shared reflection:', error);
