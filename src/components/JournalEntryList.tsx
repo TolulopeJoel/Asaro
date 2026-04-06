@@ -163,20 +163,11 @@ const EntryCard = React.memo(({ entry, onEntryPress }: { entry: JournalEntry, on
                             {formatDate(entry.created_at)}
                         </Text>
                         {entry.book_name && (
-                            <ScalePressable
-                                onPress={() => openBibleReference(
-                                    entry.book_name!,
-                                    entry.chapter_start,
-                                    entry.verse_start,
-                                    entry.chapter_end,
-                                    entry.verse_end
-                                )}
-                                style={[styles.refBadge, { backgroundColor: colors.accent + '12' }]}
-                            >
+                            <View style={[styles.refBadge, { backgroundColor: colors.accent + '12' }]}>
                                 <Text style={[styles.entryScripture, { color: colors.accent }]}>
                                     {entry.book_name} {getChapterText(entry)}
                                 </Text>
-                            </ScalePressable>
+                            </View>
                         )}
                     </View>
                     <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
@@ -230,19 +221,11 @@ const ActionCard = React.memo(({ item, onEntryPress, handleTogglePin }: { item: 
                                 console.error(e);
                             }
                         }}>
-                            <ScalePressable onPress={() => openBibleReference(
-                                item.book_name!,
-                                item.chapter_start,
-                                undefined,
-                                item.chapter_end,
-                                undefined
-                            )}>
-                                <View style={[styles.refBadge, { backgroundColor: colors.accent + '12' }]}>
-                                    <Text style={[styles.entryScripture, { color: colors.accent }]}>
-                                        {item.book_name} {item.chapter_start}{item.chapter_end && item.chapter_end !== item.chapter_start ? `-${item.chapter_end}` : ''}
-                                    </Text>
-                                </View>
-                            </ScalePressable>
+                            <View style={[styles.refBadge, { backgroundColor: colors.accent + '12' }]}>
+                                <Text style={[styles.entryScripture, { color: colors.accent }]}>
+                                    {item.book_name} {item.chapter_start}{item.chapter_end && item.chapter_end !== item.chapter_start ? `-${item.chapter_end}` : ''}
+                                </Text>
+                            </View>
                         </ScalePressable>
                     </View>
                     <TouchableOpacity
@@ -294,19 +277,11 @@ const TopicCard = React.memo(({ item, onEntryPress, handleToggleTopic }: { item:
                     <View style={styles.entryHeaderLeft}>
                         <Text style={[styles.entryDate, { color: colors.textTertiary }]}>{formatDate(item.created_at)}</Text>
                         <ScalePressable onPress={() => onEntryPress(item)}>
-                            <ScalePressable onPress={() => openBibleReference(
-                                item.book_name!,
-                                item.chapter_start,
-                                undefined,
-                                item.chapter_end,
-                                undefined
-                            )}>
-                                <View style={[styles.refBadge, { backgroundColor: colors.accentSecondary + '12' }]}>
-                                    <Text style={[styles.entryScripture, { color: colors.accentSecondary }]}>
-                                        {item.book_name} {item.chapter_start}{item.chapter_end && item.chapter_end !== item.chapter_start ? `-${item.chapter_end}` : ''}
-                                    </Text>
-                                </View>
-                            </ScalePressable>
+                            <View style={[styles.refBadge, { backgroundColor: colors.accentSecondary + '12' }]}>
+                                <Text style={[styles.entryScripture, { color: colors.accentSecondary }]}>
+                                    {item.book_name} {item.chapter_start}{item.chapter_end && item.chapter_end !== item.chapter_start ? `-${item.chapter_end}` : ''}
+                                </Text>
+                            </View>
                         </ScalePressable>
                     </View>
                 </View>

@@ -7,6 +7,7 @@ import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
 import { getRecentStudyTopics, JournalEntry } from '../data/database';
 import { ScalePressable } from './ScalePressable';
+import { HyperlinkedText } from './HyperlinkedText';
 
 interface StudyRemindersProps {
     onEntryPress: (entry: JournalEntry) => void;
@@ -97,7 +98,7 @@ const StudyCard = React.memo(({
                 </View>
 
                 {/* ── Topic text ── */}
-                <Text
+                <HyperlinkedText
                     style={[
                         styles.topicText,
                         {
@@ -107,14 +108,13 @@ const StudyCard = React.memo(({
                         }
                     ]}
                     numberOfLines={stackedHeight !== undefined ? 2 : undefined}
-                >
-                    {item.study_further}
-                </Text>
+                    text={item.study_further || ''}
+                />
 
                 {/* ── Notes ── */}
                 {item.notes ? (
                     <View style={[styles.notesContainer, { borderTopColor: colors.border + '20' }]}>
-                        <Text
+                        <HyperlinkedText
                             style={[
                                 styles.notesText,
                                 {
@@ -123,9 +123,8 @@ const StudyCard = React.memo(({
                                 }
                             ]}
                             numberOfLines={stackedHeight !== undefined ? 2 : undefined}
-                        >
-                            {item.notes}
-                        </Text>
+                            text={item.notes}
+                        />
                     </View>
                 ) : null}
 

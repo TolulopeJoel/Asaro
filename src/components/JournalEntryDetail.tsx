@@ -264,15 +264,17 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                                     ]}
                                 >
                                     {item.action.trim() ? (
-                                        <Text style={[styles.actionText, { color: colors.textPrimary }]}>
-                                            {item.action.trim()}
-                                        </Text>
+                                        <HyperlinkedText
+                                            style={[styles.actionText, { color: colors.textPrimary }]}
+                                            text={item.action.trim()}
+                                        />
                                     ) : null}
                                     {item.motivation.trim() ? (
                                         <View style={styles.motivationRow}>
-                                            <Text style={[styles.motivationText, { color: colors.textSecondary }]}>
-                                                {item.motivation.trim()}
-                                            </Text>
+                                            <HyperlinkedText
+                                                style={[styles.motivationText, { color: colors.textSecondary }]}
+                                                text={item.motivation.trim()}
+                                            />
                                         </View>
                                     ) : null}
                                 </View>
@@ -371,22 +373,14 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                         <Text style={[styles.dateText, { color: colors.badgeText }]}>{formatDate(entry.created_at)}</Text>
                     </View>
 
-                    <ScalePressable
-                        onPress={() => openBibleReference(
-                            entry.book_name,
-                            entry.chapter_start,
-                            entry.verse_start,
-                            entry.chapter_end,
-                            entry.verse_end
-                        )}
-                    >
+                    <View>
                         <Text style={[styles.reference, { color: colors.textPrimary }]}>
                             {entry.book_name}
                         </Text>
                         <Text style={[styles.verseReference, { color: colors.accent }]}>
                             {formatChapterAndVerses()}
                         </Text>
-                    </ScalePressable>
+                    </View>
                 </View>
 
                 {/* Content */}

@@ -15,6 +15,7 @@ import {
 } from '../data/database';
 export type { EnhancedActionItem };
 import { ScalePressable } from './ScalePressable';
+import { HyperlinkedText } from './HyperlinkedText';
 import { getItemsForSlots, SlotKey } from '../utils/actionRemindersRotation';
 
 // ─── Window definitions ──────────────────────────────────────────────────────
@@ -190,7 +191,7 @@ const ActionCard = React.memo(({
                 </View>
 
                 {/* ── Action text ── */}
-                <Text
+                <HyperlinkedText
                     style={[
                         styles.actionText,
                         {
@@ -199,14 +200,13 @@ const ActionCard = React.memo(({
                             lineHeight: dynamic.lineHeight,
                         },
                     ]}
-                >
-                    {item.action}
-                </Text>
+                    text={item.action}
+                />
 
                 {/* ── Motivation ── */}
                 {item.motivation ? (
                     <View style={[styles.motivationContainer, { borderTopColor: colors.border + '30' }]}>
-                        <Text
+                        <HyperlinkedText
                             style={[
                                 styles.motivationText,
                                 {
@@ -214,9 +214,8 @@ const ActionCard = React.memo(({
                                     fontSize: Math.max(13, dynamic.fontSize - 3),
                                 },
                             ]}
-                        >
-                            {item.motivation}
-                        </Text>
+                            text={item.motivation}
+                        />
                     </View>
                 ) : null}
             </View>
