@@ -33,6 +33,7 @@ export default function MeditationSessionScreen() {
     const [selectedChapters, setSelectedChapters] = useState<ChapterRange>();
     const [verseRange, setVerseRange] = useState<VerseRange | null>(null);
     const [reflectionAnswers, setReflectionAnswers] = useState<ReflectionAnswers>();
+    const isResuming = !!params.resuming;
     const [isLoading, setIsLoading] = useState(true);
     const [createdEntryId, setCreatedEntryId] = useState<number | null>(null);
     const isSaving = useRef(false);
@@ -100,8 +101,8 @@ export default function MeditationSessionScreen() {
                         }
                     }
                     setCurrentStep('reflection');
-                } else {
-                    // CASE 3: No specific item or edit mode, just load generic draft if it exists
+                } else if (isResuming) {
+                    // CASE 3: Resuming generic draft
                     const draftJson = await AsyncStorage.getItem('reflection_draft');
                     if (draftJson) {
                         const draft: DraftData = JSON.parse(draftJson);
@@ -112,6 +113,7 @@ export default function MeditationSessionScreen() {
                         setCurrentStep('reflection');
                     }
                 }
+                // CASE 4: New entry (no-op, starting at 'book' step with isLoading=false)
             } catch (error) {
                 console.error('Error loading data:', error);
             } finally {

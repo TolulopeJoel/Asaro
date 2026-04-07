@@ -257,7 +257,7 @@ const DraftBar = React.memo(() => {
                 },
             ]}
         >
-            <Link href="/addEntry" asChild>
+            <Link href={{ pathname: "/addEntry", params: { resuming: 'true' } }} asChild>
                 <ScalePressable style={styles.draftContent}>
                     <View style={styles.draftTextContainer}>
                         <Text style={[styles.draftLabel, { color: colors.textPrimary }]}>

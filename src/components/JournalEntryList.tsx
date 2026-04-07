@@ -7,7 +7,6 @@ import {
     StyleSheet,
     Text,
     TextInput,
-    TouchableOpacity,
     View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,14 +25,11 @@ import {
     getAllActionItems,
     getAllStudyTopics,
     EnhancedActionItem,
-    getEntryById,
     toggleStudyTopicCompletion,
     toggleActionItemPin
 } from '../data/database';
 import { ScalePressable } from './ScalePressable';
 import { LoadingView } from './LoadingView';
-import { openBibleReference } from '../utils/bibleUtils';
-import { HyperlinkedText } from './HyperlinkedText';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 
 type ViewMode = 'recent' | 'books' | 'bookDetail' | 'actions' | 'topics';
