@@ -124,8 +124,8 @@ interface QuickStatsProps {
 const QuickStats = React.memo(({ totalEntries, missedDays }: QuickStatsProps) => {
     return (
         <View style={styles.statsContainer}>
-            <StatCard icon="flame" value={totalEntries} />
-            <StatCard icon="rainy" value={missedDays} />
+            <StatCard icon="journal" value={totalEntries} />
+            <StatCard icon="snow" value={missedDays} />
         </View>
     );
 });
@@ -512,13 +512,6 @@ const styles = StyleSheet.create({
         fontWeight: Typography.weight.bold,
         letterSpacing: -0.5,
     },
-    statLabel: {
-        fontSize: 9,
-        fontWeight: Typography.weight.bold,
-        letterSpacing: 1,
-        opacity: 0.8,
-    },
-
     /* Update card */
     updateCardWrapper: {
         width: "100%",
