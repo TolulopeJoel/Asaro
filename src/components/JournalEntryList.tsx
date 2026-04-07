@@ -50,7 +50,8 @@ type ListItem =
     | { type: 'action'; action: EnhancedActionItem; id: string }
     | { type: 'topic'; topic: JournalEntry; id: string }
     | { type: 'topicHeader'; title: string; count: number; id: string }
-    | { type: 'emptyState'; id: string };
+    | { type: 'emptyState'; id: string }
+    | { type: 'searchSpacer'; id: string };
 
 interface JournalEntryListProps {
     onEntryPress: (entry: JournalEntry) => void;
@@ -734,7 +735,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
             if (results.length === 0) {
                 return [{ type: 'emptyState' as const, id: 'empty-search' }];
             }
-            return results;
+            return [{ type: 'searchSpacer' as const, id: 'search-spacer' }, ...results];
         }
 
         // Grouped entries
@@ -848,6 +849,8 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                 return <TopicHeader title={item.title} count={item.count} isArchiveCollapsed={isArchiveCollapsed} onToggleCollapse={() => setIsArchiveCollapsed(!isArchiveCollapsed)} />;
             case 'emptyState':
                 return renderEmptyState();
+            case 'searchSpacer':
+                return <View style={[styles.bookDetailHeader, { borderBottomColor: colors.border }]} />;
             case 'bookHeader':
                 return <View style={[styles.bookDetailHeader, { borderBottomColor: colors.border, }]}></View>;
             case 'book':
