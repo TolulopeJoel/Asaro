@@ -15,6 +15,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BibleReferencePicker } from './BibleReferencePicker';
 import { getBibleStyledParts } from '../utils/bibleUtils';
+import { useBibleRefPicker } from '../hooks/useBibleRefPicker';
 
 const TextArea: React.FC<{
     label: string;
@@ -35,20 +36,28 @@ const TextArea: React.FC<{
         const { colors, isDark } = useTheme();
         const [isExpanded, setIsExpanded] = useState(false);
         const [tempValue, setTempValue] = useState('');
-        const [showRefPicker, setShowRefPicker] = useState(false);
-        const [refQuery, setRefQuery] = useState('');
-        const [showRefPickerModal, setShowRefPickerModal] = useState(false);
-        const [refQueryModal, setRefQueryModal] = useState('');
         const [contentHeight, setContentHeight] = useState(0);
         const [contentHeightModal, setContentHeightModal] = useState(0);
         const regularTextInputRef = useRef<TextInput>(null);
         const expandedTextInputRef = useRef<TextInput>(null);
 
-        // Tracks the character index of the '@' that opened the picker.
-        // While this is set (>= 0), the picker stays open and onPreview
-        // replaces text from this index forward.
-        const [refStartIndex, setRefStartIndex] = useState(-1);
-        const [refStartIndexModal, setRefStartIndexModal] = useState(-1);
+        // Inline (non-expanded) picker — uses the root RefPickerContext.
+        const inlinePicker = useBibleRefPicker({
+            getValue: () => value,
+            setValue: onChange,
+            getInputRef: () => regularTextInputRef.current,
+            mode: 'context',
+        });
+
+        // Modal (expanded) picker — drives a local <BibleReferencePicker> inside the Modal.
+        const tempValueRef = useRef(tempValue);
+        tempValueRef.current = tempValue;
+        const modalPicker = useBibleRefPicker({
+            getValue: () => tempValueRef.current,
+            setValue: setTempValue,
+            getInputRef: () => expandedTextInputRef.current,
+            mode: 'local',
+        });
 
         useEffect(() => {
             if (isExpanded) {
@@ -74,113 +83,6 @@ const TextArea: React.FC<{
             setTimeout(() => { regularTextInputRef.current?.focus(); }, 300);
         };
 
-        // ─── @ trigger ────────────────────────────────────────────────────────────
-
-        const handleInlineChange = (text: string) => {
-            onChange(text);
-
-            // If we're already building a reference, only close picker if user
-            // deleted back past the @ position.
-            if (refStartIndex >= 0) {
-                if (text.length <= refStartIndex) {
-                    setShowRefPicker(false);
-                    setRefStartIndex(-1);
-                    setRefQuery('');
-                } else if (text.endsWith(' ')) {
-                    // Finalize on space
-                    const partialRef = text.slice(refStartIndex).trim();
-                    handleReferenceSelect(partialRef);
-                }
-                return;
-            }
-
-            // Detect a fresh @ trigger at end of text
-            const match = text.match(/@(\w[\w\s]*)$/);
-            if (match) {
-                setRefQuery(match[1]);
-                setRefStartIndex(text.length - match[0].length);
-                setShowRefPicker(true);
-            } else {
-                setShowRefPicker(false);
-            }
-        };
-
-        const handleModalInputChange = (text: string) => {
-            setTempValue(text);
-
-            if (refStartIndexModal >= 0) {
-                if (text.length <= refStartIndexModal) {
-                    setShowRefPickerModal(false);
-                    setRefStartIndexModal(-1);
-                    setRefQueryModal('');
-                } else if (text.endsWith(' ')) {
-                    // Finalize on space
-                    const partialRef = text.slice(refStartIndexModal).trim();
-                    handleReferenceSelectModal(partialRef);
-                }
-                return;
-            }
-
-            const match = text.match(/@(\w[\w\s]*)$/);
-            if (match) {
-                setRefQueryModal(match[1]);
-                setRefStartIndexModal(text.length - match[0].length);
-                setShowRefPickerModal(true);
-            } else {
-                setShowRefPickerModal(false);
-            }
-        };
-
-        // ─── Preview (live, keeps picker open) ───────────────────────────────────
-
-        /**
-         * Called on every step by BibleReferencePicker.
-         * Replaces text from the @ position onward with the partial ref,
-         * so the user sees the reference being built live in the TextInput.
-         */
-        const handlePreview = (partialRef: string) => {
-            if (refStartIndex < 0) return;
-            const updated = value.slice(0, refStartIndex) + partialRef;
-            onChange(updated);
-            regularTextInputRef.current?.focus();
-        };
-
-        const handlePreviewModal = (partialRef: string) => {
-            if (refStartIndexModal < 0) return;
-            setTempValue(tempValue.slice(0, refStartIndexModal) + partialRef);
-            expandedTextInputRef.current?.focus();
-        };
-
-        // ─── Select (final — closes picker) ──────────────────────────────────────
-
-        const handleReferenceSelect = (ref: string) => {
-            const insertAt = refStartIndex >= 0 ? refStartIndex : value.lastIndexOf('@');
-            const taggedRef = `[[${ref}]]`;
-            const updated = value.slice(0, insertAt >= 0 ? insertAt : 0) + taggedRef;
-            onChange(updated);
-            setShowRefPicker(false);
-            setRefQuery('');
-            setRefStartIndex(-1);
-            setTimeout(() => regularTextInputRef.current?.focus(), 50);
-        };
-
-        const handleReferenceSelectModal = (ref: string) => {
-            const insertAt = refStartIndexModal >= 0 ? refStartIndexModal : tempValue.lastIndexOf('@');
-            const taggedRef = `[[${ref}]]`;
-            setTempValue(tempValue.slice(0, insertAt >= 0 ? insertAt : 0) + taggedRef);
-            setShowRefPickerModal(false);
-            setRefQueryModal('');
-            setRefStartIndexModal(-1);
-            setTimeout(() => expandedTextInputRef.current?.focus(), 50);
-        };
-
-        const handlePickerInteraction = (isModal: boolean) => {
-            setTimeout(() => {
-                if (isModal) expandedTextInputRef.current?.focus();
-                else regularTextInputRef.current?.focus();
-            }, 50);
-        };
-
         return (
             <>
                 {/* ── Inline compact view ── */}
@@ -193,6 +95,7 @@ const TextArea: React.FC<{
                     ]}>
                         <TextInput
                             ref={regularTextInputRef}
+                            inputAccessoryViewID="bible-picker"
                             style={[
                                 textAreaStyles.input,
                                 { color: colors.text, minHeight: Math.max(100, contentHeight) },
@@ -200,7 +103,7 @@ const TextArea: React.FC<{
                             ]}
                             placeholder={placeholder}
                             placeholderTextColor={colors.textTertiary}
-                            onChangeText={handleInlineChange}
+                            onChangeText={inlinePicker.handleTextChange}
                             onContentSizeChange={(e) => setContentHeight(e.nativeEvent.contentSize.height)}
                             multiline={true}
                             numberOfLines={5}
@@ -237,19 +140,6 @@ const TextArea: React.FC<{
                             </TouchableOpacity>
                         )}
                     </View>
-
-                    <BibleReferencePicker
-                        visible={showRefPicker}
-                        query={refQuery}
-                        onPreview={handlePreview}
-                        onSelect={handleReferenceSelect}
-                        onDismiss={() => {
-                            setShowRefPicker(false);
-                            setRefQuery('');
-                            setRefStartIndex(-1);
-                        }}
-                        onInteraction={() => handlePickerInteraction(false)}
-                    />
                 </View>
 
                 {/* ── Full-screen expand modal ── */}
@@ -293,7 +183,7 @@ const TextArea: React.FC<{
                                         ]}
                                         placeholder={placeholder || "..."}
                                         placeholderTextColor={colors.textTertiary}
-                                        onChangeText={handleModalInputChange}
+                                        onChangeText={modalPicker.handleTextChange}
                                         onContentSizeChange={(e) => setContentHeightModal(e.nativeEvent.contentSize.height)}
                                         multiline={true}
                                         textAlignVertical="top"
@@ -327,18 +217,7 @@ const TextArea: React.FC<{
                                 </TouchableOpacity>
                             </View>
 
-                            <BibleReferencePicker
-                                visible={showRefPickerModal}
-                                query={refQueryModal}
-                                onPreview={handlePreviewModal}
-                                onSelect={handleReferenceSelectModal}
-                                onDismiss={() => {
-                                    setShowRefPickerModal(false);
-                                    setRefQueryModal('');
-                                    setRefStartIndexModal(-1);
-                                }}
-                                onInteraction={() => handlePickerInteraction(true)}
-                            />
+                            <BibleReferencePicker {...modalPicker.pickerProps} />
                         </KeyboardAvoidingView>
                     </SafeAreaView>
                 </Modal>

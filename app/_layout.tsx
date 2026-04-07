@@ -15,6 +15,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '@/src/theme/ThemeContext';
 import { AuthProvider } from '@/src/context/AuthContext';
 import { AlertProvider } from '@/src/context/AlertContext';
+import { RefPickerProvider } from '@/src/context/RefPickerContext';
 import { LoadingView } from '@/src/components/LoadingView';
 import { CustomAlert } from '@/src/components/CustomAlert';
 
@@ -157,19 +158,21 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <AuthProvider>
         <AlertProvider>
-          <ThemeProvider>
-            {!dbInitialized ? (
-              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <LoadingView size={48} />
-              </View>
-            ) : (
-              <>
-                <StackNavigator />
-                <CustomAlert />
-                <StatusBar hidden={true} />
-              </>
-            )}
-          </ThemeProvider>
+          <RefPickerProvider>
+            <ThemeProvider>
+              {!dbInitialized ? (
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                  <LoadingView size={48} />
+                </View>
+              ) : (
+                <>
+                  <StackNavigator />
+                  <CustomAlert />
+                  <StatusBar hidden={true} />
+                </>
+              )}
+            </ThemeProvider>
+          </RefPickerProvider>
         </AlertProvider>
       </AuthProvider>
     </SafeAreaProvider>

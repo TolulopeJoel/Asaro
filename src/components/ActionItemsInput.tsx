@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
     KeyboardAvoidingView,
     Modal,
@@ -19,6 +19,7 @@ import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
 import { BibleReferencePicker } from './BibleReferencePicker';
 import { getBibleStyledParts } from '../utils/bibleUtils';
+import { useRefPicker } from '../context/RefPickerContext';
 
 export interface ActionItemPair {
     action: string;
@@ -38,10 +39,11 @@ interface RefPickerTarget {
     index: number;
     field: 'action' | 'motivation';
     isModal: boolean;
+    startIndex: number; // character index of the '@' in the field's text
 }
 
-// Track both inline + modal picker visibility separately
-type RefPickerMode = 'inline' | 'modal' | null;
+// 'inline' = uses root RefPickerContext; 'local' = drives picker inside Modal
+type RefPickerMode = 'inline' | 'local' | null;
 
 /**
  * A dynamic list of action+motivation pairs inside one bordered card.
@@ -56,17 +58,13 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
     disabled = false,
 }) => {
     const { colors, isDark } = useTheme();
+    const { showPicker, hidePicker } = useRefPicker();
     const [isExpanded, setIsExpanded] = useState(false);
     const [tempItems, setTempItems] = useState<ActionItemPair[]>([]);
     const [refPickerMode, setRefPickerMode] = useState<RefPickerMode>(null);
     const [refQuery, setRefQuery] = useState('');
+    // Single target ref — tracks which (index, field, isModal, startIndex) opened the picker.
     const refPickerTarget = useRef<RefPickerTarget | null>(null);
-
-    // Tracks the character index of the '@' that opened the picker.
-    // While this is set (>= 0), the picker stays open and onPreview
-    // replaces text from this index forward.
-    const [refStartIndex, setRefStartIndex] = useState(-1);
-    const [refStartIndexModal, setRefStartIndexModal] = useState(-1);
 
     // Track dynamic heights for growth
     const [actionHeights, setActionHeights] = useState<{ [key: number]: number }>({});
@@ -77,22 +75,42 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
     const actionRefs = useRef<(TextInput | null)[]>([]);
     const motivationRefs = useRef<(TextInput | null)[]>([]);
 
+    // Stable refs so callbacks passed to showPicker don't close over stale state.
+    const itemsRef = useRef(items);
+    itemsRef.current = items;
+    const tempItemsRef = useRef(tempItems);
+    tempItemsRef.current = tempItems;
+
     // ─── @ trigger detection ──────────────────────────────────────────────────
 
-    const checkAtTrigger = (text: string, index: number, field: 'action' | 'motivation', isModal: boolean) => {
-        // If we're already building a reference, only close picker if user
-        // deleted back past the @ position.
-        const currentStartIndex = isModal ? refStartIndexModal : refStartIndex;
-        if (currentStartIndex >= 0) {
+    const checkAtTrigger = useCallback((text: string, index: number, field: 'action' | 'motivation', isModal: boolean) => {
+        const target = refPickerTarget.current;
+        const currentStartIndex = target?.startIndex ?? -1;
+
+        // Already tracking a reference in progress for this field
+        if (target && target.index === index && target.field === field && target.isModal === isModal && currentStartIndex >= 0) {
             if (text.length <= currentStartIndex) {
+                // Deleted past the @ — close picker
+                refPickerTarget.current = null;
                 setRefPickerMode(null);
-                if (isModal) setRefStartIndexModal(-1);
-                else setRefStartIndex(-1);
                 setRefQuery('');
+                if (!isModal) hidePicker();
             } else if (text.endsWith(' ')) {
-                // Finalize on space
                 const partialRef = text.slice(currentStartIndex).trim();
                 handleReferenceSelect(partialRef);
+            } else {
+                // Update the query live
+                const newQuery = text.slice(currentStartIndex + 1);
+                setRefQuery(newQuery);
+                if (!isModal) {
+                    showPicker({
+                        query: newQuery,
+                        onPreview: handlePreview,
+                        onSelect: handleReferenceSelect,
+                        onDismiss: handleReferenceDismiss,
+                        onInteraction: handlePickerInteraction,
+                    });
+                }
             }
             return;
         }
@@ -100,87 +118,85 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
         // Detect a fresh @ trigger at end of text
         const match = text.match(/@(\w[\w\s]*)$/);
         if (match) {
-            refPickerTarget.current = { index, field, isModal };
-            setRefQuery(match[1]);
+            const startIndex = text.length - match[0].length;
+            refPickerTarget.current = { index, field, isModal, startIndex };
+            const query = match[1];
+            setRefQuery(query);
             if (isModal) {
-                setRefStartIndexModal(text.length - match[0].length);
-                setRefPickerMode('modal');
+                setRefPickerMode('local');
             } else {
-                setRefStartIndex(text.length - match[0].length);
                 setRefPickerMode('inline');
+                showPicker({
+                    query,
+                    onPreview: handlePreview,
+                    onSelect: handleReferenceSelect,
+                    onDismiss: handleReferenceDismiss,
+                    onInteraction: handlePickerInteraction,
+                });
             }
         } else {
-            // only clear the mode if it matches this source to avoid cross-clearing
-            setRefPickerMode(prev => {
-                if ((isModal && prev === 'modal') || (!isModal && prev === 'inline')) return null;
-                return prev;
-            });
-            if ((isModal && refPickerMode === 'modal') || (!isModal && refPickerMode === 'inline')) {
+            // No trigger — only clear if this field's mode is currently active
+            if (target && target.index === index && target.field === field && target.isModal === isModal) {
+                refPickerTarget.current = null;
+                setRefPickerMode(null);
                 setRefQuery('');
+                if (!isModal) hidePicker();
             }
         }
-    };
+    }, [showPicker, hidePicker]);
 
     // ─── Preview (live, keeps picker open) ───────────────────────────────────
 
-    /**
-     * Called on every step by BibleReferencePicker.
-     * Replaces text from the @ position onward with the partial ref,
-     * so the user sees the reference being built live in the TextInput.
-     */
-    const handlePreview = (partialRef: string) => {
+    const handlePreview = useCallback((partialRef: string) => {
         const target = refPickerTarget.current;
         if (!target) return;
 
-        const { index, field, isModal } = target;
-        const currentStartIndex = isModal ? refStartIndexModal : refStartIndex;
-        if (currentStartIndex < 0) return;
+        const { index, field, isModal, startIndex } = target;
+        if (startIndex < 0) return;
 
-        const currentItems = isModal ? tempItems : items;
+        const currentItems = isModal ? tempItemsRef.current : itemsRef.current;
         const updated = [...currentItems];
         const currentText = updated[index][field];
-        updated[index] = { ...updated[index], [field]: currentText.slice(0, currentStartIndex) + partialRef };
+        updated[index] = { ...updated[index], [field]: currentText.slice(0, startIndex) + partialRef };
 
         if (isModal) setTempItems(updated);
         else onChange(updated);
 
         handlePickerInteraction();
-    };
+    }, [onChange]);
 
-    const handleReferenceSelect = (ref: string) => {
+    const handleReferenceSelect = useCallback((ref: string) => {
         const target = refPickerTarget.current;
+        refPickerTarget.current = null;
         setRefPickerMode(null);
-        if (target?.isModal) setRefStartIndexModal(-1); else setRefStartIndex(-1);
+        setRefQuery('');
         if (!target) return;
 
-        const { index, field, isModal } = target;
-        const currentItems = isModal ? tempItems : items;
+        const { index, field, isModal, startIndex } = target;
+        const currentItems = isModal ? tempItemsRef.current : itemsRef.current;
         const updated = [...currentItems];
         const currentText = updated[index][field];
-        const currentStartIndex = isModal ? refStartIndexModal : refStartIndex;
 
         const taggedRef = `[[${ref}]]`;
-        // Use the tracked start index for precise replacement
-        const insertAt = currentStartIndex >= 0 ? currentStartIndex : currentText.lastIndexOf('@');
+        const insertAt = startIndex >= 0 ? startIndex : currentText.lastIndexOf('@');
         updated[index] = { ...updated[index], [field]: currentText.slice(0, insertAt >= 0 ? insertAt : 0) + taggedRef };
-        setRefQuery('');
 
         if (isModal) setTempItems(updated);
-        else onChange(updated);
+        else { onChange(updated); hidePicker(); }
 
-        // Re-focus after final selection
         handlePickerInteraction();
-    };
+    }, [onChange, hidePicker]);
 
-    const handleReferenceDismiss = () => {
-        const isModal = refPickerMode === 'modal';
+    const handleReferenceDismiss = useCallback(() => {
+        const isModal = refPickerTarget.current?.isModal ?? false;
+        refPickerTarget.current = null;
         setRefPickerMode(null);
-        if (isModal) setRefStartIndexModal(-1); else setRefStartIndex(-1);
         setRefQuery('');
+        if (!isModal) hidePicker();
         handlePickerInteraction();
-    };
+    }, [hidePicker]);
 
-    const handlePickerInteraction = () => {
+    const handlePickerInteraction = useCallback(() => {
         const target = refPickerTarget.current;
         if (!target) return;
         const { index, field } = target;
@@ -188,7 +204,7 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
             if (field === 'action') actionRefs.current[index]?.focus();
             else motivationRefs.current[index]?.focus();
         }, 50);
-    };
+    }, []);
 
     // ─── Field change handlers ────────────────────────────────────────────────
 
@@ -294,6 +310,7 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                             )}
                         </View>
                         <TextInput
+                            inputAccessoryViewID="bible-picker"
                             ref={(ref) => { actionRefs.current[index] = ref; }}
                             style={[
                                 styles.fieldInput,
@@ -347,6 +364,7 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                             )}
                         </View>
                         <TextInput
+                            inputAccessoryViewID="bible-picker"
                             ref={(ref) => { motivationRefs.current[index] = ref; }}
                             style={[
                                 styles.fieldInput,
@@ -419,16 +437,6 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                 />
             )}
 
-            {/* Global Inline Picker (Keyboard Accessory style) */}
-            <BibleReferencePicker
-                visible={refPickerMode === 'inline'}
-                query={refQuery}
-                onPreview={handlePreview}
-                onSelect={handleReferenceSelect}
-                onDismiss={handleReferenceDismiss}
-                onInteraction={handlePickerInteraction}
-            />
-
             {/* Full-screen Modal */}
             <Modal
                 visible={isExpanded}
@@ -482,9 +490,9 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                             />
                         </ScrollView>
 
-                        {/* Global Modal Picker (Keyboard Accessory style) */}
+                        {/* Bible Reference Picker for Modal mode */}
                         <BibleReferencePicker
-                            visible={refPickerMode === 'modal'}
+                            visible={refPickerMode === 'local'}
                             query={refQuery}
                             onPreview={handlePreview}
                             onSelect={handleReferenceSelect}

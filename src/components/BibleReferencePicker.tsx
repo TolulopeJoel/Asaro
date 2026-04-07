@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     Animated,
+    InputAccessoryView,
     Platform,
     ScrollView,
     StyleSheet,
@@ -45,6 +46,7 @@ interface BibleReferencePickerProps {
     onSelect: (finalRef: string) => void;
     onDismiss: () => void;
     onInteraction?: () => void;
+    floating?: boolean; // If true, wraps in a transparent Modal + KeyboardAvoidingView
 }
 
 export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
@@ -54,6 +56,7 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
     onSelect,
     onDismiss,
     onInteraction,
+    floating = false,
 }) => {
     const { colors } = useTheme();
 
@@ -466,7 +469,7 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
 
     if (!visible) return null;
 
-    return (
+    const content = (
         <Animated.View
             style={[
                 styles.ribbonContainer,
@@ -497,6 +500,19 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
             </View>
         </Animated.View>
     );
+
+    if (floating) {
+        if (Platform.OS === 'ios') {
+            return (
+                <InputAccessoryView nativeID="bible-picker">
+                    {content}
+                </InputAccessoryView>
+            );
+        }
+        return content;
+    }
+
+    return content;
 };
 
 const styles = StyleSheet.create({
