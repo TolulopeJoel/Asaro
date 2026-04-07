@@ -69,6 +69,7 @@ export const HyperlinkedText: React.FC<HyperlinkedTextProps> = ({
                                 linkStyle
                             ]}
                             onPress={() => openBibleReferenceFromTag(part.text)}
+                            suppressHighlighting={true}
                         >
                             {part.text}
                         </Text>
@@ -82,7 +83,6 @@ export const HyperlinkedText: React.FC<HyperlinkedTextProps> = ({
 
 const styles = StyleSheet.create({
     link: {
-        fontWeight: '600',
-        textDecorationLine: 'underline',
+        fontWeight: '700',
     },
 });
