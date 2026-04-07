@@ -1049,7 +1049,13 @@ export default function GroupDetailScreen() {
 
     const sortedMembers = members
         .filter(m => m.lastReadDate === today)
-        .sort((a, b) => (b.streak || 0) - (a.streak || 0));
+        .sort((a, b) => {
+            const aIsLady = a.gender === 'f';
+            const bIsLady = b.gender === 'f';
+            if (aIsLady && !bIsLady) return -1;
+            if (!aIsLady && bIsLady) return 1;
+            return (b.streak || 0) - (a.streak || 0);
+        });
 
     const groupStreak: number = groupData?.groupStreak || 0;
     const { pinnedMilestone, feedItems } = buildProcessedFeed(activities, today);
