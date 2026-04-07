@@ -593,7 +593,6 @@ const styles = StyleSheet.create({
 const fullScreenStyles = StyleSheet.create({
     container: {
         flex: 1,
-        paddingTop: (StatusBar.currentHeight || 2),
     },
     keyboardView: {
         flex: 1,
@@ -603,6 +602,7 @@ const fullScreenStyles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 24,
+        paddingLeft: 12,
         paddingVertical: 16,
     },
     labelContainer: {

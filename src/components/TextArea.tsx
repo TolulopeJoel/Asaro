@@ -281,7 +281,6 @@ const textAreaStyles = StyleSheet.create({
 const fullScreenStyles = StyleSheet.create({
     container: {
         flex: 1,
-        paddingTop: (StatusBar.currentHeight || 2),
     },
     keyboardView: {
         flex: 1,
