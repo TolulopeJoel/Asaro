@@ -140,7 +140,7 @@ export interface JournalEntryInput {
 
 let db: SQLite.SQLiteDatabase | null = null;
 
-const CURRENT_DB_VERSION = 4;
+const CURRENT_DB_VERSION = 5;
 
 const getDb = async () => {
     if (!db) {
@@ -308,6 +308,72 @@ export const initializeDatabase = async () => {
                 await addCol('action_items', 'is_completed BOOLEAN DEFAULT 0');
                 await addCol('action_items', 'is_pinned BOOLEAN DEFAULT 0');
                 await addCol('action_items', 'pinned_at DATETIME DEFAULT NULL');
+            }
+
+            if (currentVersion < 5) {
+                // Migration to v5: FTS5 for full-text search and extra indexes
+                await database.execAsync(`
+                    -- Full-Text Search for Journal Entries
+                    CREATE VIRTUAL TABLE IF NOT EXISTS journal_entries_fts USING fts5(
+                        reflection_1, reflection_2, reflection_3, reflection_4, notes, study_further,
+                        content='journal_entries',
+                        content_rowid='id'
+                    );
+
+                    -- Triggers for Journal Entries FTS
+                    CREATE TRIGGER IF NOT EXISTS journal_entries_ai AFTER INSERT ON journal_entries BEGIN
+                      INSERT INTO journal_entries_fts(rowid, reflection_1, reflection_2, reflection_3, reflection_4, notes, study_further)
+                      VALUES (new.id, new.reflection_1, new.reflection_2, new.reflection_3, new.reflection_4, new.notes, new.study_further);
+                    END;
+
+                    CREATE TRIGGER IF NOT EXISTS journal_entries_ad AFTER DELETE ON journal_entries BEGIN
+                      INSERT INTO journal_entries_fts(journal_entries_fts, rowid, reflection_1, reflection_2, reflection_3, reflection_4, notes, study_further)
+                      VALUES('delete', old.id, old.reflection_1, old.reflection_2, old.reflection_3, old.reflection_4, old.notes, old.study_further);
+                    END;
+
+                    CREATE TRIGGER IF NOT EXISTS journal_entries_au AFTER UPDATE ON journal_entries BEGIN
+                      INSERT INTO journal_entries_fts(journal_entries_fts, rowid, reflection_1, reflection_2, reflection_3, reflection_4, notes, study_further)
+                      VALUES('delete', old.id, old.reflection_1, old.reflection_2, old.reflection_3, old.reflection_4, old.notes, old.study_further);
+                      INSERT INTO journal_entries_fts(rowid, reflection_1, reflection_2, reflection_3, reflection_4, notes, study_further)
+                      VALUES (new.id, new.reflection_1, new.reflection_2, new.reflection_3, new.reflection_4, new.notes, new.study_further);
+                    END;
+
+                    -- Full-Text Search for Action Items
+                    CREATE VIRTUAL TABLE IF NOT EXISTS action_items_fts USING fts5(
+                        action, motivation,
+                        content='action_items',
+                        content_rowid='id'
+                    );
+
+                    -- Triggers for Action Items FTS
+                    CREATE TRIGGER IF NOT EXISTS action_items_ai AFTER INSERT ON action_items BEGIN
+                      INSERT INTO action_items_fts(rowid, action, motivation)
+                      VALUES (new.id, new.action, new.motivation);
+                    END;
+
+                    CREATE TRIGGER IF NOT EXISTS action_items_ad AFTER DELETE ON action_items BEGIN
+                      INSERT INTO action_items_fts(action_items_fts, rowid, action, motivation)
+                      VALUES('delete', old.id, old.action, old.motivation);
+                    END;
+
+                    CREATE TRIGGER IF NOT EXISTS action_items_au AFTER UPDATE ON action_items BEGIN
+                      INSERT INTO action_items_fts(action_items_fts, rowid, action, motivation)
+                      VALUES('delete', old.id, old.action, old.motivation);
+                      INSERT INTO action_items_fts(rowid, action, motivation)
+                      VALUES (new.id, new.action, new.motivation);
+                    END;
+
+                    -- Initial population of FTS tables
+                    INSERT INTO journal_entries_fts(rowid, reflection_1, reflection_2, reflection_3, reflection_4, notes, study_further)
+                    SELECT id, reflection_1, reflection_2, reflection_3, reflection_4, notes, study_further FROM journal_entries;
+
+                    INSERT INTO action_items_fts(rowid, action, motivation)
+                    SELECT id, action, motivation FROM action_items;
+
+                    -- Additional Indexes for performance
+                    CREATE INDEX IF NOT EXISTS idx_action_items_pinned ON action_items(is_pinned, pinned_at);
+                    CREATE INDEX IF NOT EXISTS idx_journal_entries_study ON journal_entries(study_completed);
+                `);
             }
 
             // Set to current version
@@ -493,20 +559,26 @@ export const searchEntries = async (term: string): Promise<JournalEntry[]> => {
     if (!term.trim()) {
         return [];
     }
-    const pattern = `%${term}%`;
+
+    // Sanitize term for FTS5 (basic)
+    const sanitizedTerm = term.replace(/"/g, '""');
 
     return await withDatabase(async (database) => {
-        const entries = await database.getAllAsync<JournalEntry>(
-            `SELECT je.* FROM journal_entries je
-             LEFT JOIN action_items ai ON ai.entry_id = je.id
-             WHERE je.reflection_1 LIKE ? OR je.reflection_2 LIKE ? OR je.reflection_3 LIKE ? 
-             OR je.reflection_4 LIKE ? OR je.notes LIKE ? OR je.study_further LIKE ?
-             OR ai.action LIKE ? OR ai.motivation LIKE ?
-             GROUP BY je.id
-             ORDER BY je.created_at DESC 
-             LIMIT 100`,
-            [pattern, pattern, pattern, pattern, pattern, pattern, pattern, pattern]
-        );
+        // Use FTS5 MATCH with UNION to find all matching entries
+        const query = `
+            SELECT je.* FROM journal_entries je
+            WHERE je.id IN (
+                SELECT rowid FROM journal_entries_fts WHERE journal_entries_fts MATCH ?
+                UNION
+                SELECT entry_id FROM action_items WHERE id IN (
+                    SELECT rowid FROM action_items_fts WHERE action_items_fts MATCH ?
+                )
+            )
+            ORDER BY je.created_at DESC 
+            LIMIT 100
+        `;
+
+        const entries = await database.getAllAsync<JournalEntry>(query, [sanitizedTerm, sanitizedTerm]);
         return await attachActionItems(database, entries);
     });
 };
