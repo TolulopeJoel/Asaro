@@ -314,7 +314,7 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                             ref={(ref) => { actionRefs.current[index] = ref; }}
                             style={[
                                 styles.fieldInput,
-                                { color: colors.text, minHeight: Math.max(40, hAction || 40) }
+                                { color: colors.text, minHeight: Math.max(120) }
                             ]}
                             onChangeText={(text) => handleActionChange(text, index, isModal)}
                             onContentSizeChange={(e) => {
@@ -368,7 +368,7 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                             ref={(ref) => { motivationRefs.current[index] = ref; }}
                             style={[
                                 styles.fieldInput,
-                                { color: colors.text, minHeight: Math.max(40, hMotiv || 40) }
+                                { color: colors.text, minHeight: Math.max(120, hMotiv || 40) }
                             ]}
                             onChangeText={(text) => handleMotivationChange(text, index, isModal)}
                             onContentSizeChange={(e) => {

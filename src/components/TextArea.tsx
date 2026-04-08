@@ -98,7 +98,7 @@ const TextArea: React.FC<{
                             inputAccessoryViewID="bible-picker"
                             style={[
                                 textAreaStyles.input,
-                                { color: colors.text, minHeight: Math.max(100, contentHeight) },
+                                { color: colors.text, minHeight: Math.max(250) },
                                 disabled && { color: colors.textSecondary },
                             ]}
                             placeholder={placeholder}
@@ -179,7 +179,7 @@ const TextArea: React.FC<{
                                         ref={expandedTextInputRef}
                                         style={[
                                             fullScreenStyles.textInput,
-                                            { color: colors.text, minHeight: Math.max(100, contentHeightModal) }
+                                            { color: colors.text, minHeight: Math.max(220, contentHeightModal) }
                                         ]}
                                         placeholder={placeholder || "..."}
                                         placeholderTextColor={colors.textTertiary}
