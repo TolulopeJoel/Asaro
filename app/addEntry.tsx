@@ -34,7 +34,9 @@ export default function MeditationSessionScreen() {
     const [verseRange, setVerseRange] = useState<VerseRange | null>(null);
     const [reflectionAnswers, setReflectionAnswers] = useState<ReflectionAnswers>();
     const isResuming = !!params.resuming;
-    const [isLoading, setIsLoading] = useState(true);
+    // New entries need no async work before rendering — skip the loading state.
+    const needsAsyncLoad = !!(params.entryId || params.readingItemId || params.resuming);
+    const [isLoading, setIsLoading] = useState(needsAsyncLoad);
     const [createdEntryId, setCreatedEntryId] = useState<number | null>(null);
     const isSaving = useRef(false);
 

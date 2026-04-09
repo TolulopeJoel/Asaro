@@ -26,7 +26,8 @@ import {
     getAllStudyTopics,
     EnhancedActionItem,
     toggleStudyTopicCompletion,
-    toggleActionItemPin
+    toggleActionItemPin,
+    getBookEntryCounts,
 } from '../data/database';
 import { ScalePressable } from './ScalePressable';
 import { LoadingView } from './LoadingView';
@@ -91,15 +92,12 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
             setEntries(updated);
             setHasMore(dbEntries.length === PAGE_SIZE);
 
-            // Get available books with entry counts
-            const bookCounts = new Map<string, number>();
-            updated.forEach(entry => {
-                bookCounts.set(entry.book_name, (bookCounts.get(entry.book_name) || 0) + 1);
-            });
+            // Fetch book counts from DB (covers ALL entries, not just the current page)
+            const bookCounts = await getBookEntryCounts();
 
             const booksWithEntries = ALL_BIBLE_BOOKS
-                .filter(book => bookCounts.has(book.name))
-                .map(book => ({ ...book, entryCount: bookCounts.get(book.name) || 0 }))
+                .filter(book => bookCounts[book.name] !== undefined)
+                .map(book => ({ ...book, entryCount: bookCounts[book.name] }))
                 .sort((a, b) => b.entryCount - a.entryCount);
 
             setAvailableBooks(booksWithEntries);
@@ -560,7 +558,10 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
         }
     }, [colors, isArchiveCollapsed, onEntryPress, handleTogglePin, handleToggleTopic, navigateToBookDetail, renderEmptyState]);
 
-    const renderListHeader = () => (
+    // Memoize the header element so FlatList receives a stable reference.
+    // Passing renderListHeader() (a call) would produce a new element every render
+    // and cause FlatList to unmount/remount the header unnecessarily.
+    const listHeader = useMemo(() => (
         <View style={{ backgroundColor: colors.background }}>
             <View style={[styles.header, { borderBottomColor: colors.border }]}>
                 <View style={styles.headerTitleRow}>
@@ -637,13 +638,14 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                 </View>
             )}
         </View>
-    );
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    ), [colors, viewMode, selectedBook, searchQuery, tabContainerWidth]);
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
             {isLoading && entries.length === 0 ? (
                 <View style={{ flex: 1 }}>
-                    {renderListHeader()}
+                    {listHeader}
                     <LoadingView style={{ marginTop: 100 }} />
                 </View>
             ) : (
@@ -655,7 +657,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                         styles.scrollContent,
                         getFlatListData.length === 0 && styles.emptyContainer
                     ]}
-                    ListHeaderComponent={renderListHeader()}
+                    ListHeaderComponent={listHeader}
                     showsVerticalScrollIndicator={false}
                     initialNumToRender={10}
                     maxToRenderPerBatch={10}

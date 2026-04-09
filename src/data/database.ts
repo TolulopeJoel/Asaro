@@ -604,6 +604,22 @@ export const deleteJournalEntry = async (id: number) => {
     });
 };
 
+/**
+ * Returns a map of book_name → entry count for every book that has at least one entry.
+ */
+export const getBookEntryCounts = async (): Promise<Record<string, number>> => {
+    return await withDatabase(async (database) => {
+        const rows = await database.getAllAsync<{ book_name: string; count: number }>(
+            `SELECT book_name, COUNT(*) as count FROM journal_entries GROUP BY book_name`
+        );
+        const counts: Record<string, number> = {};
+        rows.forEach(row => { counts[row.book_name] = row.count; });
+        return counts;
+    });
+};
+
+
+
 export const getTotalEntryCount = async (month?: string): Promise<number> => {
     return await withDatabase(async (database) => {
         if (month) {
