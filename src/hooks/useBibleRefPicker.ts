@@ -27,7 +27,7 @@ export function useBibleRefPicker({
     /** 'context' = use root RefPickerContext; 'local' = return self-contained pickerProps. */
     mode: 'context' | 'local';
 }) {
-    const { showPicker, hidePicker } = useRefPicker();
+    const { showPicker, hidePicker, updateQuery } = useRefPicker();
 
     // Character index of the `@` that opened the picker. -1 when closed.
     const [refStartIndex, setRefStartIndex] = useState(-1);
@@ -67,7 +67,6 @@ export function useBibleRefPicker({
                     const si = refStartIndexRef.current;
                     if (si < 0) return;
                     setValueRef.current(getValueRef.current().slice(0, si) + partial);
-                    getInputRefRef.current()?.focus();
                 },
                 onSelect: (ref) => {
                     const si = refStartIndexRef.current;
@@ -129,32 +128,7 @@ export function useBibleRefPicker({
                     const newQuery = text.slice(si + 1); // skip the '@'
                     setRefQuery(newQuery);
                     if (mode === 'context') {
-                        showPicker({
-                            query: newQuery,
-                            onPreview: (partial) => {
-                                const s = refStartIndexRef.current;
-                                if (s < 0) return;
-                                setValueRef.current(getValueRef.current().slice(0, s) + partial);
-                                getInputRefRef.current()?.focus();
-                            },
-                            onSelect: (ref) => {
-                                const s = refStartIndexRef.current;
-                                setValueRef.current(
-                                    getValueRef.current().slice(0, s >= 0 ? s : 0) + `[[${ref}]]`
-                                );
-                                refStartIndexRef.current = -1;
-                                setRefStartIndex(-1);
-                                setRefQuery('');
-                                setTimeout(() => getInputRefRef.current()?.focus(), 50);
-                            },
-                            onDismiss: () => {
-                                refStartIndexRef.current = -1;
-                                setRefStartIndex(-1);
-                                setRefQuery('');
-                                getInputRefRef.current()?.focus();
-                            },
-                            onInteraction: () => getInputRefRef.current()?.focus(),
-                        });
+                        updateQuery(newQuery);
                     }
                 }
                 return;
@@ -180,7 +154,6 @@ export function useBibleRefPicker({
         const si = refStartIndexRef.current;
         if (si < 0) return;
         setValueRef.current(getValueRef.current().slice(0, si) + partial);
-        getInputRefRef.current()?.focus();
     }, []);
 
     /** Select handler — call `onSelect` from `<BibleReferencePicker>` in 'local' mode. */

@@ -18,18 +18,6 @@ import { Ionicons } from '@expo/vector-icons';
 
 const CHIP_THRESHOLD = 30;
 
-/**
- * Phase flow:
- *
- *   book → chapter → suffix ──→ Done
- *                         ├──→ :Verse → verse → verse-suffix ──→ Done
- *                         │                             └──→ –Range → end-chapter → end-verse
- *                         └──→ –Range → end-chapter (no verse = Done, has verse → end-verse)
- *
- * The key difference from a wizard: every tap/input immediately updates the
- * TextInput via onPreview so the user sees the reference being built in real time.
- * onSelect is only called once — at the very end.
- */
 type Phase =
     | 'book'
     | 'chapter'
@@ -46,8 +34,166 @@ interface BibleReferencePickerProps {
     onSelect: (finalRef: string) => void;
     onDismiss: () => void;
     onInteraction?: () => void;
-    floating?: boolean; // If true, wraps in a transparent Modal + KeyboardAvoidingView
+    floating?: boolean;
 }
+
+// ── Sub-components defined OUTSIDE BibleReferencePicker ───────────────────
+// This is critical: defining them inside would cause React to see a new
+// component type on every render, forcing unmount/remount and keyboard cycles.
+
+const BackPill = ({
+    label,
+    onPress,
+    onInteraction,
+    colors,
+}: {
+    label: string;
+    onPress: () => void;
+    onInteraction?: () => void;
+    colors: any;
+}) => (
+    <TouchableOpacity
+        onPressIn={() => onInteraction?.()}
+        onPress={onPress}
+        style={[styles.pill, styles.backPill, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '30' }]}
+    >
+        <Ionicons name="chevron-back" size={14} color={colors.primary} />
+        <Text style={[styles.pillText, { color: colors.primary, fontWeight: '700' }]}>{label}</Text>
+    </TouchableOpacity>
+);
+
+const ActionPill = ({
+    label,
+    onPress,
+    onInteraction,
+    colors,
+}: {
+    label: string;
+    onPress: () => void;
+    onInteraction?: () => void;
+    colors: any;
+}) => (
+    <TouchableOpacity
+        onPressIn={() => onInteraction?.()}
+        onPress={onPress}
+        style={[styles.pill, { backgroundColor: colors.background, borderColor: colors.border }]}
+    >
+        <Text style={[styles.pillText, { color: colors.text }]}>{label}</Text>
+    </TouchableOpacity>
+);
+
+const LiveNumberInput = ({
+    inputRef,
+    value,
+    onChange,
+    placeholder,
+    onSubmit,
+    confirmIcon = 'checkmark',
+    min,
+    onInteraction,
+    colors,
+}: {
+    inputRef: React.RefObject<TextInput | null>;
+    value: string;
+    onChange: (v: string) => void;
+    placeholder: string;
+    onSubmit: () => void;
+    confirmIcon?: string;
+    min?: number;
+    onInteraction?: () => void;
+    colors: any;
+}) => (
+    <View style={styles.inputWrapper}>
+        <TextInput
+            ref={inputRef}
+            style={[styles.numberInput, { color: colors.text, borderColor: colors.border }]}
+            placeholder={placeholder}
+            placeholderTextColor={colors.textTertiary}
+            keyboardType="number-pad"
+            value={value}
+            onChangeText={(t) => onChange(t.replace(/[^0-9]/g, ''))}
+            onSubmitEditing={() => {
+                if (min && parseInt(value, 10) < min) return;
+                onSubmit();
+            }}
+            returnKeyType="done"
+            maxLength={3}
+            autoFocus
+        />
+        <TouchableOpacity
+            onPressIn={() => onInteraction?.()}
+            onPress={() => {
+                if (min && parseInt(value, 10) < min) return;
+                onSubmit();
+            }}
+            style={[styles.pill, {
+                backgroundColor: value ? colors.primary : colors.background,
+                borderColor: value ? colors.primary : colors.border,
+            }]}
+        >
+            <Ionicons name={confirmIcon as any} size={14} color={value ? '#fff' : colors.textTertiary} />
+        </TouchableOpacity>
+    </View>
+);
+
+const ChapterPills = ({
+    book,
+    onChapterSelect,
+    min,
+    chapterInput,
+    setChapterInput,
+    chapterInputRef,
+    onInteraction,
+    colors,
+}: {
+    book: BibleBook;
+    onChapterSelect: (ch: number) => void;
+    min?: number;
+    chapterInput: string;
+    setChapterInput: (v: string) => void;
+    chapterInputRef: React.RefObject<TextInput | null>;
+    onInteraction?: () => void;
+    colors: any;
+}) => {
+    if (book.chapters <= CHIP_THRESHOLD) {
+        const allChapters = Array.from({ length: book.chapters }, (_, i) => i + 1);
+        const chaptersToShow = min ? allChapters.filter(ch => ch >= min) : allChapters;
+        return (
+            <>
+                {chaptersToShow.map((ch) => (
+                    <TouchableOpacity
+                        key={ch}
+                        onPressIn={() => onInteraction?.()}
+                        onPress={() => onChapterSelect(ch)}
+                        style={[styles.pill, { backgroundColor: colors.background, borderColor: colors.border }]}
+                    >
+                        <Text style={[styles.pillText, { color: colors.text }]}>{ch}</Text>
+                    </TouchableOpacity>
+                ))}
+            </>
+        );
+    }
+
+    // Long book (Psalms etc.) — number input
+    return (
+        <LiveNumberInput
+            inputRef={chapterInputRef}
+            value={chapterInput}
+            onChange={setChapterInput}
+            placeholder={min ? `${min}–${book.chapters}` : `1–${book.chapters}`}
+            onSubmit={() => {
+                const ch = parseInt(chapterInput, 10);
+                if (ch >= (min || 1) && ch <= book.chapters) onChapterSelect(ch);
+            }}
+            min={min}
+            confirmIcon="arrow-forward"
+            onInteraction={onInteraction}
+            colors={colors}
+        />
+    );
+};
+
+// ── Main component ─────────────────────────────────────────────────────────
 
 export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
     visible,
@@ -116,27 +262,26 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
 
     const handleBookSelect = (book: BibleBook) => {
         onInteraction?.();
-        onPreview(book.name); // "@Rom" → "Romans" live in TextInput
+        onPreview(book.name);
         morph(() => { setSelectedBook(book); setPhase('chapter'); });
     };
 
     const handleChapterSelect = (ch: number) => {
         onInteraction?.();
-        onPreview(`${selectedBook!.name} ${ch}`); // "Romans" → "Romans 5"
+        onPreview(`${selectedBook!.name} ${ch}`);
         morph(() => { setStartChapter(ch); setChapterInput(''); setPhase('suffix'); });
     };
 
     const handleDone = () => {
         const book = selectedBook!.name;
         const sc = startChapter!;
-        // verse-suffix Done also reaches here
         onSelect(startVerse ? `${book} ${sc}:${startVerse}` : `${book} ${sc}`);
         resetState();
     };
 
     const handleAddVerse = () => {
         onInteraction?.();
-        onPreview(`${selectedBook!.name} ${startChapter!}:`); // "Romans 5" → "Romans 5:"
+        onPreview(`${selectedBook!.name} ${startChapter!}:`);
         morph(() => { setVerseInput(''); setPhase('verse'); });
     };
 
@@ -145,15 +290,13 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
         const book = selectedBook!.name;
         const sc = startChapter!;
         const sv = startVerse;
-        // "Romans 5" → "Romans 5–"  or  "Romans 5:3" → "Romans 5:3–"
         onPreview(sv ? `${book} ${sc}:${sv}-` : `${book} ${sc}-`);
         morph(() => { setChapterInput(''); setPhase('end-chapter'); });
     };
 
-    // Live: fires on every keystroke in the verse input
     const handleVerseInputChange = (v: string) => {
         setVerseInput(v);
-        onPreview(`${selectedBook!.name} ${startChapter!}:${v}`); // "Romans 5:" → "Romans 5:3"
+        onPreview(`${selectedBook!.name} ${startChapter!}:${v}`);
     };
 
     const handleVerseConfirm = () => {
@@ -168,24 +311,20 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
         const sv = startVerse;
 
         if (!sv) {
-            // Pure chapter range — we're done: "Romans 5–6"
             onSelect(`${book} ${sc}-${ch}`);
             resetState();
         } else {
-            // Has start verse — need end verse: "Romans 13:12–14:"
             onPreview(`${book} ${sc}:${sv}-${ch}:`);
             morph(() => { setEndChapter(ch); setVerseInput(''); setPhase('end-verse'); });
         }
     };
 
-    // Live: fires on every keystroke in the end-verse input
     const handleEndVerseInputChange = (v: string) => {
         setVerseInput(v);
         const book = selectedBook!.name;
         const sc = startChapter!;
         const sv = startVerse;
         const ec = endChapter ?? sc;
-        // "Romans 5:1–7" or "Romans 13:12–14:1"
         onPreview(ec === sc ? `${book} ${sc}:${sv}-${v}` : `${book} ${sc}:${sv}-${ec}:${v}`);
     };
 
@@ -213,23 +352,21 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
         morph(() => {
             switch (phase) {
                 case 'chapter':
-                    // Don't touch text — user can select different book and it'll overwrite
                     setPhase('book');
                     setSelectedBook(null);
                     break;
                 case 'suffix':
-                    onPreview(book); // "Romans 5" → "Romans"
+                    onPreview(book);
                     setPhase('chapter');
                     setStartChapter(null);
                     break;
                 case 'verse':
-                    onPreview(`${book} ${sc}`); // "Romans 5:" → "Romans 5"
+                    onPreview(`${book} ${sc}`);
                     setVerseInput('');
                     setPhase('suffix');
                     break;
                 case 'verse-suffix':
-                    // Restore verse input so user can edit it
-                    onPreview(`${book} ${sc}:${sv}`); // stays the same
+                    onPreview(`${book} ${sc}:${sv}`);
                     setVerseInput(sv);
                     setStartVerse('');
                     setPhase('verse');
@@ -237,142 +374,21 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
                 case 'end-chapter':
                     setChapterInput('');
                     if (sv) {
-                        onPreview(`${book} ${sc}:${sv}`); // "Romans 5:3–" → "Romans 5:3"
+                        onPreview(`${book} ${sc}:${sv}`);
                         setPhase('verse-suffix');
                     } else {
-                        onPreview(`${book} ${sc}`); // "Romans 5–" → "Romans 5"
+                        onPreview(`${book} ${sc}`);
                         setPhase('suffix');
                     }
                     break;
                 case 'end-verse':
-                    onPreview(`${book} ${sc}:${sv}-`); // "Romans 13:12–14:1" → "Romans 13:12–"
+                    onPreview(`${book} ${sc}:${sv}-`);
                     setEndChapter(null);
                     setVerseInput('');
                     setPhase('end-chapter');
                     break;
             }
         });
-    };
-
-    // ── Shared sub-components ─────────────────────────────────────────────────
-
-    const BackPill = ({ label }: { label: string }) => (
-        <TouchableOpacity
-            onPressIn={() => onInteraction?.()}
-            onPress={goBack}
-            style={[styles.pill, styles.backPill, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '30' }]}
-        >
-            <Ionicons name="chevron-back" size={14} color={colors.primary} />
-            <Text style={[styles.pillText, { color: colors.primary, fontWeight: '700' }]}>{label}</Text>
-        </TouchableOpacity>
-    );
-
-    const ActionPill = ({ label, onPress }: { label: string; onPress: () => void }) => (
-        <TouchableOpacity
-            onPressIn={() => onInteraction?.()}
-            onPress={onPress}
-            style={[styles.pill, { backgroundColor: colors.background, borderColor: colors.border }]}
-        >
-            <Text style={[styles.pillText, { color: colors.text }]}>{label}</Text>
-        </TouchableOpacity>
-    );
-
-    /**
-     * A number input that calls onChange on every keystroke (for live preview)
-     * and onSubmit when user confirms.
-     */
-    const LiveNumberInput = ({
-        inputRef,
-        value,
-        onChange,
-        placeholder,
-        onSubmit,
-        confirmIcon = 'checkmark',
-        min,
-    }: {
-        inputRef: React.RefObject<TextInput | null>;
-        value: string;
-        onChange: (v: string) => void;
-        placeholder: string;
-        onSubmit: () => void;
-        confirmIcon?: string;
-        min?: number;
-    }) => (
-        <View style={styles.inputWrapper}>
-            <TextInput
-                ref={inputRef}
-                style={[styles.numberInput, { color: colors.text, borderColor: colors.border }]}
-                placeholder={placeholder}
-                placeholderTextColor={colors.textTertiary}
-                keyboardType="number-pad"
-                value={value}
-                onChangeText={(t) => onChange(t.replace(/[^0-9]/g, ''))}
-                onSubmitEditing={() => {
-                    if (min && parseInt(value, 10) < min) return;
-                    onSubmit();
-                }}
-                returnKeyType="done"
-                maxLength={3}
-                autoFocus
-            />
-            <TouchableOpacity
-                onPressIn={() => onInteraction?.()}
-                onPress={() => {
-                    if (min && parseInt(value, 10) < min) return;
-                    onSubmit();
-                }}
-                style={[styles.pill, {
-                    backgroundColor: value ? colors.primary : colors.background,
-                    borderColor: value ? colors.primary : colors.border,
-                }]}
-            >
-                <Ionicons name={confirmIcon as any} size={14} color={value ? '#fff' : colors.textTertiary} />
-            </TouchableOpacity>
-        </View>
-    );
-
-    const ChapterPills = ({
-        book,
-        onChapterSelect,
-        min,
-    }: {
-        book: BibleBook;
-        onChapterSelect: (ch: number) => void;
-        min?: number;
-    }) => {
-        if (book.chapters <= CHIP_THRESHOLD) {
-            const allChapters = Array.from({ length: book.chapters }, (_, i) => i + 1);
-            const chaptersToShow = min ? allChapters.filter(ch => ch >= min) : allChapters;
-            return (
-                <>
-                    {chaptersToShow.map((ch) => (
-                        <TouchableOpacity
-                            key={ch}
-                            onPressIn={() => onInteraction?.()}
-                            onPress={() => onChapterSelect(ch)}
-                            style={[styles.pill, { backgroundColor: colors.background, borderColor: colors.border }]}
-                        >
-                            <Text style={[styles.pillText, { color: colors.text }]}>{ch}</Text>
-                        </TouchableOpacity>
-                    ))}
-                </>
-            );
-        }
-        // Long book (Psalms etc.) — number input, no live preview until confirmed
-        return (
-            <LiveNumberInput
-                inputRef={chapterInputRef}
-                value={chapterInput}
-                onChange={setChapterInput}
-                placeholder={min ? `${min}–${book.chapters}` : `1–${book.chapters}`}
-                onSubmit={() => {
-                    const ch = parseInt(chapterInput, 10);
-                    if (ch >= (min || 1) && ch <= book.chapters) onChapterSelect(ch);
-                }}
-                min={min}
-                confirmIcon="arrow-forward"
-            />
-        );
     };
 
     // ── Phase content ─────────────────────────────────────────────────────────
@@ -400,31 +416,56 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
             case 'chapter':
                 return (
                     <>
-                        <BackPill label={book.abbrv} />
-                        <ChapterPills book={book} onChapterSelect={handleChapterSelect} />
+                        <BackPill
+                            label={book.abbrv}
+                            onPress={goBack}
+                            onInteraction={onInteraction}
+                            colors={colors}
+                        />
+                        <ChapterPills
+                            book={book}
+                            onChapterSelect={handleChapterSelect}
+                            chapterInput={chapterInput}
+                            setChapterInput={setChapterInput}
+                            chapterInputRef={chapterInputRef}
+                            onInteraction={onInteraction}
+                            colors={colors}
+                        />
                     </>
                 );
 
             case 'suffix':
                 return (
                     <>
-                        <BackPill label={`${book.abbrv} ${sc}`} />
-                        <ActionPill label=": Verse" onPress={handleAddVerse} />
-                        <ActionPill label="– Range" onPress={handleAddRange} />
-                        <ActionPill label="Done ✓" onPress={handleDone} />
+                        <BackPill
+                            label={`${book.abbrv} ${sc}`}
+                            onPress={goBack}
+                            onInteraction={onInteraction}
+                            colors={colors}
+                        />
+                        <ActionPill label=": Verse" onPress={handleAddVerse} onInteraction={onInteraction} colors={colors} />
+                        <ActionPill label="– Range" onPress={handleAddRange} onInteraction={onInteraction} colors={colors} />
+                        <ActionPill label="Done ✓" onPress={handleDone} onInteraction={onInteraction} colors={colors} />
                     </>
                 );
 
             case 'verse':
                 return (
                     <>
-                        <BackPill label={`${book.abbrv} ${sc}:`} />
+                        <BackPill
+                            label={`${book.abbrv} ${sc}:`}
+                            onPress={goBack}
+                            onInteraction={onInteraction}
+                            colors={colors}
+                        />
                         <LiveNumberInput
                             inputRef={verseInputRef}
                             value={verseInput}
                             onChange={handleVerseInputChange}
                             placeholder="verse"
                             onSubmit={handleVerseConfirm}
+                            onInteraction={onInteraction}
+                            colors={colors}
                         />
                     </>
                 );
@@ -432,38 +473,63 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
             case 'verse-suffix':
                 return (
                     <>
-                        <BackPill label={`${book.abbrv} ${sc}:${startVerse}`} />
-                        <ActionPill label="– Range" onPress={handleAddRange} />
-                        <ActionPill label="Done ✓" onPress={handleDone} />
+                        <BackPill
+                            label={`${book.abbrv} ${sc}:${startVerse}`}
+                            onPress={goBack}
+                            onInteraction={onInteraction}
+                            colors={colors}
+                        />
+                        <ActionPill label="– Range" onPress={handleAddRange} onInteraction={onInteraction} colors={colors} />
+                        <ActionPill label="Done ✓" onPress={handleDone} onInteraction={onInteraction} colors={colors} />
                     </>
                 );
 
             case 'end-chapter':
                 return (
                     <>
-                        <BackPill label={startVerse ? `${book.abbrv} ${sc}:${startVerse}–` : `${book.abbrv} ${sc}–`} />
-                        <ChapterPills book={book} onChapterSelect={handleEndChapterSelect} min={sc} />
+                        <BackPill
+                            label={startVerse ? `${book.abbrv} ${sc}:${startVerse}–` : `${book.abbrv} ${sc}–`}
+                            onPress={goBack}
+                            onInteraction={onInteraction}
+                            colors={colors}
+                        />
+                        <ChapterPills
+                            book={book}
+                            onChapterSelect={handleEndChapterSelect}
+                            min={sc}
+                            chapterInput={chapterInput}
+                            setChapterInput={setChapterInput}
+                            chapterInputRef={chapterInputRef}
+                            onInteraction={onInteraction}
+                            colors={colors}
+                        />
                     </>
                 );
 
-            case 'end-verse':
-                {
-                    const ec = endChapter ?? sc;
-                    const minVerse = (ec === sc) ? parseInt(startVerse, 10) : undefined;
-                    return (
-                        <>
-                            <BackPill label={`${book.abbrv} ${sc}:${startVerse}–${ec}:`} />
-                            <LiveNumberInput
-                                inputRef={verseInputRef}
-                                value={verseInput}
-                                onChange={handleEndVerseInputChange}
-                                placeholder="verse"
-                                onSubmit={handleEndVerseConfirm}
-                                min={minVerse}
-                            />
-                        </>
-                    );
-                }
+            case 'end-verse': {
+                const ec = endChapter ?? sc;
+                const minVerse = (ec === sc) ? parseInt(startVerse, 10) : undefined;
+                return (
+                    <>
+                        <BackPill
+                            label={`${book.abbrv} ${sc}:${startVerse}–${ec}:`}
+                            onPress={goBack}
+                            onInteraction={onInteraction}
+                            colors={colors}
+                        />
+                        <LiveNumberInput
+                            inputRef={verseInputRef}
+                            value={verseInput}
+                            onChange={handleEndVerseInputChange}
+                            placeholder="verse"
+                            onSubmit={handleEndVerseConfirm}
+                            min={minVerse}
+                            onInteraction={onInteraction}
+                            colors={colors}
+                        />
+                    </>
+                );
+            }
         }
     };
 
