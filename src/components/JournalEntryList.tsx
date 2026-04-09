@@ -75,15 +75,19 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [hasMore, setHasMore] = useState(true);
     const searchTimeoutRef = useRef<any>(null);
+    // Stable ref so loadEntries doesn't need entries in its useCallback deps
+    const entriesRef = useRef<JournalEntry[]>([]);
     const PAGE_SIZE = 30;
 
     const loadEntries = useCallback(async (reset = true) => {
         if (reset) setIsLoading(true);
         try {
-            const offset = reset ? 0 : entries.length;
+            const offset = reset ? 0 : entriesRef.current.length;
             const dbEntries = await getJournalEntries(PAGE_SIZE, offset);
 
-            const updated = reset ? dbEntries : [...entries, ...dbEntries];
+            const updated = reset ? dbEntries : [...entriesRef.current, ...dbEntries];
+            // Keep ref and state in sync
+            entriesRef.current = updated;
             setEntries(updated);
             setHasMore(dbEntries.length === PAGE_SIZE);
 
@@ -105,7 +109,9 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
             setIsLoading(false);
             setIsLoadingMore(false);
         }
-    }, [entries]);
+        // entriesRef is a stable ref — no dep needed. PAGE_SIZE is a module constant.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const loadBookEntries = useCallback(async () => {
         if (!selectedBook) return;
