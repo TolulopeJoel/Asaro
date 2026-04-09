@@ -17,6 +17,37 @@ interface BookPickerProps {
     availableBooks?: BibleBook[];
 }
 
+interface BookCardProps {
+    book: BibleBook;
+    isSelected: boolean;
+    colors: any;
+    onBookSelect: (book: BibleBook) => void;
+}
+
+const BookCard = React.memo(({ book, isSelected, colors, onBookSelect }: BookCardProps) => (
+    <ScalePressable
+        style={[
+            styles.bookCard,
+            { backgroundColor: colors.cardBackground, borderColor: colors.border + '50' },
+            isSelected && [styles.bookCardSelected, { backgroundColor: colors.accent + '08', borderColor: colors.accent }],
+        ]}
+        onPress={() => onBookSelect(book)}
+    >
+        <Text style={[
+            styles.bookAbbreviation,
+            { color: isSelected ? colors.textPrimary : colors.textSecondary },
+        ]}>
+            {book.abbrv}
+        </Text>
+        <Text style={[
+            styles.chapterCount,
+            { color: isSelected ? colors.accent : colors.textTertiary },
+        ]}>
+            {book.chapters}
+        </Text>
+    </ScalePressable>
+));
+
 export const BookPicker: React.FC<BookPickerProps> = React.memo(({
     selectedBook,
     onBookSelect,
@@ -36,31 +67,6 @@ export const BookPicker: React.FC<BookPickerProps> = React.memo(({
         </View>
     );
 
-    const BookCard = React.memo(({ book, isSelected }: { book: BibleBook, isSelected: boolean }) => (
-        <ScalePressable
-            key={book.name}
-            style={[
-                styles.bookCard,
-                { backgroundColor: colors.cardBackground, borderColor: colors.border + '50' },
-                isSelected && [styles.bookCardSelected, { backgroundColor: colors.accent + '08', borderColor: colors.accent }],
-            ]}
-            onPress={() => onBookSelect(book)}
-        >
-            <Text style={[
-                styles.bookAbbreviation,
-                { color: isSelected ? colors.textPrimary : colors.textSecondary },
-            ]}>
-                {book.abbrv}
-            </Text>
-            <Text style={[
-                styles.chapterCount,
-                { color: isSelected ? colors.accent : colors.textTertiary },
-            ]}>
-                {book.chapters}
-            </Text>
-        </ScalePressable>
-    ));
-
     const renderBookGrid = (books: BibleBook[], isGreekBooks = false) => {
         return (
             <View style={[
@@ -72,6 +78,8 @@ export const BookPicker: React.FC<BookPickerProps> = React.memo(({
                         key={book.name}
                         book={book}
                         isSelected={selectedBook?.name === book.name}
+                        colors={colors}
+                        onBookSelect={onBookSelect}
                     />
                 ))}
             </View>

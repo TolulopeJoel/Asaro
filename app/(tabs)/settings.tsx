@@ -84,6 +84,47 @@ const ProfilePhotoCard = React.memo(({
     );
 });
 
+const SettingsItem = ({
+    label,
+    value,
+    onPress,
+    icon,
+    destructive,
+    showChevron = true,
+    colors
+}: {
+    label: string;
+    value?: string;
+    onPress: () => void;
+    icon: React.ComponentProps<typeof Ionicons>['name'];
+    destructive?: boolean;
+    showChevron?: boolean;
+    colors: any;
+}) => (
+    <ScalePressable
+        style={[styles.itemContainer, { borderBottomColor: colors.border + '50' }]}
+        onPress={onPress}
+    >
+        <View style={[styles.itemIconWrap, { backgroundColor: destructive ? '#FF3B3010' : colors.accent + '10' }]}>
+            <Ionicons name={icon} size={18} color={destructive ? '#FF3B30' : colors.accent} />
+        </View>
+        <View style={styles.itemContent}>
+            <Text style={[styles.itemLabel, { color: colors.textPrimary }]}>{label}</Text>
+            {value && <Text style={[styles.itemValue, { color: colors.textTertiary }]}>{value}</Text>}
+        </View>
+        {showChevron && <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />}
+    </ScalePressable>
+);
+
+const SettingsGroup = ({ title, children, colors }: { title: string; children: React.ReactNode; colors: any }) => (
+    <View style={styles.group}>
+        <Text style={[styles.groupTitle, { color: colors.textSecondary }]}>{title.toUpperCase()}</Text>
+        <View style={[styles.groupContent, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
+            {children}
+        </View>
+    </View>
+);
+
 export default function Settings() {
     const { colors, theme, setTheme } = useTheme();
     const { showAlert } = useAlert();
@@ -446,44 +487,6 @@ export default function Settings() {
         }
     };
 
-    const SettingsItem = ({
-        label,
-        value,
-        onPress,
-        icon,
-        destructive,
-        showChevron = true
-    }: {
-        label: string;
-        value?: string;
-        onPress: () => void;
-        icon: React.ComponentProps<typeof Ionicons>['name'];
-        destructive?: boolean;
-        showChevron?: boolean;
-    }) => (
-        <ScalePressable
-            style={[styles.itemContainer, { borderBottomColor: colors.border + '50' }]}
-            onPress={onPress}
-        >
-            <View style={[styles.itemIconWrap, { backgroundColor: destructive ? '#FF3B3010' : colors.accent + '10' }]}>
-                <Ionicons name={icon} size={18} color={destructive ? '#FF3B30' : colors.accent} />
-            </View>
-            <View style={styles.itemContent}>
-                <Text style={[styles.itemLabel, { color: colors.textPrimary }]}>{label}</Text>
-                {value && <Text style={[styles.itemValue, { color: colors.textTertiary }]}>{value}</Text>}
-            </View>
-            {showChevron && <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />}
-        </ScalePressable>
-    );
-
-    const SettingsGroup = ({ title, children }: { title: string; children: React.ReactNode }) => (
-        <View style={styles.group}>
-            <Text style={[styles.groupTitle, { color: colors.textSecondary }]}>{title.toUpperCase()}</Text>
-            <View style={[styles.groupContent, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
-                {children}
-            </View>
-        </View>
-    );
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -502,7 +505,7 @@ export default function Settings() {
 
                 {/* Profile Section for Admins */}
                 {isAdmin && (
-                    <SettingsGroup title="Profile">
+                    <SettingsGroup title="Profile" colors={colors}>
                         <ProfilePhotoCard
                             user={user}
                             colors={colors}
@@ -514,7 +517,7 @@ export default function Settings() {
                 )}
 
                 {/* Appearance */}
-                <SettingsGroup title="Appearance">
+                <SettingsGroup title="Appearance" colors={colors}>
                     <View style={styles.themeSelector}>
                         {(['light', 'dark', 'system'] as const).map((mode) => (
                             <ScalePressable
@@ -537,7 +540,7 @@ export default function Settings() {
                 </SettingsGroup>
 
                 {/* Data Management */}
-                <SettingsGroup title="Backup & Restore">
+                <SettingsGroup title="Backup & Restore" colors={colors}>
                     <View style={styles.buttonGroup}>
                         <ScalePressable
                             onPress={handleExport}
@@ -572,14 +575,14 @@ export default function Settings() {
                     )}
                 </SettingsGroup>
 
-
                 {/* Accountability */}
-                <SettingsGroup title="Accountability">
+                <SettingsGroup title="Accountability" colors={colors}>
                     <SettingsItem
                         label="Sleep Time"
                         value={formatSleepTime(sleepTime)}
                         icon="bed-outline"
                         onPress={handleUpdateSleepTime}
+                        colors={colors}
                     />
                 </SettingsGroup>
 
@@ -598,7 +601,7 @@ export default function Settings() {
 
                 {/* Notifications - Easter Egg */}
                 {showNotifications && (
-                    <SettingsGroup title="Scheduled Notifications">
+                    <SettingsGroup title="Scheduled Notifications" colors={colors}>
                         <View style={styles.notificationsHeaderRow}>
                             <View style={styles.headerTitleRow}>
                                 <Ionicons name="notifications" size={14} color={colors.accent} />
