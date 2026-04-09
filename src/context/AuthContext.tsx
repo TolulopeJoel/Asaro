@@ -38,13 +38,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             if (firebaseUser) {
                 if (firebaseUser.displayName) {
+                    // Only persist to Firestore when the name has actually changed
+                    const storedName = await AsyncStorage.getItem('user_name');
+                    if (firebaseUser.displayName !== storedName) {
+                        await AsyncStorage.setItem('user_name', firebaseUser.displayName);
+                        await firestore().collection('users').doc(firebaseUser.uid).set({
+                            displayName: firebaseUser.displayName,
+                            lastModified: firestore.FieldValue.serverTimestamp(),
+                        }, { merge: true });
+                    }
                     setDisplayName(firebaseUser.displayName);
-                    await AsyncStorage.setItem('user_name', firebaseUser.displayName);
-                    // Ensure Firestore has the latest name
-                    await firestore().collection('users').doc(firebaseUser.uid).set({
-                        displayName: firebaseUser.displayName,
-                        lastModified: firestore.FieldValue.serverTimestamp(),
-                    }, { merge: true });
                 } else {
                     const localName = await AsyncStorage.getItem('user_name');
                     if (localName) setDisplayName(localName);
