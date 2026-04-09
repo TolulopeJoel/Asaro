@@ -158,8 +158,8 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <AuthProvider>
         <AlertProvider>
-          <RefPickerProvider>
-            <ThemeProvider>
+          <ThemeProvider>
+            <RefPickerProvider>
               {!dbInitialized ? (
                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                   <LoadingView size={48} />
@@ -171,8 +171,8 @@ export default function RootLayout() {
                   <StatusBar hidden={true} />
                 </>
               )}
-            </ThemeProvider>
-          </RefPickerProvider>
+            </RefPickerProvider>
+          </ThemeProvider>
         </AlertProvider>
       </AuthProvider>
     </SafeAreaProvider>

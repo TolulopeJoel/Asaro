@@ -24,6 +24,7 @@ type Phase =
     | 'suffix'
     | 'verse'
     | 'verse-suffix'
+    | 'range-type'
     | 'end-chapter'
     | 'end-verse';
 
@@ -91,6 +92,7 @@ const LiveNumberInput = ({
     confirmIcon = 'checkmark',
     min,
     onInteraction,
+    onInvalid,
     colors,
 }: {
     inputRef: React.RefObject<TextInput | null>;
@@ -101,6 +103,7 @@ const LiveNumberInput = ({
     confirmIcon?: string;
     min?: number;
     onInteraction?: () => void;
+    onInvalid?: () => void;
     colors: any;
 }) => (
     <View style={styles.inputWrapper}>
@@ -113,7 +116,11 @@ const LiveNumberInput = ({
             value={value}
             onChangeText={(t) => onChange(t.replace(/[^0-9]/g, ''))}
             onSubmitEditing={() => {
-                if (min && parseInt(value, 10) < min) return;
+                const val = parseInt(value, 10);
+                if ((min && val <= min) || !value) {
+                    onInvalid?.();
+                    return;
+                }
                 onSubmit();
             }}
             returnKeyType="done"
@@ -123,7 +130,11 @@ const LiveNumberInput = ({
         <TouchableOpacity
             onPressIn={() => onInteraction?.()}
             onPress={() => {
-                if (min && parseInt(value, 10) < min) return;
+                const val = parseInt(value, 10);
+                if ((min && val <= min) || !value) {
+                    onInvalid?.();
+                    return;
+                }
                 onSubmit();
             }}
             style={[styles.pill, {
@@ -144,7 +155,9 @@ const ChapterPills = ({
     setChapterInput,
     chapterInputRef,
     onInteraction,
+    onInvalid,
     colors,
+    placeholder,
 }: {
     book: BibleBook;
     onChapterSelect: (ch: number) => void;
@@ -153,11 +166,13 @@ const ChapterPills = ({
     setChapterInput: (v: string) => void;
     chapterInputRef: React.RefObject<TextInput | null>;
     onInteraction?: () => void;
+    onInvalid?: () => void;
     colors: any;
+    placeholder?: string;
 }) => {
     if (book.chapters <= CHIP_THRESHOLD) {
         const allChapters = Array.from({ length: book.chapters }, (_, i) => i + 1);
-        const chaptersToShow = min ? allChapters.filter(ch => ch >= min) : allChapters;
+        const chaptersToShow = min ? allChapters.filter(ch => ch > min) : allChapters;
         return (
             <>
                 {chaptersToShow.map((ch) => (
@@ -180,14 +195,19 @@ const ChapterPills = ({
             inputRef={chapterInputRef}
             value={chapterInput}
             onChange={setChapterInput}
-            placeholder={min ? `${min}–${book.chapters}` : `1–${book.chapters}`}
+            placeholder={min ? `${min + 1}–${book.chapters}` : `1–${book.chapters}`}
             onSubmit={() => {
                 const ch = parseInt(chapterInput, 10);
-                if (ch >= (min || 1) && ch <= book.chapters) onChapterSelect(ch);
+                if (ch >= (min || 1) && ch <= book.chapters) {
+                    onChapterSelect(ch);
+                } else {
+                    onInvalid?.();
+                }
             }}
             min={min}
             confirmIcon="arrow-forward"
             onInteraction={onInteraction}
+            onInvalid={onInvalid}
             colors={colors}
         />
     );
@@ -216,6 +236,7 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
 
     const slideAnim = useRef(new Animated.Value(0)).current;
     const fadeAnim = useRef(new Animated.Value(1)).current;
+    const shakeAnim = useRef(new Animated.Value(0)).current;
     const verseInputRef = useRef<TextInput>(null);
     const chapterInputRef = useRef<TextInput>(null);
 
@@ -244,10 +265,23 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
     const filteredBooks = useMemo(() => {
         if (!query.trim()) return ALL_BIBLE_BOOKS;
         const q = query.toLowerCase();
-        return ALL_BIBLE_BOOKS.filter(b =>
-            b.name.toLowerCase().startsWith(q) ||
-            b.abbrv.toLowerCase().startsWith(q)
-        );
+        return ALL_BIBLE_BOOKS.filter(b => {
+            const name = b.name.toLowerCase();
+            const abbrv = b.abbrv.toLowerCase();
+
+            // Match if any part of the name starts with the query
+            // (e.g., "c" matches "Chronicles" in "1 Chronicles")
+            if (name.split(/\s+/).some(word => word.startsWith(q))) return true;
+
+            // Match if the abbreviation starts with the query
+            if (abbrv.startsWith(q)) return true;
+
+            // Match if abbreviation without leading number starts with the query
+            // (e.g., "c" matches "1Chr")
+            if (abbrv.replace(/^[1-3]/, '').startsWith(q)) return true;
+
+            return false;
+        });
     }, [query]);
 
     const morph = (fn: () => void) => {
@@ -256,6 +290,16 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
             Animated.timing(fadeAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
         ]).start();
         setTimeout(fn, 100);
+    };
+
+    const shake = () => {
+        shakeAnim.setValue(0);
+        Animated.sequence([
+            Animated.timing(shakeAnim, { toValue: 1, duration: 50, useNativeDriver: true }),
+            Animated.timing(shakeAnim, { toValue: -1, duration: 50, useNativeDriver: true }),
+            Animated.timing(shakeAnim, { toValue: 1, duration: 50, useNativeDriver: true }),
+            Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
+        ]).start();
     };
 
     // ── Handlers ──────────────────────────────────────────────────────────────
@@ -287,11 +331,33 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
 
     const handleAddRange = () => {
         onInteraction?.();
+        if (!startVerse) {
+            handleRangeToChapter();
+        } else {
+            morph(() => { setPhase('range-type'); });
+        }
+    };
+
+    const handleRangeToChapter = () => {
+        onInteraction?.();
         const book = selectedBook!.name;
         const sc = startChapter!;
         const sv = startVerse;
         onPreview(sv ? `${book} ${sc}:${sv}-` : `${book} ${sc}-`);
         morph(() => { setChapterInput(''); setPhase('end-chapter'); });
+    };
+
+    const handleRangeToVerse = () => {
+        onInteraction?.();
+        const book = selectedBook!.name;
+        const sc = startChapter!;
+        let sv = startVerse;
+        if (!sv) {
+            sv = '1';
+            setStartVerse('1');
+        }
+        onPreview(`${book} ${sc}:${sv}-`);
+        morph(() => { setEndChapter(null); setVerseInput(''); setPhase('end-verse'); });
     };
 
     const handleVerseInputChange = (v: string) => {
@@ -300,7 +366,10 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
     };
 
     const handleVerseConfirm = () => {
-        if (!verseInput.trim()) return;
+        if (!verseInput.trim()) {
+            shake();
+            return;
+        }
         morph(() => { setStartVerse(verseInput); setVerseInput(''); setPhase('verse-suffix'); });
     };
 
@@ -324,19 +393,20 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
         const book = selectedBook!.name;
         const sc = startChapter!;
         const sv = startVerse;
-        const ec = endChapter ?? sc;
-        onPreview(ec === sc ? `${book} ${sc}:${sv}-${v}` : `${book} ${sc}:${sv}-${ec}:${v}`);
+        onPreview(endChapter ? `${book} ${sc}:${sv}-${endChapter}:${v}` : `${book} ${sc}:${sv}-${v}`);
     };
 
     const handleEndVerseConfirm = () => {
-        if (!verseInput.trim()) return;
+        if (!verseInput.trim()) {
+            shake();
+            return;
+        }
         const book = selectedBook!.name;
         const sc = startChapter!;
         const sv = startVerse;
-        const ec = endChapter ?? sc;
-        const ref = ec === sc
-            ? `${book} ${sc}:${sv}-${verseInput}`
-            : `${book} ${sc}:${sv}-${ec}:${verseInput}`;
+        const ref = endChapter
+            ? `${book} ${sc}:${sv}-${endChapter}:${verseInput}`
+            : `${book} ${sc}:${sv}-${verseInput}`;
         onSelect(ref);
         resetState();
     };
@@ -371,6 +441,15 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
                     setStartVerse('');
                     setPhase('verse');
                     break;
+                case 'range-type':
+                    if (sv) {
+                        onPreview(`${book} ${sc}:${sv}`);
+                        setPhase('verse-suffix');
+                    } else {
+                        onPreview(`${book} ${sc}`);
+                        setPhase('suffix');
+                    }
+                    break;
                 case 'end-chapter':
                     setChapterInput('');
                     if (sv) {
@@ -383,9 +462,13 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
                     break;
                 case 'end-verse':
                     onPreview(`${book} ${sc}:${sv}-`);
-                    setEndChapter(null);
+                    if (endChapter) {
+                        setPhase('end-chapter');
+                        setEndChapter(null);
+                    } else {
+                        setPhase('range-type');
+                    }
                     setVerseInput('');
-                    setPhase('end-chapter');
                     break;
             }
         });
@@ -429,7 +512,9 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
                             setChapterInput={setChapterInput}
                             chapterInputRef={chapterInputRef}
                             onInteraction={onInteraction}
+                            onInvalid={shake}
                             colors={colors}
+                            placeholder="Ch?"
                         />
                     </>
                 );
@@ -443,8 +528,8 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
                             onInteraction={onInteraction}
                             colors={colors}
                         />
-                        <ActionPill label=": Verse" onPress={handleAddVerse} onInteraction={onInteraction} colors={colors} />
-                        <ActionPill label="– Range" onPress={handleAddRange} onInteraction={onInteraction} colors={colors} />
+                        <ActionPill label="Verse" onPress={handleAddVerse} onInteraction={onInteraction} colors={colors} />
+                        <ActionPill label="To" onPress={handleAddRange} onInteraction={onInteraction} colors={colors} />
                         <ActionPill label="Done ✓" onPress={handleDone} onInteraction={onInteraction} colors={colors} />
                     </>
                 );
@@ -465,6 +550,7 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
                             placeholder="verse"
                             onSubmit={handleVerseConfirm}
                             onInteraction={onInteraction}
+                            onInvalid={shake}
                             colors={colors}
                         />
                     </>
@@ -479,8 +565,22 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
                             onInteraction={onInteraction}
                             colors={colors}
                         />
-                        <ActionPill label="– Range" onPress={handleAddRange} onInteraction={onInteraction} colors={colors} />
-                        <ActionPill label="Done ✓" onPress={handleDone} onInteraction={onInteraction} colors={colors} />
+                        <ActionPill label="To" onPress={handleAddRange} onInteraction={onInteraction} colors={colors} />
+                        <ActionPill label="Done" onPress={handleDone} onInteraction={onInteraction} colors={colors} />
+                    </>
+                );
+
+            case 'range-type':
+                return (
+                    <>
+                        <BackPill
+                            label={startVerse ? `${book.abbrv} ${sc}:${startVerse}` : `${book.abbrv} ${sc}`}
+                            onPress={goBack}
+                            onInteraction={onInteraction}
+                            colors={colors}
+                        />
+                        <ActionPill label="Chapter what?" onPress={handleRangeToChapter} onInteraction={onInteraction} colors={colors} />
+                        <ActionPill label="Verse what?" onPress={handleRangeToVerse} onInteraction={onInteraction} colors={colors} />
                     </>
                 );
 
@@ -501,18 +601,19 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
                             setChapterInput={setChapterInput}
                             chapterInputRef={chapterInputRef}
                             onInteraction={onInteraction}
+                            onInvalid={shake}
                             colors={colors}
+                            placeholder="Ch?"
                         />
                     </>
                 );
 
             case 'end-verse': {
-                const ec = endChapter ?? sc;
-                const minVerse = (ec === sc) ? parseInt(startVerse, 10) : undefined;
+                const minVerse = (!endChapter) ? parseInt(startVerse, 10) : undefined;
                 return (
                     <>
                         <BackPill
-                            label={`${book.abbrv} ${sc}:${startVerse}–${ec}:`}
+                            label={endChapter ? `${book.abbrv} ${sc}:${startVerse}–${endChapter}:` : `${book.abbrv} ${sc}:${startVerse}–`}
                             onPress={goBack}
                             onInteraction={onInteraction}
                             colors={colors}
@@ -521,10 +622,11 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
                             inputRef={verseInputRef}
                             value={verseInput}
                             onChange={handleEndVerseInputChange}
-                            placeholder="verse"
+                            placeholder="Verse what?"
                             onSubmit={handleEndVerseConfirm}
                             min={minVerse}
                             onInteraction={onInteraction}
+                            onInvalid={shake}
                             colors={colors}
                         />
                     </>
@@ -541,7 +643,10 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
                 styles.ribbonContainer,
                 {
                     opacity: slideAnim,
-                    transform: [{ translateY: slideAnim.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }],
+                    transform: [
+                        { translateY: slideAnim.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) },
+                        { translateX: shakeAnim.interpolate({ inputRange: [-1, 1], outputRange: [-10, 10] }) },
+                    ],
                 },
             ]}
         >
