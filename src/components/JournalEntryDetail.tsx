@@ -1,6 +1,6 @@
 import { JournalEntry, deleteJournalEntry, shareReflectionToGroup } from '@/src/data/database';
 import { getDaysDifference, getLocalMidnight } from '@/src/utils/dateUtils';
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
     ScrollView,
     Share,
@@ -242,6 +242,11 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
             const hasContent = entry.action_items.some(item => item.action.trim() || item.motivation.trim());
             if (!hasContent) return null;
 
+            const validActions = (entry.action_items || []).filter(
+                item => item.action.trim() || item.motivation.trim()
+            );
+            const isSingleAction = validActions.length === 1;
+
             return (
                 <View key={questionIndex} style={[styles.reflectionCard, { borderLeftColor: colors.accentSecondary }]}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: Spacing.md }}>
@@ -251,35 +256,30 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                         </ScalePressable>
                     </View>
                     <View style={styles.answerContainer}>
-                        {(() => {
-                            const validActions = (entry.action_items || []).filter(item => item.action.trim() || item.motivation.trim());
-                            const isSingleAction = validActions.length === 1;
-
-                            return validActions.map((item, i) => (
-                                <View
-                                    key={i}
-                                    style={[
-                                        !isSingleAction && styles.actionItemCard,
-                                        !isSingleAction && { backgroundColor: colors.cardBackground, borderColor: colors.border }
-                                    ]}
-                                >
-                                    {item.action.trim() ? (
+                        {validActions.map((item, i) => (
+                            <View
+                                key={i}
+                                style={[
+                                    !isSingleAction && styles.actionItemCard,
+                                    !isSingleAction && { backgroundColor: colors.cardBackground, borderColor: colors.border }
+                                ]}
+                            >
+                                {item.action.trim() ? (
+                                    <HyperlinkedText
+                                        style={[styles.actionText, { color: colors.textPrimary }]}
+                                        text={item.action.trim()}
+                                    />
+                                ) : null}
+                                {item.motivation.trim() ? (
+                                    <View style={styles.motivationRow}>
                                         <HyperlinkedText
-                                            style={[styles.actionText, { color: colors.textPrimary }]}
-                                            text={item.action.trim()}
+                                            style={[styles.motivationText, { color: colors.textSecondary }]}
+                                            text={item.motivation.trim()}
                                         />
-                                    ) : null}
-                                    {item.motivation.trim() ? (
-                                        <View style={styles.motivationRow}>
-                                            <HyperlinkedText
-                                                style={[styles.motivationText, { color: colors.textSecondary }]}
-                                                text={item.motivation.trim()}
-                                            />
-                                        </View>
-                                    ) : null}
-                                </View>
-                            ));
-                        })()}
+                                    </View>
+                                ) : null}
+                            </View>
+                        ))}
                     </View>
                 </View>
             );
@@ -341,18 +341,18 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
         );
     };
 
-    const hasReflections = (() => {
+    const hasReflections = useMemo(() => {
         const textReflections = [
             entry.reflection_1,
             entry.reflection_2,
             entry.reflection_4,
             entry.study_further,
         ].filter(r => r && r.trim().length > 0);
-        const hasActions = entry.action_items && entry.action_items.some(
+        const hasActions = entry.action_items?.some(
             item => item.action.trim() || item.motivation.trim()
         );
         return textReflections.length > 0 || !!hasActions;
-    })();
+    }, [entry.reflection_1, entry.reflection_2, entry.reflection_4, entry.study_further, entry.action_items]);
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
