@@ -8,7 +8,7 @@ import {
     getLastCompletedReadingItemId,
     checkEntryCoversChapters,
     toggleReadingItem,
-    getRecentStudyTopics, // Added import
+    getRecentStudyTopics,
 } from "@/src/data/database";
 import { READING_PLAN_DATA, ReadingItem } from "@/src/data/readingPlanData";
 import { useTheme } from "@/src/theme/ThemeContext";
@@ -39,6 +39,8 @@ type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 interface StatCardProps {
     icon: IoniconName;
     value: number;
+    label: string;
+    unit?: string;
 }
 
 const AnimatedFlame = React.memo(({ size, color }: { size: number; color: string }) => {
@@ -76,7 +78,7 @@ const AnimatedFlame = React.memo(({ size, color }: { size: number; color: string
     );
 });
 
-const StatCard = React.memo(({ icon, value }: StatCardProps) => {
+const StatCard = React.memo(({ icon, value, label, unit }: StatCardProps) => {
     const { colors } = useTheme();
     const isFlame = icon === 'flame' && value > 0;
 
@@ -103,13 +105,33 @@ const StatCard = React.memo(({ icon, value }: StatCardProps) => {
             </View>
 
             <View style={styles.statInfo}>
+                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
+                    <Text
+                        style={[
+                            styles.statValue,
+                            { color: colors.textPrimary },
+                        ]}
+                    >
+                        {value}
+                    </Text>
+                    {unit && (
+                        <Text
+                            style={[
+                                styles.statUnit,
+                                { color: colors.textSecondary },
+                            ]}
+                        >
+                            {unit}
+                        </Text>
+                    )}
+                </View>
                 <Text
                     style={[
-                        styles.statValue,
-                        { color: colors.textPrimary },
+                        styles.statLabel,
+                        { color: colors.textTertiary },
                     ]}
                 >
-                    {value}
+                    {label}
                 </Text>
             </View>
         </View>
@@ -124,8 +146,8 @@ interface QuickStatsProps {
 const QuickStats = React.memo(({ totalEntries, missedDays }: QuickStatsProps) => {
     return (
         <View style={styles.statsContainer}>
-            <StatCard icon="journal" value={totalEntries} />
-            <StatCard icon="snow" value={missedDays} />
+            <StatCard icon="journal" value={totalEntries} label="Entries" />
+            <StatCard icon="snow" value={missedDays} label="Missed" unit="days" />
         </View>
     );
 });
@@ -417,13 +439,13 @@ export default function Index() {
                     <>
                         <QuickStats totalEntries={stats.totalEntries} missedDays={stats.missedDays} />
                         <NextReading nextItem={nextReading} onRefresh={loadHomeData} />
-                        <StudyReminders topics={topics} onEntryPress={handleEntryPress} />
                         <WeeklyStreak weekDays={weekDays} />
                         <ActionReminders
                             pinnedItems={actionReminders?.pinned}
                             rotatingItems={actionReminders?.rotating}
                             onEntryPress={handleEntryPress}
                         />
+                        <StudyReminders topics={topics} onEntryPress={handleEntryPress} />
                         <Flashback flashbackData={flashbackEntry} onEntryPress={handleEntryPress} />
                     </>
                 )}
@@ -511,6 +533,18 @@ const styles = StyleSheet.create({
         fontSize: 20,
         fontWeight: Typography.weight.bold,
         letterSpacing: -0.5,
+    },
+    statLabel: {
+        fontSize: 10,
+        fontWeight: '700',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginTop: -2,
+    },
+    statUnit: {
+        fontSize: 12,
+        fontWeight: '600',
+        opacity: 0.6,
     },
     /* Update card */
     updateCardWrapper: {
