@@ -20,7 +20,9 @@ export const openBibleReference = async (
 
     const pad = (num: number | string | undefined | null, size: number) => {
         if (num === undefined || num === null || num === '') return '000';
-        return num.toString().padStart(size, '0');
+        // Strip any non-digit characters (like 'a' or 'b' in the verse)
+        const cleanedNum = num.toString().replace(/\D/g, '');
+        return cleanedNum.padStart(size, '0');
     };
 
     const bb = bookIndex.toString().padStart(2, '0');
@@ -53,7 +55,7 @@ export const openBibleReference = async (
 export const openBibleReferenceFromTag = async (refString: string) => {
     // Basic parsing: "Book Chapter:Verse-Verse" or "Book Chapter:Verse" or "Book Chapter"
     // This is much simpler because we know the string is a valid reference from the picker
-    const match = refString.match(/^(.+?)\s+(\d+)(?::(\d+))?(?:\s*[-–]\s*(?:(\d+):)?(\d+))?$/);
+    const match = refString.match(/^(.+?)\s+(\d+)(?::(\d+[a-z]?))?(?:\s*[-–]\s*(?:(\d+):)?(\d+[a-z]?))?$/i);
 
     if (!match) {
         // Fallback for very simple cases or if parsing fails
