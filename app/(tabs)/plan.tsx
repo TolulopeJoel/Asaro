@@ -9,6 +9,7 @@ import { READING_PLAN_DATA, ReadingItem } from '@/src/data/readingPlanData';
 import { getReadingProgress, toggleReadingItem, checkEntryCoversChapters } from '@/src/data/database';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { ScalePressable } from '@/src/components/ScalePressable';
+import * as WebBrowser from 'expo-web-browser';
 
 type ListDataItem =
     | { type: 'sectionHeader'; section: string; id: string }
@@ -86,8 +87,8 @@ const ReadingCard = React.memo(({
                     borderColor: isCompleted ? colors.accent + '40' : colors.cardBorder,
                 },
                 item.isKey && !isCompleted && {
-                    borderColor: colors.accentSecondary + '60',
-                    backgroundColor: colors.accentSecondaryLight + '05',
+                    borderColor: item.id <= 286 ? '#E53935' + '60' : '#1E88E560',
+                    backgroundColor: item.id <= 286 ? '#E53935' + '05' : '#1E88E505',
                 }
             ]}
             onPress={() => onToggle(item.id, !isCompleted)}
@@ -95,13 +96,14 @@ const ReadingCard = React.memo(({
             <View style={styles.cardContent}>
                 <View style={styles.bookInfo}>
                     <View style={styles.bookHeader}>
-                        {item.isKey && (
+                        {item.isKey && item.id <= 286 && (
                             <View style={[styles.keyBadge, { backgroundColor: colors.accentSecondary + '15' }]}>
-                                <Ionicons
-                                    name="sparkles"
-                                    size={10}
-                                    color={colors.accentSecondary}
-                                />
+                                <View style={[styles.redDiamond, { backgroundColor: '#E53935' }]} />
+                            </View>
+                        )}
+                        {item.isKey && item.id > 286 && (
+                            <View style={[styles.keyBadge, { backgroundColor: '#1E88E515' }]}>
+                                <View style={[styles.blueDot, { backgroundColor: '#1E88E5' }]} />
                             </View>
                         )}
                         <Text style={[
@@ -321,14 +323,63 @@ export default function PlanScreen() {
                     <View style={[styles.progressBarFill, { width: `${progress}%`, backgroundColor: colors.accent }]} />
                 </View>
             </View>
+
+            {progress === 0 && (
+                <View style={[styles.legendContainer, { backgroundColor: colors.backgroundSubtle, marginTop: Spacing.xl }]}>
+                    <View style={styles.legendItem}>
+                        <View style={[styles.redDiamond, { backgroundColor: '#E53935', marginTop: 4 }]} />
+                        <Text style={[styles.legendText, { color: colors.textSecondary }]}>
+                            Historical overview of God's dealings with the Israelites
+                        </Text>
+                    </View>
+                    <View style={styles.legendItem}>
+                        <View style={[styles.blueDot, { backgroundColor: '#1E88E5', marginTop: 4 }]} />
+                        <Text style={[styles.legendText, { color: colors.textSecondary }]}>
+                            Chronological overview of the development of the Christian congregation
+                        </Text>
+                    </View>
+                </View>
+            )}
         </View>
     ), [colors, progress]);
 
-    const renderFooter = useCallback(() => (
-        <Text style={[styles.footnote, { color: colors.textSecondary }]}>
-            * The Bible reading plan was adapted from the Bible Reading Plan found on https://www.jw.org/en/library/series/more-topics/bible-reading-plan/
-        </Text>
-    ), [colors.textSecondary]);
+    const renderFooter = useCallback(() => {
+        const url = 'https://www.jw.org/en/library/series/more-topics/bible-reading-plan/';
+
+        const handleOpenLink = () => {
+            WebBrowser.openBrowserAsync(url);
+        };
+
+        return (
+            <View>
+                {progress > 0 && (
+                    <View style={[styles.legendContainer, { backgroundColor: colors.backgroundSubtle }]}>
+                        <View style={styles.legendItem}>
+                            <View style={[styles.redDiamond, { backgroundColor: '#E53935', marginTop: 4 }]} />
+                            <Text style={[styles.legendText, { color: colors.textSecondary }]}>
+                                Historical overview of God's dealings with the Israelites
+                            </Text>
+                        </View>
+                        <View style={styles.legendItem}>
+                            <View style={[styles.blueDot, { backgroundColor: '#1E88E5', marginTop: 4 }]} />
+                            <Text style={[styles.legendText, { color: colors.textSecondary }]}>
+                                Chronological overview of the development of the Christian congregation
+                            </Text>
+                        </View>
+                    </View>
+                )}
+                <Text style={[styles.footnote, { color: colors.textSecondary, marginTop: Spacing.xl }]}>
+                    * This reading plan was adapted from the Bible Reading Plan found on{' '}
+                    <Text
+                        style={{ textDecorationLine: 'underline', color: colors.accent }}
+                        onPress={handleOpenLink}
+                    >
+                        jw.org
+                    </Text>
+                </Text>
+            </View>
+        );
+    }, [colors.textSecondary, colors.accent, colors.backgroundSubtle, progress]);
 
     const keyExtractor = useCallback((item: ListDataItem) => item.id, []);
 
@@ -400,7 +451,6 @@ const styles = StyleSheet.create({
     footnote: {
         fontSize: 10,
         lineHeight: 14,
-        opacity: 0.5,
         marginTop: Spacing.xl,
         fontStyle: 'italic',
     },
@@ -495,10 +545,22 @@ const styles = StyleSheet.create({
     keyBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 3,
+        justifyContent: 'center',
         paddingHorizontal: 6,
         paddingVertical: 5,
         borderRadius: 8,
+        width: 24,
+        height: 24,
+    },
+    redDiamond: {
+        width: 8,
+        height: 8,
+        transform: [{ rotate: '45deg' }],
+    },
+    blueDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
     },
     progressHeaderRow: {
         flexDirection: 'row',
@@ -510,5 +572,21 @@ const styles = StyleSheet.create({
         fontSize: 24,
         fontWeight: '800',
         letterSpacing: -1,
+    },
+    legendContainer: {
+        marginTop: Spacing.xl,
+        gap: Spacing.md,
+        padding: Spacing.md,
+        borderRadius: 12,
+    },
+    legendItem: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: Spacing.md,
+    },
+    legendText: {
+        fontSize: 13,
+        flex: 1,
+        lineHeight: 18,
     },
 });
