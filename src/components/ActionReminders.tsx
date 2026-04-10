@@ -144,7 +144,7 @@ const ActionCard = React.memo(({
                         <Ionicons
                             name="flash"
                             size={14}
-                            color={colors.accent}
+                            color={colors.accentSecondary}
                         />
                         <Text style={[styles.headerTitle, { color: colors.textSecondary }]}>
                             {isTopStacked
@@ -163,8 +163,8 @@ const ActionCard = React.memo(({
                                 width="12"
                                 height="12"
                                 viewBox="0 0 24 24"
-                                fill={colors.accent}
-                                stroke={colors.accent}
+                                fill={colors.accentSecondary}
+                                stroke={colors.accentSecondary}
                                 strokeWidth="2"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
@@ -179,8 +179,8 @@ const ActionCard = React.memo(({
 
                 {/* ── Scripture badge ── */}
                 <View style={styles.cardHeader}>
-                    <View style={[styles.refBadge, { backgroundColor: colors.accent + '15' }]}>
-                        <Text style={[styles.refText, { color: colors.accent }]}>
+                    <View style={[styles.refBadge, { backgroundColor: colors.accentSecondary + '15' }]}>
+                        <Text style={[styles.refText, { color: colors.accentSecondary }]}>
                             {item.book_name}{' '}
                             {item.chapter_start}
                             {item.chapter_end && item.chapter_end !== item.chapter_start
