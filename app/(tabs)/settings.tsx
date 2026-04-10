@@ -564,13 +564,13 @@ export default function Settings() {
                             </Text>
                             {(new Date().getTime() - new Date(lastBackupDate).getTime() > 7 * 24 * 60 * 60 * 1000) && (
                                 <Text style={[styles.lastBackupText, { color: colors.accentSecondary || '#E67E22', fontStyle: 'italic', marginTop: -8, paddingHorizontal: 20 }]}>
-                                    It's been a while since your last backup! If your phone crashes, please don't cry to me o
+                                    It's been a while since your last backup! If your phone crashes, please don't cry to me
                                 </Text>
                             )}
                         </View>
                     ) : (
                         <Text style={[styles.lastBackupText, { color: colors.accentSecondary || '#E67E22', fontStyle: 'italic', paddingHorizontal: 20 }]}>
-                            You haven't backed up your data. If you lose everything, please don't cry to me o
+                            You haven't backed up your data. If you lose everything, please don't cry to me
                         </Text>
                     )}
                 </SettingsGroup>
@@ -584,6 +584,9 @@ export default function Settings() {
                         onPress={handleUpdateSleepTime}
                         colors={colors}
                     />
+                    <Text style={[styles.lastBackupText, { color: colors.textTertiary, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 16 }]}>
+                        Notifications won't be sent after this time.
+                    </Text>
                 </SettingsGroup>
 
                 {/* About */}
@@ -767,7 +770,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         borderRadius: 14,
         borderWidth: 1,
-        aspectRatio: 1,
+        aspectRatio: 1.1,
     },
     buttonGroup: {
         flexDirection: 'row',

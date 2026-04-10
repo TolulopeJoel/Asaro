@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState, useRef, useEffect } from 'react';
 import { LoadingView } from '@/src/components/LoadingView';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, DeviceEventEmitter, Platform } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, DeviceEventEmitter, Platform, LayoutAnimation } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
@@ -252,6 +252,7 @@ export default function PlanScreen() {
     }, [completedItems, router]);
 
     const toggleSection = useCallback((section: string) => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setCollapsedSections(prev => {
             const newCollapsed = new Set(prev);
             if (newCollapsed.has(section)) {
@@ -445,14 +446,14 @@ const styles = StyleSheet.create({
         fontWeight: '800',
     },
     miniProgressTrack: {
-        width: 40,
-        height: 4,
-        borderRadius: 2,
+        width: 56,
+        height: 6,
+        borderRadius: 3,
         overflow: 'hidden',
     },
     miniProgressFill: {
         height: '100%',
-        borderRadius: 2,
+        borderRadius: 3,
     },
     card: {
         borderRadius: 16,
