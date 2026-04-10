@@ -414,12 +414,45 @@ export const createJournalEntry = async (data: JournalEntryInput) => {
         }
 
         // Mark reading plan items as completed.
-        // If an explicit readingItemId was provided (via the Next Reading button), use only that.
-        // Otherwise, find ALL plan items whose chapter range overlaps with the entry's range
-        // (handles cases like entering ch 22-28 across multiple plan items).
-        const planItemIds = data.readingItemId
-            ? [data.readingItemId]
-            : await findMatchingReadingPlanItems(database, data.bookName, data.chapterStart, data.chapterEnd);
+        // If an explicit readingItemId was provided (via the Next Reading button), 
+        // verify it still matches the book name and chapters before using it exclusively.
+        let planItemIds: number[] = [];
+        if (data.readingItemId) {
+            const planItem = READING_PLAN_DATA.find(i => i.id === data.readingItemId);
+            if (planItem) {
+                const bookMatches = planItem.book.toLowerCase() === data.bookName.toLowerCase() ||
+                    planItem.book.toLowerCase().split('/').includes(data.bookName.toLowerCase());
+
+                if (bookMatches) {
+                    if (!planItem.chapters) {
+                        // Special items without chapters (e.g. Obadiah/Jonah)
+                        planItemIds = [data.readingItemId];
+                    } else {
+                        // Items with chapters - check overlap
+                        const parts = planItem.chapters.split('-');
+                        const planStart = parseInt(parts[0].split(':')[0], 10);
+                        let planEnd = planStart;
+                        if (parts.length > 1) {
+                            planEnd = parseInt(parts[parts.length - 1].split(':')[0], 10);
+                        }
+
+                        const entryEnd = data.chapterEnd ?? data.chapterStart;
+                        const overlaps = data.chapterStart !== undefined &&
+                            data.chapterStart <= planEnd && entryEnd! >= planStart;
+
+                        if (overlaps) {
+                            planItemIds = [data.readingItemId];
+                        }
+                    }
+                }
+            }
+        }
+
+        // If no explicit ID was provided OR it didn't match the new entry data,
+        // fallback to finding ALL matching items automatically.
+        if (planItemIds.length === 0) {
+            planItemIds = await findMatchingReadingPlanItems(database, data.bookName, data.chapterStart, data.chapterEnd);
+        }
 
         for (const planItemId of planItemIds) {
             await database.runAsync(
