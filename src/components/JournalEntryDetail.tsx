@@ -14,7 +14,6 @@ import { useAlert } from '../context/AlertContext';
 import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
 import { ScalePressable } from './ScalePressable';
-import { openBibleReference } from '../utils/bibleUtils';
 import { HyperlinkedText } from './HyperlinkedText';
 
 interface JournalEntryDetailProps {
