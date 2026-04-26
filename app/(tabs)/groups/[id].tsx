@@ -12,7 +12,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import firestore from '@react-native-firebase/firestore';
 import { useAuth } from '@/src/context/AuthContext';
-import { checkInactiveMembers, getISOWeekString } from '@/src/utils/syncActivities';
+import { checkInactiveMembers, getISOWeekString, evaluateGroupAdminRoles } from '@/src/utils/syncActivities';
 import { getTodayDateString } from '@/src/utils/dateUtils';
 import { ALL_BADGES } from '@/src/utils/badges';
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -941,7 +941,10 @@ export default function GroupDetailScreen() {
                     setIsOffline(false);
                     setGroupData(doc.data() || null);
                     markResolved();
-                    if (doc.exists()) checkInactiveMembers(groupId);
+                    if (doc.exists()) {
+                        checkInactiveMembers(groupId);
+                        evaluateGroupAdminRoles(groupId);
+                    }
                 },
                 (error) => {
                     console.error('[GroupDetail] group snapshot error:', error);

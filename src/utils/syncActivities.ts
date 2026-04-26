@@ -341,6 +341,18 @@ export const syncPendingActivities = async (): Promise<void> => {
 
                         // ── journal_entry: full member + group writes ───────
                         if (activity.type === 'journal_entry') {
+
+                            // ── Admin qualification ─────────────────────────
+                            // If the member hits 21 consecutive days this month,
+                            // record it so evaluateGroupAdminRoles() can promote
+                            // them to admin at the start of next month.
+                            const alreadyQualifiedThisMonth =
+                                memberData.adminQualifiedMonth === currentMonth;
+                            const adminQualUpdate: Record<string, any> =
+                                monthlyStreak >= 21 && !alreadyQualifiedThisMonth
+                                    ? { adminQualifiedMonth: currentMonth }
+                                    : {};
+
                             if (!lastReadDateStr || activityLocalDateStr >= lastReadDateStr) {
                                 batch.set(memberRef, {
                                     userId: activity.userId,
@@ -355,6 +367,7 @@ export const syncPendingActivities = async (): Promise<void> => {
                                     weeklyActivityWeek,
                                     totalEntries,
                                     totalReflections,
+                                    ...adminQualUpdate,
                                 }, { merge: true });
                             } else {
                                 // Backfilled activity: still update heatmap, monthly stats, totals
@@ -366,6 +379,7 @@ export const syncPendingActivities = async (): Promise<void> => {
                                     monthlyStreak,
                                     monthlyActivityMonth: currentMonth,
                                     monthlyActivityCount,
+                                    ...adminQualUpdate,
                                 }, { merge: true });
                             }
 
@@ -502,5 +516,80 @@ export const checkInactiveMembers = async (groupId: string): Promise<void> => {
         }
     } catch (error) {
         console.error('[checkInactiveMembers] Error:', error);
+    }
+};
+
+// ─── Admin Role Evaluation ────────────────────────────────────────────────────
+
+/**
+ * Returns a "YYYY-MM" string for the month N months before the given month string.
+ */
+const subtractOneMonth = (monthStr: string): string => {
+    const [year, month] = monthStr.split('-').map(Number);
+    if (month === 1) return `${year - 1}-12`;
+    return `${year}-${String(month - 1).padStart(2, '0')}`;
+};
+
+/**
+ * Evaluates admin role eligibility for all members of a group at month boundaries.
+ *
+ * Rules:
+ * - A member qualifies for admin by achieving monthlyStreak >= 21 in a calendar
+ *   month (recorded as adminQualifiedMonth on their doc).
+ * - At the start of a new month, if adminQualifiedMonth === previousMonth they
+ *   are promoted to role:'admin'; otherwise their role is cleared.
+ * - First-contact grace: if adminRoleMonth is undefined the member's role is
+ *   left untouched; only adminRoleMonth is stamped to currentMonth so the system
+ *   will properly evaluate them at the *next* month boundary.
+ *
+ * Safe to call on every group screen load — it is idempotent within a month.
+ */
+export const evaluateGroupAdminRoles = async (groupId: string): Promise<void> => {
+    try {
+        const now = new Date();
+        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const previousMonth = subtractOneMonth(currentMonth);
+
+        const groupRef = firestore().collection('groups').doc(groupId);
+        const membersSnapshot = await groupRef.collection('members').get();
+
+        // Collect members that need evaluation this month
+        const toEvaluate = membersSnapshot.docs.filter(
+            doc => doc.data().adminRoleMonth !== currentMonth
+        );
+
+        if (toEvaluate.length === 0) return;
+
+        const batch = firestore().batch();
+
+        for (const doc of toEvaluate) {
+            const data = doc.data();
+            const memberRef = groupRef.collection('members').doc(doc.id);
+
+            if (data.adminRoleMonth === undefined) {
+                // First-contact grace period — stamp the month, leave role as-is
+                batch.set(memberRef, { adminRoleMonth: currentMonth }, { merge: true });
+                continue;
+            }
+
+            const qualified = data.adminQualifiedMonth === previousMonth;
+
+            if (qualified) {
+                batch.set(memberRef, {
+                    role: 'admin',
+                    adminRoleMonth: currentMonth,
+                }, { merge: true });
+            } else {
+                // Not qualified — clear the role field
+                batch.set(memberRef, {
+                    role: firestore.FieldValue.delete(),
+                    adminRoleMonth: currentMonth,
+                }, { merge: true });
+            }
+        }
+
+        await batch.commit();
+    } catch (error) {
+        console.error('[evaluateGroupAdminRoles] Error:', error);
     }
 };
