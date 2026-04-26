@@ -805,7 +805,6 @@ const MemberProfileSheet = ({
                             )
                         )}
                     </View>
-
                 </Animated.ScrollView>
             </Animated.View>
         </Modal>
@@ -1086,11 +1085,16 @@ export default function GroupDetailScreen() {
                             <Text style={[styles.title, { color: colors.textPrimary }]}>{groupData?.name || 'Loading...'}</Text>
                         </View>
                     </View>
-                    {isAdmin && (
-                        <ScalePressable onPress={() => setIsEditModalVisible(true)}>
-                            <Ionicons name="ellipsis-horizontal-circle-outline" size={24} color={colors.textSecondary} />
+                    <View style={styles.headerRight}>
+                        <ScalePressable onPress={() => router.push('/(tabs)/groups/about' as any)} style={styles.infoButton}>
+                            <Ionicons name="information-circle-outline" size={24} color={colors.textSecondary} />
                         </ScalePressable>
-                    )}
+                        {isAdmin && (
+                            <ScalePressable onPress={() => setIsEditModalVisible(true)} style={styles.editButton}>
+                                <Ionicons name="ellipsis-horizontal-circle-outline" size={24} color={colors.textSecondary} />
+                            </ScalePressable>
+                        )}
+                    </View>
                 </View>
 
                 {/* ── Members who read today ── */}
@@ -1497,6 +1501,22 @@ export default function GroupDetailScreen() {
                                 <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
                             </ScalePressable>
                         ))}
+
+                        <ScalePressable
+                            style={[styles.infoLink, { backgroundColor: colors.backgroundElevated }]}
+                            onPress={() => router.push('/groups/about')}
+                        >
+                            <View style={styles.infoLinkContent}>
+                                <View style={[styles.infoIconWrap, { backgroundColor: colors.accent + '15' }]}>
+                                    <Ionicons name="information-circle" size={18} color={colors.accent} />
+                                </View>
+                                <View>
+                                    <Text style={[styles.infoLinkTitle, { color: colors.textPrimary }]}>Group Logic & Rules</Text>
+                                    <Text style={[styles.infoLinkSubtitle, { color: colors.textTertiary }]}>Learn about streaks, admins, and removals</Text>
+                                </View>
+                            </View>
+                            <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+                        </ScalePressable>
                     </View>
                 )}
 
@@ -1608,6 +1628,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     heroMain: { gap: 2 },
     heroValRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
     headerRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+    infoButton: { padding: 8, borderRadius: 12 },
     editButton: { padding: 8, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.1)' },
     heroVal: { fontSize: 42, fontWeight: '900', letterSpacing: -1 },
     heroLabel: { fontSize: Typography.size.sm, fontWeight: '600' },
@@ -1636,4 +1657,36 @@ const getStyles = (colors: any) => StyleSheet.create({
     gingerText: { fontSize: 10, fontWeight: '600', fontStyle: 'italic' },
     miniHeatmap: { flexDirection: 'row', gap: 3 },
     miniDot: { width: 8, height: 8, borderRadius: 2 },
+    infoLink: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: Spacing.md,
+        borderRadius: 16,
+        marginTop: Spacing.xl,
+        marginHorizontal: 4,
+        marginBottom: Spacing.xxl,
+    },
+    infoLinkContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.md,
+    },
+    infoIconWrap: {
+        width: 36,
+        height: 36,
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    infoLinkTitle: {
+        fontSize: 15,
+        fontWeight: '700',
+        letterSpacing: -0.2,
+    },
+    infoLinkSubtitle: {
+        fontSize: 12,
+        fontWeight: '500',
+        opacity: 0.8,
+    },
 });
