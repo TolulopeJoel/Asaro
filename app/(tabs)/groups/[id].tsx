@@ -1271,6 +1271,7 @@ export default function GroupDetailScreen() {
                                 const isJoined = activity.type === 'member_joined';
                                 const isRemoved = activity.type === 'member_removed';
                                 const isMilestone = activity.type === 'milestone_earned';
+                                const isAdminPromoted = activity.type === 'admin_promoted';
 
                                 return (
                                     <View key={activity.id} style={styles.activityCard}>
@@ -1343,6 +1344,11 @@ export default function GroupDetailScreen() {
                                                     has left us.
                                                 </Text>
                                             )}
+                                            {isAdminPromoted && (
+                                                <Text style={[styles.activityText, { color: colors.textSecondary }]}>
+                                                    earned admin status for {activity.monthName}! 👑
+                                                </Text>
+                                            )}
                                         </View>
                                         <View style={styles.activityIcon}>
                                             {isMilestone ? (
@@ -1355,14 +1361,16 @@ export default function GroupDetailScreen() {
                                                                 : isJoined ? 'person-add-outline'
                                                                     : isAbsent ? 'moon-outline'
                                                                         : isRemoved ? 'exit-outline'
-                                                                            : 'checkmark-circle'
+                                                                            : isAdminPromoted ? 'ribbon-outline'
+                                                                                : 'checkmark-circle'
                                                     }
                                                     size={20}
                                                     color={
                                                         isJournalEntry || isSharedReflection ? colors.accentSecondary
                                                             : isJoined ? colors.indicatorActive
                                                                 : isAbsent ? colors.accent
-                                                                    : colors.textTertiary
+                                                                    : isAdminPromoted ? colors.accentSecondary
+                                                                        : colors.textTertiary
                                                     }
                                                 />
                                             )}

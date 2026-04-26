@@ -12,7 +12,7 @@ export interface PendingActivity {
     userName?: string;
     bookName?: string;
     chapters?: string;
-    type: 'journal_entry' | 'member_joined' | 'member_absent' | 'member_removed' | 'reflection_shared';
+    type: 'journal_entry' | 'member_joined' | 'member_absent' | 'member_removed' | 'reflection_shared' | 'admin_promoted';
     /** ISO timestamp recorded at queue time */
     queuedAt: string;
     /** Short reflection preview, if present */
@@ -550,8 +550,15 @@ export const evaluateGroupAdminRoles = async (groupId: string): Promise<void> =>
         const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
         const previousMonth = subtractOneMonth(currentMonth);
 
+        const monthNames = [
+            'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December'
+        ];
+        const monthName = monthNames[now.getMonth()];
+
         const groupRef = firestore().collection('groups').doc(groupId);
         const membersSnapshot = await groupRef.collection('members').get();
+        const activitiesRef = groupRef.collection('activities');
 
         // Collect members that need evaluation this month
         const toEvaluate = membersSnapshot.docs.filter(
@@ -573,12 +580,24 @@ export const evaluateGroupAdminRoles = async (groupId: string): Promise<void> =>
             }
 
             const qualified = data.adminQualifiedMonth === previousMonth;
+            const currentRole = data.role;
 
             if (qualified) {
                 batch.set(memberRef, {
                     role: 'admin',
                     adminRoleMonth: currentMonth,
                 }, { merge: true });
+
+                if (currentRole !== 'admin') {
+                    // New promotion!
+                    batch.set(activitiesRef.doc(), {
+                        userId: doc.id,
+                        userName: data.displayName || 'Reader',
+                        type: 'admin_promoted',
+                        monthName,
+                        timestamp: firestore.FieldValue.serverTimestamp(),
+                    });
+                }
             } else {
                 // Not qualified — clear the role field
                 batch.set(memberRef, {
