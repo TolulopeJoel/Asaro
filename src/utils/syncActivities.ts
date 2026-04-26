@@ -8,6 +8,7 @@ const PENDING_ACTIVITIES_KEY = 'pending_firestore_activities';
 
 export interface PendingActivity {
     userId: string;
+    activityId: string;
     userName?: string;
     bookName?: string;
     chapters?: string;
@@ -215,7 +216,9 @@ export const syncPendingActivities = async (): Promise<void> => {
             return;
         }
 
-        const remaining: PendingActivity[] = [];
+        await AsyncStorage.removeItem(PENDING_ACTIVITIES_KEY);
+
+        const failed: PendingActivity[] = [];
 
         // Sort oldest-first so streak increments happen in chronological order
         queue.sort((a, b) => new Date(a.queuedAt).getTime() - new Date(b.queuedAt).getTime());
@@ -298,6 +301,9 @@ export const syncPendingActivities = async (): Promise<void> => {
                     const batch = firestore().batch();
 
                     // 1. Activity feed entry
+                    // Use activityId as the Firestore doc ID so that if this item is
+                    // somehow processed twice the second write simply overwrites the
+                    // same document instead of creating a duplicate feed card.
                     const activityPayload: Record<string, any> = {
                         userId: activity.userId,
                         userName: activity.userName || displayName,
@@ -311,7 +317,7 @@ export const syncPendingActivities = async (): Promise<void> => {
                     if (activity.sharedQuestionTitle) activityPayload.sharedQuestionTitle = activity.sharedQuestionTitle;
                     if (activity.sharedReflectionText) activityPayload.sharedReflectionText = activity.sharedReflectionText;
 
-                    batch.set(activitiesRef.doc(), activityPayload);
+                    batch.set(activitiesRef.doc(activity.activityId), activityPayload);
 
                     // 2. Member / group updates
                     if (activity.type === 'journal_entry' || activity.type === 'reflection_shared') {
@@ -433,13 +439,18 @@ export const syncPendingActivities = async (): Promise<void> => {
                 }
             }
 
-            if (!successForAllGroups) remaining.push(activity);
+            if (!successForAllGroups) failed.push(activity);
         }
 
-        if (remaining.length === 0) {
-            await AsyncStorage.removeItem(PENDING_ACTIVITIES_KEY);
-        } else {
-            await AsyncStorage.setItem(PENDING_ACTIVITIES_KEY, JSON.stringify(remaining));
+        if (failed.length > 0) {
+            // Re-append only the items that failed to commit.
+            // Merge with anything a parallel sync may have added while we were running.
+            const currentRaw = await AsyncStorage.getItem(PENDING_ACTIVITIES_KEY);
+            const currentQueue: PendingActivity[] = currentRaw ? JSON.parse(currentRaw) : [];
+            await AsyncStorage.setItem(
+                PENDING_ACTIVITIES_KEY,
+                JSON.stringify([...currentQueue, ...failed])
+            );
         }
     } catch (error) {
         console.error('[syncActivities] Sync failed:', error);

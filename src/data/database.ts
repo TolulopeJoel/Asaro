@@ -489,6 +489,7 @@ export const createJournalEntry = async (data: JournalEntryInput) => {
 
                 const activity = {
                     userId: user.uid,
+                    activityId: `${user.uid}_journal_${entryId}`,
                     userName: resolvedName,
                     bookName: data.bookName,
                     chapters,
@@ -1332,6 +1333,7 @@ export const shareReflectionToGroup = async (
 
         const activity = {
             userId: user.uid,
+            activityId: `${user.uid}_reflection_${entry.id}_${Date.now()}`,
             userName: resolvedName,
             bookName: entry.book_name,
             chapters,
