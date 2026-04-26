@@ -37,7 +37,6 @@ export default function MeditationSessionScreen() {
     // New entries need no async work before rendering — skip the loading state.
     const needsAsyncLoad = !!(params.entryId || params.readingItemId || params.resuming);
     const [isLoading, setIsLoading] = useState(needsAsyncLoad);
-    const [createdEntryId, setCreatedEntryId] = useState<number | null>(null);
     const isSaving = useRef(false);
 
     const readingItemId = params.readingItemId ? Number(params.readingItemId) : undefined;
@@ -191,8 +190,7 @@ export default function MeditationSessionScreen() {
                 showAlert({ title: 'Success', message: 'Entry updated successfully' });
                 router.back();
             } else {
-                const newEntryId = await createJournalEntry(entryData);
-                setCreatedEntryId(newEntryId);
+                await createJournalEntry(entryData);
                 await AsyncStorage.removeItem('reflection_draft');
                 await updateNotifications();
                 if (answers.studyFurtherReminder && new Date(answers.studyFurtherReminder) > new Date()) {
@@ -210,12 +208,8 @@ export default function MeditationSessionScreen() {
     }, [selectedBook, selectedChapters, verseRange, isEditMode, entryId, router, changeStep, params.readingItemId, showAlert]);
 
     const handleDone = useCallback(() => {
-        if (createdEntryId) {
-            router.replace({ pathname: '/(tabs)/browse', params: { openEntryId: createdEntryId } });
-        } else {
-            router.back();
-        }
-    }, [router, createdEntryId]);
+        router.replace({ pathname: '/(tabs)/browse' });
+    }, [router]);
 
     const handleStartOver = useCallback(async () => {
         await AsyncStorage.removeItem('reflection_draft');

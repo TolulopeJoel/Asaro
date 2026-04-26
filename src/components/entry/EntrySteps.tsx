@@ -221,11 +221,7 @@ export const SummaryStep = React.memo(({
                             style={[styles.primaryButton, { backgroundColor: colors.accent }]}
                             onPress={onDone}
                         >
-                            <Text style={[styles.primaryButtonText, { color: colors.buttonPrimaryText }]}>Open entry</Text>
-                        </ScalePressable>
-
-                        <ScalePressable style={styles.secondaryButton} onPress={onStartOver}>
-                            <Text style={[styles.secondaryButtonText, { color: colors.textSecondary }]}>New entry</Text>
+                            <Text style={[styles.primaryButtonText, { color: colors.buttonPrimaryText }]}>Check it out</Text>
                         </ScalePressable>
                     </View>
                 </View>
@@ -436,15 +432,5 @@ const styles = StyleSheet.create({
         fontWeight: Typography.weight.semibold,
         textAlign: 'center',
         letterSpacing: 0.3,
-    },
-    secondaryButton: {
-        paddingVertical: 16,
-        paddingHorizontal: Spacing.xxl,
-    },
-    secondaryButtonText: {
-        fontSize: Typography.size.md,
-        fontWeight: Typography.weight.medium,
-        textAlign: 'center',
-        letterSpacing: 0.2,
     },
 });
