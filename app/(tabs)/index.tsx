@@ -31,6 +31,8 @@ import { ActionReminders, fetchActionRemindersData, EnhancedActionItem } from '@
 import { StudyReminders } from '@/src/components/StudyReminders';
 import { fetchFlashbackData } from '@/src/components/Flashback';
 import { getDailyTitle } from '@/src/data/homeTitles';
+import { Confetti, ConfettiRef } from '@/src/components/Confetti';
+import { formatDateToLocalString } from '@/src/utils/dateUtils';
 
 
 const DRAFT_KEY = "reflection_draft";
@@ -311,6 +313,7 @@ export default function Index() {
     const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const scrollViewRef = useRef<ScrollView>(null);
+    const confettiRef = useRef<ConfettiRef>(null);
     const { colors } = useTheme();
     const router = useRouter();
 
@@ -345,6 +348,28 @@ export default function Index() {
         return nextItem || null;
     }, []);
 
+    const checkCelebration = useCallback(async (days: DayStatus[]) => {
+        const isFullWeek = days.length === 7 && days.every(d => d.hasEntry);
+        if (!isFullWeek) return;
+
+        const today = new Date();
+        const currentDay = today.getDay();
+        const sunday = new Date(today);
+        sunday.setDate(today.getDate() - currentDay);
+        sunday.setHours(0, 0, 0, 0);
+
+        const weekKey = `celebrated_week_${formatDateToLocalString(sunday)}`;
+        const hasCelebrated = await AsyncStorage.getItem(weekKey);
+
+        if (!hasCelebrated) {
+            // Short delay to let the screen content settle
+            setTimeout(() => {
+                confettiRef.current?.start();
+            }, 500);
+            await AsyncStorage.setItem(weekKey, 'true');
+        }
+    }, []);
+
     const loadHomeData = useCallback(async () => {
         try {
             const [
@@ -369,6 +394,9 @@ export default function Index() {
             setWeekDays(newWeekDays);
             setActionReminders(newActionReminders);
             setFlashbackEntry(newFlashback);
+
+            // Check for weekly streak celebration
+            checkCelebration(newWeekDays);
         } catch (error) {
             console.error('Error loading home data:', error);
         }
@@ -450,6 +478,8 @@ export default function Index() {
                     </>
                 )}
             </ScrollView>
+
+            <Confetti ref={confettiRef} />
 
             {!draftExists && <FloatingActionButton />}
             {draftExists && <DraftBar />}
