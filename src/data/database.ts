@@ -833,13 +833,16 @@ export const importJournalEntriesFromJson = async (json: string): Promise<{
 
             // 1. Process Journal Entries
             for (const entry of entries) {
-                if (!entry.book_name) continue;
+                // Skip if missing required fields for reliable dedup
+                if (!entry.book_name || !entry.created_at) {
+                    skippedEntries++;
+                    continue;
+                }
 
-                // Check for duplicate: same book, chapter_start, and date
                 const existing = await database.getFirstAsync<{ id: number }>(
                     `SELECT id FROM journal_entries
                      WHERE book_name = ? AND chapter_start IS ? AND DATE(created_at) = DATE(?)`,
-                    [entry.book_name, entry.chapter_start ?? null, entry.created_at ?? '']
+                    [entry.book_name, entry.chapter_start ?? null, entry.created_at]
                 );
 
                 if (existing) {
@@ -847,12 +850,9 @@ export const importJournalEntriesFromJson = async (json: string): Promise<{
                     continue;
                 }
 
-                const reflections = [
-                    entry.reflection_1 ?? '',
-                    entry.reflection_2 ?? '',
-                    entry.reflection_3 ?? '',
-                    entry.reflection_4 ?? '',
-                ];
+                const now = new Date().toLocaleString('sv').replace(' ', 'T'); // local ISO-like string
+                const createdAt = entry.created_at;
+                const updatedAt = entry.updated_at ?? createdAt;
 
                 const result = await database.runAsync(
                     `INSERT INTO journal_entries (
@@ -866,12 +866,15 @@ export const importJournalEntriesFromJson = async (json: string): Promise<{
                         entry.chapter_end ?? null,
                         entry.verse_start ?? null,
                         entry.verse_end ?? null,
-                        ...reflections,
+                        entry.reflection_1 ?? '',
+                        entry.reflection_2 ?? '',
+                        entry.reflection_3 ?? '',
+                        entry.reflection_4 ?? '',
                         entry.notes ?? null,
                         entry.study_further ?? null,
                         entry.study_further_reminder ?? null,
-                        entry.created_at ?? new Date().toISOString(),
-                        entry.updated_at ?? new Date().toISOString(),
+                        createdAt,
+                        updatedAt,
                         entry.study_completed ? 1 : 0,
                     ]
                 );
@@ -893,7 +896,6 @@ export const importJournalEntriesFromJson = async (json: string): Promise<{
             // 2. Process Reading Progress (if version >= 3)
             if (parsed.version >= 3 && Array.isArray(parsed.readingProgress)) {
                 for (const item of parsed.readingProgress) {
-                    // Handle both version 3 (array of numbers) and version 4 (array of objects)
                     const itemId = typeof item === 'number' ? item : item.item_id;
                     const completedAt = typeof item === 'object' ? item.completed_at : null;
 
