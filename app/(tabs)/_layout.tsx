@@ -68,6 +68,7 @@ export default function TabLayout() {
                             let iconName: any = 'ellipse-outline';
                             if (route.name === 'index') iconName = 'sparkles-outline';
                             else if (route.name === 'browse') iconName = 'albums-outline';
+                            else if (route.name === 'study') iconName = 'book-outline';
                             else if (route.name === 'plan') iconName = 'map-outline';
                             else if (route.name === 'groups') iconName = 'people-circle-outline';
                             else if (route.name === 'settings') iconName = 'options-outline';
@@ -94,6 +95,7 @@ export default function TabLayout() {
         >
             <Tabs.Screen name="index" />
             <Tabs.Screen name="browse" />
+            <Tabs.Screen name="study" />
             <Tabs.Screen name="plan" />
             <Tabs.Screen name="groups" />
             <Tabs.Screen name="settings" />
