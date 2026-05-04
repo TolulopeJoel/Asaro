@@ -2,149 +2,111 @@ import React, { useCallback, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
-import Animated, { FadeIn, FadeOut, Layout, FadeInDown } from 'react-native-reanimated';
 import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
-import { getRecentStudyTopics, JournalEntry, toggleStudyTopicCompletion } from '../data/database';
+import { getRecentStudyTopics, JournalEntry } from '../data/database';
 import { ScalePressable } from './ScalePressable';
+import { HyperlinkedText } from './HyperlinkedText';
 
 interface StudyRemindersProps {
     onEntryPress: (entry: JournalEntry) => void;
+    topics?: JournalEntry[];
 }
 
-export const StudyReminders: React.FC<StudyRemindersProps> = React.memo(({ onEntryPress }) => {
+const BookmarkCard = React.memo(({ item, onEntryPress }: { item: JournalEntry, onEntryPress: (entry: JournalEntry) => void }) => {
     const { colors } = useTheme();
-    const [topics, setTopics] = useState<JournalEntry[]>([]);
+
+    const formattedDate = (() => {
+        const date = new Date(item.created_at);
+        const now = new Date();
+        return date.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            ...(date.getFullYear() !== now.getFullYear() && { year: 'numeric' })
+        });
+    })();
+
+    return (
+        <ScalePressable onPress={() => onEntryPress(item)}>
+            <View style={[styles.bookmarkCard, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
+                <View style={[styles.accentLine, { backgroundColor: colors.accent + 'A5' }]} />
+
+                <View style={styles.bookmarkContent}>
+                    <View style={styles.bookmarkHeader}>
+                        <View style={[styles.refBadge, { backgroundColor: colors.accent + '15' }]}>
+                            <Text style={[styles.refText, { color: colors.accent + 'A5' }]}>
+                                {item.book_name} {item.chapter_start}
+                                {item.chapter_end && item.chapter_end !== item.chapter_start ? `–${item.chapter_end}` : ''}
+                            </Text>
+                        </View>
+                        <Text style={[styles.dateText, { color: colors.textTertiary }]}>
+                            {formattedDate}
+                        </Text>
+                    </View>
+
+                    <HyperlinkedText
+                        style={[styles.bookmarkTopic, { color: colors.textPrimary }]}
+                        numberOfLines={3}
+                        text={item.study_further || ''}
+                    />
+
+                    {item.study_further_reminder && new Date(item.study_further_reminder) > new Date() && (
+                        <View style={[styles.reminderContainer, { backgroundColor: colors.backgroundSubtle + '40', borderColor: colors.border + '30' }]}>
+                            <Ionicons name="notifications-outline" size={12} color={colors.textTertiary} />
+                            <Text style={[styles.reminderText, { color: colors.textSecondary }]}>
+                                {new Date(item.study_further_reminder).toLocaleString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: 'numeric',
+                                    minute: '2-digit'
+                                })}
+                            </Text>
+                        </View>
+                    )}
+                </View>
+            </View>
+        </ScalePressable>
+    );
+});
+
+BookmarkCard.displayName = 'BookmarkCard';
+
+export const StudyReminders: React.FC<StudyRemindersProps> = React.memo(({ onEntryPress, topics }) => {
+    const { colors } = useTheme();
+    const [internalTopics, setTopics] = useState<JournalEntry[]>([]);
 
     const loadTopics = useCallback(async () => {
-        const data = await getRecentStudyTopics(7); // Show topics from last 7 days
+        const data = await getRecentStudyTopics(7);
         setTopics(data);
     }, []);
 
     useFocusEffect(
         useCallback(() => {
-            loadTopics();
-        }, [loadTopics])
+            if (!topics) loadTopics();
+        }, [loadTopics, topics])
     );
 
-    if (topics.length === 0) return null;
-
-    if (topics.length === 0) return null;
-
-    const handlePress = (item: JournalEntry) => {
-        onEntryPress(item);
-    };
-
-    const getDynamicStyle = (text: string) => {
-        const length = text.length;
-        if (length < 60) return { fontSize: 22, lineHeight: 28, padding: 24 };
-        if (length < 120) return { fontSize: 18, lineHeight: 24, padding: 20 };
-        return { fontSize: 15, lineHeight: 20, padding: 16 };
-    };
-
-    const renderCard = (item: JournalEntry, index: number) => {
-        const dynamic = getDynamicStyle(item.study_further || '');
-        const isTop = index === 0;
-
-        return (
-            <Animated.View
-                key={item.id}
-                entering={FadeInDown.delay(index * 100)}
-                exiting={FadeOut}
-                layout={Layout.springify()}
-                style={[
-                    styles.cardWrapper,
-                    {
-                        zIndex: 10 - index,
-                        marginTop: index === 0 ? 0 : -styles.card.height + (index * 12),
-                        transform: [{ scale: 1 - (index * 0.04) }],
-                        opacity: 1 - (index * 0.25),
-                    }
-                ]}
-            >
-                <ScalePressable onPress={() => handlePress(item)} disabled={!isTop}>
-                    <View
-                        style={[
-                            styles.card,
-                            {
-                                backgroundColor: colors.cardBackground,
-                                borderColor: colors.cardBorder,
-                                padding: dynamic.padding
-                            }
-                        ]}
-                    >
-                        <View style={styles.header}>
-                            <View style={styles.headerTitleRow}>
-                                <Ionicons name="bookmark" size={14} color={colors.accentSecondary} />
-                                <Text style={[styles.headerTitle, { color: colors.textSecondary }]}>
-                                    TOPIC{topics.length > 1 ? 'S' : ''} TO STUDY FURTHER
-                                </Text>
-                                {topics.length > 1 && isTop && (
-                                    <View style={[styles.pillBadge, { backgroundColor: colors.accentSecondary + '20' }]}>
-                                        <Text style={[styles.pillText, { color: colors.accentSecondary }]}>
-                                            1 OF {topics.length}
-                                        </Text>
-                                    </View>
-                                )}
-                            </View>
-                            <Text style={[styles.dateText, { color: colors.textTertiary }]}>
-                                {(() => {
-                                    const date = new Date(item.created_at);
-                                    const now = new Date();
-                                    return date.toLocaleDateString('en-US', {
-                                        month: 'short',
-                                        day: 'numeric',
-                                        ...(date.getFullYear() !== now.getFullYear() && { year: 'numeric' })
-                                    });
-                                })()}
-                            </Text>
-                        </View>
-
-                        <View style={styles.cardHeader}>
-                            <View style={[styles.refBadge, { backgroundColor: colors.accentSecondary + '15' }]}>
-                                <Text style={[styles.refText, { color: colors.accentSecondary }]}>
-                                    {item.book_name} {item.chapter_start}{item.chapter_end && item.chapter_end !== item.chapter_start ? `-${item.chapter_end}` : ''}
-                                </Text>
-                            </View>
-
-                        </View>
-
-                        <Text style={[styles.topicText, { color: colors.textPrimary, fontSize: dynamic.fontSize, lineHeight: dynamic.lineHeight }]} numberOfLines={isTop ? undefined : 2}>
-                            {item.study_further}
-                        </Text>
-
-                        {item.notes && isTop ? (
-                            <View style={[styles.notesContainer, { borderTopColor: colors.border + '20' }]}>
-                                <Text style={[styles.notesText, { color: colors.textSecondary, fontSize: Math.max(13, dynamic.fontSize - 10) }]} numberOfLines={2}>
-                                    {item.notes}
-                                </Text>
-                            </View>
-                        ) : null}
-
-                        {item.study_further_reminder && new Date(item.study_further_reminder) > new Date() && isTop ? (
-                            <View style={[styles.reminderContainer, { backgroundColor: colors.backgroundSubtle + '40', borderColor: colors.border + '30' }]}>
-                                <Ionicons name="notifications-outline" size={14} color={colors.textTertiary} />
-                                <Text style={[styles.reminderText, { color: colors.textSecondary, opacity: 0.8 }]}>
-                                    {new Date(item.study_further_reminder).toLocaleString('en-US', {
-                                        month: 'short',
-                                        day: 'numeric',
-                                        hour: 'numeric',
-                                        minute: '2-digit'
-                                    })}
-                                </Text>
-                            </View>
-                        ) : null}
-                    </View>
-                </ScalePressable>
-            </Animated.View>
-        );
-    };
+    const displayTopics = (topics || internalTopics).slice(0, 3);
+    if (displayTopics.length === 0) return null;
 
     return (
         <View style={styles.container}>
-            <View style={styles.stackContainer}>
-                {topics.slice(0, 3).map((item, index) => renderCard(item, index))}
+            <View style={styles.sectionHeaderRow}>
+                <Ionicons name="bookmark" size={14} color={colors.accent} />
+                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                    TOPICS TO STUDY FURTHER
+                </Text>
+            </View>
+
+            <View style={styles.listContainer}>
+                {displayTopics.map((item, index) => (
+                    <BookmarkCard
+                        key={`study-${item.id}-${index}`}
+                        item={item}
+                        onEntryPress={onEntryPress}
+                    />
+                ))}
             </View>
         </View>
     );
@@ -155,63 +117,48 @@ StudyReminders.displayName = 'StudyReminders';
 const styles = StyleSheet.create({
     container: {
         width: '100%',
+        marginVertical: Spacing.sm,
     },
-    stackContainer: {
-        width: '100%',
-        // height: 220, // Adjusted for 180 height card + 40px offsets
-        justifyContent: 'flex-start',
-    },
-    cardWrapper: {
-        width: '100%',
-        position: 'relative',
-    },
-    card: {
-        height: 200,
-        width: '100%',
-        borderRadius: Spacing.borderRadius.md,
-        borderWidth: 1,
-        gap: Spacing.sm,
-        justifyContent: 'flex-start',
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 12,
-    },
-    headerTitleRow: {
+    sectionHeaderRow: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
+        marginBottom: Spacing.md,
+        paddingHorizontal: Spacing.xs,
     },
-    headerTitle: {
-        fontSize: 10,
+    sectionTitle: {
+        fontSize: 11,
         fontWeight: '600',
         letterSpacing: 1.5,
         textTransform: 'uppercase',
         opacity: 0.7,
+
     },
-    pillBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: 10,
-        marginLeft: 4,
+    listContainer: {
+        gap: Spacing.md,
     },
-    pillText: {
-        fontSize: 8,
-        fontWeight: '800',
-        letterSpacing: 0.5,
+    bookmarkCard: {
+        flexDirection: 'row',
+        borderTopRightRadius: Spacing.borderRadius.md,
+        borderBottomRightRadius: Spacing.borderRadius.md,
+        borderTopLeftRadius: 0,
+        borderBottomLeftRadius: 0,
+        borderWidth: 1,
+        overflow: 'hidden',
     },
-    dateText: {
-        fontSize: 10,
-        fontWeight: '600',
-        opacity: 0.8,
+    accentLine: {
+        width: 2.5,
+        height: '100%',
     },
-    cardHeader: {
+    bookmarkContent: {
+        flex: 1,
+        padding: Spacing.md,
+        gap: 6,
+    },
+    bookmarkHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 2,
     },
     refBadge: {
         paddingHorizontal: Spacing.sm,
@@ -223,34 +170,31 @@ const styles = StyleSheet.create({
         fontWeight: Typography.weight.semibold,
         letterSpacing: 0.5,
     },
-    topicText: {
-        fontWeight: '800',
-        letterSpacing: -0.3,
+    dateText: {
+        fontSize: 10,
+        fontWeight: '600',
+        opacity: 0.8,
+    },
+    bookmarkTopic: {
+        fontSize: 16,
+        fontWeight: '600',
+        lineHeight: 22,
+        letterSpacing: -0.2,
     },
     reminderContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: Spacing.sm,
-        paddingVertical: 2,
-        borderRadius: Spacing.borderRadius.round,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: Spacing.borderRadius.sm,
         borderWidth: 1,
         alignSelf: 'flex-start',
-        marginTop: 6,
+        marginTop: 4,
         gap: 4,
     },
     reminderText: {
-        fontSize: 9,
+        fontSize: 10,
         fontWeight: Typography.weight.medium,
-    },
-    notesContainer: {
-        marginTop: 4,
-        paddingTop: 8,
-        borderTopWidth: 1,
-        gap: 2,
-    },
-    notesText: {
-        lineHeight: 18,
-        fontStyle: 'italic',
         opacity: 0.8,
     },
 });

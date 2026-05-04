@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Alert,
   Platform,
   StyleSheet,
   Text,
@@ -8,6 +7,7 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTheme } from '../theme/ThemeContext';
+import { useAlert } from '../context/AlertContext';
 import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
 import { TextArea } from './TextArea';
@@ -40,6 +40,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
   saveButtonText = 'Save It',
 }) => {
   const { colors } = useTheme();
+  const { showAlert } = useAlert();
   const [answers, setAnswers] = useState<ReflectionAnswers>({
     reflection1: initialAnswers?.reflection1 || '',
     reflection2: initialAnswers?.reflection2 || '',
@@ -81,61 +82,32 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
     }));
   };
 
-  const hasContent = (() => {
-    const { actionItems, studyFurtherReminder, ...textAnswers } = answers;
-    const hasText = Object.values(textAnswers).some(answer => typeof answer === 'string' && answer.trim().length > 0);
+  const hasPrimaryContent = (() => {
+    const { reflection1, reflection2, reflection4, notes, actionItems } = answers;
+    const hasText = [reflection1, reflection2, reflection4, notes].some(t => t.trim().length > 0);
     // An action item only counts if the action itself is filled (motivation alone is not enough)
     const hasActions = actionItems.some(item => item.action.trim().length > 0);
     return hasText || hasActions;
   })();
 
-
   const handleSave = () => {
-    if (!hasContent) return;
+    if (!hasPrimaryContent) return;
 
     // Check for motivation filled without a corresponding action
     const incompleteItem = answers.actionItems.find(
       item => item.motivation.trim().length > 0 && item.action.trim().length === 0
     );
     if (incompleteItem) {
-      Alert.alert(
-        'Missing Action',
-        'You\'ve added a "Motivated by" note but haven\'t written the action you want to take. Please add the action, or clear the motivation.'
-      );
+      showAlert({
+        title: 'Missing Action',
+        message: 'You\'ve added a "Motivated by" note but haven\'t written the action you want to take. Please add the action, or clear the motivation.'
+      });
       return;
     }
 
     if (onSave) {
       onSave(answers);
     }
-  };
-
-  const handleClear = () => {
-    if (!hasContent) return;
-
-    Alert.alert(
-      'Re-write',
-      'This will clear everything you\'ve written. Are you sure? 👀',
-      [
-        { text: 'Keep It', style: 'cancel' },
-        {
-          text: 'Clear All',
-          style: 'destructive',
-          onPress: () => {
-            const emptyAnswers: ReflectionAnswers = {
-              reflection1: '',
-              reflection2: '',
-              actionItems: [{ action: '', motivation: '' }],
-              reflection4: '',
-              studyFurther: '',
-              studyFurtherReminder: undefined,
-              notes: '',
-            };
-            setAnswers(emptyAnswers);
-          },
-        },
-      ]
-    );
   };
 
   const renderQuestion = (questionData: ReflectionQuestion, index: number) => {
@@ -238,22 +210,13 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
 
       {!disabled && (
         <View style={styles.actionsContainer}>
-          <Button
-            label="Start Over"
-            variant="secondary"
-            size="lg"
-            onPress={handleClear}
-            fullWidth={false}
-            style={{ flex: 1 }}
-          />
-
-          {hasContent && (
+          {hasPrimaryContent && (
             <Button
               label={saveButtonText}
               variant="primary"
               size="lg"
               onPress={handleSave}
-              disabled={!hasContent}
+              disabled={!hasPrimaryContent}
               style={{ flex: 1 }}
             />
           )}

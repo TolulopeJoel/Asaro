@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TextInput, Alert, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TextInput, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,9 +7,11 @@ import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/src/theme/ThemeContext';
+import { useAlert } from '@/src/context/AlertContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { Button } from '@/src/components/Button';
+import { ScalePressable } from '@/src/components/ScalePressable';
 import Animated, {
     useAnimatedStyle,
     withSpring,
@@ -32,11 +34,9 @@ const GenderOption = ({
     icon: any;
     colors: any;
 }) => {
-    const scale = useSharedValue(1);
     const progress = useSharedValue(selected ? 1 : 0);
 
     React.useEffect(() => {
-        scale.value = withSpring(selected ? 1.05 : 1);
         progress.value = withTiming(selected ? 1 : 0, { duration: 250 });
     }, [selected]);
 
@@ -44,7 +44,7 @@ const GenderOption = ({
         const backgroundColor = interpolateColor(
             progress.value,
             [0, 1],
-            [colors.cardBackground, colors.accentSecondaryLight]
+            [colors.cardBackground, colors.accentSecondaryLight + '40'] // Subtle accent background
         );
         const borderColor = interpolateColor(
             progress.value,
@@ -55,28 +55,24 @@ const GenderOption = ({
         return {
             backgroundColor,
             borderColor,
-            transform: [{ scale: scale.value }],
         };
     });
 
     return (
-        <TouchableOpacity
-            activeOpacity={0.8}
+        <ScalePressable
             onPress={onPress}
             style={{ flex: 1 }}
         >
             <Animated.View style={[styles.genderOption, animatedStyle]}>
-                <View style={styles.genderIconContainer}>
+                <View style={[
+                    styles.genderIconWrapper,
+                    { backgroundColor: selected ? colors.accent + '15' : colors.cardHover }
+                ]}>
                     <Ionicons
                         name={icon}
-                        size={22}
+                        size={32}
                         color={selected ? colors.accent : colors.textTertiary}
                     />
-                    {selected && (
-                        <Animated.View style={styles.checkIndicator}>
-                            <Ionicons name="checkmark-circle" size={14} color={colors.accent} />
-                        </Animated.View>
-                    )}
                 </View>
                 <Text style={[
                     styles.genderLabel,
@@ -85,7 +81,7 @@ const GenderOption = ({
                     {label}
                 </Text>
             </Animated.View>
-        </TouchableOpacity>
+        </ScalePressable>
     );
 };
 
@@ -93,21 +89,23 @@ export default function AuthScreen() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [isSignUp, setIsSignUp] = useState(false);
     const [gender, setGender] = useState<'m' | 'f' | null>(null);
     const [loading, setLoading] = useState(false);
     const { colors } = useTheme();
+    const { showAlert } = useAlert();
     const router = useRouter();
 
     const handleAuth = async () => {
         if (!email || !password) {
-            Alert.alert('Error', 'Please enter email and password');
+            showAlert({ title: 'Error', message: 'Please enter email and password' });
             return;
         }
 
         if (isSignUp && (!gender || password !== confirmPassword)) {
-            if (!gender) Alert.alert('Error', 'Please select if you are a Gentleman or a Lady');
-            else Alert.alert('Error', 'Passwords do not match');
+            if (!gender) showAlert({ title: 'Error', message: 'Please select if you are a Gentleman or a Lady' });
+            else showAlert({ title: 'Error', message: 'Passwords do not match' });
             return;
         }
 
@@ -141,14 +139,14 @@ export default function AuthScreen() {
                     }
                 }
 
-                Alert.alert('Success', 'Account created successfully!');
+                showAlert({ title: 'Success', message: 'Account created successfully!' });
             } else {
                 await auth().signInWithEmailAndPassword(email, password);
             }
             router.back();
         } catch (error: any) {
             console.error(error);
-            Alert.alert('Auth Error', error.message || 'An error occurred during authentication');
+            showAlert({ title: 'Auth Error', message: error.message || 'An error occurred during authentication' });
         } finally {
             setLoading(false);
         }
@@ -165,7 +163,7 @@ export default function AuthScreen() {
                         {isSignUp ? 'Create Account' : 'Welcome Back'}
                     </Text>
                     <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                        {isSignUp ? 'Start your accountability journey.' : 'Continue w/ friends'}
+                        {isSignUp ? 'Ready to get serious? No more hiding.' : "Welcome back. Let's see what you've been up to."}
                     </Text>
 
                     <View style={styles.form}>
@@ -190,8 +188,13 @@ export default function AuthScreen() {
                                 placeholderTextColor={colors.textMuted}
                                 value={password}
                                 onChangeText={setPassword}
-                                secureTextEntry
+                                secureTextEntry={!showPassword}
                             />
+                            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ padding: Spacing.sm }}>
+                                <Text style={{ color: colors.textSecondary, fontWeight: '700', fontSize: 12, letterSpacing: 0.5 }}>
+                                    {showPassword ? "HIDE" : "SHOW"}
+                                </Text>
+                            </TouchableOpacity>
                         </View>
 
                         {isSignUp && (
@@ -204,7 +207,7 @@ export default function AuthScreen() {
                                         placeholderTextColor={colors.textMuted}
                                         value={confirmPassword}
                                         onChangeText={setConfirmPassword}
-                                        secureTextEntry
+                                        secureTextEntry={!showPassword}
                                     />
                                 </View>
 
@@ -298,26 +301,24 @@ const styles = StyleSheet.create({
         marginTop: Spacing.xs,
     },
     genderOption: {
-        flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: Spacing.sm,
-        paddingVertical: Spacing.md,
-        borderRadius: Spacing.borderRadius.md,
-        borderWidth: 1.5,
+        paddingVertical: Spacing.xl,
+        borderRadius: Spacing.borderRadius.xl,
+        borderWidth: 2,
+        gap: Spacing.md,
+        minHeight: 140,
     },
-    genderIconContainer: {
-        position: 'relative',
-    },
-    checkIndicator: {
-        position: 'absolute',
-        top: -8,
-        right: -8,
-        backgroundColor: 'white',
-        borderRadius: 10,
+    genderIconWrapper: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     genderLabel: {
-        fontSize: Typography.size.sm,
-        fontWeight: Typography.weight.semibold,
+        fontSize: Typography.size.md,
+        fontWeight: Typography.weight.bold,
+        letterSpacing: 0.2,
     },
 });

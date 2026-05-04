@@ -1,6 +1,15 @@
 import { Flashback } from '@/src/components/Flashback';
 import { WeeklyStreak } from '@/src/components/WeeklyStreak';
-import { getMissedDaysCount, getTotalEntryCount, JournalEntry, getReadingProgress, getLastCompletedReadingItemId, checkEntryCoversChapters, toggleReadingItem } from "@/src/data/database";
+import {
+    getMissedDaysCount,
+    getTotalEntryCount,
+    JournalEntry,
+    getReadingProgress,
+    getLastCompletedReadingItemId,
+    checkEntryCoversChapters,
+    toggleReadingItem,
+    getRecentStudyTopics,
+} from "@/src/data/database";
 import { READING_PLAN_DATA, ReadingItem } from "@/src/data/readingPlanData";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { Spacing } from "@/src/theme/spacing";
@@ -8,16 +17,22 @@ import { Typography } from "@/src/theme/typography";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Link, useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View, Alert } from "react-native";
+import React, { useCallback, useEffect, useState, useRef } from 'react';
+import { DeviceEventEmitter, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { JournalEntryDetail } from '@/src/components/JournalEntryDetail';
 import { WavyAddIcon } from '@/src/components/WavyAddIcon';
 import { AnimatedModal } from '@/src/components/AnimatedModal';
 import { ScalePressable } from '@/src/components/ScalePressable';
-import { ActionReminders } from '@/src/components/ActionReminders';
+import { LoadingView } from '@/src/components/LoadingView';
+import { fetchWeeklyStreakData, DayStatus } from '@/src/components/WeeklyStreak';
+import { ActionReminders, fetchActionRemindersData, EnhancedActionItem } from '@/src/components/ActionReminders';
 import { StudyReminders } from '@/src/components/StudyReminders';
+import { fetchFlashbackData } from '@/src/components/Flashback';
 import { getDailyTitle } from '@/src/data/homeTitles';
+import { Confetti, ConfettiRef } from '@/src/components/Confetti';
+import { formatDateToLocalString } from '@/src/utils/dateUtils';
 
 
 const DRAFT_KEY = "reflection_draft";
@@ -27,10 +42,48 @@ interface StatCardProps {
     icon: IoniconName;
     value: number;
     label: string;
+    unit?: string;
 }
 
-const StatCard = React.memo(({ icon, value, label }: StatCardProps) => {
+const AnimatedFlame = React.memo(({ size, color }: { size: number; color: string }) => {
+    const scale = useSharedValue(1);
+    const opacity = useSharedValue(0.9);
+
+    useEffect(() => {
+        scale.value = withRepeat(
+            withSequence(
+                withTiming(1.15, { duration: 600 }),
+                withTiming(1, { duration: 800 })
+            ),
+            -1,
+            true
+        );
+        opacity.value = withRepeat(
+            withSequence(
+                withTiming(1, { duration: 400 }),
+                withTiming(0.7, { duration: 600 })
+            ),
+            -1,
+            true
+        );
+    }, [scale, opacity]);
+
+    const animatedStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: scale.value }],
+        opacity: opacity.value,
+    }));
+
+    return (
+        <Animated.View style={animatedStyle}>
+            <Ionicons name="flame" size={size} color={color} />
+        </Animated.View>
+    );
+});
+
+const StatCard = React.memo(({ icon, value, label, unit }: StatCardProps) => {
     const { colors } = useTheme();
+    const isFlame = icon === 'flame' && value > 0;
+
     return (
         <View
             style={[
@@ -41,104 +94,74 @@ const StatCard = React.memo(({ icon, value, label }: StatCardProps) => {
                 },
             ]}
         >
-            <View style={[styles.statIconContainer, { backgroundColor: colors.accent + '10' }]}>
-                <Ionicons
-                    name={icon}
-                    size={20}
-                    color={colors.accent}
-                />
+            <View style={[styles.statIconContainer, { backgroundColor: isFlame ? colors.accent + '20' : colors.accent + '10' }]}>
+                {isFlame ? (
+                    <AnimatedFlame size={20} color={colors.accent} />
+                ) : (
+                    <Ionicons
+                        name={icon}
+                        size={20}
+                        color={colors.accent}
+                    />
+                )}
             </View>
 
             <View style={styles.statInfo}>
+                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
+                    <Text
+                        style={[
+                            styles.statValue,
+                            { color: colors.textPrimary },
+                        ]}
+                    >
+                        {value}
+                    </Text>
+                    {unit && (
+                        <Text
+                            style={[
+                                styles.statUnit,
+                                { color: colors.textSecondary },
+                            ]}
+                        >
+                            {unit}
+                        </Text>
+                    )}
+                </View>
                 <Text
                     style={[
-                        styles.statValue,
-                        { color: colors.textPrimary },
+                        styles.statLabel,
+                        { color: colors.textTertiary },
                     ]}
                 >
-                    {value}
+                    {label}
                 </Text>
             </View>
         </View>
     );
 });
 
-const QuickStats = React.memo(() => {
-    const [stats, setStats] = useState({
-        totalEntries: 0,
-        missedDays: 0,
-    });
+interface QuickStatsProps {
+    totalEntries: number;
+    missedDays: number;
+}
 
-    const loadStats = useCallback(async () => {
-        const currentMonth = new Date().toISOString().slice(0, 7);
-        const [totalEntries, missedDays] = await Promise.all([
-            getTotalEntryCount(currentMonth),
-            getMissedDaysCount(currentMonth),
-        ]);
-
-        setStats({ totalEntries, missedDays });
-    }, []);
-
-    // Load stats on mount
-    useEffect(() => {
-        loadStats();
-    }, [loadStats]);
-
-    // Reload stats when screen comes into focus
-    useFocusEffect(
-        useCallback(() => {
-            loadStats();
-        }, [loadStats])
-    );
-
-    const { totalEntries, missedDays } = stats;
-
+const QuickStats = React.memo(({ totalEntries, missedDays }: QuickStatsProps) => {
     return (
         <View style={styles.statsContainer}>
-            <StatCard icon="flame" value={totalEntries} label="Entries" />
-            <StatCard icon="rainy" value={missedDays} label="Missed" />
+            <StatCard icon="journal" value={totalEntries} label="Entries" />
+            <StatCard icon="snow" value={missedDays} label="Missed" unit="days" />
         </View>
     );
 });
 
-const NextReading = React.memo(() => {
+interface NextReadingProps {
+    nextItem: ReadingItem | null;
+    onRefresh: () => void;
+}
+
+const NextReading = React.memo(({ nextItem, onRefresh }: NextReadingProps) => {
     const { colors } = useTheme();
     const router = useRouter();
-    const [nextItem, setNextItem] = useState<ReadingItem | null>(null);
-
-    const loadNextReading = useCallback(async () => {
-        const [completedIds, lastCompletedId] = await Promise.all([
-            getReadingProgress(),
-            getLastCompletedReadingItemId(),
-        ]);
-        const completedSet = new Set(completedIds);
-
-        let nextItem: ReadingItem | undefined;
-
-        if (lastCompletedId != null) {
-            // Find where the last-completed item sits in the plan
-            const lastIndex = READING_PLAN_DATA.findIndex(item => item.id === lastCompletedId);
-            if (lastIndex >= 0) {
-                // First uncompleted item after the one you read last
-                nextItem = READING_PLAN_DATA
-                    .slice(lastIndex + 1)
-                    .find(item => !completedSet.has(item.id));
-            }
-        }
-
-        // Fall back: first uncompleted item anywhere in the plan
-        if (!nextItem) {
-            nextItem = READING_PLAN_DATA.find(item => !completedSet.has(item.id));
-        }
-
-        setNextItem(nextItem || null);
-    }, []);
-
-    useFocusEffect(
-        useCallback(() => {
-            loadNextReading();
-        }, [loadNextReading])
-    );
 
     const handlePress = useCallback(async () => {
         if (!nextItem) return;
@@ -169,7 +192,7 @@ const NextReading = React.memo(() => {
         if (isCovered) {
             // Entry already covers this — mark as completed and move on
             await toggleReadingItem(nextItem.id, true);
-            loadNextReading();
+            onRefresh();
         } else {
             // No entry yet — go write one
             router.push({
@@ -181,7 +204,7 @@ const NextReading = React.memo(() => {
                 }
             });
         }
-    }, [nextItem, router, loadNextReading]);
+    }, [nextItem, router, onRefresh]);
 
     if (!nextItem) return null;
 
@@ -197,7 +220,7 @@ const NextReading = React.memo(() => {
                             <Text style={[styles.nextReadingLabel, { color: colors.background }]}>NEXT READING</Text>
                         </View>
                         <View style={[styles.nextReadingSectionPill, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
-                            <Text style={[styles.nextReadingSection, { color: colors.background }]}>
+                            <Text style={[styles.nextReadingSection, { color: colors.background }]} numberOfLines={1}>
                                 {nextItem.section}
                             </Text>
                         </View>
@@ -258,7 +281,7 @@ const DraftBar = React.memo(() => {
                 },
             ]}
         >
-            <Link href="/addEntry" asChild>
+            <Link href={{ pathname: "/addEntry", params: { resuming: 'true' } }} asChild>
                 <ScalePressable style={styles.draftContent}>
                     <View style={styles.draftTextContainer}>
                         <Text style={[styles.draftLabel, { color: colors.textPrimary }]}>
@@ -279,11 +302,113 @@ const DraftBar = React.memo(() => {
 });
 
 export default function Index() {
+    const [stats, setStats] = useState({ totalEntries: 0, missedDays: 0 });
+    const [nextReading, setNextReading] = useState<ReadingItem | null>(null);
+    const [topics, setTopics] = useState<JournalEntry[]>([]);
+    const [weekDays, setWeekDays] = useState<DayStatus[]>([]);
+    const [actionReminders, setActionReminders] = useState<{ pinned: EnhancedActionItem[], rotating: EnhancedActionItem[] } | null>(null);
+    const [flashbackEntry, setFlashbackEntry] = useState<{ entry: JournalEntry, type: 'year' | 'month' | 'random' } | null>(null);
     const [draftExists, setDraftExists] = useState(false);
     const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
     const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const scrollViewRef = useRef<ScrollView>(null);
+    const confettiRef = useRef<ConfettiRef>(null);
     const { colors } = useTheme();
     const router = useRouter();
+
+    const loadStats = useCallback(async () => {
+        const currentMonth = new Date().toISOString().slice(0, 7);
+        const [totalEntries, missedDays] = await Promise.all([
+            getTotalEntryCount(currentMonth),
+            getMissedDaysCount(currentMonth),
+        ]);
+        return { totalEntries, missedDays };
+    }, []);
+
+    const loadNextReading = useCallback(async () => {
+        const [completedIds, lastCompletedId] = await Promise.all([
+            getReadingProgress(),
+            getLastCompletedReadingItemId(),
+        ]);
+        const completedSet = new Set(completedIds);
+        let nextItem: ReadingItem | undefined;
+
+        if (lastCompletedId != null) {
+            const lastIndex = READING_PLAN_DATA.findIndex(item => item.id === lastCompletedId);
+            if (lastIndex >= 0) {
+                nextItem = READING_PLAN_DATA.slice(lastIndex + 1).find(item => !completedSet.has(item.id));
+            }
+        }
+
+        if (!nextItem) {
+            nextItem = READING_PLAN_DATA.find(item => !completedSet.has(item.id));
+        }
+
+        return nextItem || null;
+    }, []);
+
+    const checkCelebration = useCallback(async (days: DayStatus[]) => {
+        const isFullWeek = days.length === 7 && days.every(d => d.hasEntry);
+        if (!isFullWeek) return;
+
+        const today = new Date();
+        const currentDay = today.getDay();
+        const sunday = new Date(today);
+        sunday.setDate(today.getDate() - currentDay);
+        sunday.setHours(0, 0, 0, 0);
+
+        const weekKey = `celebrated_week_${formatDateToLocalString(sunday)}`;
+        const hasCelebrated = await AsyncStorage.getItem(weekKey);
+
+        if (!hasCelebrated) {
+            // Short delay to let the screen content settle
+            setTimeout(() => {
+                confettiRef.current?.start();
+            }, 500);
+            await AsyncStorage.setItem(weekKey, 'true');
+        }
+    }, []);
+
+    const loadHomeData = useCallback(async () => {
+        try {
+            const [
+                newStats,
+                newNextReading,
+                newTopics,
+                newWeekDays,
+                newActionReminders,
+                newFlashback
+            ] = await Promise.all([
+                loadStats(),
+                loadNextReading(),
+                getRecentStudyTopics(7),
+                fetchWeeklyStreakData(),
+                fetchActionRemindersData(),
+                fetchFlashbackData()
+            ]);
+
+            setStats(newStats);
+            setNextReading(newNextReading);
+            setTopics(newTopics);
+            setWeekDays(newWeekDays);
+            setActionReminders(newActionReminders);
+            setFlashbackEntry(newFlashback);
+
+            // Check for weekly streak celebration
+            checkCelebration(newWeekDays);
+        } catch (error) {
+            console.error('Error loading home data:', error);
+        }
+    }, [loadStats, loadNextReading]);
+
+    // Scroll to top on tab press
+    useEffect(() => {
+        const subscription = DeviceEventEmitter.addListener('tab-press-top-index', () => {
+            scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        });
+        return () => subscription.remove();
+    }, []);
 
     const handleEntryPress = useCallback((entry: JournalEntry) => {
         setSelectedEntry(entry);
@@ -302,18 +427,21 @@ export default function Index() {
 
     useFocusEffect(
         useCallback(() => {
-            // Small delay to ensure AsyncStorage operations complete
-            const timer = setTimeout(() => {
-                checkDraft();
-            }, 100);
+            loadHomeData();
+            checkDraft();
 
-            return () => clearTimeout(timer);
-        }, [checkDraft])
+            // Simulate initial load if it's very fast
+            if (isLoading) {
+                const timer = setTimeout(() => setIsLoading(false), 400);
+                return () => clearTimeout(timer);
+            }
+        }, [loadHomeData, checkDraft, isLoading])
     );
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
             <ScrollView
+                ref={scrollViewRef}
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
@@ -331,13 +459,27 @@ export default function Index() {
                     </View>
                 </View>
 
-                <QuickStats />
-                <NextReading />
-                <StudyReminders onEntryPress={handleEntryPress} />
-                <WeeklyStreak />
-                <ActionReminders onEntryPress={handleEntryPress} />
-                <Flashback onEntryPress={handleEntryPress} />
+                {isLoading ? (
+                    <View style={{ height: 400, justifyContent: 'center' }}>
+                        <LoadingView size={48} />
+                    </View>
+                ) : (
+                    <>
+                        <QuickStats totalEntries={stats.totalEntries} missedDays={stats.missedDays} />
+                        <NextReading nextItem={nextReading} onRefresh={loadHomeData} />
+                        <WeeklyStreak weekDays={weekDays} />
+                        <ActionReminders
+                            pinnedItems={actionReminders?.pinned}
+                            rotatingItems={actionReminders?.rotating}
+                            onEntryPress={handleEntryPress}
+                        />
+                        <StudyReminders topics={topics} onEntryPress={handleEntryPress} />
+                        <Flashback flashbackData={flashbackEntry} onEntryPress={handleEntryPress} />
+                    </>
+                )}
             </ScrollView>
+
+            <Confetti ref={confettiRef} />
 
             {!draftExists && <FloatingActionButton />}
             {draftExists && <DraftBar />}
@@ -423,12 +565,17 @@ const styles = StyleSheet.create({
         letterSpacing: -0.5,
     },
     statLabel: {
-        fontSize: 9,
-        fontWeight: Typography.weight.bold,
-        letterSpacing: 1,
-        opacity: 0.8,
+        fontSize: 10,
+        fontWeight: '700',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginTop: -2,
     },
-
+    statUnit: {
+        fontSize: 12,
+        fontWeight: '600',
+        opacity: 0.6,
+    },
     /* Update card */
     updateCardWrapper: {
         width: "100%",
@@ -543,6 +690,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        gap: Spacing.sm,
     },
     nextReadingLabelContainer: {
         flexDirection: 'row',
@@ -565,11 +713,13 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
         paddingVertical: 4,
         borderRadius: Spacing.borderRadius.round,
+        flexShrink: 1,
     },
     nextReadingSection: {
         fontSize: 10,
         fontWeight: '700',
         letterSpacing: 0.5,
+        flexShrink: 1,
     },
     nextReadingContent: {
         flexDirection: 'row',

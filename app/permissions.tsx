@@ -8,10 +8,12 @@ import { Typography } from '@/src/theme/typography';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { ScalePressable } from '@/src/components/ScalePressable';
+import { useAlert } from '@/src/context/AlertContext';
 
 export default function PermissionsScreen() {
     const router = useRouter();
     const { colors } = useTheme();
+    const { showAlert } = useAlert();
     const [permissionStatus, setPermissionStatus] = useState<'undetermined' | 'denied'>('undetermined');
 
     const checkPermissions = async () => {
@@ -41,6 +43,14 @@ export default function PermissionsScreen() {
             router.replace('/');
         } else {
             setPermissionStatus('denied');
+            showAlert({
+                title: 'Can I Check Up On You? 😏',
+                message: 'Hi, I\'m Àṣàrò. I will disturb you small if you miss your Bible reading. I won\'t let your phone rest\n\nBut, I care! If I don\'t see you, I\'ll check up on you to make sure your relationship with Jehovah is intact 😌',
+                buttons: [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Open Settings', onPress: () => openNotificationSettings() }
+                ]
+            });
         }
     };
 

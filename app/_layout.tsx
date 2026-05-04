@@ -9,11 +9,15 @@ import {
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '@/src/theme/ThemeContext';
 import { AuthProvider } from '@/src/context/AuthContext';
+import { AlertProvider } from '@/src/context/AlertContext';
+import { RefPickerProvider } from '@/src/context/RefPickerContext';
+import { LoadingView } from '@/src/components/LoadingView';
+import { CustomAlert } from '@/src/components/CustomAlert';
 
 function StackNavigator() {
   const { colors } = useTheme();
@@ -48,6 +52,10 @@ function StackNavigator() {
 
 export default function RootLayout() {
   const [dbInitialized, setDbInitialized] = useState(false);
+  // Cache permission/battery results so native calls only happen once,
+  // not on every segment change.
+  const [hasPermissions, setHasPermissions] = useState<boolean | null>(null);
+  const [isBatteryOk, setIsBatteryOk] = useState<boolean | null>(null);
   const router = useRouter();
   const segments = useSegments();
 
@@ -65,20 +73,14 @@ export default function RootLayout() {
         // Initialize notification channel (Android only, no UI)
         await initializeNotificationChannel();
 
-        // Check permissions
-        const hasPermissions = await hasNotificationPermissions();
-        if (!hasPermissions) {
-          // We'll let the layout effect handle the redirect
-          return;
-        }
+        // Check permissions and battery once, then cache in state.
+        // The second useEffect reacts to these values instead of re-calling the
+        // native APIs on every navigation segment change.
+        const perms = await hasNotificationPermissions();
+        setHasPermissions(perms);
 
-        // Check battery optimization (Android only)
-        const isOptimized = await isBatteryOptimizationDisabled();
-        if (!isOptimized) {
-          // We'll let the layout effect handle the redirect
-          return;
-        }
-
+        const batteryOk = await isBatteryOptimizationDisabled();
+        setIsBatteryOk(batteryOk);
 
       } catch (error) {
         console.error('Initialization error:', error);
@@ -89,16 +91,21 @@ export default function RootLayout() {
     init();
   }, []);
 
+  // Re-check permissions/battery after the user returns from the permissions
+  // or battery-optimization screens. We only re-query native APIs when we're
+  // coming *back* from those screens (i.e. segments changed away from them),
+  // keeping the hot path (normal tab navigation) free of native API calls.
   useEffect(() => {
     if (!dbInitialized) return;
+    // Still waiting for the initial permission check to complete.
+    if (hasPermissions === null || isBatteryOk === null) return;
 
     const checkRequirements = async () => {
+      const currentSegment = segments[0] as string;
       // 1. Check Name
       const userName = await AsyncStorage.getItem('user_name');
       if (!userName) {
-        // Check if we are already on the name screen to avoid loop
-        // segments might be ['onboarding', 'name']
-        const isOnNameScreen = segments[0] === 'onboarding' && segments[1] === 'name';
+        const isOnNameScreen = currentSegment === 'onboarding' && segments[1] === 'name';
         if (!isOnNameScreen) {
           router.replace('/onboarding/name');
         }
@@ -108,37 +115,51 @@ export default function RootLayout() {
       // 2. Check Sleep Time
       const sleepTime = await AsyncStorage.getItem('sleep_time');
       if (!sleepTime) {
-        const isOnSleepScreen = segments[0] === 'onboarding' && segments[1] === 'sleep-time';
+        const isOnSleepScreen = currentSegment === 'onboarding' && segments[1] === 'sleep-time';
         if (!isOnSleepScreen) {
           router.replace('/onboarding/sleep-time');
         }
         return;
       }
 
-      // 3. Check Permissions
-      const hasPermissions = await hasNotificationPermissions();
-
-      if (!hasPermissions) {
-        if (segments[0] !== 'permissions') {
+      // 3. Check Permissions — re-query if returning from the permissions screen
+      let perms = hasPermissions;
+      if (currentSegment === 'permissions') {
+        // Currently on the screen — don't redirect away yet
+        return;
+      }
+      if (!perms) {
+        // Re-check in case the user just granted permission
+        perms = await hasNotificationPermissions();
+        setHasPermissions(perms);
+      }
+      if (!perms) {
+        if (currentSegment !== 'permissions') {
           router.replace('/permissions');
         }
         return;
       }
 
-      // 4. Check Battery Optimization
-      const isBatteryOk = await isBatteryOptimizationDisabled();
-      if (!isBatteryOk) {
-        if (segments[0] !== 'battery-optimization') {
+      // 4. Check Battery Optimization — re-query if returning from that screen
+      let batteryOk = isBatteryOk;
+      if (currentSegment === 'battery-optimization') {
+        return;
+      }
+      if (!batteryOk) {
+        batteryOk = await isBatteryOptimizationDisabled();
+        setIsBatteryOk(batteryOk);
+      }
+      if (!batteryOk) {
+        if (currentSegment !== 'battery-optimization') {
           router.replace('/battery-optimization');
         }
         return;
       }
 
-      // If everything is good and we are on a blocking screen (onboarding or permissions), go home
-      const isOnboarding = segments[0] === 'onboarding' || segments[0] === 'permissions' || segments[0] === 'battery-optimization';
+      // All requirements met — schedule notifications and redirect home if needed
+      const isOnboarding = currentSegment === 'onboarding' || currentSegment === 'permissions' || currentSegment === 'battery-optimization';
 
-      // Ensure notifications are scheduled once all requirements are met
-      if (hasPermissions && isBatteryOk && userName && sleepTime) {
+      if (perms && batteryOk && userName && sleepTime) {
         await setupDailyNotifications();
       }
 
@@ -148,23 +169,28 @@ export default function RootLayout() {
     };
 
     checkRequirements();
-  }, [dbInitialized, segments]);
-
-  if (!dbInitialized) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text>...</Text>
-      </View>
-    );
-  }
+  }, [dbInitialized, hasPermissions, isBatteryOk, segments]);
 
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <ThemeProvider>
-          <StackNavigator />
-          <StatusBar hidden={true} />
-        </ThemeProvider>
+        <AlertProvider>
+          <ThemeProvider>
+            <RefPickerProvider>
+              {!dbInitialized ? (
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                  <LoadingView size={48} />
+                </View>
+              ) : (
+                <>
+                  <StackNavigator />
+                  <CustomAlert />
+                  <StatusBar hidden={true} />
+                </>
+              )}
+            </RefPickerProvider>
+          </ThemeProvider>
+        </AlertProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

@@ -1,9 +1,9 @@
 import { MonthGrid } from '@/src/components/stats/MonthGrid';
+import { LoadingView } from '@/src/components/LoadingView';
 import { StatCard } from '@/src/components/stats/StatCard';
 import { getDailyEntryCounts, getFirstEntryDate } from '@/src/data/database';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
-import { Typography } from '@/src/theme/typography';
 import { formatDateToLocalString } from '@/src/utils/dateUtils';
 import { useFocusEffect, useNavigation } from 'expo-router';
 import React, { useCallback, useState } from 'react';
@@ -145,17 +145,23 @@ export default function StatsScreen() {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-            <FlatList
-                data={state.months}
-                renderItem={renderItem}
-                keyExtractor={(item) => `${item.year}-${item.month}`}
-                contentContainerStyle={styles.scrollContent}
-                ListHeaderComponent={renderHeader}
-                showsVerticalScrollIndicator={false}
-                initialNumToRender={2}
-                maxToRenderPerBatch={2}
-                windowSize={3}
-            />
+            {state.isLoading ? (
+                <View style={{ flex: 1, justifyContent: 'center' }}>
+                    <LoadingView size={48} />
+                </View>
+            ) : (
+                <FlatList
+                    data={state.months}
+                    renderItem={renderItem}
+                    keyExtractor={(item) => `${item.year}-${item.month}`}
+                    contentContainerStyle={styles.scrollContent}
+                    ListHeaderComponent={renderHeader}
+                    showsVerticalScrollIndicator={false}
+                    initialNumToRender={2}
+                    maxToRenderPerBatch={2}
+                    windowSize={3}
+                />
+            )}
         </SafeAreaView>
     );
 }

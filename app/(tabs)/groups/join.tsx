@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, ScrollView } from 'react-native';
 import firestore from '@react-native-firebase/firestore';
 import { useAuth } from '@/src/context/AuthContext';
 import { useTheme } from '@/src/theme/ThemeContext';
+import { useAlert } from '@/src/context/AlertContext';
 import { Spacing } from '@/src/theme/spacing';
-import { Typography } from '@/src/theme/typography';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +17,7 @@ export default function JoinGroupScreen() {
     const [loading, setLoading] = useState(false);
     const { user, displayName } = useAuth();
     const { colors } = useTheme();
+    const { showAlert } = useAlert();
     const router = useRouter();
 
     const handleJoin = async () => {
@@ -35,7 +36,7 @@ export default function JoinGroupScreen() {
                 .get();
 
             if (groupQuery.empty) {
-                Alert.alert('Invalid Code', 'No group found with this access code. Please check and try again.');
+                showAlert({ title: 'Invalid Code', message: 'No group found with this access code. Please check and try again.' });
                 setLoading(false);
                 return;
             }
@@ -52,6 +53,11 @@ export default function JoinGroupScreen() {
                 .doc(user.uid);
 
             const existingMember = await memberRef.get();
+            if (existingMember.exists()) {
+                showAlert({ title: 'Already a Member', message: `You are already part of "${groupData.name}".` });
+                router.replace('/(tabs)/groups' as any);
+                return;
+            }
 
             const userDocData = (await firestore().collection('users').doc(user.uid).get()).data() || {};
             const userGender = userDocData.gender;
@@ -60,17 +66,16 @@ export default function JoinGroupScreen() {
                 userId: user.uid,
                 displayName: displayName || user.email?.split('@')[0] || 'User',
                 gender: userGender || 'm',
+                photoURL: userDocData.photoURL || null,
                 joinedAt: firestore.FieldValue.serverTimestamp(),
                 lastActive: firestore.FieldValue.serverTimestamp(),
             });
 
-            // Keep memberCount accurate on the group doc (only increment for new members)
-            if (!existingMember.exists) {
-                await firestore()
-                    .collection('groups')
-                    .doc(groupId)
-                    .set({ memberCount: firestore.FieldValue.increment(1) }, { merge: true });
-            }
+            // Keep memberCount accurate on the group doc
+            await firestore()
+                .collection('groups')
+                .doc(groupId)
+                .set({ memberCount: firestore.FieldValue.increment(1) }, { merge: true });
 
             // Also keep track of groups the user is in at the user level
             await firestore()
@@ -82,10 +87,6 @@ export default function JoinGroupScreen() {
                 }, { merge: true });
 
             // 5. Success - Trigger joined activity
-            // Source of truth priority:
-            // 1. displayName from context (Reactive)
-            // 2. user.displayName from Auth profile (Direct)
-            // 3. user.email prefix (Fallback)
             const resolvedName = displayName || user.displayName || user.email?.split('@')[0] || 'User';
 
             await firestore()
@@ -99,11 +100,11 @@ export default function JoinGroupScreen() {
                     timestamp: firestore.FieldValue.serverTimestamp(),
                 });
 
-            Alert.alert('Welcome!', `You have joined "${groupData.name}".`);
+            showAlert({ title: 'Welcome!', message: `You have joined "${groupData.name}".` });
             router.replace('/(tabs)/groups' as any);
         } catch (error: any) {
             console.error(error);
-            Alert.alert('Error', 'Failed to join group: ' + error.message);
+            showAlert({ title: 'Error', message: 'Failed to join group: ' + error.message });
         } finally {
             setLoading(false);
         }

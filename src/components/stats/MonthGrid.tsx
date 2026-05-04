@@ -1,7 +1,9 @@
 import { useTheme } from '@/src/theme/ThemeContext';
 import { formatDateToLocalString, getLocalMidnight, isSameDay } from '@/src/utils/dateUtils';
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import { StyleSheet, Text, View, Image } from 'react-native';
+import { Clover } from '../Clover';
+import { useFocusEffect } from 'expo-router';
 
 interface MonthGridProps {
     year: number;
@@ -10,27 +12,70 @@ interface MonthGridProps {
     showTitle?: boolean;
 }
 
+// One color per day of the week, Sunday → Saturday
+const RAINBOW_COLORS = [
+    '#FF3B30', // Sun — red
+    '#FF9500', // Mon — orange
+    '#FFCC00', // Tue — yellow
+    '#34C759', // Wed — green
+    '#5AC8FA', // Thu — sky blue
+    '#5856D6', // Fri — indigo
+    '#AF52DE', // Sat — purple
+];
+
 export const MonthGrid = React.memo(({ year, month, data, showTitle = true }: MonthGridProps) => {
     const { colors } = useTheme();
     const today = getLocalMidnight();
+    const [rotating, setRotating] = useState(false);
+
+    useFocusEffect(
+        useCallback(() => {
+            setRotating(true);
+            return () => setRotating(false);
+        }, [])
+    );
+
 
     const days = React.useMemo(() => {
         const firstDayOfMonth = new Date(year, month, 1);
         const lastDayOfMonth = new Date(year, month + 1, 0);
         const daysInMonth = lastDayOfMonth.getDate();
-        const startDayOfWeek = firstDayOfMonth.getDay(); // 0 = Sunday
+        const startDayOfWeek = firstDayOfMonth.getDay();
 
         const d = [];
-        // Add empty slots for days before the 1st
         for (let i = 0; i < startDayOfWeek; i++) {
             d.push(null);
         }
-        // Add actual days
         for (let i = 1; i <= daysInMonth; i++) {
             d.push(i);
         }
         return d;
     }, [year, month]);
+
+    // Determine which week rows are fully complete (all non-null, non-future days have entries)
+    const completeWeekRows = React.useMemo(() => {
+        const rows: boolean[] = [];
+        for (let rowStart = 0; rowStart < days.length; rowStart += 7) {
+            const rowDays = days.slice(rowStart, rowStart + 7);
+            const realDays = rowDays.filter(d => d !== null) as number[];
+
+            if (realDays.length === 0) {
+                rows.push(false);
+                continue;
+            }
+
+            const allComplete = realDays.every(d => {
+                const dayDate = new Date(year, month, d);
+                const isFuture = dayDate.getTime() > today.getTime();
+                if (isFuture) return false; // incomplete week if any future days remain
+                const dateStr = formatDateToLocalString(dayDate);
+                return (data[dateStr] || 0) > 0;
+            });
+
+            rows.push(allComplete);
+        }
+        return rows;
+    }, [days, year, month, data, today]);
 
     const weekDays = React.useMemo(() => ['S', 'M', 'T', 'W', 'T', 'F', 'S'], []);
 
@@ -60,7 +105,6 @@ export const MonthGrid = React.memo(({ year, month, data, showTitle = true }: Mo
                     const dateStr = formatDateToLocalString(dayDate);
                     const isFuture = dayDate.getTime() > today.getTime();
 
-                    // Hide future dates
                     if (isFuture) {
                         return <View key={`empty-future-${index}`} style={styles.dayCellEmpty} />;
                     }
@@ -69,24 +113,26 @@ export const MonthGrid = React.memo(({ year, month, data, showTitle = true }: Mo
                     const isToday = isSameDay(dayDate, today);
                     const hasEntry = count > 0;
 
+                    const rowIndex = Math.floor(index / 7);
+                    const dayOfWeek = index % 7;
+                    const isCompleteWeek = completeWeekRows[rowIndex];
+                    const dayColor = RAINBOW_COLORS[dayOfWeek];
+
                     return (
                         <View key={day} style={styles.dayCellWrapper}>
                             <View style={[
                                 styles.dayIndicator,
-                                // Completed - filled with hairline precision
                                 hasEntry && {
                                     backgroundColor: colors.textPrimary,
                                     borderColor: colors.textPrimary,
                                     borderWidth: 0.5,
                                 },
-                                // Missed - gentle outline, forgiving
                                 !hasEntry && !isToday && {
                                     backgroundColor: 'transparent',
                                     borderColor: colors.textTertiary,
                                     borderWidth: 0.5,
                                     opacity: 0.3,
                                 },
-                                // Today - precise but warm invitation
                                 isToday && !hasEntry && {
                                     borderColor: colors.textPrimary,
                                     borderWidth: 1,
@@ -94,14 +140,10 @@ export const MonthGrid = React.memo(({ year, month, data, showTitle = true }: Mo
                                 }
                             ]}>
                                 {hasEntry ? (
-                                    <Image
-                                        source={require('@/assets/images/yaya.png')}
-                                        style={{
-                                            width: 15,
-                                            height: 15,
-                                            tintColor: colors.cardBackground,
-                                        }}
-                                        resizeMode="contain"
+                                    <Clover
+                                        color={isCompleteWeek ? dayColor : colors.cardBackground}
+                                        size={isCompleteWeek ? 18 : 15}
+                                        shouldRotate={isCompleteWeek && rotating}
                                     />
                                 ) : (
                                     <Text style={[

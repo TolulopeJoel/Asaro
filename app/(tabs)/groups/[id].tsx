@@ -1,24 +1,29 @@
 import React, { useMemo } from 'react';
 import {
     View, Text, StyleSheet, ScrollView,
-    LayoutAnimation, Platform, UIManager, Modal, Pressable, Dimensions,
+    Platform, UIManager, Modal, Pressable, Dimensions, DeviceEventEmitter, TextInput, Image
 } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, router } from 'expo-router';
 import { useTheme } from '@/src/theme/ThemeContext';
+import { useAlert } from '@/src/context/AlertContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import firestore from '@react-native-firebase/firestore';
 import { useAuth } from '@/src/context/AuthContext';
-import { checkInactiveMembers, getISOWeekString } from '@/src/utils/syncActivities';
+import { checkInactiveMembers, getISOWeekString, evaluateGroupAdminRoles } from '@/src/utils/syncActivities';
 import { getTodayDateString } from '@/src/utils/dateUtils';
 import { ALL_BADGES } from '@/src/utils/badges';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import Animated, {
     useSharedValue, useAnimatedStyle, withSpring, withTiming,
-    runOnJS, LinearTransition,
+    runOnJS,
 } from 'react-native-reanimated';
 import { ScalePressable } from '@/src/components/ScalePressable';
+import { LoadingView } from '@/src/components/LoadingView';
+import { Button } from '@/src/components/Button';
+import { HyperlinkedText } from '@/src/components/HyperlinkedText';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -209,10 +214,10 @@ const buildProcessedFeed = (
 
 // ─── Avatar ───────────────────────────────────────────────────────────────────
 
-const Avatar = ({
-    id, name, size = 44, radius, borderWidth, borderColor, opacity = 1, style,
+export const Avatar = ({
+    id, name, url, size = 44, radius, borderWidth, borderColor, opacity = 1, style,
 }: {
-    id?: string; name?: string; size?: number; radius?: number;
+    id?: string; name?: string; url?: string; size?: number; radius?: number;
     borderWidth?: number; borderColor?: string; opacity?: number; style?: any;
 }) => (
     <View style={[{
@@ -221,10 +226,19 @@ const Avatar = ({
         backgroundColor: getAvatarColor(id, name),
         justifyContent: 'center', alignItems: 'center',
         borderWidth: borderWidth ?? 0, borderColor, opacity,
+        overflow: 'hidden',
     }, style]}>
-        <Text style={{ fontSize: size * 0.4, fontWeight: Typography.weight.bold as any, color: 'white' }}>
-            {name?.charAt(0).toUpperCase() ?? '?'}
-        </Text>
+        {url ? (
+            <Image
+                source={{ uri: url }}
+                style={{ width: '100%', height: '100%' }}
+                resizeMode="cover"
+            />
+        ) : (
+            <Text style={{ fontSize: size * 0.4, fontWeight: Typography.weight.bold as any, color: 'white' }}>
+                {name?.charAt(0).toUpperCase() ?? '?'}
+            </Text>
+        )}
     </View>
 );
 
@@ -248,6 +262,7 @@ const AccountabilityMemberCard = ({
             <Avatar
                 id={member.userId || member.id}
                 name={member.displayName}
+                url={member.photoURL}
                 size={44}
                 radius={12}
                 opacity={member.readToday ? 1 : 0.7}
@@ -315,6 +330,112 @@ const AccountabilityMemberCard = ({
         </ScalePressable>
     );
 };
+
+
+// ─── Group Edit Modal ──────────────────────────────────────────────────────────
+
+const GroupEditModal = ({
+    visible, groupData, groupId, onClose, colors
+}: {
+    visible: boolean; groupData: any; groupId: string; onClose: () => void; colors: any;
+}) => {
+    const [name, setName] = useState(groupData?.name || '');
+    const [description, setDescription] = useState(groupData?.description || '');
+    const [photoURL, setPhotoURL] = useState(groupData?.photoURL || '');
+    const [saving, setSaving] = useState(false);
+    const { showAlert } = useAlert();
+
+    useEffect(() => {
+        if (visible) {
+            setName(groupData?.name || '');
+            setDescription(groupData?.description || '');
+            setPhotoURL(groupData?.photoURL || '');
+        }
+    }, [visible, groupData]);
+
+    const handleSave = async () => {
+        if (!name.trim()) {
+            showAlert({ title: 'Error', message: 'Group name cannot be empty' });
+            return;
+        }
+
+        setSaving(true);
+        try {
+            await firestore().collection('groups').doc(groupId).update({
+                name: name.trim(),
+                description: description.trim(),
+                photoURL: photoURL.trim(),
+            });
+            onClose();
+        } catch (error: any) {
+            console.error('[GroupEditModal] Error updating group:', error);
+            showAlert({ title: 'Error', message: 'Failed to update group details' });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+            <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: Spacing.xl }}>
+                <View style={{ backgroundColor: colors.background, borderRadius: 24, padding: Spacing.xl, gap: Spacing.lg }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.sm }}>
+                        <Text style={{ fontSize: 24, fontWeight: '800', color: colors.textPrimary, letterSpacing: -0.5 }}>Edit Group Deets</Text>
+                        <ScalePressable onPress={onClose}>
+                            <Ionicons name="close" size={24} color={colors.textSecondary} />
+                        </ScalePressable>
+                    </View>
+
+                    <View style={{ gap: Spacing.xs }}>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: colors.textSecondary, letterSpacing: 0.5 }}>NAME</Text>
+                        <TextInput
+                            style={{ backgroundColor: colors.buttonSecondary, padding: 16, borderRadius: 14, color: colors.textPrimary, fontSize: 16 }}
+                            value={name}
+                            onChangeText={setName}
+                            placeholder="Group Name"
+                            placeholderTextColor={colors.textTertiary}
+                        />
+                    </View>
+
+                    <View style={{ gap: Spacing.xs }}>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: colors.textSecondary, letterSpacing: 0.5 }}>DESCRIPTION</Text>
+                        <TextInput
+                            style={{ backgroundColor: colors.buttonSecondary, padding: 16, borderRadius: 14, color: colors.textPrimary, fontSize: 16, minHeight: 80 }}
+                            value={description}
+                            onChangeText={setDescription}
+                            placeholder="Write whatever is on your mind"
+                            placeholderTextColor={colors.textTertiary}
+                            multiline
+                        />
+                    </View>
+
+                    <View style={{ gap: Spacing.xs }}>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: colors.textSecondary, letterSpacing: 0.5 }}>PHOTO URL</Text>
+                        <TextInput
+                            style={{ backgroundColor: colors.buttonSecondary, padding: 16, borderRadius: 14, color: colors.textPrimary, fontSize: 16 }}
+                            value={photoURL}
+                            onChangeText={setPhotoURL}
+                            placeholder="https://example.com/image.jpg"
+                            placeholderTextColor={colors.textTertiary}
+                            autoCapitalize="none"
+                        />
+                    </View>
+
+                    <Button
+                        label={saving ? "Saving Changes..." : "Save Changes"}
+                        onPress={handleSave}
+                        disabled={saving}
+                        loading={saving}
+                        variant="primary"
+                        fullWidth
+                        style={{ marginTop: Spacing.md }}
+                    />
+                </View>
+            </View>
+        </Modal>
+    );
+};
+
 
 // ─── Member Profile Sheet ─────────────────────────────────────────────────────
 
@@ -532,13 +653,14 @@ const MemberProfileSheet = ({
                     <View style={[sheetStyles.handleBar, { backgroundColor: colors.border }]} />
                 </View>
 
-                <Animated.ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: Spacing.xl }} layout={LinearTransition}>
+                <Animated.ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: Spacing.xl }}>
 
                     {/* ── Avatar + name ── */}
                     <View style={sheetStyles.header}>
                         <Avatar
                             id={member.userId || member.id}
                             name={member.displayName}
+                            url={member.photoURL}
                             size={80}
                             borderWidth={readToday ? 3 : 0}
                             borderColor={colors.indicatorActive}
@@ -568,7 +690,7 @@ const MemberProfileSheet = ({
                     <View style={sheetStyles.section}>
                         <Text style={[sheetStyles.sectionTitle, { color: colors.textSecondary }]}>THIS WEEK</Text>
                         <View style={sheetStyles.heatmapRow}>
-                            {dots.map((active, i) => (
+                            {dots.map((active, i: number) => (
                                 <View key={i} style={sheetStyles.heatmapCell}>
                                     <View style={[sheetStyles.heatmapDot, { backgroundColor: active ? colors.accent : colors.border }]} />
                                     <Text style={[sheetStyles.heatmapLabel, { color: colors.textTertiary }]}>{DAY_LABELS[i]}</Text>
@@ -623,7 +745,9 @@ const MemberProfileSheet = ({
                         {/* Recent Reads */}
                         {activeSheetTab === 'reads' && (
                             loadingReads ? (
-                                <Text style={[sheetStyles.emptyText, { color: colors.textTertiary, marginTop: Spacing.md }]}>Loading...</Text>
+                                <View style={{ marginTop: Spacing.xl, alignItems: 'center' }}>
+                                    <LoadingView size={24} />
+                                </View>
                             ) : pastReads.length > 0 ? (
                                 <View style={{ gap: Spacing.md, marginTop: Spacing.md }}>
                                     {pastReads.map((read) => (
@@ -670,9 +794,7 @@ const MemberProfileSheet = ({
                                                     {formatRelativeTime(item.timestamp)}
                                                 </Text>
                                             </View>
-                                            <Text style={[sheetStyles.reflectionText, { color: colors.textPrimary }]}>
-                                                {item.sharedReflectionText || item.preview}
-                                            </Text>
+                                            <HyperlinkedText style={[sheetStyles.reflectionText, { color: colors.textPrimary }]} text={item.sharedReflectionText || item.preview} />
                                         </View>
                                     ))}
                                 </View>
@@ -683,7 +805,6 @@ const MemberProfileSheet = ({
                             )
                         )}
                     </View>
-
                 </Animated.ScrollView>
             </Animated.View>
         </Modal>
@@ -771,8 +892,23 @@ export default function GroupDetailScreen() {
     const [loading, setLoading] = React.useState(true);
     const [isOffline, setIsOffline] = React.useState(false);
     const [selectedMember, setSelectedMember] = React.useState<any>(null);
-    const [expandedDigests, setExpandedDigests] = React.useState<Set<string>>(new Set());
-    const [activeTab, setActiveTab] = React.useState<'feed' | 'accountability' | 'members'>('feed');
+    const [expandedDigests, setExpandedDigests] = useState<Set<string>>(new Set());
+    const [activeTab, setActiveTab] = useState<'feed' | 'accountability' | 'members'>('feed');
+    const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+    const scrollViewRef = useRef<any>(null);
+
+    const isAdmin = useMemo(() => {
+        const me = members.find(m => m.userId === user?.uid || m.id === user?.uid);
+        return me?.role === 'admin';
+    }, [members, user?.uid]);
+
+    // Scroll to top on tab press
+    useEffect(() => {
+        const subscription = DeviceEventEmitter.addListener('tab-press-top-groups', () => {
+            scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        });
+        return () => subscription.remove();
+    }, []);
 
     const today = useMemo(() => getTodayDateString(), []);
 
@@ -804,7 +940,10 @@ export default function GroupDetailScreen() {
                     setIsOffline(false);
                     setGroupData(doc.data() || null);
                     markResolved();
-                    if (doc.exists()) checkInactiveMembers(groupId);
+                    if (doc.exists()) {
+                        checkInactiveMembers(groupId);
+                        evaluateGroupAdminRoles(groupId);
+                    }
                 },
                 (error) => {
                     console.error('[GroupDetail] group snapshot error:', error);
@@ -820,9 +959,6 @@ export default function GroupDetailScreen() {
             .onSnapshot(
                 (querySnapshot) => {
                     const feed = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    if (activities.length > 0) {
-                        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                    }
                     setActivities(feed);
                     markResolved();
                 },
@@ -904,15 +1040,24 @@ export default function GroupDetailScreen() {
 
     if (loading) {
         return (
-            <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
-                <Text style={{ color: colors.textSecondary }}>Loading...</Text>
-            </View>
+            <ScrollView
+                ref={scrollViewRef}
+                style={[styles.container, { backgroundColor: colors.background }]}
+                contentContainerStyle={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <LoadingView size={40} />
+            </ScrollView>
         );
     }
 
     const sortedMembers = members
         .filter(m => m.lastReadDate === today)
-        .sort((a, b) => (b.streak || 0) - (a.streak || 0));
+        .sort((a, b) => {
+            const aIsLady = a.gender === 'f';
+            const bIsLady = b.gender === 'f';
+            if (aIsLady && !bIsLady) return -1;
+            if (!aIsLady && bIsLady) return 1;
+            return (b.streak || 0) - (a.streak || 0);
+        });
 
     const groupStreak: number = groupData?.groupStreak || 0;
     const { pinnedMilestone, feedItems } = buildProcessedFeed(activities, today);
@@ -928,7 +1073,29 @@ export default function GroupDetailScreen() {
                 </View>
             )}
 
-            <Animated.ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} layout={LinearTransition}>
+            <Animated.ScrollView
+                ref={scrollViewRef}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+            >
+                <View style={[styles.header, { paddingBottom: Spacing.sm }]}>
+                    <View style={styles.headerLeft}>
+                        <Avatar id={groupId} name={groupData?.name} url={groupData?.photoURL} size={40} radius={12} />
+                        <View style={styles.titleContainer}>
+                            <Text style={[styles.title, { color: colors.textPrimary }]}>{groupData?.name || 'Loading...'}</Text>
+                        </View>
+                    </View>
+                    <View style={styles.headerRight}>
+                        <ScalePressable onPress={() => router.push('/(tabs)/groups/about' as any)} style={styles.infoButton}>
+                            <Ionicons name="information-circle-outline" size={24} color={colors.textSecondary} />
+                        </ScalePressable>
+                        {isAdmin && (
+                            <ScalePressable onPress={() => setIsEditModalVisible(true)} style={styles.editButton}>
+                                <Ionicons name="ellipsis-horizontal-circle-outline" size={24} color={colors.textSecondary} />
+                            </ScalePressable>
+                        )}
+                    </View>
+                </View>
 
                 {/* ── Members who read today ── */}
                 <View style={styles.sectionHeader}>
@@ -952,6 +1119,7 @@ export default function GroupDetailScreen() {
                                     <Avatar
                                         id={member.userId || member.id}
                                         name={member.displayName}
+                                        url={member.photoURL}
                                         size={52}
                                         borderWidth={1.25}
                                         borderColor={colors.indicatorActive}
@@ -1050,7 +1218,6 @@ export default function GroupDetailScreen() {
                                         : digest.names.join(' & ');
 
                                     const toggleDigest = () => {
-                                        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                                         setExpandedDigests(prev => {
                                             const next = new Set(prev);
                                             if (next.has(digest.id)) next.delete(digest.id);
@@ -1084,7 +1251,7 @@ export default function GroupDetailScreen() {
                                                                 borderBottomWidth: i < digest.entries.length - 1 ? 1 : 0,
                                                             }]}
                                                         >
-                                                            <Avatar id={entry.userId} name={entry.userName} size={28} radius={4} />
+                                                            <Avatar id={entry.userId} name={entry.userName} url={members.find(m => m.userId === entry.userId)?.photoURL} size={28} radius={4} />
                                                             <View style={styles.digestEntryText}>
                                                                 <Text style={[styles.digestEntryName, { color: colors.textPrimary }]}>{entry.userName}</Text>
                                                                 <Text style={[styles.digestEntrySub, { color: colors.textTertiary }]}>{entry.bookName} {entry.chapters}</Text>
@@ -1108,10 +1275,11 @@ export default function GroupDetailScreen() {
                                 const isJoined = activity.type === 'member_joined';
                                 const isRemoved = activity.type === 'member_removed';
                                 const isMilestone = activity.type === 'milestone_earned';
+                                const isAdminPromoted = activity.type === 'admin_promoted';
 
                                 return (
                                     <View key={activity.id} style={styles.activityCard}>
-                                        <Avatar id={activity.userId} name={activity.userName} size={44} />
+                                        <Avatar id={activity.userId} name={activity.userName} url={members.find(m => m.userId === activity.userId)?.photoURL} size={44} />
                                         <View style={styles.activityContent}>
                                             <View style={styles.activityHeader}>
                                                 <Text style={[styles.userName, { color: colors.textPrimary }]}>
@@ -1137,9 +1305,11 @@ export default function GroupDetailScreen() {
                                                         read {activity.bookName} {activity.chapters}
                                                     </Text>
                                                     {activity.preview && (
-                                                        <Text style={[styles.reflectionPreview, { color: colors.textTertiary, borderLeftColor: colors.accentSecondaryLight }]}>
-                                                            "{activity.preview}"
-                                                        </Text>
+                                                        <HyperlinkedText
+                                                            style={[styles.reflectionPreview, { color: colors.textTertiary, borderLeftColor: colors.accentSecondaryLight }]}
+                                                            numberOfLines={2}
+                                                            text={`"${activity.preview}"`}
+                                                        />
                                                     )}
                                                 </>
                                             )}
@@ -1154,9 +1324,10 @@ export default function GroupDetailScreen() {
                                                                 {activity.sharedQuestionTitle}
                                                             </Text>
                                                         )}
-                                                        <Text style={{ fontSize: Typography.size.sm, color: colors.textPrimary, lineHeight: 20 }}>
-                                                            {activity.sharedReflectionText || activity.preview}
-                                                        </Text>
+                                                        <HyperlinkedText
+                                                            style={{ fontSize: Typography.size.sm, color: colors.textPrimary, lineHeight: 20 }}
+                                                            text={activity.sharedReflectionText || activity.preview}
+                                                        />
                                                     </View>
                                                 </>
                                             )}
@@ -1177,6 +1348,11 @@ export default function GroupDetailScreen() {
                                                     has left us.
                                                 </Text>
                                             )}
+                                            {isAdminPromoted && (
+                                                <Text style={[styles.activityText, { color: colors.textSecondary }]}>
+                                                    earned admin status for {activity.monthName}! 👑
+                                                </Text>
+                                            )}
                                         </View>
                                         <View style={styles.activityIcon}>
                                             {isMilestone ? (
@@ -1189,14 +1365,16 @@ export default function GroupDetailScreen() {
                                                                 : isJoined ? 'person-add-outline'
                                                                     : isAbsent ? 'moon-outline'
                                                                         : isRemoved ? 'exit-outline'
-                                                                            : 'checkmark-circle'
+                                                                            : isAdminPromoted ? 'ribbon-outline'
+                                                                                : 'checkmark-circle'
                                                     }
                                                     size={20}
                                                     color={
                                                         isJournalEntry || isSharedReflection ? colors.accentSecondary
                                                             : isJoined ? colors.indicatorActive
                                                                 : isAbsent ? colors.accent
-                                                                    : colors.textTertiary
+                                                                    : isAdminPromoted ? colors.accentSecondary
+                                                                        : colors.textTertiary
                                                     }
                                                 />
                                             )}
@@ -1304,7 +1482,7 @@ export default function GroupDetailScreen() {
                                 style={styles.memberListItem}
                                 onPress={() => setSelectedMember(member)}
                             >
-                                <Avatar id={member.userId || member.id} name={member.displayName} size={52} radius={16} />
+                                <Avatar id={member.userId || member.id} name={member.displayName} url={member.photoURL} size={52} radius={16} />
                                 <View style={styles.memberItemContent}>
                                     <Text style={[styles.memberItemName, { color: colors.textPrimary }]}>
                                         {member.displayName}{member.isMe ? ' (You)' : ''}
@@ -1323,10 +1501,35 @@ export default function GroupDetailScreen() {
                                 <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
                             </ScalePressable>
                         ))}
+
+                        <ScalePressable
+                            style={[styles.infoLink, { backgroundColor: colors.backgroundElevated }]}
+                            onPress={() => router.push('/groups/about')}
+                        >
+                            <View style={styles.infoLinkContent}>
+                                <View style={[styles.infoIconWrap, { backgroundColor: colors.accent + '15' }]}>
+                                    <Ionicons name="information-circle" size={18} color={colors.accent} />
+                                </View>
+                                <View>
+                                    <Text style={[styles.infoLinkTitle, { color: colors.textPrimary }]}>Group Logic & Rules</Text>
+                                    <Text style={[styles.infoLinkSubtitle, { color: colors.textTertiary }]}>Learn about streaks, admins, and removals</Text>
+                                </View>
+                            </View>
+                            <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+                        </ScalePressable>
                     </View>
                 )}
 
             </Animated.ScrollView>
+
+            {/* Group Edit Modal */}
+            <GroupEditModal
+                visible={isEditModalVisible}
+                groupData={groupData}
+                groupId={groupId}
+                onClose={() => setIsEditModalVisible(false)}
+                colors={colors}
+            />
 
             {selectedMember && (
                 <MemberProfileSheet
@@ -1348,6 +1551,10 @@ export default function GroupDetailScreen() {
 
 const getStyles = (colors: any) => StyleSheet.create({
     container: { flex: 1 },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.lg, paddingHorizontal: 4 },
+    headerLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+    titleContainer: { gap: 2 },
+    title: { fontSize: 24, fontWeight: '800', letterSpacing: -0.5 },
     offlineBanner: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
         gap: Spacing.xs, paddingVertical: Spacing.xs, paddingHorizontal: Spacing.md,
@@ -1420,6 +1627,9 @@ const getStyles = (colors: any) => StyleSheet.create({
     heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     heroMain: { gap: 2 },
     heroValRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+    headerRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+    infoButton: { padding: 8, borderRadius: 12 },
+    editButton: { padding: 8, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.1)' },
     heroVal: { fontSize: 42, fontWeight: '900', letterSpacing: -1 },
     heroLabel: { fontSize: Typography.size.sm, fontWeight: '600' },
     heroStats: { gap: Spacing.sm },
@@ -1447,4 +1657,36 @@ const getStyles = (colors: any) => StyleSheet.create({
     gingerText: { fontSize: 10, fontWeight: '600', fontStyle: 'italic' },
     miniHeatmap: { flexDirection: 'row', gap: 3 },
     miniDot: { width: 8, height: 8, borderRadius: 2 },
+    infoLink: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: Spacing.md,
+        borderRadius: 16,
+        marginTop: Spacing.xl,
+        marginHorizontal: 4,
+        marginBottom: Spacing.xxl,
+    },
+    infoLinkContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.md,
+    },
+    infoIconWrap: {
+        width: 36,
+        height: 36,
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    infoLinkTitle: {
+        fontSize: 15,
+        fontWeight: '700',
+        letterSpacing: -0.2,
+    },
+    infoLinkSubtitle: {
+        fontSize: 12,
+        fontWeight: '500',
+        opacity: 0.8,
+    },
 });

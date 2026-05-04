@@ -1,8 +1,7 @@
 import { JournalEntry, deleteJournalEntry, shareReflectionToGroup } from '@/src/data/database';
 import { getDaysDifference, getLocalMidnight } from '@/src/utils/dateUtils';
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
-    Alert,
     ScrollView,
     Share,
     StyleSheet,
@@ -11,9 +10,11 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
+import { useAlert } from '../context/AlertContext';
 import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
 import { ScalePressable } from './ScalePressable';
+import { HyperlinkedText } from './HyperlinkedText';
 
 interface JournalEntryDetailProps {
     entry: JournalEntry;
@@ -40,6 +41,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
     onClose,
 }) => {
     const { colors } = useTheme();
+    const { showAlert } = useAlert();
     const [isDeleting, setIsDeleting] = useState(false);
     const [isSharing, setIsSharing] = useState(false);
 
@@ -75,7 +77,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
         if (!hasChapterRange && hasVerses) {
             let result = entry.chapter_start.toString();
             if (entry.verse_start) {
-                result += `:${entry.verse_start} `;
+                result += `:${entry.verse_start}`;
                 if (entry.verse_end && entry.verse_end !== entry.verse_start) {
                     result += `–${entry.verse_end} `;
                 }
@@ -89,7 +91,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
             if (entry.verse_start) {
                 result += `:${entry.verse_start} `;
             }
-            result += `–${entry.chapter_end} `;
+            result += `– ${entry.chapter_end}`;
             if (entry.verse_end) {
                 result += `:${entry.verse_end} `;
             }
@@ -98,7 +100,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
 
         // Chapter range without verses: "3–5"
         if (hasChapterRange) {
-            return `${entry.chapter_start}–${entry.chapter_end} `;
+            return `${entry.chapter_start} – ${entry.chapter_end} `;
         }
 
         // Single chapter without verses: "3"
@@ -106,10 +108,10 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
     };
 
     const handleDelete = () => {
-        Alert.alert(
-            'Delete Entry',
-            'Are you sure you want to delete this entry? This action cannot be undone.',
-            [
+        showAlert({
+            title: 'Delete Entry',
+            message: 'Are you sure you want to delete this entry? This action cannot be undone.',
+            buttons: [
                 { text: 'Keep', style: 'cancel' },
                 {
                     text: 'Delete',
@@ -119,13 +121,16 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                         try {
                             await deleteJournalEntry(entry.id!);
                             onDelete?.();
-                        } catch {
+                        } catch (error) {
+                            console.error("Error deleting entry:", error);
+                            showAlert({ title: 'Error', message: 'Failed to delete entry.' });
+                        } finally {
                             setIsDeleting(false);
                         }
                     },
                 },
-            ]
-        );
+            ],
+        });
     };
 
     const handleShare = async () => {
@@ -184,10 +189,10 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
     };
 
     const handleShareReflection = (reflectionText: string, questionIndex: number) => {
-        Alert.alert(
-            'Share with Group',
-            'Share this specific reflection to your group feed?',
-            [
+        showAlert({
+            title: 'Share with Group',
+            message: 'Share this specific reflection to your group feed?',
+            buttons: [
                 { text: 'Cancel', style: 'cancel' },
                 {
                     text: 'Share',
@@ -196,19 +201,19 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                         try {
                             const success = await shareReflectionToGroup(entry, reflectionText.trim(), REFLECTION_QUESTIONS[questionIndex]);
                             if (success) {
-                                Alert.alert('Success', 'Reflection shared to your group!');
+                                showAlert({ title: 'Success', message: 'Reflection shared to your group!' });
                             } else {
-                                Alert.alert('Notice', 'Could not share reflection. Make sure you are in a group.');
+                                showAlert({ title: 'Notice', message: 'Could not share reflection. Make sure you are in a group.' });
                             }
                         } catch (e) {
-                            Alert.alert('Error', 'An error occurred while sharing.');
+                            showAlert({ title: 'Error', message: 'An error occurred while sharing.' });
                         } finally {
                             setIsSharing(false);
                         }
                     }
                 }
             ]
-        );
+        });
     };
 
     const handleShareActionItems = () => {
@@ -236,6 +241,11 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
             const hasContent = entry.action_items.some(item => item.action.trim() || item.motivation.trim());
             if (!hasContent) return null;
 
+            const validActions = (entry.action_items || []).filter(
+                item => item.action.trim() || item.motivation.trim()
+            );
+            const isSingleAction = validActions.length === 1;
+
             return (
                 <View key={questionIndex} style={[styles.reflectionCard, { borderLeftColor: colors.accentSecondary }]}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: Spacing.md }}>
@@ -245,33 +255,30 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                         </ScalePressable>
                     </View>
                     <View style={styles.answerContainer}>
-                        {(() => {
-                            const validActions = (entry.action_items || []).filter(item => item.action.trim() || item.motivation.trim());
-                            const isSingleAction = validActions.length === 1;
-
-                            return validActions.map((item, i) => (
-                                <View
-                                    key={i}
-                                    style={[
-                                        !isSingleAction && styles.actionItemCard,
-                                        !isSingleAction && { backgroundColor: colors.cardBackground, borderColor: colors.border }
-                                    ]}
-                                >
-                                    {item.action.trim() ? (
-                                        <Text style={[styles.actionText, { color: colors.textPrimary }]}>
-                                            {item.action.trim()}
-                                        </Text>
-                                    ) : null}
-                                    {item.motivation.trim() ? (
-                                        <View style={styles.motivationRow}>
-                                            <Text style={[styles.motivationText, { color: colors.textSecondary }]}>
-                                                {item.motivation.trim()}
-                                            </Text>
-                                        </View>
-                                    ) : null}
-                                </View>
-                            ));
-                        })()}
+                        {validActions.map((item, i) => (
+                            <View
+                                key={i}
+                                style={[
+                                    !isSingleAction && styles.actionItemCard,
+                                    !isSingleAction && { backgroundColor: colors.cardBackground, borderColor: colors.border }
+                                ]}
+                            >
+                                {item.action.trim() ? (
+                                    <HyperlinkedText
+                                        style={[styles.actionText, { color: colors.textPrimary }]}
+                                        text={item.action.trim()}
+                                    />
+                                ) : null}
+                                {item.motivation.trim() ? (
+                                    <View style={styles.motivationRow}>
+                                        <HyperlinkedText
+                                            style={[styles.motivationText, { color: colors.textSecondary }]}
+                                            text={item.motivation.trim()}
+                                        />
+                                    </View>
+                                ) : null}
+                            </View>
+                        ))}
                     </View>
                 </View>
             );
@@ -289,13 +296,11 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                     </View>
                     <View style={styles.answerContainer}>
                         {paragraphs.map((paragraph, pIndex) => (
-                            <Text key={pIndex} style={[
+                            <HyperlinkedText key={pIndex} style={[
                                 styles.answerText,
                                 { color: colors.textPrimary },
                                 pIndex > 0 && styles.answerParagraph
-                            ]}>
-                                {paragraph.trim()}
-                            </Text>
+                            ]} text={paragraph.trim()} />
                         ))}
                     </View>
                     {entry.study_further_reminder && new Date(entry.study_further_reminder) > new Date() && (
@@ -324,31 +329,29 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                 </View>
                 <View style={styles.answerContainer}>
                     {paragraphs.map((paragraph, pIndex) => (
-                        <Text key={pIndex} style={[
+                        <HyperlinkedText key={pIndex} style={[
                             styles.answerText,
                             { color: colors.textPrimary },
                             pIndex > 0 && styles.answerParagraph
-                        ]}>
-                            {paragraph.trim()}
-                        </Text>
+                        ]} text={paragraph.trim()} />
                     ))}
                 </View>
             </View>
         );
     };
 
-    const hasReflections = (() => {
+    const hasReflections = useMemo(() => {
         const textReflections = [
             entry.reflection_1,
             entry.reflection_2,
             entry.reflection_4,
             entry.study_further,
         ].filter(r => r && r.trim().length > 0);
-        const hasActions = entry.action_items && entry.action_items.some(
+        const hasActions = entry.action_items?.some(
             item => item.action.trim() || item.motivation.trim()
         );
         return textReflections.length > 0 || !!hasActions;
-    })();
+    }, [entry.reflection_1, entry.reflection_2, entry.reflection_4, entry.study_further, entry.action_items]);
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -369,12 +372,14 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                         <Text style={[styles.dateText, { color: colors.badgeText }]}>{formatDate(entry.created_at)}</Text>
                     </View>
 
-                    <Text style={[styles.reference, { color: colors.textPrimary }]}>
-                        {entry.book_name}
-                    </Text>
-                    <Text style={[styles.verseReference, { color: colors.accent }]}>
-                        {formatChapterAndVerses()}
-                    </Text>
+                    <View>
+                        <Text style={[styles.reference, { color: colors.textPrimary }]}>
+                            {entry.book_name}
+                        </Text>
+                        <Text style={[styles.verseReference, { color: colors.accent }]}>
+                            {formatChapterAndVerses()}
+                        </Text>
+                    </View>
                 </View>
 
                 {/* Content */}
@@ -400,7 +405,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                         <View style={[styles.notesSection, { borderLeftColor: colors.accentSecondary }]}>
                             <Text style={[styles.notesTitle, { color: colors.accent }]}>Additional Thoughts</Text>
                             <View style={[styles.notesContent, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
-                                <Text style={[styles.notesText, { color: colors.textPrimary }]}>{entry.notes.trim()}</Text>
+                                <HyperlinkedText style={[styles.notesText, { color: colors.textPrimary }]} text={entry.notes.trim()} />
                             </View>
                         </View>
                     )}

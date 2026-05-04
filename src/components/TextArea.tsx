@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-
     KeyboardAvoidingView,
     Modal,
     Platform,
@@ -9,12 +8,14 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    View
+    View,
+    ScrollView
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-
+import { BibleReferencePicker } from './BibleReferencePicker';
+import { getBibleStyledParts } from '../utils/bibleUtils';
+import { useBibleRefPicker } from '../hooks/useBibleRefPicker';
 
 const TextArea: React.FC<{
     label: string;
@@ -35,10 +36,29 @@ const TextArea: React.FC<{
         const { colors, isDark } = useTheme();
         const [isExpanded, setIsExpanded] = useState(false);
         const [tempValue, setTempValue] = useState('');
+        const [contentHeight, setContentHeight] = useState(0);
+        const [contentHeightModal, setContentHeightModal] = useState(0);
         const regularTextInputRef = useRef<TextInput>(null);
         const expandedTextInputRef = useRef<TextInput>(null);
 
-        // Sync temp value with actual value when modal opens
+        // Inline (non-expanded) picker — uses the root RefPickerContext.
+        const inlinePicker = useBibleRefPicker({
+            getValue: () => value,
+            setValue: onChange,
+            getInputRef: () => regularTextInputRef.current,
+            mode: 'context',
+        });
+
+        // Modal (expanded) picker — drives a local <BibleReferencePicker> inside the Modal.
+        const tempValueRef = useRef(tempValue);
+        tempValueRef.current = tempValue;
+        const modalPicker = useBibleRefPicker({
+            getValue: () => tempValueRef.current,
+            setValue: setTempValue,
+            getInputRef: () => expandedTextInputRef.current,
+            mode: 'local',
+        });
+
         useEffect(() => {
             if (isExpanded) {
                 setTempValue(value);
@@ -55,28 +75,17 @@ const TextArea: React.FC<{
         const handleSave = () => {
             onChange(tempValue);
             setIsExpanded(false);
-
-            // Return focus to original TextArea after a brief delay
-            setTimeout(() => {
-                regularTextInputRef.current?.focus();
-            }, 300);
+            setTimeout(() => { regularTextInputRef.current?.focus(); }, 300);
         };
 
         const handleCancel = () => {
             setIsExpanded(false);
-            // Return focus to original TextArea after a brief delay
-            setTimeout(() => {
-                regularTextInputRef.current?.focus();
-            }, 300);
-        };
-
-        const handleTempChange = (text: string) => {
-            setTempValue(text);
+            setTimeout(() => { regularTextInputRef.current?.focus(); }, 300);
         };
 
         return (
             <>
-                {/* Regular TextArea */}
+                {/* ── Inline compact view ── */}
                 <View style={textAreaStyles.container}>
                     <View style={[
                         textAreaStyles.inputContainer,
@@ -86,23 +95,38 @@ const TextArea: React.FC<{
                     ]}>
                         <TextInput
                             ref={regularTextInputRef}
+                            inputAccessoryViewID="bible-picker"
                             style={[
                                 textAreaStyles.input,
-                                { color: colors.text },
+                                { color: colors.text, minHeight: Math.max(250) },
                                 disabled && { color: colors.textSecondary },
                             ]}
                             placeholder={placeholder}
                             placeholderTextColor={colors.textTertiary}
-                            value={value}
-                            onChangeText={onChange}
+                            onChangeText={inlinePicker.handleTextChange}
+                            onContentSizeChange={(e) => setContentHeight(e.nativeEvent.contentSize.height)}
                             multiline={true}
                             numberOfLines={5}
                             textAlignVertical="top"
                             editable={!disabled}
-                        />
+                            scrollEnabled={false}
+                        >
+                            {getBibleStyledParts(value).map((part, index) => (
+                                <Text key={index} style={part.isReference ? { color: colors.accent, fontWeight: '600' } : {}}>
+                                    {part.isReference ? (
+                                        <Text>
+                                            <Text style={{ color: colors.textTertiary, fontWeight: '400' }}>[[</Text>
+                                            {part.refContent}
+                                            <Text style={{ color: colors.textTertiary, fontWeight: '400' }}>]]</Text>
+                                        </Text>
+                                    ) : (
+                                        part.text
+                                    )}
+                                </Text>
+                            ))}
+                        </TextInput>
                         {isAnswered && <View style={[textAreaStyles.answeredIndicator, { backgroundColor: colors.primary }]} />}
 
-                        {/* Expand button */}
                         {!disabled && (
                             <TouchableOpacity
                                 style={[textAreaStyles.expandButton, { backgroundColor: colors.background, borderColor: colors.border }]}
@@ -118,7 +142,7 @@ const TextArea: React.FC<{
                     </View>
                 </View>
 
-                {/* Full-screen Modal */}
+                {/* ── Full-screen expand modal ── */}
                 <Modal
                     visible={isExpanded}
                     animationType="slide"
@@ -130,7 +154,6 @@ const TextArea: React.FC<{
                         <KeyboardAvoidingView
                             style={fullScreenStyles.keyboardView}
                             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                            keyboardVerticalOffset={0}
                         >
                             <View style={fullScreenStyles.content}>
                                 <TouchableOpacity
@@ -147,19 +170,43 @@ const TextArea: React.FC<{
                                     </View>
                                 )}
 
-                                <TextInput
-                                    ref={expandedTextInputRef}
-                                    style={[fullScreenStyles.textInput, { color: colors.text }]}
-                                    placeholder={placeholder || "..."}
-                                    placeholderTextColor={colors.textTertiary}
-                                    value={tempValue}
-                                    onChangeText={handleTempChange}
-                                    multiline={true}
-                                    textAlignVertical="top"
-                                    autoFocus={true}
-                                    blurOnSubmit={false}
-                                    returnKeyType="default"
-                                />
+                                <ScrollView
+                                    style={{ flex: 1 }}
+                                    keyboardShouldPersistTaps="always"
+                                    showsVerticalScrollIndicator={false}
+                                >
+                                    <TextInput
+                                        ref={expandedTextInputRef}
+                                        style={[
+                                            fullScreenStyles.textInput,
+                                            { color: colors.text, minHeight: Math.max(220, contentHeightModal) }
+                                        ]}
+                                        placeholder={placeholder || "..."}
+                                        placeholderTextColor={colors.textTertiary}
+                                        onChangeText={modalPicker.handleTextChange}
+                                        onContentSizeChange={(e) => setContentHeightModal(e.nativeEvent.contentSize.height)}
+                                        multiline={true}
+                                        textAlignVertical="top"
+                                        autoFocus={true}
+                                        blurOnSubmit={false}
+                                        scrollEnabled={false}
+                                        returnKeyType="default"
+                                    >
+                                        {getBibleStyledParts(tempValue).map((part, index) => (
+                                            <Text key={index} style={part.isReference ? { color: colors.accent, fontWeight: '600' } : {}}>
+                                                {part.isReference ? (
+                                                    <Text>
+                                                        <Text style={{ color: colors.textTertiary, fontWeight: '400' }}>[[</Text>
+                                                        {part.refContent}
+                                                        <Text style={{ color: colors.textTertiary, fontWeight: '400' }}>]]</Text>
+                                                    </Text>
+                                                ) : (
+                                                    part.text
+                                                )}
+                                            </Text>
+                                        ))}
+                                    </TextInput>
+                                </ScrollView>
 
                                 <TouchableOpacity
                                     style={fullScreenStyles.saveButton}
@@ -169,6 +216,8 @@ const TextArea: React.FC<{
                                     <Text style={[fullScreenStyles.saveText, { color: colors.textSecondary }]}>Save</Text>
                                 </TouchableOpacity>
                             </View>
+
+                            <BibleReferencePicker {...modalPicker.pickerProps} />
                         </KeyboardAvoidingView>
                     </SafeAreaView>
                 </Modal>
@@ -179,25 +228,26 @@ const TextArea: React.FC<{
 const textAreaStyles = StyleSheet.create({
     container: {
         marginBottom: 8,
+        position: 'relative',
     },
     inputContainer: {
         borderRadius: 10,
         borderWidth: 1,
         position: 'relative',
+        paddingBottom: 4,
     },
     input: {
         padding: 20,
-        paddingRight: 20, // Make room for expand button
+        paddingBottom: 4,
         fontSize: 16,
         fontWeight: '400',
         lineHeight: 24,
         letterSpacing: 0.1,
-        minHeight: 250,
     },
     answeredIndicator: {
         position: 'absolute',
         top: 12,
-        right: 48, // Adjust position to not overlap with expand button
+        right: 48,
         width: 8,
         height: 8,
         borderRadius: 4,
@@ -231,10 +281,10 @@ const textAreaStyles = StyleSheet.create({
 const fullScreenStyles = StyleSheet.create({
     container: {
         flex: 1,
-        paddingTop: (StatusBar.currentHeight || 2),
     },
     keyboardView: {
         flex: 1,
+        position: 'relative',
     },
     labelContainer: {
         paddingTop: 20,
@@ -259,6 +309,7 @@ const fullScreenStyles = StyleSheet.create({
     saveButton: {
         alignSelf: 'flex-end',
         paddingHorizontal: 20,
+        marginTop: 10,
     },
     saveText: {
         fontSize: 15,
@@ -266,13 +317,13 @@ const fullScreenStyles = StyleSheet.create({
         letterSpacing: 0.1,
     },
     textInput: {
-        flex: 1,
         fontSize: 16,
         fontWeight: '400',
         lineHeight: 28,
         letterSpacing: 0.1,
         backgroundColor: 'transparent',
         textAlignVertical: 'top',
+        paddingTop: 8,
     },
 });
 

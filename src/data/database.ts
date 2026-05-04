@@ -100,6 +100,8 @@ export interface ActionItem {
     motivation: string;
     sort_order: number;
     is_completed?: boolean;
+    is_pinned?: boolean;
+    pinned_at?: string | null;
 }
 
 export interface JournalEntry {
@@ -165,6 +167,7 @@ export interface StudyTopicInput {
 let db: SQLite.SQLiteDatabase | null = null;
 
 const CURRENT_DB_VERSION = 7;
+const CURRENT_DB_VERSION = 5;
 
 const getDb = async () => {
     if (!db) {
@@ -311,27 +314,115 @@ export const initializeDatabase = async () => {
             };
 
             if (currentVersion < 4) {
-                // Migration to v4: Create reading_progress table
+                // Migration to v4: Add reading_progress table, add is_pinned to action_items table
+                // Add study related columns to journal_entries table
                 await database.execAsync(`
                     CREATE TABLE IF NOT EXISTS reading_progress (
                         item_id INTEGER PRIMARY KEY,
                         completed_at DATETIME DEFAULT CURRENT_TIMESTAMP
                     );
                 `);
-            };
+
+                // Helper to add columns safely without crashing if they exist (e.g. for dev environments)
+                const addCol = async (table: string, colDef: string) => {
+                    try { await database.runAsync(`ALTER TABLE ${table} ADD COLUMN ${colDef}`); } catch (e) { /* ignore if exists */ }
+                };
+
+                await addCol('journal_entries', 'study_further TEXT');
+                await addCol('journal_entries', 'study_further_reminder TEXT');
+                await addCol('journal_entries', 'study_completed BOOLEAN DEFAULT 0');
+
+                await addCol('action_items', 'is_completed BOOLEAN DEFAULT 0');
+                await addCol('action_items', 'is_pinned BOOLEAN DEFAULT 0');
+                await addCol('action_items', 'pinned_at DATETIME DEFAULT NULL');
+            }
 
             if (currentVersion < 5) {
-                // Migration to v5: Add study_further columns
+                // Migration to v5: FTS5 for full-text search and extra indexes
                 await database.execAsync(`
-                    ALTER TABLE journal_entries ADD COLUMN study_further TEXT;
-                    ALTER TABLE journal_entries ADD COLUMN study_further_reminder TEXT;
+                    -- Full-Text Search for Journal Entries
+                    CREATE VIRTUAL TABLE IF NOT EXISTS journal_entries_fts USING fts5(
+                        reflection_1, reflection_2, reflection_3, reflection_4, notes, study_further,
+                        content='journal_entries',
+                        content_rowid='id'
+                    );
+
+                    -- Triggers for Journal Entries FTS
+                    CREATE TRIGGER IF NOT EXISTS journal_entries_ai AFTER INSERT ON journal_entries BEGIN
+                      INSERT INTO journal_entries_fts(rowid, reflection_1, reflection_2, reflection_3, reflection_4, notes, study_further)
+                      VALUES (new.id, new.reflection_1, new.reflection_2, new.reflection_3, new.reflection_4, new.notes, new.study_further);
+                    END;
+
+                    CREATE TRIGGER IF NOT EXISTS journal_entries_ad AFTER DELETE ON journal_entries BEGIN
+                      INSERT INTO journal_entries_fts(journal_entries_fts, rowid, reflection_1, reflection_2, reflection_3, reflection_4, notes, study_further)
+                      VALUES('delete', old.id, old.reflection_1, old.reflection_2, old.reflection_3, old.reflection_4, old.notes, old.study_further);
+                    END;
+
+                    CREATE TRIGGER IF NOT EXISTS journal_entries_au AFTER UPDATE ON journal_entries BEGIN
+                      INSERT INTO journal_entries_fts(journal_entries_fts, rowid, reflection_1, reflection_2, reflection_3, reflection_4, notes, study_further)
+                      VALUES('delete', old.id, old.reflection_1, old.reflection_2, old.reflection_3, old.reflection_4, old.notes, old.study_further);
+                      INSERT INTO journal_entries_fts(rowid, reflection_1, reflection_2, reflection_3, reflection_4, notes, study_further)
+                      VALUES (new.id, new.reflection_1, new.reflection_2, new.reflection_3, new.reflection_4, new.notes, new.study_further);
+                    END;
+
+                    -- Full-Text Search for Action Items
+                    CREATE VIRTUAL TABLE IF NOT EXISTS action_items_fts USING fts5(
+                        action, motivation,
+                        content='action_items',
+                        content_rowid='id'
+                    );
+
+                    -- Triggers for Action Items FTS
+                    CREATE TRIGGER IF NOT EXISTS action_items_ai AFTER INSERT ON action_items BEGIN
+                      INSERT INTO action_items_fts(rowid, action, motivation)
+                      VALUES (new.id, new.action, new.motivation);
+                    END;
+
+                    CREATE TRIGGER IF NOT EXISTS action_items_ad AFTER DELETE ON action_items BEGIN
+                      INSERT INTO action_items_fts(action_items_fts, rowid, action, motivation)
+                      VALUES('delete', old.id, old.action, old.motivation);
+                    END;
+
+                    CREATE TRIGGER IF NOT EXISTS action_items_au AFTER UPDATE ON action_items BEGIN
+                      INSERT INTO action_items_fts(action_items_fts, rowid, action, motivation)
+                      VALUES('delete', old.id, old.action, old.motivation);
+                      INSERT INTO action_items_fts(rowid, action, motivation)
+                      VALUES (new.id, new.action, new.motivation);
+                    END;
+
+                    -- Initial population of FTS tables
+                    INSERT INTO journal_entries_fts(rowid, reflection_1, reflection_2, reflection_3, reflection_4, notes, study_further)
+                    SELECT id, reflection_1, reflection_2, reflection_3, reflection_4, notes, study_further FROM journal_entries;
+
+                    INSERT INTO action_items_fts(rowid, action, motivation)
+                    SELECT id, action, motivation FROM action_items;
+
+                    -- Additional Indexes for performance
+                    CREATE INDEX IF NOT EXISTS idx_action_items_pinned ON action_items(is_pinned, pinned_at);
+                    CREATE INDEX IF NOT EXISTS idx_journal_entries_study ON journal_entries(study_completed);
                 `);
-            };
-            if (currentVersion < 6) {
-                // Migration to v6: Add completion status
+            }
+
+            if (currentVersion < 7) {
+                // Migration to v7: Add study topics and references
                 await database.execAsync(`
-                    ALTER TABLE action_items ADD COLUMN is_completed BOOLEAN DEFAULT 0;
-                    ALTER TABLE journal_entries ADD COLUMN study_completed BOOLEAN DEFAULT 0;
+                    CREATE TABLE IF NOT EXISTS study_topics (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        title TEXT NOT NULL,
+                        content TEXT,
+                        color TEXT,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    );
+                    CREATE TABLE IF NOT EXISTS study_topic_references (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        topic_id INTEGER NOT NULL,
+                        book_name TEXT NOT NULL,
+                        chapter INTEGER NOT NULL,
+                        verse_start TEXT,
+                        verse_end TEXT,
+                        FOREIGN KEY (topic_id) REFERENCES study_topics(id) ON DELETE CASCADE
+                    );
                 `);
             }
 
@@ -396,12 +487,45 @@ export const createJournalEntry = async (data: JournalEntryInput) => {
         }
 
         // Mark reading plan items as completed.
-        // If an explicit readingItemId was provided (via the Next Reading button), use only that.
-        // Otherwise, find ALL plan items whose chapter range overlaps with the entry's range
-        // (handles cases like entering ch 22-28 across multiple plan items).
-        const planItemIds = data.readingItemId
-            ? [data.readingItemId]
-            : await findMatchingReadingPlanItems(database, data.bookName, data.chapterStart, data.chapterEnd);
+        // If an explicit readingItemId was provided (via the Next Reading button), 
+        // verify it still matches the book name and chapters before using it exclusively.
+        let planItemIds: number[] = [];
+        if (data.readingItemId) {
+            const planItem = READING_PLAN_DATA.find(i => i.id === data.readingItemId);
+            if (planItem) {
+                const bookMatches = planItem.book.toLowerCase() === data.bookName.toLowerCase() ||
+                    planItem.book.toLowerCase().split('/').includes(data.bookName.toLowerCase());
+
+                if (bookMatches) {
+                    if (!planItem.chapters) {
+                        // Special items without chapters (e.g. Obadiah/Jonah)
+                        planItemIds = [data.readingItemId];
+                    } else {
+                        // Items with chapters - check overlap
+                        const parts = planItem.chapters.split('-');
+                        const planStart = parseInt(parts[0].split(':')[0], 10);
+                        let planEnd = planStart;
+                        if (parts.length > 1) {
+                            planEnd = parseInt(parts[parts.length - 1].split(':')[0], 10);
+                        }
+
+                        const entryEnd = data.chapterEnd ?? data.chapterStart;
+                        const overlaps = data.chapterStart !== undefined &&
+                            data.chapterStart <= planEnd && entryEnd! >= planStart;
+
+                        if (overlaps) {
+                            planItemIds = [data.readingItemId];
+                        }
+                    }
+                }
+            }
+        }
+
+        // If no explicit ID was provided OR it didn't match the new entry data,
+        // fallback to finding ALL matching items automatically.
+        if (planItemIds.length === 0) {
+            planItemIds = await findMatchingReadingPlanItems(database, data.bookName, data.chapterStart, data.chapterEnd);
+        }
 
         for (const planItemId of planItemIds) {
             await database.runAsync(
@@ -417,10 +541,6 @@ export const createJournalEntry = async (data: JournalEntryInput) => {
             try {
                 const user = auth().currentUser;
                 if (!user) return;
-
-                const userDoc = await firestore().collection('users').doc(user.uid).get();
-                const userData = userDoc.data();
-                if (!userData?.groupIds?.length) return;
 
                 const chapters = data.chapterEnd && data.chapterEnd !== data.chapterStart
                     ? `${data.chapterStart}-${data.chapterEnd}`
@@ -442,6 +562,7 @@ export const createJournalEntry = async (data: JournalEntryInput) => {
 
                 const activity = {
                     userId: user.uid,
+                    activityId: `${user.uid}_journal_${entryId}`,
                     userName: resolvedName,
                     bookName: data.bookName,
                     chapters,
@@ -545,20 +666,26 @@ export const searchEntries = async (term: string): Promise<JournalEntry[]> => {
     if (!term.trim()) {
         return [];
     }
-    const pattern = `%${term}%`;
+
+    // Sanitize term for FTS5 (basic)
+    const sanitizedTerm = term.replace(/"/g, '""');
 
     return await withDatabase(async (database) => {
-        const entries = await database.getAllAsync<JournalEntry>(
-            `SELECT je.* FROM journal_entries je
-             LEFT JOIN action_items ai ON ai.entry_id = je.id
-             WHERE je.reflection_1 LIKE ? OR je.reflection_2 LIKE ? OR je.reflection_3 LIKE ? 
-             OR je.reflection_4 LIKE ? OR je.notes LIKE ? OR je.study_further LIKE ?
-             OR ai.action LIKE ? OR ai.motivation LIKE ?
-             GROUP BY je.id
-             ORDER BY je.created_at DESC 
-             LIMIT 100`,
-            [pattern, pattern, pattern, pattern, pattern, pattern, pattern, pattern]
-        );
+        // Use FTS5 MATCH with UNION to find all matching entries
+        const query = `
+            SELECT je.* FROM journal_entries je
+            WHERE je.id IN (
+                SELECT rowid FROM journal_entries_fts WHERE journal_entries_fts MATCH ?
+                UNION
+                SELECT entry_id FROM action_items WHERE id IN (
+                    SELECT rowid FROM action_items_fts WHERE action_items_fts MATCH ?
+                )
+            )
+            ORDER BY je.created_at DESC 
+            LIMIT 100
+        `;
+
+        const entries = await database.getAllAsync<JournalEntry>(query, [sanitizedTerm, sanitizedTerm]);
         return await attachActionItems(database, entries);
     });
 };
@@ -583,6 +710,22 @@ export const deleteJournalEntry = async (id: number) => {
         await database.runAsync(`DELETE FROM journal_entries WHERE id = ?`, [id]);
     });
 };
+
+/**
+ * Returns a map of book_name → entry count for every book that has at least one entry.
+ */
+export const getBookEntryCounts = async (): Promise<Record<string, number>> => {
+    return await withDatabase(async (database) => {
+        const rows = await database.getAllAsync<{ book_name: string; count: number }>(
+            `SELECT book_name, COUNT(*) as count FROM journal_entries GROUP BY book_name`
+        );
+        const counts: Record<string, number> = {};
+        rows.forEach(row => { counts[row.book_name] = row.count; });
+        return counts;
+    });
+};
+
+
 
 export const getTotalEntryCount = async (month?: string): Promise<number> => {
     return await withDatabase(async (database) => {
@@ -680,9 +823,10 @@ export const getMissedDaysCount = async (month?: string): Promise<number> => {
  * Export all journal entries as a JSON string
  * The JSON format is:
  * {
- *   "version": 2,
+ *   "version": 3,
  *   "exportedAt": string,
- *   "entries": JournalEntry[] (with action_items)
+ *   "entries": JournalEntry[],
+ *   "readingProgress": number[]
  * }
  */
 export const exportJournalEntriesToJson = async (): Promise<string> => {
@@ -702,6 +846,7 @@ export const exportJournalEntriesToJson = async (): Promise<string> => {
                 notes,
                 study_further,
                 study_further_reminder,
+                study_completed,
                 datetime(created_at, 'localtime') as created_at,
                 datetime(updated_at, 'localtime') as updated_at
             FROM journal_entries
@@ -710,10 +855,18 @@ export const exportJournalEntriesToJson = async (): Promise<string> => {
 
         const entriesWithItems = await attachActionItems(database, entries);
 
+        const readingProgress = await database.getAllAsync<{ item_id: number; completed_at: string }>(
+            `SELECT item_id, datetime(completed_at, 'localtime') as completed_at FROM reading_progress`
+        );
+
         const payload = {
-            version: 2,
+            version: 4,
             exportedAt: new Date().toISOString(),
             entries: entriesWithItems,
+            readingProgress: readingProgress.map(rp => ({
+                item_id: rp.item_id,
+                completed_at: rp.completed_at
+            })),
         };
 
         return JSON.stringify(payload, null, 2);
@@ -722,9 +875,14 @@ export const exportJournalEntriesToJson = async (): Promise<string> => {
 
 /**
  * Import journal entries from a JSON string previously created by exportJournalEntriesToJson.
- * This will REPLACE all existing journal entries with the ones from the backup.
+ * This will MERGE entries and reading progress with existing local data, skipping duplicates.
  */
-export const importJournalEntriesFromJson = async (json: string): Promise<{ imported: number; skipped: number }> => {
+export const importJournalEntriesFromJson = async (json: string): Promise<{
+    importedEntries: number;
+    skippedEntries: number;
+    importedReadingItems: number;
+    skippedReadingItems: number;
+}> => {
     let parsed: any;
     try {
         parsed = JSON.parse(json);
@@ -741,49 +899,56 @@ export const importJournalEntriesFromJson = async (json: string): Promise<{ impo
     return await withDatabase(async (database) => {
         await database.execAsync('BEGIN TRANSACTION');
         try {
-            let imported = 0;
-            let skipped = 0;
+            let importedEntries = 0;
+            let skippedEntries = 0;
+            let importedReadingItems = 0;
+            let skippedReadingItems = 0;
 
+            // 1. Process Journal Entries
             for (const entry of entries) {
-                if (!entry.book_name) continue;
-
-                // Check for duplicate: same book, chapter_start, and created_at
-                const existing = await database.getFirstAsync<{ id: number }>(
-                    `SELECT id FROM journal_entries
-                     WHERE book_name = ? AND chapter_start IS ? AND DATE(created_at) = DATE(?)`,
-                    [entry.book_name, entry.chapter_start ?? null, entry.created_at ?? '']
-                );
-
-                if (existing) {
-                    skipped++;
+                // Skip if missing required fields for reliable dedup
+                if (!entry.book_name || !entry.created_at) {
+                    skippedEntries++;
                     continue;
                 }
 
-                const reflections = [
-                    entry.reflection_1 ?? '',
-                    entry.reflection_2 ?? '',
-                    entry.reflection_3 ?? '',
-                    entry.reflection_4 ?? '',
-                ];
+                const existing = await database.getFirstAsync<{ id: number }>(
+                    `SELECT id FROM journal_entries
+                     WHERE book_name = ? AND chapter_start IS ? AND DATE(created_at) = DATE(?)`,
+                    [entry.book_name, entry.chapter_start ?? null, entry.created_at]
+                );
+
+                if (existing) {
+                    skippedEntries++;
+                    continue;
+                }
+
+                const now = new Date().toLocaleString('sv').replace(' ', 'T'); // local ISO-like string
+                const createdAt = entry.created_at;
+                const updatedAt = entry.updated_at ?? createdAt;
 
                 const result = await database.runAsync(
                     `INSERT INTO journal_entries (
                         book_name, chapter_start, chapter_end, verse_start, verse_end,
                         reflection_1, reflection_2, reflection_3, reflection_4, notes,
-                        study_further, study_further_reminder, created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                        study_further, study_further_reminder, created_at, updated_at, study_completed
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                     [
                         entry.book_name,
                         entry.chapter_start ?? null,
                         entry.chapter_end ?? null,
                         entry.verse_start ?? null,
                         entry.verse_end ?? null,
-                        ...reflections,
+                        entry.reflection_1 ?? '',
+                        entry.reflection_2 ?? '',
+                        entry.reflection_3 ?? '',
+                        entry.reflection_4 ?? '',
                         entry.notes ?? null,
                         entry.study_further ?? null,
                         entry.study_further_reminder ?? null,
-                        entry.created_at ?? new Date().toISOString(),
-                        entry.updated_at ?? new Date().toISOString(),
+                        createdAt,
+                        updatedAt,
+                        entry.study_completed ? 1 : 0,
                     ]
                 );
 
@@ -792,17 +957,48 @@ export const importJournalEntriesFromJson = async (json: string): Promise<{ impo
                     for (let i = 0; i < entry.action_items.length; i++) {
                         const item = entry.action_items[i];
                         await database.runAsync(
-                            `INSERT INTO action_items (entry_id, action, motivation, sort_order) VALUES (?, ?, ?, ?)`,
-                            [newEntryId, item.action ?? '', item.motivation ?? '', item.sort_order ?? i]
+                            `INSERT INTO action_items (entry_id, action, motivation, sort_order, is_completed, is_pinned) VALUES (?, ?, ?, ?, ?, ?)`,
+                            [newEntryId, item.action ?? '', item.motivation ?? '', item.sort_order ?? i, item.is_completed ? 1 : 0, item.is_pinned ? 1 : 0]
                         );
                     }
                 }
 
-                imported++;
+                importedEntries++;
+            }
+
+            // 2. Process Reading Progress (if version >= 3)
+            if (parsed.version >= 3 && Array.isArray(parsed.readingProgress)) {
+                for (const item of parsed.readingProgress) {
+                    const itemId = typeof item === 'number' ? item : item.item_id;
+                    const completedAt = typeof item === 'object' ? item.completed_at : null;
+
+                    const existing = await database.getFirstAsync<{ item_id: number }>(
+                        `SELECT item_id FROM reading_progress WHERE item_id = ?`,
+                        [itemId]
+                    );
+
+                    if (existing) {
+                        skippedReadingItems++;
+                        continue;
+                    }
+
+                    if (completedAt) {
+                        await database.runAsync(
+                            `INSERT INTO reading_progress (item_id, completed_at) VALUES (?, ?)`,
+                            [itemId, completedAt]
+                        );
+                    } else {
+                        await database.runAsync(
+                            `INSERT INTO reading_progress (item_id) VALUES (?)`,
+                            [itemId]
+                        );
+                    }
+                    importedReadingItems++;
+                }
             }
 
             await database.execAsync('COMMIT');
-            return { imported, skipped };
+            return { importedEntries, skippedEntries, importedReadingItems, skippedReadingItems };
         } catch (error) {
             await database.execAsync('ROLLBACK');
             throw error;
@@ -1008,19 +1204,78 @@ export const getAllActionItems = async (limit: number = 200, offset: number = 0)
  */
 export const getRecentStudyTopics = async (days: number = 7, includeCompleted: boolean = false): Promise<JournalEntry[]> => {
     return await withDatabase(async (database) => {
-        const query = `
+        const daysParam = `-${days} days`;
+        const completedFilter = includeCompleted ? '' : 'AND study_completed = 0';
+
+        // 1. Get the 3 OLDEST uncompleted topics
+        const oldestUncompletedQuery = `
+            SELECT 
+                *,
+                datetime(created_at, 'localtime') as created_at
+            FROM journal_entries
+            WHERE study_further IS NOT NULL AND study_further != ''
+            ${completedFilter}
+            ORDER BY created_at ASC
+            LIMIT 3
+        `;
+        const oldestList = await database.getAllAsync<JournalEntry>(oldestUncompletedQuery);
+
+        // 2. Get the NEWEST topics from the last X days
+        const newestQuery = `
             SELECT 
                 *,
                 datetime(created_at, 'localtime') as created_at
             FROM journal_entries
             WHERE DATE(created_at, 'localtime') >= DATE('now', 'localtime', ?)
             AND study_further IS NOT NULL AND study_further != ''
-            ${includeCompleted ? '' : 'AND study_completed = 0'}
+            ${completedFilter}
             ORDER BY created_at DESC
         `;
+        const newestList = await database.getAllAsync<JournalEntry>(newestQuery, [daysParam]);
 
-        const daysParam = `-${days} days`;
-        return await database.getAllAsync<JournalEntry>(query, [daysParam]);
+        // Combine them, ensuring no duplicates by ID
+        const combined = new Map<number, JournalEntry>();
+
+        // Add newest first so they appear at the top
+        for (const item of newestList) {
+            if (item.id) combined.set(item.id, item);
+        }
+
+        // Add oldest
+        for (const item of oldestList) {
+            if (item.id && !combined.has(item.id)) {
+                combined.set(item.id, item);
+            }
+        }
+
+        // What if we still don't have 6? Let's grab the newest uncompleted overall to backfill up to 6
+        if (combined.size < 6) {
+            const idsToExclude = Array.from(combined.keys()).join(',');
+            const extraCount = 6 - combined.size;
+
+            let backfillQuery = `
+                SELECT 
+                    *,
+                    datetime(created_at, 'localtime') as created_at
+                FROM journal_entries
+                WHERE study_further IS NOT NULL AND study_further != ''
+                ${completedFilter}
+            `;
+            if (idsToExclude.length > 0) {
+                backfillQuery += ` AND id NOT IN (${idsToExclude})`;
+            }
+            backfillQuery += ` ORDER BY created_at DESC LIMIT ${extraCount}`;
+
+            const backfillList = await database.getAllAsync<JournalEntry>(backfillQuery);
+            for (const item of backfillList) {
+                if (item.id) combined.set(item.id, item);
+            }
+        }
+
+        // Return the combined array, sorted newest first
+        return Array.from(combined.values()).sort((a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
     });
 };
 
@@ -1145,10 +1400,6 @@ export const shareReflectionToGroup = async (
         const user = auth().currentUser;
         if (!user) return false;
 
-        const userDoc = await firestore().collection('users').doc(user.uid).get();
-        const userData = userDoc.data();
-        if (!userData?.groupIds?.length) return false;
-
         const chapters = entry.chapter_end && entry.chapter_end !== entry.chapter_start
             ? `${entry.chapter_start}-${entry.chapter_end}`
             : `${entry.chapter_start}`;
@@ -1157,6 +1408,7 @@ export const shareReflectionToGroup = async (
 
         const activity = {
             userId: user.uid,
+            activityId: `${user.uid}_reflection_${entry.id}_${Date.now()}`,
             userName: resolvedName,
             bookName: entry.book_name,
             chapters,
@@ -1167,7 +1419,7 @@ export const shareReflectionToGroup = async (
         };
 
         await queueActivity(activity);
-        await syncPendingActivities();
+        void syncPendingActivities(); // Runs sync in background
         return true;
     } catch (error) {
         console.error('[shareReflectionToGroup] Error queuing shared reflection:', error);
@@ -1246,7 +1498,7 @@ export const updateStudyTopic = async (id: number, input: Partial<StudyTopicInpu
         if (input.title !== undefined) { fields.push('title = ?'); values.push(input.title); }
         if (input.content !== undefined) { fields.push('content = ?'); values.push(input.content); }
         if (input.color !== undefined) { fields.push('color = ?'); values.push(input.color); }
-        
+
         fields.push('updated_at = CURRENT_TIMESTAMP');
 
         if (fields.length > 1) {
@@ -1277,3 +1529,89 @@ export const deleteStudyTopic = async (id: number): Promise<void> => {
     });
 };
 
+
+/**
+ * Returns the pinned action items (up to 3).
+ */
+export const getPinnedActionItems = async (): Promise<EnhancedActionItem[]> => {
+    return await withDatabase(async (database) => {
+        const result = await database.getAllAsync<EnhancedActionItem>(`
+            SELECT 
+                ai.*, 
+                je.book_name, 
+                je.chapter_start, 
+                je.chapter_end,
+                datetime(je.created_at, 'localtime') as created_at
+            FROM action_items ai
+            JOIN journal_entries je ON ai.entry_id = je.id
+            WHERE ai.is_pinned = 1
+              AND (ai.action != '' OR ai.motivation != '')
+            ORDER BY ai.pinned_at DESC, ai.id DESC
+            LIMIT 3
+        `);
+        return result ?? [];
+    });
+};
+
+/**
+ * Pin or unpin an action item.
+ * A max of 3 items can be pinned at a time.
+ * If 3 are already pinned and the user pins another, the oldest one is unpinned.
+ */
+export const toggleActionItemPin = async (id: number, pinned: boolean): Promise<void> => {
+    await withDatabase(async (database) => {
+        if (pinned) {
+            const pinnedRows = await database.getAllAsync<{ id: number }>(`
+                SELECT id FROM action_items WHERE is_pinned = 1 ORDER BY id ASC
+            `);
+            if (pinnedRows.length >= 3) {
+                // Make room so that total pinned will be 3 including the new one
+                const itemsToUnpin = pinnedRows.slice(0, pinnedRows.length - 2);
+                for (const row of itemsToUnpin) {
+                    await database.runAsync(`UPDATE action_items SET is_pinned = 0, pinned_at = NULL WHERE id = ?`, [row.id]);
+                }
+            }
+        }
+        await database.runAsync(
+            `UPDATE action_items SET is_pinned = ?, pinned_at = CASE WHEN ? = 1 THEN CURRENT_TIMESTAMP ELSE NULL END WHERE id = ?`,
+            [pinned ? 1 : 0, pinned ? 1 : 0, id]
+        );
+    });
+};
+
+/**
+ * Fetch all (non-pinned) action items whose parent entry falls within
+ * a given age window (in days ago).
+ *
+ * Examples:
+ *   getActionItemsForWindow(0, 7)   → this week
+ *   getActionItemsForWindow(7, 14)  → last week
+ *   getActionItemsForWindow(21, 35) → around a month ago
+ */
+export const getActionItemsForWindow = async (
+    newerDaysAgo: number,
+    olderDaysAgo: number
+): Promise<EnhancedActionItem[]> => {
+    return await withDatabase(async (database) => {
+        const newerBound = `-${newerDaysAgo} days`;
+        const olderBound = `-${olderDaysAgo} days`;
+
+        const query = `
+            SELECT 
+                ai.*, 
+                je.book_name, 
+                je.chapter_start, 
+                je.chapter_end,
+                datetime(je.created_at, 'localtime') as created_at
+            FROM action_items ai
+            JOIN journal_entries je ON ai.entry_id = je.id
+            WHERE DATE(je.created_at, 'localtime') <= DATE('now', 'localtime', ?)
+              AND DATE(je.created_at, 'localtime') >= DATE('now', 'localtime', ?)
+              AND (ai.action != '' OR ai.motivation != '')
+              AND ai.is_pinned = 0
+            ORDER BY je.created_at DESC, ai.sort_order ASC
+        `;
+
+        return await database.getAllAsync<EnhancedActionItem>(query, [newerBound, olderBound]);
+    });
+};

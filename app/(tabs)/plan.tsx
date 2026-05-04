@@ -1,18 +1,21 @@
-// app/(tabs)/plan.tsx
-import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import React, { useCallback, useMemo, useState, useRef, useEffect } from 'react';
+import { LoadingView } from '@/src/components/LoadingView';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, DeviceEventEmitter, Platform, LayoutAnimation } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
-import { Typography } from '@/src/theme/typography';
 import { Ionicons } from '@expo/vector-icons';
 import { READING_PLAN_DATA, ReadingItem } from '@/src/data/readingPlanData';
 import { getReadingProgress, toggleReadingItem, checkEntryCoversChapters } from '@/src/data/database';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { ScalePressable } from '@/src/components/ScalePressable';
-import Animated, { LinearTransition } from 'react-native-reanimated';
+import * as WebBrowser from 'expo-web-browser';
 
-const SectionHeader = ({
+type ListDataItem =
+    | { type: 'sectionHeader'; section: string; id: string }
+    | { type: 'reading'; item: ReadingItem; id: string };
+
+const SectionHeader = React.memo(({
     title,
     isCollapsed,
     onToggle,
@@ -62,9 +65,9 @@ const SectionHeader = ({
             </View>
         </TouchableOpacity>
     );
-};
+});
 
-const ReadingCard = ({
+const ReadingCard = React.memo(({
     item,
     isCompleted,
     onToggle
@@ -84,8 +87,8 @@ const ReadingCard = ({
                     borderColor: isCompleted ? colors.accent + '40' : colors.cardBorder,
                 },
                 item.isKey && !isCompleted && {
-                    borderColor: colors.accentSecondary + '60',
-                    backgroundColor: colors.accentSecondaryLight + '05',
+                    borderColor: item.id <= 286 ? '#E53935' + '60' : '#1E88E560',
+                    backgroundColor: item.id <= 286 ? '#E53935' + '05' : '#1E88E505',
                 }
             ]}
             onPress={() => onToggle(item.id, !isCompleted)}
@@ -93,13 +96,14 @@ const ReadingCard = ({
             <View style={styles.cardContent}>
                 <View style={styles.bookInfo}>
                     <View style={styles.bookHeader}>
-                        {item.isKey && (
+                        {item.isKey && item.id <= 286 && (
                             <View style={[styles.keyBadge, { backgroundColor: colors.accentSecondary + '15' }]}>
-                                <Ionicons
-                                    name="sparkles"
-                                    size={10}
-                                    color={colors.accentSecondary}
-                                />
+                                <View style={[styles.redDiamond, { backgroundColor: '#E53935' }]} />
+                            </View>
+                        )}
+                        {item.isKey && item.id > 286 && (
+                            <View style={[styles.keyBadge, { backgroundColor: '#1E88E515' }]}>
+                                <View style={[styles.blueDot, { backgroundColor: '#1E88E5' }]} />
                             </View>
                         )}
                         <Text style={[
@@ -130,7 +134,7 @@ const ReadingCard = ({
             </View>
         </ScalePressable>
     );
-};
+});
 
 export default function PlanScreen() {
     const { colors } = useTheme();
@@ -139,6 +143,7 @@ export default function PlanScreen() {
     const [progress, setProgress] = useState(0);
     const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
     const [isInitialLoad, setIsInitialLoad] = useState(true);
+    const flatListRef = useRef<FlatList>(null);
 
     // Group items by section for easier progress calculation
     const sectionData = React.useMemo(() => {
@@ -169,13 +174,21 @@ export default function PlanScreen() {
         }
     }, [isInitialLoad]);
 
+    // Scroll to top on tab press
+    useEffect(() => {
+        const subscription = DeviceEventEmitter.addListener('tab-press-top-plan', () => {
+            flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+        });
+        return () => subscription.remove();
+    }, []);
+
     useFocusEffect(
         useCallback(() => {
             loadProgress();
         }, [loadProgress])
     );
 
-    const handleToggle = async (id: number, completed: boolean) => {
+    const handleToggle = useCallback(async (id: number, completed: boolean) => {
         if (completed) {
             const item = READING_PLAN_DATA.find(i => i.id === id);
             if (!item) return;
@@ -238,49 +251,71 @@ export default function PlanScreen() {
             setCompletedItems(newCompleted);
             setProgress(parseFloat(((newCompleted.size / READING_PLAN_DATA.length) * 100).toFixed(2)));
         }
-    };
+    }, [completedItems, router]);
 
-    const toggleSection = (section: string) => {
-        const newCollapsed = new Set(collapsedSections);
-        if (newCollapsed.has(section)) {
-            newCollapsed.delete(section);
-        } else {
-            newCollapsed.add(section);
+    const toggleSection = useCallback((section: string) => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setCollapsedSections(prev => {
+            const newCollapsed = new Set(prev);
+            if (newCollapsed.has(section)) {
+                newCollapsed.delete(section);
+            } else {
+                newCollapsed.add(section);
+            }
+            return newCollapsed;
+        });
+    }, []);
+
+    // Pre-filter data: only include section headers + items from expanded sections
+    const flatListData = useMemo(() => {
+        const result: ListDataItem[] = [];
+        let lastSection = '';
+
+        for (const item of READING_PLAN_DATA) {
+            if (item.section !== lastSection) {
+                // Always include section headers
+                result.push({ type: 'sectionHeader', section: item.section, id: `section-${item.section}` });
+                lastSection = item.section;
+            }
+            // Only include reading items from expanded sections
+            if (!collapsedSections.has(item.section)) {
+                result.push({ type: 'reading', item, id: `reading-${item.id}` });
+            }
         }
-        setCollapsedSections(newCollapsed);
-    };
 
-    const renderItem = ({ item, index }: { item: ReadingItem; index: number }) => {
-        const showHeader = index === 0 || READING_PLAN_DATA[index - 1].section !== item.section;
-        const isCollapsed = collapsedSections.has(item.section);
-        const sectionStats = sectionData[item.section] || { completed: 0, total: 0 };
+        return result;
+    }, [collapsedSections]);
+
+    const renderItem = useCallback(({ item }: { item: ListDataItem }) => {
+        if (item.type === 'sectionHeader') {
+            const stats = sectionData[item.section] || { completed: 0, total: 0 };
+            return (
+                <SectionHeader
+                    title={item.section}
+                    isCollapsed={collapsedSections.has(item.section)}
+                    onToggle={() => toggleSection(item.section)}
+                    completedCount={stats.completed}
+                    totalCount={stats.total}
+                />
+            );
+        }
 
         return (
-            <Animated.View layout={LinearTransition}>
-                {showHeader && (
-                    <SectionHeader
-                        title={item.section}
-                        isCollapsed={isCollapsed}
-                        onToggle={() => toggleSection(item.section)}
-                        completedCount={sectionStats.completed}
-                        totalCount={sectionStats.total}
-                    />
-                )}
-                {!isCollapsed && (
-                    <ReadingCard
-                        item={item}
-                        isCompleted={completedItems.has(item.id)}
-                        onToggle={handleToggle}
-                    />
-                )}
-            </Animated.View>
+            <ReadingCard
+                item={item.item}
+                isCompleted={completedItems.has(item.item.id)}
+                onToggle={handleToggle}
+            />
         );
-    };
+    }, [sectionData, collapsedSections, completedItems, handleToggle, toggleSection]);
 
-    const renderHeader = () => (
+    const renderHeader = useCallback(() => (
         <View style={styles.header}>
             <View style={styles.progressHeaderRow}>
-                <Text style={[styles.title, { color: colors.textPrimary }]}>Bible Plan</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                    <Text style={[styles.title, { color: colors.textPrimary }]}>Bible Plan</Text>
+                    <Text style={{ fontSize: 18, fontWeight: '800', color: colors.textPrimary, lineHeight: 24 }}>*</Text>
+                </View>
                 <Text style={[styles.progressPercentage, { color: colors.accent }]}>{parseFloat(progress.toFixed(2))}%</Text>
             </View>
             <View style={styles.progressCard}>
@@ -288,19 +323,88 @@ export default function PlanScreen() {
                     <View style={[styles.progressBarFill, { width: `${progress}%`, backgroundColor: colors.accent }]} />
                 </View>
             </View>
+
+            {progress === 0 && (
+                <View style={[styles.legendContainer, { backgroundColor: colors.backgroundSubtle, marginTop: Spacing.xl }]}>
+                    <View style={styles.legendItem}>
+                        <View style={[styles.redDiamond, { backgroundColor: '#E53935', marginTop: 4 }]} />
+                        <Text style={[styles.legendText, { color: colors.textSecondary }]}>
+                            Historical overview of God's dealings with the Israelites
+                        </Text>
+                    </View>
+                    <View style={styles.legendItem}>
+                        <View style={[styles.blueDot, { backgroundColor: '#1E88E5', marginTop: 4 }]} />
+                        <Text style={[styles.legendText, { color: colors.textSecondary }]}>
+                            Chronological overview of the development of the Christian congregation
+                        </Text>
+                    </View>
+                </View>
+            )}
         </View>
-    );
+    ), [colors, progress]);
+
+    const renderFooter = useCallback(() => {
+        const url = 'https://www.jw.org/en/library/series/more-topics/bible-reading-plan/';
+
+        const handleOpenLink = () => {
+            WebBrowser.openBrowserAsync(url);
+        };
+
+        return (
+            <View>
+                {progress > 0 && (
+                    <View style={[styles.legendContainer, { backgroundColor: colors.backgroundSubtle }]}>
+                        <View style={styles.legendItem}>
+                            <View style={[styles.redDiamond, { backgroundColor: '#E53935', marginTop: 4 }]} />
+                            <Text style={[styles.legendText, { color: colors.textSecondary }]}>
+                                Historical overview of God's dealings with the Israelites
+                            </Text>
+                        </View>
+                        <View style={styles.legendItem}>
+                            <View style={[styles.blueDot, { backgroundColor: '#1E88E5', marginTop: 4 }]} />
+                            <Text style={[styles.legendText, { color: colors.textSecondary }]}>
+                                Chronological overview of the development of the Christian congregation
+                            </Text>
+                        </View>
+                    </View>
+                )}
+                <Text style={[styles.footnote, { color: colors.textSecondary, marginTop: Spacing.xl }]}>
+                    * This reading plan was adapted from the Bible Reading Plan found on{' '}
+                    <Text
+                        style={{ textDecorationLine: 'underline', color: colors.accent }}
+                        onPress={handleOpenLink}
+                    >
+                        jw.org
+                    </Text>
+                </Text>
+            </View>
+        );
+    }, [colors.textSecondary, colors.accent, colors.backgroundSubtle, progress]);
+
+    const keyExtractor = useCallback((item: ListDataItem) => item.id, []);
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-            <FlatList
-                data={READING_PLAN_DATA}
-                renderItem={renderItem}
-                keyExtractor={(item) => item.id.toString()}
-                contentContainerStyle={styles.listContent}
-                ListHeaderComponent={renderHeader}
-                showsVerticalScrollIndicator={false}
-            />
+            {isInitialLoad ? (
+                <View style={{ flex: 1, justifyContent: 'center' }}>
+                    <LoadingView size={48} />
+                </View>
+            ) : (
+                <FlatList
+                    ref={flatListRef}
+                    data={flatListData}
+                    renderItem={renderItem}
+                    keyExtractor={keyExtractor}
+                    contentContainerStyle={styles.listContent}
+                    ListHeaderComponent={renderHeader}
+                    ListFooterComponent={renderFooter}
+                    showsVerticalScrollIndicator={false}
+                    initialNumToRender={15}
+                    maxToRenderPerBatch={15}
+                    windowSize={7}
+                    removeClippedSubviews={Platform.OS === 'android'}
+                />
+            )}
         </SafeAreaView>
     );
 }
@@ -344,6 +448,12 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         letterSpacing: -0.5,
     },
+    footnote: {
+        fontSize: 10,
+        lineHeight: 14,
+        marginTop: Spacing.xl,
+        fontStyle: 'italic',
+    },
     listContent: {
         padding: Spacing.layout.screenPadding,
         paddingBottom: 120, // Tab bar avoidance
@@ -368,11 +478,13 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: Spacing.sm,
         flex: 1,
+        paddingRight: Spacing.md,
     },
     sectionTitle: {
         fontSize: 12,
         fontWeight: '800',
         letterSpacing: 1,
+        flexShrink: 1,
     },
     sectionBadge: {
         paddingHorizontal: 8,
@@ -384,14 +496,14 @@ const styles = StyleSheet.create({
         fontWeight: '800',
     },
     miniProgressTrack: {
-        width: 40,
-        height: 4,
-        borderRadius: 2,
+        width: 56,
+        height: 6,
+        borderRadius: 3,
         overflow: 'hidden',
     },
     miniProgressFill: {
         height: '100%',
-        borderRadius: 2,
+        borderRadius: 3,
     },
     card: {
         borderRadius: 16,
@@ -433,10 +545,22 @@ const styles = StyleSheet.create({
     keyBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 3,
+        justifyContent: 'center',
         paddingHorizontal: 6,
         paddingVertical: 5,
         borderRadius: 8,
+        width: 24,
+        height: 24,
+    },
+    redDiamond: {
+        width: 8,
+        height: 8,
+        transform: [{ rotate: '45deg' }],
+    },
+    blueDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
     },
     progressHeaderRow: {
         flexDirection: 'row',
@@ -448,5 +572,21 @@ const styles = StyleSheet.create({
         fontSize: 24,
         fontWeight: '800',
         letterSpacing: -1,
+    },
+    legendContainer: {
+        marginTop: Spacing.xl,
+        gap: Spacing.md,
+        padding: Spacing.md,
+        borderRadius: 12,
+    },
+    legendItem: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: Spacing.md,
+    },
+    legendText: {
+        fontSize: 13,
+        flex: 1,
+        lineHeight: 18,
     },
 });

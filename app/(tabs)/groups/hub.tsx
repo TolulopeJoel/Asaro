@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, DeviceEventEmitter } from 'react-native';
 import { useAuth } from '@/src/context/AuthContext';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
@@ -8,18 +8,29 @@ import { ScalePressable } from '@/src/components/ScalePressable';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import firestore from '@react-native-firebase/firestore';
+import firestore, { Filter } from '@react-native-firebase/firestore';
 import { Button } from '@/src/components/Button';
+import { LoadingView } from '@/src/components/LoadingView';
+import { Avatar } from './[id]';
 
 export default function GroupsScreen() {
     const { user, loading, displayName } = useAuth();
     const { colors } = useTheme();
     const router = useRouter();
-    const [joinedGroups, setJoinedGroups] = React.useState<any[]>([]);
-    const [checkingGroups, setCheckingGroups] = React.useState(true);
-    const [isOffline, setIsOffline] = React.useState(false);
+    const [joinedGroups, setJoinedGroups] = useState<any[]>([]);
+    const [checkingGroups, setCheckingGroups] = useState(true);
+    const [isOffline, setIsOffline] = useState(false);
+    const scrollViewRef = useRef<ScrollView>(null);
 
-    React.useEffect(() => {
+    // Scroll to top on tab press
+    useEffect(() => {
+        const subscription = DeviceEventEmitter.addListener('tab-press-top-groups', () => {
+            scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        });
+        return () => subscription.remove();
+    }, []);
+
+    useEffect(() => {
         if (!user) {
             setCheckingGroups(false);
             return;
@@ -38,15 +49,21 @@ export default function GroupsScreen() {
 
                     if (groupIds.length > 0) {
                         try {
-                            // Fetch basic info for each group — Firestore cache serves these offline
-                            const groupsData = await Promise.all(
-                                groupIds.map(async (id: string) => {
-                                    const groupDoc = await firestore()
+                            // Batch fetch groups using 'in' query (max 30 per query)
+                            const chunks: string[][] = [];
+                            for (let i = 0; i < groupIds.length; i += 30) {
+                                chunks.push(groupIds.slice(i, i + 30));
+                            }
+                            const snapshots = await Promise.all(
+                                chunks.map(chunk =>
+                                    firestore()
                                         .collection('groups')
-                                        .doc(id)
-                                        .get({ source: 'default' }); // uses cache when offline
-                                    return { id: groupDoc.id, ...groupDoc.data() };
-                                })
+                                        .where(firestore.FieldPath.documentId(), 'in', chunk)
+                                        .get({ source: 'default' })
+                                )
+                            );
+                            const groupsData = snapshots.flatMap(snap =>
+                                snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
                             );
                             setJoinedGroups(groupsData);
                         } catch (error) {
@@ -72,7 +89,7 @@ export default function GroupsScreen() {
     if (loading || checkingGroups) {
         return (
             <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
-                <Text style={{ color: colors.textSecondary }}>Checking groups...</Text>
+                <LoadingView size={40} />
             </View>
         );
     }
@@ -81,6 +98,7 @@ export default function GroupsScreen() {
         return (
             <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
                 <ScrollView
+                    ref={scrollViewRef}
                     contentContainerStyle={styles.authScroll}
                     showsVerticalScrollIndicator={false}
                 >
@@ -123,6 +141,7 @@ export default function GroupsScreen() {
                     </View>
                 )}
                 <ScrollView
+                    ref={scrollViewRef}
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
                 >
@@ -147,12 +166,10 @@ export default function GroupsScreen() {
                                 onPress={() => router.push(`/(tabs)/groups/${group.id}` as any)}
                             >
                                 <View style={styles.groupCardTop}>
-                                    <View style={[styles.groupIcon, { backgroundColor: colors.accentSecondaryLight + '40' }]}>
-                                        <Ionicons name="people" size={24} color={colors.accentSecondary} />
-                                    </View>
+                                    <Avatar id={group.id} name={group.name} url={group.photoURL} size={48} radius={14} />
                                     <View style={styles.groupInfo}>
                                         <Text style={[styles.groupName, { color: colors.textPrimary }]}>{group.name}</Text>
-                                        <Text style={[styles.groupDesc, { color: colors.textSecondary }]} numberOfLines={1}>
+                                        <Text style={[styles.groupDesc, { color: colors.textSecondary }]}>
                                             {group.description || 'Consistency is key. Read together!'}
                                         </Text>
                                     </View>
@@ -201,6 +218,7 @@ export default function GroupsScreen() {
                 </View>
             )}
             <ScrollView
+                ref={scrollViewRef}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
@@ -213,7 +231,7 @@ export default function GroupsScreen() {
                 <View style={styles.welcomeHeader}>
                     <Text style={[styles.label, { color: colors.accentSecondary }]}>HELLO, {displayName?.toUpperCase() || 'READER'}</Text>
                     <Text style={[styles.subtitle, { color: colors.textSecondary, textAlign: 'left', paddingHorizontal: 0 }]}>
-                        You haven't joined any groups yet.
+                        Flying solo, I see?
                     </Text>
                 </View>
 
@@ -223,7 +241,7 @@ export default function GroupsScreen() {
                     </View>
                     {/* <Text style={[styles.emptyStateTitle, { color: colors.textPrimary }]}>No groups yet</Text> */}
                     <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>
-                        Accountability is the "secret sauce" to consistency. Join a group to start reading together.
+                        Accountability is a team sport. Join a group or create one so we can make sure you're actually reading.
                     </Text>
 
                     <Button

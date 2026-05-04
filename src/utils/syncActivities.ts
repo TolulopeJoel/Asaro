@@ -8,10 +8,11 @@ const PENDING_ACTIVITIES_KEY = 'pending_firestore_activities';
 
 export interface PendingActivity {
     userId: string;
+    activityId: string;
     userName?: string;
     bookName?: string;
     chapters?: string;
-    type: 'journal_entry' | 'member_joined' | 'member_absent' | 'member_removed' | 'reflection_shared';
+    type: 'journal_entry' | 'member_joined' | 'member_absent' | 'member_removed' | 'reflection_shared' | 'admin_promoted';
     /** ISO timestamp recorded at queue time */
     queuedAt: string;
     /** Short reflection preview, if present */
@@ -104,19 +105,24 @@ const incrementStreak = (
 /**
  * Computes the updated group streak given the current state on the group doc
  * and the date of the new activity.
+ *
+ * Returns null when activityDateStr is the same or older than the last recorded
+ * date — in this case, the streak should NOT be updated (handles same-day reads
+ * from multiple members and out-of-order queue flushes).
  */
 const computeGroupStreak = (
     existingStreak: number,
     lastDateStr: string | undefined,
     activityDateStr: string
-): { groupStreak: number; groupStreakLastDate: string } => {
+): { groupStreak: number; groupStreakLastDate: string } | null => {
+    // Same-day or stale activity — do not mutate the streak
+    if (lastDateStr && activityDateStr <= lastDateStr) return null;
+
     if (!lastDateStr) {
         return { groupStreak: 1, groupStreakLastDate: activityDateStr };
     }
     const groupStreak = incrementStreak(existingStreak, lastDateStr, activityDateStr);
-    // Same-day case: streak unchanged, keep the existing last date
-    const groupStreakLastDate = groupStreak === existingStreak ? lastDateStr : activityDateStr;
-    return { groupStreak, groupStreakLastDate };
+    return { groupStreak, groupStreakLastDate: activityDateStr };
 };
 
 // ─── Badge Helpers ────────────────────────────────────────────────────────────
@@ -182,7 +188,11 @@ export const queueActivity = async (activity: PendingActivity): Promise<void> =>
  * Successfully pushed items are removed from the queue.
  * Safe to call at any time — silently exits if not online or not signed in.
  */
+let isSyncing = false;
+
 export const syncPendingActivities = async (): Promise<void> => {
+    if (isSyncing) return;
+    isSyncing = true;
     try {
         const existing = await AsyncStorage.getItem(PENDING_ACTIVITIES_KEY);
         if (!existing) return;
@@ -206,7 +216,9 @@ export const syncPendingActivities = async (): Promise<void> => {
             return;
         }
 
-        const remaining: PendingActivity[] = [];
+        await AsyncStorage.removeItem(PENDING_ACTIVITIES_KEY);
+
+        const failed: PendingActivity[] = [];
 
         // Sort oldest-first so streak increments happen in chronological order
         queue.sort((a, b) => new Date(a.queuedAt).getTime() - new Date(b.queuedAt).getTime());
@@ -265,7 +277,7 @@ export const syncPendingActivities = async (): Promise<void> => {
                     );
 
                     // ── Group streak ────────────────────────────────────────
-                    const { groupStreak, groupStreakLastDate } = computeGroupStreak(
+                    const groupStreakResult = computeGroupStreak(
                         groupData.groupStreak || 0,
                         groupData.groupStreakLastDate,
                         activityLocalDateStr
@@ -289,6 +301,9 @@ export const syncPendingActivities = async (): Promise<void> => {
                     const batch = firestore().batch();
 
                     // 1. Activity feed entry
+                    // Use activityId as the Firestore doc ID so that if this item is
+                    // somehow processed twice the second write simply overwrites the
+                    // same document instead of creating a duplicate feed card.
                     const activityPayload: Record<string, any> = {
                         userId: activity.userId,
                         userName: activity.userName || displayName,
@@ -302,7 +317,7 @@ export const syncPendingActivities = async (): Promise<void> => {
                     if (activity.sharedQuestionTitle) activityPayload.sharedQuestionTitle = activity.sharedQuestionTitle;
                     if (activity.sharedReflectionText) activityPayload.sharedReflectionText = activity.sharedReflectionText;
 
-                    batch.set(activitiesRef.doc(), activityPayload);
+                    batch.set(activitiesRef.doc(activity.activityId), activityPayload);
 
                     // 2. Member / group updates
                     if (activity.type === 'journal_entry' || activity.type === 'reflection_shared') {
@@ -326,6 +341,18 @@ export const syncPendingActivities = async (): Promise<void> => {
 
                         // ── journal_entry: full member + group writes ───────
                         if (activity.type === 'journal_entry') {
+
+                            // ── Admin qualification ─────────────────────────
+                            // If the member hits 21 consecutive days this month,
+                            // record it so evaluateGroupAdminRoles() can promote
+                            // them to admin at the start of next month.
+                            const alreadyQualifiedThisMonth =
+                                memberData.adminQualifiedMonth === currentMonth;
+                            const adminQualUpdate: Record<string, any> =
+                                monthlyStreak >= 21 && !alreadyQualifiedThisMonth
+                                    ? { adminQualifiedMonth: currentMonth }
+                                    : {};
+
                             if (!lastReadDateStr || activityLocalDateStr >= lastReadDateStr) {
                                 batch.set(memberRef, {
                                     userId: activity.userId,
@@ -340,6 +367,7 @@ export const syncPendingActivities = async (): Promise<void> => {
                                     weeklyActivityWeek,
                                     totalEntries,
                                     totalReflections,
+                                    ...adminQualUpdate,
                                 }, { merge: true });
                             } else {
                                 // Backfilled activity: still update heatmap, monthly stats, totals
@@ -351,17 +379,21 @@ export const syncPendingActivities = async (): Promise<void> => {
                                     monthlyStreak,
                                     monthlyActivityMonth: currentMonth,
                                     monthlyActivityCount,
+                                    ...adminQualUpdate,
                                 }, { merge: true });
                             }
 
                             // Group streak + readToday
-                            batch.set(groupRef, {
-                                groupStreak,
-                                groupStreakLastDate,
+                            const groupUpdate: Record<string, any> = {
                                 readTodayCount,
                                 readTodayDate: activityLocalDateStr,
                                 memberCount,
-                            }, { merge: true });
+                            };
+                            if (groupStreakResult) {
+                                groupUpdate.groupStreak = groupStreakResult.groupStreak;
+                                groupUpdate.groupStreakLastDate = groupStreakResult.groupStreakLastDate;
+                            }
+                            batch.set(groupRef, groupUpdate, { merge: true });
 
                             // All-members-read-today badge
                             const allMembersReadToday =
@@ -380,10 +412,11 @@ export const syncPendingActivities = async (): Promise<void> => {
 
                             // Group streak milestone badges
                             const existingGroupBadgeIds: string[] = groupData.badges || [];
+                            const currentGroupStreak = groupStreakResult?.groupStreak ?? (groupData.groupStreak || 0);
                             const groupStreakCandidates = GROUP_BADGES.filter(
                                 b => b.id.startsWith('group_streak') &&
                                     b.threshold! > (groupData.groupStreak || 0) &&
-                                    b.threshold! <= groupStreak
+                                    b.threshold! <= currentGroupStreak
                             );
 
                             applyNewBadges(
@@ -420,16 +453,23 @@ export const syncPendingActivities = async (): Promise<void> => {
                 }
             }
 
-            if (!successForAllGroups) remaining.push(activity);
+            if (!successForAllGroups) failed.push(activity);
         }
 
-        if (remaining.length === 0) {
-            await AsyncStorage.removeItem(PENDING_ACTIVITIES_KEY);
-        } else {
-            await AsyncStorage.setItem(PENDING_ACTIVITIES_KEY, JSON.stringify(remaining));
+        if (failed.length > 0) {
+            // Re-append only the items that failed to commit.
+            // Merge with anything a parallel sync may have added while we were running.
+            const currentRaw = await AsyncStorage.getItem(PENDING_ACTIVITIES_KEY);
+            const currentQueue: PendingActivity[] = currentRaw ? JSON.parse(currentRaw) : [];
+            await AsyncStorage.setItem(
+                PENDING_ACTIVITIES_KEY,
+                JSON.stringify([...currentQueue, ...failed])
+            );
         }
     } catch (error) {
         console.error('[syncActivities] Sync failed:', error);
+    } finally {
+        isSyncing = false;
     }
 };
 
@@ -476,5 +516,99 @@ export const checkInactiveMembers = async (groupId: string): Promise<void> => {
         }
     } catch (error) {
         console.error('[checkInactiveMembers] Error:', error);
+    }
+};
+
+// ─── Admin Role Evaluation ────────────────────────────────────────────────────
+
+/**
+ * Returns a "YYYY-MM" string for the month N months before the given month string.
+ */
+const subtractOneMonth = (monthStr: string): string => {
+    const [year, month] = monthStr.split('-').map(Number);
+    if (month === 1) return `${year - 1}-12`;
+    return `${year}-${String(month - 1).padStart(2, '0')}`;
+};
+
+/**
+ * Evaluates admin role eligibility for all members of a group at month boundaries.
+ *
+ * Rules:
+ * - A member qualifies for admin by achieving monthlyStreak >= 21 in a calendar
+ *   month (recorded as adminQualifiedMonth on their doc).
+ * - At the start of a new month, if adminQualifiedMonth === previousMonth they
+ *   are promoted to role:'admin'; otherwise their role is cleared.
+ * - First-contact grace: if adminRoleMonth is undefined the member's role is
+ *   left untouched; only adminRoleMonth is stamped to currentMonth so the system
+ *   will properly evaluate them at the *next* month boundary.
+ *
+ * Safe to call on every group screen load — it is idempotent within a month.
+ */
+export const evaluateGroupAdminRoles = async (groupId: string): Promise<void> => {
+    try {
+        const now = new Date();
+        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const previousMonth = subtractOneMonth(currentMonth);
+
+        const monthNames = [
+            'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December'
+        ];
+        const monthName = monthNames[now.getMonth()];
+
+        const groupRef = firestore().collection('groups').doc(groupId);
+        const membersSnapshot = await groupRef.collection('members').get();
+        const activitiesRef = groupRef.collection('activities');
+
+        // Collect members that need evaluation this month
+        const toEvaluate = membersSnapshot.docs.filter(
+            doc => doc.data().adminRoleMonth !== currentMonth
+        );
+
+        if (toEvaluate.length === 0) return;
+
+        const batch = firestore().batch();
+
+        for (const doc of toEvaluate) {
+            const data = doc.data();
+            const memberRef = groupRef.collection('members').doc(doc.id);
+
+            if (data.adminRoleMonth === undefined) {
+                // First-contact grace period — stamp the month, leave role as-is
+                batch.set(memberRef, { adminRoleMonth: currentMonth }, { merge: true });
+                continue;
+            }
+
+            const qualified = data.adminQualifiedMonth === previousMonth;
+            const currentRole = data.role;
+
+            if (qualified) {
+                batch.set(memberRef, {
+                    role: 'admin',
+                    adminRoleMonth: currentMonth,
+                }, { merge: true });
+
+                if (currentRole !== 'admin') {
+                    // New promotion!
+                    batch.set(activitiesRef.doc(), {
+                        userId: doc.id,
+                        userName: data.displayName || 'Reader',
+                        type: 'admin_promoted',
+                        monthName,
+                        timestamp: firestore.FieldValue.serverTimestamp(),
+                    });
+                }
+            } else {
+                // Not qualified — clear the role field
+                batch.set(memberRef, {
+                    role: firestore.FieldValue.delete(),
+                    adminRoleMonth: currentMonth,
+                }, { merge: true });
+            }
+        }
+
+        await batch.commit();
+    } catch (error) {
+        console.error('[evaluateGroupAdminRoles] Error:', error);
     }
 };
