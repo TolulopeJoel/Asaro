@@ -136,9 +136,35 @@ export interface JournalEntryInput {
     readingItemId?: number;
 }
 
+export interface StudyTopic {
+    id: number;
+    title: string;
+    content: string;
+    color: string;
+    created_at: string;
+    updated_at: string;
+    references?: StudyTopicReference[];
+}
+
+export interface StudyTopicReference {
+    id: number;
+    topic_id: number;
+    book_name: string;
+    chapter: number;
+    verse_start?: string;
+    verse_end?: string;
+}
+
+export interface StudyTopicInput {
+    title: string;
+    content?: string;
+    color?: string;
+    references?: Omit<StudyTopicReference, 'id' | 'topic_id'>[];
+}
+
 let db: SQLite.SQLiteDatabase | null = null;
 
-const CURRENT_DB_VERSION = 6;
+const CURRENT_DB_VERSION = 7;
 
 const getDb = async () => {
     if (!db) {
@@ -306,6 +332,29 @@ export const initializeDatabase = async () => {
                 await database.execAsync(`
                     ALTER TABLE action_items ADD COLUMN is_completed BOOLEAN DEFAULT 0;
                     ALTER TABLE journal_entries ADD COLUMN study_completed BOOLEAN DEFAULT 0;
+                `);
+            }
+
+            if (currentVersion < 7) {
+                // Migration to v7: Add study topics and references
+                await database.execAsync(`
+                    CREATE TABLE IF NOT EXISTS study_topics (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        title TEXT NOT NULL,
+                        content TEXT,
+                        color TEXT,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    );
+                    CREATE TABLE IF NOT EXISTS study_topic_references (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        topic_id INTEGER NOT NULL,
+                        book_name TEXT NOT NULL,
+                        chapter INTEGER NOT NULL,
+                        verse_start TEXT,
+                        verse_end TEXT,
+                        FOREIGN KEY (topic_id) REFERENCES study_topics(id) ON DELETE CASCADE
+                    );
                 `);
             }
 
@@ -1125,3 +1174,106 @@ export const shareReflectionToGroup = async (
         return false;
     }
 };
+
+// ─── Study Topics ───────────────────────────────────────────────────────────
+
+export const getStudyTopics = async (): Promise<StudyTopic[]> => {
+    return await withDatabase(async (database) => {
+        const result = await database.getAllAsync<StudyTopic>(
+            `SELECT * FROM study_topics ORDER BY updated_at DESC`
+        );
+
+        // Fetch references for each topic
+        const topics = [...result];
+        for (let i = 0; i < topics.length; i++) {
+            const refs = await database.getAllAsync<StudyTopicReference>(
+                `SELECT * FROM study_topic_references WHERE topic_id = ?`,
+                [topics[i].id]
+            );
+            topics[i].references = refs;
+        }
+
+        return topics;
+    });
+};
+
+export const getStudyTopicById = async (id: number): Promise<StudyTopic | null> => {
+    return await withDatabase(async (database) => {
+        const topic = await database.getFirstAsync<StudyTopic>(
+            `SELECT * FROM study_topics WHERE id = ?`,
+            [id]
+        );
+
+        if (!topic) return null;
+
+        const refs = await database.getAllAsync<StudyTopicReference>(
+            `SELECT * FROM study_topic_references WHERE topic_id = ?`,
+            [id]
+        );
+
+        return { ...topic, references: refs };
+    });
+};
+
+export const createStudyTopic = async (input: StudyTopicInput): Promise<number> => {
+    return await withDatabase(async (database) => {
+        const result = await database.runAsync(
+            `INSERT INTO study_topics (title, content, color) VALUES (?, ?, ?)`,
+            [input.title, input.content || '', input.color || '#E18F43']
+        );
+
+        const topicId = result.lastInsertRowId;
+
+        if (input.references && input.references.length > 0) {
+            for (const ref of input.references) {
+                await database.runAsync(
+                    `INSERT INTO study_topic_references (topic_id, book_name, chapter, verse_start, verse_end) 
+                     VALUES (?, ?, ?, ?, ?)`,
+                    [topicId, ref.book_name, ref.chapter, ref.verse_start || null, ref.verse_end || null]
+                );
+            }
+        }
+
+        return topicId;
+    });
+};
+
+export const updateStudyTopic = async (id: number, input: Partial<StudyTopicInput>): Promise<void> => {
+    return await withDatabase(async (database) => {
+        const fields: string[] = [];
+        const values: any[] = [];
+
+        if (input.title !== undefined) { fields.push('title = ?'); values.push(input.title); }
+        if (input.content !== undefined) { fields.push('content = ?'); values.push(input.content); }
+        if (input.color !== undefined) { fields.push('color = ?'); values.push(input.color); }
+        
+        fields.push('updated_at = CURRENT_TIMESTAMP');
+
+        if (fields.length > 1) {
+            await database.runAsync(
+                `UPDATE study_topics SET ${fields.join(', ')} WHERE id = ?`,
+                [...values, id]
+            );
+        }
+
+        if (input.references !== undefined) {
+            // Refresh references
+            await database.runAsync(`DELETE FROM study_topic_references WHERE topic_id = ?`, [id]);
+            for (const ref of input.references) {
+                await database.runAsync(
+                    `INSERT INTO study_topic_references (topic_id, book_name, chapter, verse_start, verse_end) 
+                     VALUES (?, ?, ?, ?, ?)`,
+                    [id, ref.book_name, ref.chapter, ref.verse_start || null, ref.verse_end || null]
+                );
+            }
+        }
+    });
+};
+
+export const deleteStudyTopic = async (id: number): Promise<void> => {
+    return await withDatabase(async (database) => {
+        await database.runAsync(`DELETE FROM study_topics WHERE id = ?`, [id]);
+        // References are deleted by CASCADE
+    });
+};
+
