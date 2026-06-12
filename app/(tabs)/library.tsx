@@ -13,9 +13,6 @@ import {
     TextInput,
 } from 'react-native';
 import Animated, {
-    useSharedValue,
-    useAnimatedStyle,
-    withTiming,
     LinearTransition,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -52,67 +49,15 @@ type PlanListDataItem =
     | { type: 'sectionHeader'; section: string; id: string }
     | { type: 'reading'; item: ReadingItem; id: string };
 
-// ─── Segment Control ─────────────────────────────────────────────────────────
+// ─── Segment Config ───────────────────────────────────────────────────────────
 
-const SEGMENTS: { key: Segment; label: string }[] = [
-    { key: 'journal', label: 'Journal' },
-    { key: 'study', label: 'Study' },
-    { key: 'plan', label: 'Plan' },
+const SEGMENTS: { key: Segment; label: string; icon: string }[] = [
+    { key: 'journal', label: 'Journal', icon: 'journal-outline' },
+    { key: 'study', label: 'Study', icon: 'book-outline' },
+    { key: 'plan', label: 'Plan', icon: 'map-outline' },
 ];
 
-function SegmentedControl({
-    selected,
-    onSelect,
-}: {
-    selected: Segment;
-    onSelect: (s: Segment) => void;
-}) {
-    const { colors } = useTheme();
-    const selectedIndex = SEGMENTS.findIndex(s => s.key === selected);
-    const translateX = useSharedValue(selectedIndex * (1 / SEGMENTS.length) * 100);
-
-    useEffect(() => {
-        const idx = SEGMENTS.findIndex(s => s.key === selected);
-        translateX.value = withTiming(idx * (1 / SEGMENTS.length) * 100, { duration: 250 });
-    }, [selected]);
-
-    const pillStyle = useAnimatedStyle(() => ({
-        left: `${translateX.value}%` as any,
-    }));
-
-    return (
-        <View style={[styles.segmentContainer, { backgroundColor: colors.backgroundSubtle }]}>
-            <Animated.View
-                style={[
-                    styles.segmentPill,
-                    { backgroundColor: colors.cardBackground, width: `${100 / SEGMENTS.length}%` as any },
-                    pillStyle,
-                ]}
-            />
-            {SEGMENTS.map((seg) => (
-                <ScalePressable
-                    key={seg.key}
-                    style={styles.segmentButton}
-                    onPress={() => onSelect(seg.key)}
-                >
-                    <Text
-                        style={[
-                            styles.segmentLabel,
-                            {
-                                color: selected === seg.key ? colors.textPrimary : colors.textTertiary,
-                                fontWeight: selected === seg.key ? '700' : '500',
-                            },
-                        ]}
-                    >
-                        {seg.label}
-                    </Text>
-                </ScalePressable>
-            ))}
-        </View>
-    );
-}
-
-// ─── Journal Sub-Tabs (extracted from JournalEntryList) ───────────────────────
+// ─── Journal Sub-Tabs ─────────────────────────────────────────────────────────
 
 function JournalSubTabs({
     viewMode,
@@ -133,7 +78,6 @@ function JournalSubTabs({
 
     return (
         <View>
-            {/* Breadcrumb row — only visible in bookDetail */}
             {viewMode === 'bookDetail' && selectedBook && (
                 <View style={[styles.breadcrumbRow, { borderBottomColor: colors.border }]}>
                     <ScalePressable onPress={onNavigateBooks}>
@@ -146,7 +90,6 @@ function JournalSubTabs({
                 </View>
             )}
 
-            {/* 4-icon sub-tab row */}
             <View style={styles.subTabsRow}>
                 <Animated.View
                     style={[styles.subTabIndicator, {
@@ -179,7 +122,7 @@ function JournalSubTabs({
     );
 }
 
-// ─── Plan Progress Bar (in header zone) ──────────────────────────────────────
+// ─── Plan Progress Bar ────────────────────────────────────────────────────────
 
 function PlanProgressBar({ progress }: { progress: number }) {
     const { colors } = useTheme();
@@ -437,7 +380,7 @@ function StudyContent({ onCountChange }: { onCountChange: (count: number) => voi
         try {
             const data = await getStudyTopics();
             setTopics(data);
-            onCountChange(data.length); // bubble count up to header
+            onCountChange(data.length);
         } catch (error) {
             console.error('Failed to load study topics:', error);
         } finally {
@@ -510,8 +453,6 @@ function StudyContent({ onCountChange }: { onCountChange: (count: number) => voi
 
     return (
         <View style={{ flex: 1 }}>
-            {/* studyHeader removed — add button and count badge live in LibraryScreen's titleRow */}
-
             {isLoading ? (
                 <View style={styles.center}>
                     <LoadingView size={48} />
@@ -543,7 +484,6 @@ function StudyContent({ onCountChange }: { onCountChange: (count: number) => voi
                 />
             )}
 
-            {/* Preview Modal */}
             <Modal
                 visible={!!viewingTopic}
                 animationType="slide"
@@ -571,7 +511,6 @@ function StudyContent({ onCountChange }: { onCountChange: (count: number) => voi
                 </SafeAreaView>
             </Modal>
 
-            {/* Edit Modal */}
             <Modal
                 visible={!!editingTopic}
                 animationType="slide"
@@ -619,7 +558,7 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: number) => vo
     const updateProgress = useCallback((newCompleted: Set<number>) => {
         const p = parseFloat(((newCompleted.size / READING_PLAN_DATA.length) * 100).toFixed(2));
         setProgress(p);
-        onProgressChange(p); // bubble up to LibraryScreen header
+        onProgressChange(p);
     }, [onProgressChange]);
 
     const loadProgress = useCallback(async () => {
@@ -736,7 +675,6 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: number) => vo
         );
     }, [sectionData, collapsedSections, completedItems, handleToggle, toggleSection]);
 
-    // Legend only — title and progress bar are in LibraryScreen's header zone
     const renderHeader = useCallback(() => (
         <View style={styles.planLegendHeader}>
             {progress === 0 && (
@@ -827,8 +765,9 @@ export default function LibraryScreen() {
     const params = useLocalSearchParams();
 
     const [activeSegment, setActiveSegment] = useState<Segment>('journal');
+    const [dropdownVisible, setDropdownVisible] = useState(false);
 
-    // Journal header state — lifted out of JournalEntryList
+    // Journal header state
     const [journalViewMode, setJournalViewMode] = useState<ViewMode>(
         (params.view as ViewMode) || 'recent'
     );
@@ -847,20 +786,60 @@ export default function LibraryScreen() {
         if (mode !== 'bookDetail') setJournalSelectedBook(undefined);
     }, []);
 
+    const toggleDropdown = useCallback(() => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setDropdownVisible(prev => !prev);
+    }, []);
+
+    const handleSelectSegment = useCallback((s: Segment) => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setActiveSegment(s);
+        setDropdownVisible(false);
+    }, []);
+
     useEffect(() => {
         const subscription = DeviceEventEmitter.addListener('tab-press-top-library', () => { });
         return () => subscription.remove();
     }, []);
 
+    const activeLabel = SEGMENTS.find(s => s.key === activeSegment)?.label ?? '';
+    const activeIcon = SEGMENTS.find(s => s.key === activeSegment)?.icon ?? '';
+
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
 
-            {/* ── Unified Adaptive Header Zone ─────────────────────────────── */}
+            {/* ── Header Zone ───────────────────────────────────────────────── */}
             <View>
-                {/* Row 1: title + contextual action */}
-                <View style={styles.titleRow}>
-                    <Text style={[styles.title, { color: colors.textPrimary }]}>Library</Text>
 
+                {/* Row 1: PixelPlay-style pill + section name + contextual action */}
+                <View style={styles.titleRow}>
+                    <View style={styles.pillGroup}>
+
+                        {/* "Library" pill — the main tappable identity button */}
+                        <ScalePressable
+                            style={[styles.libraryPill, { backgroundColor: colors.backgroundSubtle }]}
+                            onPress={toggleDropdown}
+                        >
+                            <Ionicons name={activeIcon} size={25} color={colors.textMuted} />
+                            <Text style={[styles.libraryPillLabel, { color: colors.textPrimary }]}>
+                                {activeLabel}
+                            </Text>
+                        </ScalePressable>
+
+                        {/* Standalone chevron pill — matches PixelPlay's separate arrow */}
+                        <ScalePressable
+                            style={[styles.chevronPill, { backgroundColor: colors.backgroundSubtle }]}
+                            onPress={toggleDropdown}
+                        >
+                            <Ionicons
+                                name={dropdownVisible ? 'chevron-up' : 'chevron-down'}
+                                size={15}
+                                color={colors.textSecondary}
+                            />
+                        </ScalePressable>
+                    </View>
+
+                    {/* Study: count badge + add button */}
                     {activeSegment === 'study' && (
                         <View style={styles.titleActions}>
                             {studyCount > 0 && (
@@ -880,12 +859,37 @@ export default function LibraryScreen() {
                     )}
                 </View>
 
-                {/* Row 2: segment control */}
-                <View style={styles.segmentWrapper}>
-                    <SegmentedControl selected={activeSegment} onSelect={setActiveSegment} />
-                </View>
+                {/* Row 2: Inline dropdown — expands below pill when open */}
+                {dropdownVisible && (
+                    <View style={[
+                        styles.inlineDropdown,
+                        { backgroundColor: colors.cardBackground, borderColor: colors.border }
+                    ]}>
+                        {SEGMENTS.map((seg, idx) => (
+                            <ScalePressable
+                                key={seg.key}
+                                style={[
+                                    styles.dropdownItem,
+                                    { borderBottomColor: colors.border },
+                                    idx === SEGMENTS.length - 1 && { borderBottomWidth: 0 },
+                                ]}
+                                onPress={() => handleSelectSegment(seg.key)}
+                            >
+                                <Text style={[
+                                    styles.dropdownItemText,
+                                    { color: seg.key === activeSegment ? colors.accent : colors.textPrimary },
+                                ]}>
+                                    {seg.label}
+                                </Text>
+                                {seg.key === activeSegment && (
+                                    <Ionicons name="checkmark" size={18} color={colors.accent} />
+                                )}
+                            </ScalePressable>
+                        ))}
+                    </View>
+                )}
 
-                {/* Row 3: Journal — sub-tabs (+ optional breadcrumb) */}
+                {/* Row 3: Journal sub-tabs (+ optional breadcrumb) */}
                 {activeSegment === 'journal' && (
                     <JournalSubTabs
                         viewMode={journalViewMode}
@@ -897,7 +901,7 @@ export default function LibraryScreen() {
                     />
                 )}
 
-                {/* Row 3: Journal — search bar (recent & bookDetail modes only) */}
+                {/* Row 4: Journal search bar */}
                 {activeSegment === 'journal' &&
                     (journalViewMode === 'recent' || journalViewMode === 'bookDetail') && (
                         <View style={[styles.searchContainer, { borderBottomColor: colors.border }]}>
@@ -926,11 +930,12 @@ export default function LibraryScreen() {
                         </View>
                     )}
 
-                {/* Row 3: Plan — compact progress bar */}
+                {/* Row 4: Plan progress bar */}
                 {activeSegment === 'plan' && <PlanProgressBar progress={planProgress} />}
+
             </View>
 
-            {/* ── Content Zone ─────────────────────────────────────────────── */}
+            {/* ── Content Zone ──────────────────────────────────────────────── */}
             <View style={{ flex: 1 }}>
                 {activeSegment === 'journal' && (
                     <JournalContent
@@ -961,7 +966,7 @@ const styles = StyleSheet.create({
     modalContainer: { flex: 1 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
-    // Header zone
+    // ── Header: title row ──────────────────────────────────────────
     titleRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -970,7 +975,38 @@ const styles = StyleSheet.create({
         paddingTop: Spacing.md,
         paddingBottom: Spacing.sm,
     },
-    title: { fontSize: 34, fontWeight: '800', letterSpacing: -1.5 },
+
+    // ── PixelPlay-style pill group ─────────────────────────────────
+    pillGroup: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+
+    // Main "Library" pill — icon + bold label, rounded rectangle
+    libraryPill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 7,
+        paddingHorizontal: 14,
+        paddingVertical: 9,
+        borderRadius: 14,
+    },
+    libraryPillLabel: {
+        fontSize: 34,
+        fontWeight: '800',
+        letterSpacing: -0.5,
+    },
+
+    // Standalone chevron pill — mirrors PixelPlay's separate "▾" button
+    chevronPill: {
+        width: 32,
+        height: 40,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+
     titleActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     studyCountBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 20 },
     studyCountText: { fontSize: 13, fontWeight: '700', letterSpacing: -0.3 },
@@ -980,38 +1016,29 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 10, elevation: 4,
     },
 
-    // Segment control
-    segmentWrapper: {
-        paddingHorizontal: Spacing.layout.screenPadding,
-        paddingBottom: Spacing.sm,
+    // ── Inline dropdown ────────────────────────────────────────────
+    inlineDropdown: {
+        marginHorizontal: Spacing.layout.screenPadding,
+        marginBottom: Spacing.sm,
+        borderRadius: 16,
+        overflow: 'hidden',
+        borderWidth: 1,
     },
-    segmentContainer: {
+    dropdownItem: {
         flexDirection: 'row',
-        borderRadius: 12,
-        padding: 3,
-        position: 'relative',
-    },
-    segmentPill: {
-        position: 'absolute',
-        top: 3,
-        bottom: 3,
-        borderRadius: 10,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
-        elevation: 2,
-    },
-    segmentButton: {
-        flex: 1,
-        paddingVertical: 9,
         alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1,
+        justifyContent: 'space-between',
+        paddingHorizontal: 18,
+        paddingVertical: 14,
+        borderBottomWidth: 0.5,
     },
-    segmentLabel: { fontSize: 13, letterSpacing: -0.2 },
+    dropdownItemText: {
+        fontSize: 16,
+        fontWeight: '700',
+        letterSpacing: -0.3,
+    },
 
-    // Journal sub-tabs
+    // ── Journal sub-tabs ───────────────────────────────────────────
     breadcrumbRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1041,7 +1068,7 @@ const styles = StyleSheet.create({
         zIndex: 1,
     },
 
-    // Search bar
+    // ── Search bar ─────────────────────────────────────────────────
     searchContainer: {
         paddingHorizontal: Spacing.layout.screenPadding,
         paddingVertical: 10,
@@ -1064,7 +1091,7 @@ const styles = StyleSheet.create({
     },
     clearSearchText: { fontSize: 18, fontWeight: '300' },
 
-    // Plan progress bar (header zone)
+    // ── Plan progress bar ──────────────────────────────────────────
     planProgressRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1076,7 +1103,7 @@ const styles = StyleSheet.create({
     planProgressFill: { height: '100%', borderRadius: 3 },
     planProgressPct: { fontSize: 13, fontWeight: '800', letterSpacing: -0.5, minWidth: 46, textAlign: 'right' },
 
-    // Study styles
+    // ── Study ──────────────────────────────────────────────────────
     studyCard: {
         borderTopLeftRadius: 0, borderBottomLeftRadius: 0,
         borderTopRightRadius: 12, borderBottomRightRadius: 12,
@@ -1106,7 +1133,7 @@ const styles = StyleSheet.create({
     studyPreviewTitle: { fontSize: 32, fontWeight: '800', letterSpacing: -1, marginBottom: 8 },
     studyPreviewDivider: { height: 4, width: 40, borderRadius: 2, marginBottom: 20 },
 
-    // Plan content styles
+    // ── Plan ───────────────────────────────────────────────────────
     planLegendHeader: { marginBottom: Spacing.sm },
     planListContent: { padding: Spacing.layout.screenPadding, paddingBottom: 120 },
     planSectionHeader: {
