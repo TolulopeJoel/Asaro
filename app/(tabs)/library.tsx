@@ -14,6 +14,8 @@ import {
 } from 'react-native';
 import Animated, {
     LinearTransition,
+    FadeIn,
+    FadeOut,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -805,6 +807,35 @@ export default function LibraryScreen() {
     const activeLabel = SEGMENTS.find(s => s.key === activeSegment)?.label ?? '';
     const activeIcon = SEGMENTS.find(s => s.key === activeSegment)?.icon ?? '';
 
+    const renderDropdownItem = (seg: typeof SEGMENTS[0], idx: number) => {
+        const isActive = activeSegment === seg.key;
+        return (
+            <ScalePressable
+                key={seg.key}
+                style={[
+                    styles.dropdownItem,
+                    { borderBottomColor: idx === SEGMENTS.length - 1 ? 'transparent' : colors.border + '20' }
+                ]}
+                onPress={() => handleSelectSegment(seg.key)}
+            >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <View style={[styles.dropdownIconBox, { backgroundColor: isActive ? colors.accent + '15' : colors.backgroundSubtle }]}>
+                        <Ionicons name={seg.icon as any} size={22} color={isActive ? colors.accent : colors.textMuted} />
+                    </View>
+                    <Text style={[
+                        styles.dropdownItemText,
+                        { color: isActive ? colors.accent : colors.textPrimary }
+                    ]}>
+                        {seg.label}
+                    </Text>
+                </View>
+                {isActive && (
+                    <Ionicons name="checkmark-circle" size={24} color={colors.accent} />
+                )}
+            </ScalePressable>
+        );
+    };
+
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
 
@@ -812,7 +843,7 @@ export default function LibraryScreen() {
             <View>
 
                 {/* Row 1: PixelPlay-style pill + section name + contextual action */}
-                <View style={styles.titleRow}>
+                <View style={[styles.titleRow, { zIndex: 10 }]}>
                     <View style={styles.pillGroup}>
 
                         {/* "Library" pill — the main tappable identity button */}
@@ -820,7 +851,7 @@ export default function LibraryScreen() {
                             style={[styles.libraryPill, { backgroundColor: colors.backgroundSubtle }]}
                             onPress={toggleDropdown}
                         >
-                            <Ionicons name={activeIcon} size={25} color={colors.textMuted} />
+                            <Ionicons name={activeIcon as any} size={25} color={colors.textMuted} />
                             <Text style={[styles.libraryPillLabel, { color: colors.textPrimary }]}>
                                 {activeLabel}
                             </Text>
@@ -857,37 +888,28 @@ export default function LibraryScreen() {
                             </ScalePressable>
                         </View>
                     )}
-                </View>
 
-                {/* Row 2: Inline dropdown — expands below pill when open */}
-                {dropdownVisible && (
-                    <View style={[
-                        styles.inlineDropdown,
-                        { backgroundColor: colors.cardBackground, borderColor: colors.border }
-                    ]}>
-                        {SEGMENTS.map((seg, idx) => (
-                            <ScalePressable
-                                key={seg.key}
+                    {/* Row 2: Floating overlay dropdown — appears anchored to the pill */}
+                    {dropdownVisible && (
+                        <View style={styles.dropdownOverlayContainer}>
+                            <TouchableOpacity
+                                style={styles.dropdownBackdrop}
+                                activeOpacity={1}
+                                onPress={toggleDropdown}
+                            />
+                            <Animated.View
+                                entering={FadeIn.duration(200)}
+                                exiting={FadeOut.duration(150)}
                                 style={[
-                                    styles.dropdownItem,
-                                    { borderBottomColor: colors.border },
-                                    idx === SEGMENTS.length - 1 && { borderBottomWidth: 0 },
+                                    styles.floatingDropdown,
+                                    { backgroundColor: colors.cardBackground, borderColor: colors.border }
                                 ]}
-                                onPress={() => handleSelectSegment(seg.key)}
                             >
-                                <Text style={[
-                                    styles.dropdownItemText,
-                                    { color: seg.key === activeSegment ? colors.accent : colors.textPrimary },
-                                ]}>
-                                    {seg.label}
-                                </Text>
-                                {seg.key === activeSegment && (
-                                    <Ionicons name="checkmark" size={18} color={colors.accent} />
-                                )}
-                            </ScalePressable>
-                        ))}
-                    </View>
-                )}
+                                {SEGMENTS.map((seg, idx) => renderDropdownItem(seg, idx))}
+                            </Animated.View>
+                        </View>
+                    )}
+                </View>
 
                 {/* Row 3: Journal sub-tabs (+ optional breadcrumb) */}
                 {activeSegment === 'journal' && (
@@ -1016,26 +1038,50 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 10, elevation: 4,
     },
 
-    // ── Inline dropdown ────────────────────────────────────────────
-    inlineDropdown: {
-        marginHorizontal: Spacing.layout.screenPadding,
-        marginBottom: Spacing.sm,
-        borderRadius: 16,
-        overflow: 'hidden',
+    // ── Floating dropdown ─────────────────────────────────────────
+    dropdownOverlayContainer: {
+        position: 'absolute',
+        top: 60,
+        left: 0,
+        right: 0,
+        zIndex: 1000,
+    },
+    dropdownBackdrop: {
+        position: 'absolute',
+        top: -1000,
+        left: -100,
+        right: -100,
+        bottom: 2000,
+    },
+    floatingDropdown: {
+        marginHorizontal: 16,
+        borderRadius: 24,
+        padding: 8,
         borderWidth: 1,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.15,
+        shadowRadius: 20,
+        elevation: 8,
     },
     dropdownItem: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 18,
+        paddingHorizontal: 16,
         paddingVertical: 14,
-        borderBottomWidth: 0.5,
+    },
+    dropdownIconBox: {
+        width: 42,
+        height: 42,
+        borderRadius: 14,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     dropdownItemText: {
-        fontSize: 16,
+        fontSize: 20,
         fontWeight: '700',
-        letterSpacing: -0.3,
+        letterSpacing: -0.5,
     },
 
     // ── Journal sub-tabs ───────────────────────────────────────────
