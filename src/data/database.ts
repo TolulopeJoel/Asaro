@@ -167,7 +167,6 @@ export interface StudyTopicInput {
 let db: SQLite.SQLiteDatabase | null = null;
 
 const CURRENT_DB_VERSION = 7;
-const CURRENT_DB_VERSION = 5;
 
 const getDb = async () => {
     if (!db) {

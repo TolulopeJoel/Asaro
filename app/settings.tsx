@@ -8,10 +8,10 @@ import Constants from 'expo-constants';
 import * as DocumentPicker from 'expo-document-picker';
 import { documentDirectory, writeAsStringAsync, readAsStringAsync } from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, DeviceEventEmitter } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/src/components/Button';
 import { ScalePressable } from '@/src/components/ScalePressable';
@@ -19,7 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LoadingView } from '@/src/components/LoadingView';
 import firestore from '@react-native-firebase/firestore';
 import { useAuth } from '@/src/context/AuthContext';
-import { Avatar } from './groups/[id]';
+import { Avatar } from './(tabs)/groups/[id]';
 import { TextInput } from 'react-native';
 import React from 'react';
 
@@ -127,6 +127,7 @@ const SettingsGroup = ({ title, children, colors }: { title: string; children: R
 
 export default function Settings() {
     const { colors, theme, setTheme } = useTheme();
+    const router = useRouter();
     const { showAlert } = useAlert();
 
     const [scheduledNotifications, setScheduledNotifications] = useState<any[]>([]);
@@ -174,13 +175,7 @@ export default function Settings() {
         }
     }, [user?.uid]);
 
-    // Scroll to top on tab press
-    useEffect(() => {
-        const subscription = DeviceEventEmitter.addListener('tab-press-top-settings', () => {
-            scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-        });
-        return () => subscription.remove();
-    }, []);
+
 
     useEffect(() => {
         AsyncStorage.getItem('lastBackupDate').then(val => setLastBackupDate(val));
@@ -490,7 +485,7 @@ export default function Settings() {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-            <Stack.Screen options={{ title: 'Settings' }} />
+            <Stack.Screen options={{ headerShown: false }} />
             <ScrollView
                 ref={scrollViewRef}
                 style={styles.scrollView}
@@ -499,7 +494,10 @@ export default function Settings() {
             >
                 <View style={styles.header}>
                     <View style={styles.headerTitleRow}>
-                        <Text style={[styles.title, { color: colors.textPrimary }]}>Engine Room</Text>
+                        <ScalePressable onPress={() => router.back()} style={{ marginRight: 8 }}>
+                            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+                        </ScalePressable>
+                        <Text style={[styles.title, { color: colors.textPrimary, flex: 1 }]}>Engine Room</Text>
                     </View>
                 </View>
 

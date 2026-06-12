@@ -1,35 +1,57 @@
 import React from 'react';
 import { StyleSheet, Text, View, Linking } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
-import { Typography } from '../theme/typography';
 import { ScalePressable } from './ScalePressable';
 
 interface MarkdownRendererProps {
     content: string;
+    accentColor?: string;
     onReferencePress?: (reference: string) => void;
 }
 
-export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, onReferencePress }) => {
+export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, accentColor, onReferencePress }) => {
     const { colors } = useTheme();
+    const tint = accentColor || colors.accent;
 
     if (!content) return null;
 
-    // Split content by lines
     const lines = content.split('\n');
 
     const renderLine = (line: string, index: number) => {
-        // Headers
-        if (line.startsWith('# ')) {
-            return <Text key={index} style={[styles.h1, { color: colors.textPrimary }]}>{line.substring(2)}</Text>;
-        }
-        if (line.startsWith('## ')) {
-            return <Text key={index} style={[styles.h2, { color: colors.textPrimary }]}>{line.substring(3)}</Text>;
-        }
-        if (line.startsWith('### ')) {
-            return <Text key={index} style={[styles.h3, { color: colors.textPrimary }]}>{line.substring(4)}</Text>;
+        const trimmed = line.trim();
+
+        // ── Divider ──
+        if (trimmed === '---' || trimmed === '***' || trimmed === '___') {
+            return <View key={index} style={[styles.divider, { backgroundColor: colors.border }]} />;
         }
 
-        // Parse inline elements (links and references)
+        // ── Headers ──
+        if (line.startsWith('# ')) {
+            return <Text key={index} style={[styles.h1, { color: colors.textPrimary }]}>{parseInline(line.substring(2))}</Text>;
+        }
+        if (line.startsWith('## ')) {
+            return <Text key={index} style={[styles.h2, { color: colors.textPrimary }]}>{parseInline(line.substring(3))}</Text>;
+        }
+        if (line.startsWith('### ')) {
+            return <Text key={index} style={[styles.h3, { color: colors.textPrimary }]}>{parseInline(line.substring(4))}</Text>;
+        }
+
+        // ── List items ──
+        if (trimmed.startsWith('- ')) {
+            const indent = line.search(/\S/);
+            return (
+                <View key={index} style={[styles.listItem, { marginLeft: indent * 10 }]}>
+                    <Text style={[styles.bullet, { color: tint }]}>•</Text>
+                    <Text style={[styles.p, { color: colors.textSecondary, flex: 1 }]}>
+                        {parseInline(trimmed.substring(2))}
+                    </Text>
+                </View>
+            );
+        }
+
+        // Plain paragraph or empty
+        if (trimmed === '') return <View key={index} style={{ height: 8 }} />;
+
         return (
             <Text key={index} style={[styles.p, { color: colors.textSecondary }]}>
                 {parseInline(line)}
@@ -38,12 +60,12 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, onR
     };
 
     const parseInline = (text: string) => {
-        const parts = [];
+        const parts: (string | React.ReactNode)[] = [];
         let lastIndex = 0;
 
-        // Regex for [[Reference]] and [Link](url)
-        const regex = /\[\[(.*?)\]\]|\[(.*?)\]\((.*?)\)/g;
-        let match;
+        // Unified regex for Bold, Reference, Markdown Link, and Auto-link
+        const regex = /((?:\*\*|__)(.*?)(?:\*\*|__))|(\[\[(.*?)\]\])|(\[(.*?)\]\((.*?)\))|(https?:\/\/[^\s]+|www\.[^\s]+)/g;
+        let match: RegExpExecArray | null;
 
         while ((match = regex.exec(text)) !== null) {
             // Push text before match
@@ -51,29 +73,45 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, onR
                 parts.push(text.substring(lastIndex, match.index));
             }
 
-            if (match[1]) {
-                // Bible Reference [[Ref]]
-                const ref = match[1];
+            if (match[2]) {
+                // Bold (Group 2)
+                parts.push(<Text key={match.index} style={styles.bold}>{match[2]}</Text>);
+            } else if (match[4]) {
+                // Bible Reference (Group 4)
+                const ref = match[4];
                 parts.push(
-                    <ScalePressable 
-                        key={match.index} 
-                        style={[styles.refBadge, { backgroundColor: colors.accent + '15' }]}
+                    <ScalePressable
+                        key={match.index}
+                        style={[styles.refBadge, { backgroundColor: tint + '12' }]}
                         onPress={() => onReferencePress?.(ref)}
                     >
-                        <Text style={[styles.refText, { color: colors.accent }]}>{ref}</Text>
+                        <Text style={[styles.refText, { color: tint }]}>{ref}</Text>
                     </ScalePressable>
                 );
-            } else if (match[2] && match[3]) {
-                // Link [Title](URL)
-                const title = match[2];
-                const url = match[3];
+            } else if (match[6] && match[7]) {
+                // Markdown Link [title](url)
+                const title = match[6];
+                const url = match[7];
                 parts.push(
-                    <Text 
-                        key={match.index} 
-                        style={[styles.link, { color: colors.accent }]}
+                    <Text
+                        key={match.index}
+                        style={[styles.link, { color: tint }]}
                         onPress={() => Linking.openURL(url)}
                     >
                         {title}
+                    </Text>
+                );
+            } else if (match[8]) {
+                // Auto-link
+                const url = match[8];
+                const cleanUrl = url.startsWith('www.') ? `https://${url}` : url;
+                parts.push(
+                    <Text
+                        key={match.index}
+                        style={[styles.link, { color: tint }]}
+                        onPress={() => Linking.openURL(cleanUrl)}
+                    >
+                        {url}
                     </Text>
                 );
             }
@@ -81,7 +119,6 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, onR
             lastIndex = regex.lastIndex;
         }
 
-        // Push remaining text
         if (lastIndex < text.length) {
             parts.push(text.substring(lastIndex));
         }
@@ -97,45 +134,19 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, onR
 };
 
 const styles = StyleSheet.create({
-    container: {
-        gap: 8,
-    },
-    h1: {
-        fontSize: 24,
-        fontWeight: '800',
-        marginTop: 16,
-        marginBottom: 8,
-    },
-    h2: {
-        fontSize: 20,
-        fontWeight: '700',
-        marginTop: 12,
-        marginBottom: 4,
-    },
-    h3: {
-        fontSize: 18,
-        fontWeight: '600',
-        marginTop: 8,
-    },
-    p: {
-        fontSize: 16,
-        lineHeight: 24,
-        marginBottom: 4,
-    },
-    link: {
-        textDecorationLine: 'underline',
-        fontWeight: '500',
-    },
+    container: { gap: 4 },
+    h1: { fontSize: 26, fontWeight: '800', marginTop: 12, marginBottom: 8, letterSpacing: -0.5 },
+    h2: { fontSize: 20, fontWeight: '700', marginTop: 8, marginBottom: 4 },
+    h3: { fontSize: 18, fontWeight: '600', marginTop: 6 },
+    p: { fontSize: 16, lineHeight: 24, marginBottom: 4 },
+    bold: { fontWeight: '700' },
+    link: { textDecorationLine: 'underline', fontWeight: '600' },
+    listItem: { flexDirection: 'row', alignItems: 'flex-start', marginVertical: 2 },
+    bullet: { fontSize: 18, marginRight: 8, marginTop: -2 },
+    divider: { height: 1.5, marginVertical: 16, width: '100%', opacity: 0.6 },
     refBadge: {
-        paddingHorizontal: 6,
-        paddingVertical: 1,
-        borderRadius: 6,
-        marginHorizontal: 2,
-        // Align badge with text baseline
-        marginBottom: -4,
+        paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6,
+        marginHorizontal: 2, marginBottom: -3,
     },
-    refText: {
-        fontSize: 14,
-        fontWeight: '700',
-    },
+    refText: { fontSize: 14, fontWeight: '700' },
 });

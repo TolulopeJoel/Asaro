@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useRouter } from 'expo-router';
+import { Stack } from 'expo-router';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { createStudyTopic } from '@/src/data/database';
 import { StudyEditor } from '@/src/components/StudyEditor';
@@ -14,7 +15,7 @@ export default function NewStudyTopicScreen() {
 
     const handleSave = async () => {
         if (!title.trim()) return;
-        
+
         try {
             await createStudyTopic({
                 title,
@@ -28,17 +29,20 @@ export default function NewStudyTopicScreen() {
     };
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
-            <StudyEditor
-                title={title}
-                content={content}
-                color={color}
-                onTitleChange={setTitle}
-                onContentChange={setContent}
-                onColorChange={setColor}
-                onSave={handleSave}
-                onCancel={() => router.back()}
-            />
-        </SafeAreaView>
+        <>
+            <Stack.Screen options={{ headerShown: false }} />
+            <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
+                <StudyEditor
+                    title={title}
+                    content={content}
+                    color={color}
+                    onTitleChange={setTitle}
+                    onContentChange={setContent}
+                    onColorChange={setColor}
+                    onSave={handleSave}
+                    onCancel={() => router.back()}
+                />
+            </SafeAreaView>
+        </>
     );
 }

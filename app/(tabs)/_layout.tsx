@@ -2,7 +2,7 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { DeviceEventEmitter, StyleSheet, View } from 'react-native';
+import { DeviceEventEmitter, StyleSheet, View, Text } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { useRef } from 'react';
@@ -62,12 +62,9 @@ export default function TabLayout() {
                                 const isSameTab = props.state.index === index;
 
                                 if (isSameTab) {
-                                    // 1. Always emit scroll-to-top event
                                     DeviceEventEmitter.emit(`tab-press-top-${route.name}`);
 
-                                    // 2. Double tap logic (within 500ms)
                                     if (route.name === 'groups' && now - lastPressTime.current < 500) {
-                                        // Reset groups tab to root
                                         router.replace('/(tabs)/groups');
                                     }
 
@@ -76,7 +73,6 @@ export default function TabLayout() {
                                     return;
                                 }
 
-                                // Normal navigation
                                 lastPressTime.current = now;
                                 lastPressTab.current = route.name;
 
@@ -92,14 +88,16 @@ export default function TabLayout() {
                             };
 
                             let iconName: any = 'ellipse-outline';
-                            if (route.name === 'index') iconName = 'sparkles-outline';
-                            else if (route.name === 'browse') iconName = 'albums-outline';
-                            else if (route.name === 'study') iconName = 'book-outline';
-                            else if (route.name === 'plan') iconName = 'map-outline';
-                            else if (route.name === 'groups') iconName = 'people-circle-outline';
-                            else if (route.name === 'settings') iconName = 'options-outline';
+                            if (route.name === 'index') iconName = 'home';
+                            else if (route.name === 'library') iconName = 'albums';
+                            else if (route.name === 'groups') iconName = 'people-circle';
 
                             const finalIcon = isFocused ? iconName.replace('-outline', '') : iconName;
+
+                            let label = '';
+                            if (route.name === 'index') label = 'Home';
+                            else if (route.name === 'library') label = 'Library';
+                            else if (route.name === 'groups') label = 'Groups';
 
                             return (
                                 <ScalePressable
@@ -109,9 +107,19 @@ export default function TabLayout() {
                                 >
                                     <Ionicons
                                         name={finalIcon}
-                                        size={23.5}
+                                        size={22}
                                         color={isFocused ? colors.accent : colors.textTertiary}
+                                        style={{ marginBottom: 2 }}
                                     />
+                                    <Text style={[
+                                        styles.tabLabel,
+                                        {
+                                            color: isFocused ? colors.accent : colors.textTertiary,
+                                            fontWeight: isFocused ? '600' : '500'
+                                        }
+                                    ]}>
+                                        {label}
+                                    </Text>
                                 </ScalePressable>
                             );
                         })}
@@ -120,11 +128,8 @@ export default function TabLayout() {
             )}
         >
             <Tabs.Screen name="index" />
-            <Tabs.Screen name="browse" />
-            <Tabs.Screen name="study" />
-            <Tabs.Screen name="plan" />
+            <Tabs.Screen name="library" />
             <Tabs.Screen name="groups" />
-            <Tabs.Screen name="settings" />
         </Tabs>
     );
 }
@@ -135,4 +140,5 @@ const styles = StyleSheet.create({
     wave: { position: 'absolute', top: -18, left: 0, right: 0 },
     tabBar: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', flex: 1 },
     tabButton: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
+    tabLabel: { fontSize: 11, marginTop: 1 },
 });

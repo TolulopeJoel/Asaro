@@ -208,7 +208,7 @@ export default function MeditationSessionScreen() {
     }, [selectedBook, selectedChapters, verseRange, isEditMode, entryId, router, changeStep, params.readingItemId, showAlert]);
 
     const handleDone = useCallback(() => {
-        router.replace({ pathname: '/(tabs)/browse' });
+        router.replace({ pathname: '/(tabs)/library' });
     }, [router]);
 
     const handleStartOver = useCallback(async () => {

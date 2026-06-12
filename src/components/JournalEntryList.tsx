@@ -54,24 +54,34 @@ type ListItem =
 interface JournalEntryListProps {
     onEntryPress: (entry: JournalEntry) => void;
     refreshTrigger?: number;
-    initialViewMode?: ViewMode;
+    viewMode: ViewMode;
+    searchQuery: string;
+    selectedBook?: BibleBook;
+    onViewModeChange: (mode: ViewMode) => void;
+    onSearchChange: (query: string) => void;
+    onSelectedBookChange: (book?: BibleBook) => void;
 }
 
 
-export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress, refreshTrigger, initialViewMode = 'recent' }) => {
+export const JournalEntryList: React.FC<JournalEntryListProps> = ({
+    onEntryPress,
+    refreshTrigger,
+    viewMode,
+    searchQuery,
+    selectedBook,
+    onViewModeChange,
+    onSearchChange,
+    onSelectedBookChange,
+}) => {
     const { colors } = useTheme();
     const [entries, setEntries] = useState<JournalEntry[]>([]);
-    const [searchQuery, setSearchQuery] = useState('');
     const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
-    const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
-    const [selectedBook, setSelectedBook] = useState<BibleBook>();
     const [bookEntries, setBookEntries] = useState<JournalEntry[]>([]);
     const [filteredEntries, setFilteredEntries] = useState<JournalEntry[]>([]);
     const [availableBooks, setAvailableBooks] = useState<BookWithCount[]>([]);
     const [actionsList, setActionsList] = useState<EnhancedActionItem[]>([]);
     const [topicsList, setTopicsList] = useState<JournalEntry[]>([]);
     const [isArchiveCollapsed, setIsArchiveCollapsed] = useState(true);
-    const [tabContainerWidth, setTabContainerWidth] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [hasMore, setHasMore] = useState(true);
@@ -183,35 +193,35 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
     }, [debouncedSearchQuery, entries]);
 
     const navigateToRecent = () => {
-        setViewMode('recent');
-        setSelectedBook(undefined);
-        setSearchQuery('');
+        onViewModeChange('recent');
+        onSelectedBookChange(undefined);
+        onSearchChange('');
     };
 
     const navigateToBooks = () => {
-        setViewMode('books');
-        setSelectedBook(undefined);
-        setSearchQuery('');
+        onViewModeChange('books');
+        onSelectedBookChange(undefined);
+        onSearchChange('');
     };
 
     const navigateToActions = () => {
-        setViewMode('actions');
-        setSelectedBook(undefined);
-        setSearchQuery('');
+        onViewModeChange('actions');
+        onSelectedBookChange(undefined);
+        onSearchChange('');
         loadActions();
     };
 
     const navigateToTopics = () => {
-        setViewMode('topics');
-        setSelectedBook(undefined);
-        setSearchQuery('');
+        onViewModeChange('topics');
+        onSelectedBookChange(undefined);
+        onSearchChange('');
         loadTopics();
     };
 
     const navigateToBookDetail = (book: BibleBook) => {
-        setSelectedBook(book);
-        setViewMode('bookDetail');
-        setSearchQuery('');
+        onSelectedBookChange(book);
+        onViewModeChange('bookDetail');
+        onSearchChange('');
     };
 
     // Note: useFocusEffect below handles initial + subsequent loads
@@ -561,91 +571,11 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
     // Memoize the header element so FlatList receives a stable reference.
     // Passing renderListHeader() (a call) would produce a new element every render
     // and cause FlatList to unmount/remount the header unnecessarily.
-    const listHeader = useMemo(() => (
-        <View style={{ backgroundColor: colors.background }}>
-            <View style={[styles.header, { borderBottomColor: colors.border }]}>
-                <View style={styles.headerTitleRow}>
-                    <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Journal</Text>
-                </View>
-
-                {/* Tab Navigation */}
-                <View style={styles.tabContainer}>
-                    <View
-                        style={styles.tabBackground}
-                        onLayout={(e) => {
-                            const { width } = e.nativeEvent.layout;
-                            if (width > 0 && tabContainerWidth !== width) {
-                                setTabContainerWidth(width);
-                            }
-                        }}
-                    >
-                        <Animated.View
-                            style={[
-                                styles.tabIndicator,
-                                {
-                                    backgroundColor: colors.accent,
-                                    width: '25%',
-                                    left: viewMode === 'recent' ? '0%' : (viewMode === 'books' || viewMode === 'bookDetail') ? '25%' : viewMode === 'actions' ? '50%' : '75%',
-                                }
-                            ]}
-                            layout={LinearTransition}
-                        />
-                        <ScalePressable style={styles.tab} onPress={navigateToRecent}>
-                            <Ionicons name="time" size={20} color={viewMode === 'recent' ? colors.accent : colors.textTertiary} />
-                        </ScalePressable>
-
-                        <ScalePressable style={styles.tab} onPress={navigateToBooks}>
-                            <Ionicons name="library" size={20} color={(viewMode === 'books' || viewMode === 'bookDetail') ? colors.accent : colors.textTertiary} />
-                        </ScalePressable>
-
-                        <ScalePressable style={styles.tab} onPress={navigateToActions}>
-                            <Ionicons name="flash" size={20} color={viewMode === 'actions' ? colors.accent : colors.textTertiary} />
-                        </ScalePressable>
-
-                        <ScalePressable style={styles.tab} onPress={navigateToTopics}>
-                            <Ionicons name="bookmark" size={20} color={viewMode === 'topics' ? colors.accent : colors.textTertiary} />
-                        </ScalePressable>
-                    </View>
-                </View>
-            </View>
-
-            {renderBreadcrumbs()}
-
-            {/* Search */}
-            {(viewMode === 'recent' || viewMode === 'bookDetail') && (
-                <View style={[styles.searchContainer, { backgroundColor: colors.backgroundElevated, borderBottomColor: colors.border }]}>
-                    <TextInput
-                        style={[styles.searchInput, { backgroundColor: colors.searchBackground, color: colors.textPrimary, borderColor: colors.border }]}
-                        placeholder={
-                            viewMode === 'bookDetail' && selectedBook
-                                ? `Search ${selectedBook.name}...`
-                                : "Search entries..."
-                        }
-                        placeholderTextColor={colors.textTertiary}
-                        value={searchQuery}
-                        onChangeText={setSearchQuery}
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                    />
-                    {searchQuery.length > 0 && (
-                        <ScalePressable
-                            style={styles.clearSearch}
-                            onPress={() => setSearchQuery('')}
-                        >
-                            <Text style={[styles.clearSearchText, { color: colors.textSecondary }]}>×</Text>
-                        </ScalePressable>
-                    )}
-                </View>
-            )}
-        </View>
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    ), [colors, viewMode, selectedBook, searchQuery, tabContainerWidth]);
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
             {isLoading && entries.length === 0 ? (
                 <View style={{ flex: 1 }}>
-                    {listHeader}
                     <LoadingView style={{ marginTop: 100 }} />
                 </View>
             ) : (
@@ -657,7 +587,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({ onEntryPress
                         styles.scrollContent,
                         getFlatListData.length === 0 && styles.emptyContainer
                     ]}
-                    ListHeaderComponent={listHeader}
+
                     showsVerticalScrollIndicator={false}
                     initialNumToRender={10}
                     maxToRenderPerBatch={10}

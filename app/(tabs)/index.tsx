@@ -456,6 +456,12 @@ export default function Index() {
                         >
                             {getDailyTitle()}
                         </Text>
+                        <ScalePressable
+                            style={[styles.settingsButton, { backgroundColor: colors.backgroundSubtle }]}
+                            onPress={() => router.push('/settings')}
+                        >
+                            <Ionicons name="settings-sharp" size={18} color={colors.textSecondary} />
+                        </ScalePressable>
                     </View>
                 </View>
 
@@ -532,6 +538,13 @@ const styles = StyleSheet.create({
         fontSize: 34,
         fontWeight: '800',
         letterSpacing: -1.5,
+    },
+    settingsButton: {
+        width: 38,
+        height: 38,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 
     statsContainer: {

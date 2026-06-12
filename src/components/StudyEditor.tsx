@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import {
     StyleSheet,
     Text,
@@ -7,19 +7,13 @@ import {
     ScrollView,
     KeyboardAvoidingView,
     Platform,
-    Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
-import { Typography } from '../theme/typography';
 import { ScalePressable } from './ScalePressable';
-import { BookPicker } from './BookPicker';
-import { ChapterPicker } from './ChapterPicker';
-import { MarkdownRenderer } from './MarkdownRenderer';
-import { BibleBook } from '../data/bibleBooks';
 
-const TOPIC_COLORS = ['#E18F43', '#2C3E50', '#27AE60', '#2980B9', '#8E44AD', '#C0392B'];
+const TOPIC_COLORS = ['#E18F43', '#27AE60', '#2980B9', '#8E44AD', '#C0392B', '#2C3E50'];
 
 interface StudyEditorProps {
     title: string;
@@ -43,256 +37,238 @@ export const StudyEditor: React.FC<StudyEditorProps> = ({
     onCancel,
 }) => {
     const { colors } = useTheme();
-    const [isPreview, setIsPreview] = useState(false);
-    const [isReferenceModalVisible, setIsReferenceModalVisible] = useState(false);
-    const [selectedBook, setSelectedBook] = useState<BibleBook>();
-    const [selectedChapters, setSelectedChapters] = useState<{ start: number; end?: number }>({ start: 0 });
-    const [verseRange, setVerseRange] = useState<{ start: string; end: string } | null>(null);
-    const inputRef = useRef<TextInput>(null);
+    const [showColorPicker, setShowColorPicker] = useState(false);
+    const [showFormatting, setShowFormatting] = useState(false);
+    const contentRef = useRef<TextInput>(null);
+    const selectionRef = useRef({ start: 0, end: 0 });
 
-    const insertText = (textToInsert: string) => {
-        // Simple insertion at the end for now, could be improved with selection state
-        onContentChange(content + textToInsert);
-    };
+    const isSaveable = title.trim().length > 0;
 
-    const handleAddReference = () => {
-        if (!selectedBook || selectedChapters.start === 0) return;
+    const applyFormat = (prefix: string, suffix: string = '', isLineStart: boolean = false) => {
+        const { start, end } = selectionRef.current;
+        const selectedText = content.slice(start, end);
 
-        let ref = `${selectedBook.name} ${selectedChapters.start}`;
-        if (selectedChapters.end && selectedChapters.end !== selectedChapters.start) {
-            ref += `-${selectedChapters.end}`;
-        }
-        if (verseRange?.start) {
-            ref += `:${verseRange.start}`;
-            if (verseRange.end) ref += `-${verseRange.end}`;
+        let textToInsert = '';
+        if (selectedText.length > 0) {
+            // If text is selected, wrap it
+            textToInsert = `${prefix}${selectedText}${suffix}`;
+        } else {
+            // If no selection, insert default placeholder or prefix
+            textToInsert = isLineStart ? `\n${prefix}` : `${prefix}${suffix}`;
         }
 
-        insertText(` [[${ref}]] `);
-        setIsReferenceModalVisible(false);
-        setSelectedBook(undefined);
-        setSelectedChapters({ start: 0 });
-        setVerseRange(null);
+        const newContent = content.slice(0, start) + textToInsert + content.slice(end);
+        onContentChange(newContent);
+
+        // Adjust selection
+        const newPos = start + textToInsert.length;
+        setTimeout(() => {
+            contentRef.current?.setNativeProps({ selection: { start: newPos, end: newPos } });
+        }, 0);
+        contentRef.current?.focus();
     };
 
     return (
         <View style={styles.container}>
-            <View style={styles.header}>
-                <ScalePressable onPress={onCancel} style={styles.headerButton}>
-                    <Ionicons name="close" size={24} color={colors.textSecondary} />
-                </ScalePressable>
-                <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
-                    {isPreview ? 'Preview' : 'Edit Topic'}
-                </Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                    <ScalePressable onPress={() => setIsPreview(!isPreview)} style={styles.headerButton}>
-                        <Ionicons name={isPreview ? "create-outline" : "eye-outline"} size={22} color={colors.accent} />
+
+            {/* ── Header ── */}
+            <View style={[styles.header, { borderBottomColor: colors.border }]}>
+                <View style={styles.headerLeft}>
+                    <ScalePressable
+                        onPress={onCancel}
+                        style={[styles.iconBtn, { backgroundColor: colors.backgroundSubtle }]}
+                    >
+                        <Ionicons name="close" size={20} color={colors.textSecondary} />
                     </ScalePressable>
-                    <ScalePressable onPress={onSave} style={[styles.saveButton, { backgroundColor: colors.accent }]}>
-                        <Text style={[styles.saveButtonText, { color: colors.buttonPrimaryText }]}>Save</Text>
+
+                    <ScalePressable
+                        onPress={() => { setShowColorPicker(p => !p); setShowFormatting(false); }}
+                        style={[styles.colorDot, { backgroundColor: color }]}
+                    >
+                        <Ionicons name="color-palette-outline" size={14} color="rgba(255,255,255,0.9)" />
+                    </ScalePressable>
+                </View>
+
+                <View style={styles.headerRight}>
+                    <ScalePressable
+                        onPress={() => { setShowFormatting(p => !p); setShowColorPicker(false); }}
+                        style={[styles.iconBtn, { backgroundColor: showFormatting ? colors.accent + '20' : colors.backgroundSubtle }]}
+                    >
+                        <Ionicons name="text-outline" size={18} color={showFormatting ? colors.accent : colors.textSecondary} />
+                    </ScalePressable>
+
+                    <ScalePressable
+                        onPress={onSave}
+                        disabled={!isSaveable}
+                        style={[styles.saveButton, {
+                            backgroundColor: isSaveable ? colors.accent : colors.backgroundSubtle,
+                            shadowColor: isSaveable ? colors.accent : 'transparent',
+                        }]}
+                    >
+                        <Text style={[styles.saveButtonText, {
+                            color: isSaveable ? colors.buttonPrimaryText : colors.textTertiary,
+                        }]}>
+                            Save
+                        </Text>
                     </ScalePressable>
                 </View>
             </View>
 
-            <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
-                <TextInput
-                    style={[styles.titleInput, { color: colors.textPrimary }]}
-                    placeholder="Topic Title"
-                    placeholderTextColor={colors.textTertiary}
-                    value={title}
-                    onChangeText={onTitleChange}
-                    multiline={false}
-                    editable={!isPreview}
-                />
+            {/* ── Tool Strip (Color Pick OR Formatting tools) ── */}
+            {(showColorPicker || showFormatting) && (
+                <View style={[styles.toolStrip, {
+                    backgroundColor: colors.backgroundSubtle,
+                    borderBottomColor: colors.border,
+                }]}>
+                    {showColorPicker && (
+                        <View style={styles.swatchRow}>
+                            {TOPIC_COLORS.map((c) => (
+                                <ScalePressable
+                                    key={c}
+                                    onPress={() => { onColorChange(c); setShowColorPicker(false); }}
+                                    style={[styles.swatch, { backgroundColor: c }, color === c && styles.swatchSelected]}
+                                >
+                                    {color === c && <Ionicons name="checkmark" size={12} color="#fff" />}
+                                </ScalePressable>
+                            ))}
+                        </View>
+                    )}
 
-                <View style={styles.colorRow}>
-                    {TOPIC_COLORS.map((c) => (
-                        <ScalePressable
-                            key={c}
-                            onPress={() => !isPreview && onColorChange(c)}
-                            style={[
-                                styles.colorCircle,
-                                { backgroundColor: c },
-                                color === c && { borderColor: colors.textPrimary, borderWidth: 2 },
-                                isPreview && { opacity: color === c ? 1 : 0.3 }
-                            ]}
-                            disabled={isPreview}
-                        />
-                    ))}
+                    {showFormatting && (
+                        <View style={styles.formatRow}>
+                            <ToolbarButton icon="text-outline" label="H1" onPress={() => applyFormat('# ', '', true)} colors={colors} />
+                            <ToolbarButton icon="text" label="H2" onPress={() => applyFormat('## ', '', true)} colors={colors} />
+                            <ToolbarButton icon="remove-outline" label="Divider" onPress={() => applyFormat('\n---\n')} colors={colors} />
+                            <ToolbarButton icon="list-outline" label="List" onPress={() => applyFormat('- ', '', true)} colors={colors} />
+                            <ToolbarButton icon="code-slash-outline" label="Bold" onPress={() => applyFormat('**', '**')} colors={colors} />
+                        </View>
+                    )}
                 </View>
+            )}
 
-                {isPreview ? (
-                    <MarkdownRenderer content={content} />
-                ) : (
+            {/* ── Body ── */}
+            <KeyboardAvoidingView
+                style={{ flex: 1 }}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+            >
+                <ScrollView
+                    style={styles.scrollArea}
+                    contentContainerStyle={styles.scrollContent}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                >
                     <TextInput
-                        ref={inputRef}
+                        style={[styles.titleInput, { color: colors.textPrimary }]}
+                        placeholder="Topic title..."
+                        placeholderTextColor={colors.textTertiary}
+                        value={title}
+                        onChangeText={onTitleChange}
+                        multiline={false}
+                        returnKeyType="next"
+                        onSubmitEditing={() => contentRef.current?.focus()}
+                    />
+
+                    <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+                    <TextInput
+                        ref={contentRef}
                         style={[styles.textArea, { color: colors.textPrimary }]}
                         placeholder="Start your research here..."
                         placeholderTextColor={colors.textTertiary}
                         value={content}
                         onChangeText={onContentChange}
+                        onSelectionChange={(e) => {
+                            selectionRef.current = e.nativeEvent.selection;
+                        }}
                         multiline={true}
                         textAlignVertical="top"
                     />
-                )}
-            </ScrollView>
-
-            {!isPreview && (
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-                >
-                    <View style={[styles.toolbar, { backgroundColor: colors.cardBackground, borderTopColor: colors.border }]}>
-                        <ToolbarButton icon="header" onPress={() => insertText('\n# ')} />
-                        <ToolbarButton icon="text" onPress={() => insertText('\n## ')} />
-                        <ToolbarButton icon="link" onPress={() => insertText('[Link Title](https://)')} />
-                        <ToolbarButton icon="book" onPress={() => setIsReferenceModalVisible(true)} highlight />
-                    </View>
-                </KeyboardAvoidingView>
-            )}
-
-            {/* Reference Picker Modal */}
-            <Modal
-                visible={isReferenceModalVisible}
-                animationType="slide"
-                presentationStyle="pageSheet"
-                onRequestClose={() => setIsReferenceModalVisible(false)}
-            >
-                <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
-                    <View style={styles.modalHeader}>
-                        <ScalePressable onPress={() => setIsReferenceModalVisible(false)}>
-                            <Text style={{ color: colors.textSecondary }}>Cancel</Text>
-                        </ScalePressable>
-                        <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Insert Reference</Text>
-                        <ScalePressable onPress={handleAddReference}>
-                            <Text style={[styles.modalAddText, { color: colors.accent }]}>Insert</Text>
-                        </ScalePressable>
-                    </View>
-
-                    <ScrollView style={{ flex: 1 }}>
-                        {!selectedBook ? (
-                            <BookPicker onBookSelect={setSelectedBook} />
-                        ) : (
-                            <View style={{ padding: 20 }}>
-                                <ChapterPicker
-                                    selectedBook={selectedBook}
-                                    selectedChapters={selectedChapters}
-                                    onChapterSelect={setSelectedChapters}
-                                    onVerseRangeChange={setVerseRange}
-                                />
-                                <ScalePressable
-                                    style={styles.changeBookButton}
-                                    onPress={() => setSelectedBook(undefined)}
-                                >
-                                    <Text style={{ color: colors.textTertiary }}>Change Book</Text>
-                                </ScalePressable>
-                            </View>
-                        )}
-                    </ScrollView>
-                </View>
-            </Modal>
+                </ScrollView>
+            </KeyboardAvoidingView>
         </View>
     );
 };
 
-const ToolbarButton = ({ icon, onPress, highlight }: { icon: any; onPress: () => void; highlight?: boolean }) => {
-    const { colors } = useTheme();
-    return (
-        <ScalePressable
-            onPress={onPress}
-            style={[styles.toolbarButton, highlight && { backgroundColor: colors.accent + '20' }]}
-        >
-            <Ionicons
-                name={icon === 'header' ? 'text-outline' : icon === 'text' ? 'text' : icon === 'link' ? 'link-outline' : 'book-outline'}
-                size={20}
-                color={highlight ? colors.accent : colors.textSecondary}
-            />
-        </ScalePressable>
-    );
-};
+const ToolbarButton = ({
+    icon, label, onPress, colors,
+}: {
+    icon: any; label: string; onPress: () => void; colors: any;
+}) => (
+    <ScalePressable onPress={onPress} style={styles.toolbarButton}>
+        <Ionicons name={icon} size={18} color={colors.textSecondary} />
+        <Text style={[styles.toolbarLabel, { color: colors.textTertiary }]}>{label}</Text>
+    </ScalePressable>
+);
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
+    container: { flex: 1 },
+
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 16,
-        paddingTop: 8,
+        paddingHorizontal: Spacing.layout.screenPadding,
+        paddingVertical: 10,
+        borderBottomWidth: StyleSheet.hairlineWidth,
     },
-    headerButton: {
-        padding: 8,
+    headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    iconBtn: {
+        width: 36, height: 36, borderRadius: 18,
+        justifyContent: 'center', alignItems: 'center',
     },
-    headerTitle: {
-        fontSize: 17,
-        fontWeight: '600',
+    colorDot: {
+        width: 28, height: 28, borderRadius: 14,
+        justifyContent: 'center', alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.2, shadowRadius: 3, elevation: 2,
     },
     saveButton: {
-        paddingHorizontal: 16,
+        paddingHorizontal: 16, paddingVertical: 7, borderRadius: 18,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.2, shadowRadius: 6, elevation: 3,
+    },
+    saveButtonText: { fontSize: 14, fontWeight: '700' },
+
+    toolStrip: {
+        borderBottomWidth: StyleSheet.hairlineWidth,
         paddingVertical: 8,
-        borderRadius: 20,
     },
-    saveButtonText: {
-        fontSize: 14,
-        fontWeight: '600',
+    swatchRow: {
+        flexDirection: 'row', alignItems: 'center', gap: 14,
+        paddingHorizontal: Spacing.layout.screenPadding,
     },
-    content: {
-        flex: 1,
-        padding: 20,
+    formatRow: {
+        flexDirection: 'row', alignItems: 'center', gap: 4,
+        paddingHorizontal: Spacing.layout.screenPadding,
+    },
+    swatch: { width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+    swatchSelected: {
+        transform: [{ scale: 1.2 }],
+        shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25, shadowRadius: 4, elevation: 3,
+    },
+
+    scrollArea: { flex: 1 },
+    scrollContent: {
+        paddingHorizontal: Spacing.layout.screenPadding,
+        paddingTop: 18,
+        paddingBottom: 40,
     },
     titleInput: {
-        fontSize: 28,
-        fontWeight: '800',
-        marginBottom: 16,
+        fontSize: 26, fontWeight: '800', letterSpacing: -0.8,
+        lineHeight: 32, marginBottom: 14,
     },
-    colorRow: {
-        flexDirection: 'row',
-        gap: 12,
-        marginBottom: 24,
-    },
-    colorCircle: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-    },
+    divider: { height: StyleSheet.hairlineWidth, marginBottom: 14 },
     textArea: {
-        fontSize: 16,
-        lineHeight: 24,
-        minHeight: 400,
-        paddingBottom: 100,
+        fontSize: 16, lineHeight: 26, minHeight: 400, paddingBottom: 60,
     },
-    toolbar: {
-        flexDirection: 'row',
-        paddingHorizontal: 20,
-        paddingVertical: 12,
-        borderTopWidth: 1,
-        gap: 16,
-    },
+
     toolbarButton: {
-        padding: 10,
-        borderRadius: 10,
+        flex: 1, alignItems: 'center', gap: 2,
+        paddingVertical: 5, borderRadius: 10,
     },
-    modalContainer: {
-        flex: 1,
-    },
-    modalHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 20,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(0,0,0,0.05)',
-    },
-    modalTitle: {
-        fontSize: 17,
-        fontWeight: '600',
-    },
-    modalAddText: {
-        fontWeight: '600',
-    },
-    changeBookButton: {
-        marginTop: 20,
-        alignItems: 'center',
-    },
+    toolbarLabel: { fontSize: 8, fontWeight: '700', letterSpacing: 0.4 },
 });

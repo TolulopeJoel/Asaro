@@ -231,7 +231,7 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = React.memo(({
                             placeholder="1"
                             placeholderTextColor={colors.textTertiary}
                         />
-                        <Text style={[styles.verseColon, { color: colors.textTertiary }]}>:</Text>
+                        <Text style={[styles.verseColon, { color: colors.textTertiary }]}>-</Text>
                         <TextInput
                             style={[styles.verseInput, { backgroundColor: colors.cardHover, borderColor: colors.border, color: colors.textPrimary }]}
                             value={endVerse}
