@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     entryCard: {
-        borderRadius: 16,
+        borderRadius: 12,
         borderWidth: 1,
     },
     entryHeader: {
