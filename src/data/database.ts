@@ -1138,40 +1138,6 @@ export interface EnhancedActionItem extends ActionItem {
     is_completed: boolean;
 }
 
-/**
- * Fetch action items from the last X days, joined with their journal entry context.
- * Used for the "Reminders" section on the home screen.
- */
-export const getRecentActionItems = async (days: number = 7, includeCompleted: boolean = false): Promise<EnhancedActionItem[]> => {
-    return await withDatabase(async (database) => {
-        const query = `
-            SELECT 
-                ai.*, 
-                je.book_name, 
-                je.chapter_start, 
-                je.chapter_end,
-                datetime(je.created_at, 'localtime') as created_at
-            FROM action_items ai
-            JOIN journal_entries je ON ai.entry_id = je.id
-            WHERE DATE(je.created_at, 'localtime') >= DATE('now', 'localtime', ?)
-            AND (ai.action != '' OR ai.motivation != '')
-            ${includeCompleted ? '' : 'AND ai.is_completed = 0'}
-            ORDER BY je.created_at DESC, ai.sort_order ASC
-        `;
-
-        const daysParam = `-${days} days`;
-        return await database.getAllAsync<EnhancedActionItem>(query, [daysParam]);
-    });
-};
-
-export const toggleActionItemCompletion = async (id: number, completed: boolean) => {
-    await withDatabase(async (database) => {
-        await database.runAsync(
-            `UPDATE action_items SET is_completed = ? WHERE id = ?`,
-            [completed ? 1 : 0, id]
-        );
-    });
-};
 
 /**
  * Fetch all action items, joined with their journal entry context.
@@ -1334,11 +1300,6 @@ export const toggleReadingItem = async (itemId: number, completed: boolean) => {
     });
 };
 
-export const clearReadingProgress = async () => {
-    await withDatabase(async (database) => {
-        await database.runAsync(`DELETE FROM reading_progress`);
-    });
-};
 
 /**
  * Returns the item_id of the most recently completed reading plan item,
@@ -1353,17 +1314,6 @@ export const getLastCompletedReadingItemId = async (): Promise<number | null> =>
     });
 };
 
-export const checkEntryExists = async (bookName: string, chapterStart: number, chapterEnd?: number): Promise<number | null> => {
-    return await withDatabase(async (database) => {
-        const result = await database.getFirstAsync<{ id: number }>(
-            `SELECT id FROM journal_entries 
-             WHERE book_name = ? AND chapter_start = ? AND(chapter_end IS ? OR(chapter_end IS NULL AND ? IS NULL))
-             LIMIT 1`,
-            [bookName, chapterStart, chapterEnd ?? null, chapterEnd ?? null]
-        );
-        return result?.id ?? null;
-    });
-};
 
 /**
  * Check whether any journal entry exists that fully covers a plan item's chapter range.
@@ -1448,23 +1398,6 @@ export const getStudyTopics = async (): Promise<StudyTopic[]> => {
     });
 };
 
-export const getStudyTopicById = async (id: number): Promise<StudyTopic | null> => {
-    return await withDatabase(async (database) => {
-        const topic = await database.getFirstAsync<StudyTopic>(
-            `SELECT * FROM study_topics WHERE id = ?`,
-            [id]
-        );
-
-        if (!topic) return null;
-
-        const refs = await database.getAllAsync<StudyTopicReference>(
-            `SELECT * FROM study_topic_references WHERE topic_id = ?`,
-            [id]
-        );
-
-        return { ...topic, references: refs };
-    });
-};
 
 export const createStudyTopic = async (input: StudyTopicInput): Promise<number> => {
     return await withDatabase(async (database) => {
@@ -1521,12 +1454,6 @@ export const updateStudyTopic = async (id: number, input: Partial<StudyTopicInpu
     });
 };
 
-export const deleteStudyTopic = async (id: number): Promise<void> => {
-    return await withDatabase(async (database) => {
-        await database.runAsync(`DELETE FROM study_topics WHERE id = ?`, [id]);
-        // References are deleted by CASCADE
-    });
-};
 
 
 /**
