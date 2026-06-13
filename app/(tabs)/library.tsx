@@ -7,7 +7,6 @@ import {
     Modal,
     ScrollView,
     TouchableOpacity,
-    DeviceEventEmitter,
     Platform,
     LayoutAnimation,
     TextInput,
@@ -46,6 +45,7 @@ import * as WebBrowser from 'expo-web-browser';
 
 type Segment = 'journal' | 'study' | 'plan';
 export type ViewMode = 'recent' | 'books' | 'bookDetail' | 'actions' | 'topics';
+type StudySortBy = 'recent' | 'color';
 
 type PlanListDataItem =
     | { type: 'sectionHeader'; section: string; id: string }
@@ -58,6 +58,28 @@ const SEGMENTS: { key: Segment; label: string; icon: string }[] = [
     { key: 'study', label: 'Study', icon: 'book-outline' },
     { key: 'plan', label: 'Plan', icon: 'map-outline' },
 ];
+
+// ─── Color Sort Helper ────────────────────────────────────────────────────────
+
+function hexToHue(hex: string): number {
+    try {
+        const clean = hex.replace('#', '');
+        if (clean.length !== 6) return 0;
+        const r = parseInt(clean.slice(0, 2), 16) / 255;
+        const g = parseInt(clean.slice(2, 4), 16) / 255;
+        const b = parseInt(clean.slice(4, 6), 16) / 255;
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        if (max === min) return 0;
+        const d = max - min;
+        let h = 0;
+        if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+        else if (max === g) h = ((b - r) / d + 2) / 6;
+        else h = ((r - g) / d + 4) / 6;
+        return h;
+    } catch {
+        return 0;
+    }
+}
 
 // ─── Journal Sub-Tabs ─────────────────────────────────────────────────────────
 
@@ -158,7 +180,6 @@ const PlanSectionHeader = React.memo(({
 }) => {
     const { colors } = useTheme();
     const isDone = completedCount === totalCount && totalCount > 0;
-    const progress = totalCount > 0 ? (completedCount / totalCount) : 0;
 
     return (
         <TouchableOpacity
@@ -177,12 +198,8 @@ const PlanSectionHeader = React.memo(({
                     </Text>
                 </View>
             </View>
+
             <View style={styles.planSectionHeaderRight}>
-                {progress > 0 && !isDone && (
-                    <View style={[styles.miniProgressTrack, { backgroundColor: colors.border }]}>
-                        <View style={[styles.miniProgressFill, { width: `${progress * 100}%`, backgroundColor: colors.accent }]} />
-                    </View>
-                )}
                 {isDone && <Ionicons name="checkmark-circle" size={16} color={colors.accent} />}
                 <Ionicons
                     name={isCollapsed ? "chevron-forward" : "chevron-down"}
@@ -204,7 +221,7 @@ const ReadingCard = React.memo(({
 }: {
     item: ReadingItem;
     isCompleted: boolean;
-    onToggle: (id: number, completed: boolean) => void
+    onToggle: (id: number, completed: boolean) => void;
 }) => {
     const { colors } = useTheme();
 
@@ -214,7 +231,7 @@ const ReadingCard = React.memo(({
                 styles.planCard,
                 {
                     backgroundColor: colors.cardBackground,
-                    borderColor: isCompleted ? colors.accent + '40' : colors.cardBorder,
+                    borderColor: isCompleted ? colors.accent + '30' : colors.cardBorder,
                 },
                 item.isKey && !isCompleted && {
                     borderColor: item.id <= 286 ? '#E53935' + '60' : '#1E88E560',
@@ -227,14 +244,10 @@ const ReadingCard = React.memo(({
                 <View style={styles.planBookInfo}>
                     <View style={styles.planBookHeader}>
                         {item.isKey && item.id <= 286 && (
-                            <View style={[styles.keyBadge, { backgroundColor: colors.accentSecondary + '15' }]}>
-                                <View style={[styles.redDiamond, { backgroundColor: '#E53935' }]} />
-                            </View>
+                            <View style={[styles.redDiamond, { backgroundColor: '#E53935' }]} />
                         )}
                         {item.isKey && item.id > 286 && (
-                            <View style={[styles.keyBadge, { backgroundColor: '#1E88E515' }]}>
-                                <View style={[styles.blueDot, { backgroundColor: '#1E88E5' }]} />
-                            </View>
+                            <View style={[styles.blueDot, { backgroundColor: '#1E88E5' }]} />
                         )}
                         <Text style={[
                             styles.planBookName,
@@ -251,6 +264,7 @@ const ReadingCard = React.memo(({
                         {item.chapters || "Full Book"}
                     </Text>
                 </View>
+
                 <View style={[
                     styles.planCheckbox,
                     {
@@ -367,7 +381,13 @@ function JournalContent({
 
 // ─── Study Content ────────────────────────────────────────────────────────────
 
-function StudyContent({ onCountChange }: { onCountChange: (count: number) => void }) {
+function StudyContent({
+    onCountChange,
+    sortBy,
+}: {
+    onCountChange: (count: number) => void;
+    sortBy: StudySortBy;
+}) {
     const { colors } = useTheme();
     const router = useRouter();
     const [topics, setTopics] = useState<StudyTopic[]>([]);
@@ -376,7 +396,7 @@ function StudyContent({ onCountChange }: { onCountChange: (count: number) => voi
     const [editingTopic, setEditingTopic] = useState<StudyTopic | null>(null);
     const [editTitle, setEditTitle] = useState('');
     const [editContent, setEditContent] = useState('');
-    const [editColor, setEditColor] = useState('#E18F43');
+    const [editColor, setEditColor] = useState(colors.accent);
 
     const loadTopics = useCallback(async () => {
         try {
@@ -392,6 +412,18 @@ function StudyContent({ onCountChange }: { onCountChange: (count: number) => voi
 
     useFocusEffect(useCallback(() => { loadTopics(); }, [loadTopics]));
 
+    // ── Sort logic ────────────────────────────────────────────────
+    const sortedTopics = useMemo(() => {
+        if (sortBy === 'color') {
+            return [...topics].sort((a, b) => {
+                const hueA = hexToHue(a.color || colors.accent);
+                const hueB = hexToHue(b.color || colors.accent);
+                return hueA - hueB;
+            });
+        }
+        return topics; // 'recent': DB order (updated_at desc)
+    }, [topics, sortBy, colors.accent]);
+
     const openPreview = (topic: StudyTopic) => setViewingTopic(topic);
     const closePreview = () => setViewingTopic(null);
 
@@ -399,7 +431,7 @@ function StudyContent({ onCountChange }: { onCountChange: (count: number) => voi
         setEditingTopic(topic);
         setEditTitle(topic.title);
         setEditContent(topic.content || '');
-        setEditColor(topic.color || '#E18F43');
+        setEditColor(topic.color || colors.accent);
         closePreview();
     };
 
@@ -478,7 +510,7 @@ function StudyContent({ onCountChange }: { onCountChange: (count: number) => voi
                 </View>
             ) : (
                 <FlatList
-                    data={topics}
+                    data={sortedTopics}
                     renderItem={renderTopicCard}
                     keyExtractor={(item) => item.id.toString()}
                     contentContainerStyle={styles.studyListContent}
@@ -545,6 +577,7 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: number) => vo
     const [progress, setProgress] = useState(0);
     const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
     const [isInitialLoad, setIsInitialLoad] = useState(true);
+    const [pendingItem, setPendingItem] = useState<ReadingItem | null>(null); // ← redirect explanation
     const flatListRef = useRef<FlatList>(null);
 
     const sectionData = React.useMemo(() => {
@@ -616,10 +649,8 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: number) => vo
                 setCompletedItems(newCompleted);
                 updateProgress(newCompleted);
             } else {
-                router.push({
-                    pathname: '/addEntry',
-                    params: { readingItemId: id, bookName: item.book, chapters: item.chapters }
-                });
+                // ── Show explanation modal instead of silently navigating ──
+                setPendingItem(item);
             }
         } else {
             await toggleReadingItem(id, false);
@@ -628,7 +659,20 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: number) => vo
             setCompletedItems(newCompleted);
             updateProgress(newCompleted);
         }
-    }, [completedItems, router, updateProgress]);
+    }, [completedItems, updateProgress]);
+
+    const handleConfirmAddEntry = useCallback(() => {
+        if (!pendingItem) return;
+        router.push({
+            pathname: '/addEntry',
+            params: {
+                readingItemId: pendingItem.id,
+                bookName: pendingItem.book,
+                chapters: pendingItem.chapters,
+            }
+        });
+        setPendingItem(null);
+    }, [pendingItem, router]);
 
     const toggleSection = useCallback((section: string) => {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -677,26 +721,26 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: number) => vo
         );
     }, [sectionData, collapsedSections, completedItems, handleToggle, toggleSection]);
 
-    const renderHeader = useCallback(() => (
-        <View style={styles.planLegendHeader}>
-            {progress === 0 && (
-                <View style={[styles.planLegendContainer, { backgroundColor: colors.backgroundSubtle }]}>
-                    <View style={styles.planLegendItem}>
-                        <View style={[styles.redDiamond, { backgroundColor: '#E53935', marginTop: 4 }]} />
-                        <Text style={[styles.planLegendText, { color: colors.textSecondary }]}>
-                            Historical overview of God's dealings with the Israelites
-                        </Text>
-                    </View>
-                    <View style={styles.planLegendItem}>
-                        <View style={[styles.blueDot, { backgroundColor: '#1E88E5', marginTop: 4 }]} />
-                        <Text style={[styles.planLegendText, { color: colors.textSecondary }]}>
-                            Chronological overview of the development of the Christian congregation
-                        </Text>
-                    </View>
+    const renderHeader = useCallback(() => {
+        if (progress > 0) return null;
+
+        return (
+            <View style={[styles.planLegendContainer, { backgroundColor: colors.backgroundSubtle, marginBottom: Spacing.md }]}>
+                <View style={styles.planLegendItem}>
+                    <View style={[styles.redDiamond, { backgroundColor: '#E53935', marginTop: 4 }]} />
+                    <Text style={[styles.planLegendText, { color: colors.textSecondary }]}>
+                        Historical overview of God's dealings with the Israelites
+                    </Text>
                 </View>
-            )}
-        </View>
-    ), [colors, progress]);
+                <View style={styles.planLegendItem}>
+                    <View style={[styles.blueDot, { backgroundColor: '#1E88E5', marginTop: 4 }]} />
+                    <Text style={[styles.planLegendText, { color: colors.textSecondary }]}>
+                        Chronological overview of the development of the Christian congregation
+                    </Text>
+                </View>
+            </View>
+        );
+    }, [colors, progress]);
 
     const renderFooter = useCallback(() => {
         const url = 'https://www.jw.org/en/library/series/more-topics/bible-reading-plan/';
@@ -755,6 +799,57 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: number) => vo
                     removeClippedSubviews={Platform.OS === 'android'}
                 />
             )}
+
+            {/* ── Plan redirect explanation modal ───────────────────────── */}
+            <Modal
+                visible={!!pendingItem}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setPendingItem(null)}
+            >
+                <View style={styles.planConfirmOverlay}>
+                    <View style={[styles.planConfirmCard, {
+                        backgroundColor: colors.cardBackground,
+                        borderColor: colors.border,
+                    }]}>
+                        <View style={[styles.planConfirmIconWrap, { backgroundColor: colors.accent + '15' }]}>
+                            <Ionicons name="journal-outline" size={28} color={colors.accent} />
+                        </View>
+
+                        <Text style={[styles.planConfirmTitle, { color: colors.textPrimary }]}>
+                            Journal Entry Required
+                        </Text>
+
+                        <Text style={[styles.planConfirmBody, { color: colors.textSecondary }]}>
+                            To mark{' '}
+                            <Text style={{ fontWeight: '700', color: colors.textPrimary }}>
+                                {pendingItem?.book}
+                                {pendingItem?.chapters ? ` ${pendingItem.chapters}` : ''}
+                            </Text>
+                            {' '}as complete, you need a journal entry covering this reading.
+                        </Text>
+
+                        <ScalePressable
+                            style={[styles.planConfirmPrimary, { backgroundColor: colors.accent }]}
+                            onPress={handleConfirmAddEntry}
+                        >
+                            <Ionicons name="add" size={18} color={colors.buttonPrimaryText} />
+                            <Text style={[styles.planConfirmPrimaryText, { color: colors.buttonPrimaryText }]}>
+                                Add Journal Entry
+                            </Text>
+                        </ScalePressable>
+
+                        <ScalePressable
+                            style={[styles.planConfirmSecondary, { backgroundColor: colors.backgroundSubtle }]}
+                            onPress={() => setPendingItem(null)}
+                        >
+                            <Text style={[styles.planConfirmSecondaryText, { color: colors.textSecondary }]}>
+                                Cancel
+                            </Text>
+                        </ScalePressable>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -778,6 +873,7 @@ export default function LibraryScreen() {
 
     // Study header state
     const [studyCount, setStudyCount] = useState(0);
+    const [studySortBy, setStudySortBy] = useState<StudySortBy>('recent'); // ← sort state
 
     // Plan header state
     const [planProgress, setPlanProgress] = useState(0);
@@ -799,9 +895,8 @@ export default function LibraryScreen() {
         setDropdownVisible(false);
     }, []);
 
-    useEffect(() => {
-        const subscription = DeviceEventEmitter.addListener('tab-press-top-library', () => { });
-        return () => subscription.remove();
+    const toggleStudySort = useCallback(() => {
+        setStudySortBy(prev => prev === 'recent' ? 'color' : 'recent');
     }, []);
 
     const activeLabel = SEGMENTS.find(s => s.key === activeSegment)?.label ?? '';
@@ -842,22 +937,20 @@ export default function LibraryScreen() {
             {/* ── Header Zone ───────────────────────────────────────────────── */}
             <View>
 
-                {/* Row 1: PixelPlay-style pill + section name + contextual action */}
+                {/* Row 1: pill + section name + contextual action */}
                 <View style={[styles.titleRow, { zIndex: 10 }]}>
                     <View style={styles.pillGroup}>
 
-                        {/* "Library" pill — the main tappable identity button */}
                         <ScalePressable
                             style={[styles.libraryPill, { backgroundColor: colors.backgroundSubtle }]}
                             onPress={toggleDropdown}
                         >
-                            <Ionicons name={activeIcon as any} size={25} color={colors.textMuted} />
+                            <Ionicons name={activeIcon as any} size={28} color={colors.textMuted} />
                             <Text style={[styles.libraryPillLabel, { color: colors.textPrimary }]}>
                                 {activeLabel}
                             </Text>
                         </ScalePressable>
 
-                        {/* Standalone chevron pill — matches PixelPlay's separate arrow */}
                         <ScalePressable
                             style={[styles.chevronPill, { backgroundColor: colors.backgroundSubtle }]}
                             onPress={toggleDropdown}
@@ -870,7 +963,7 @@ export default function LibraryScreen() {
                         </ScalePressable>
                     </View>
 
-                    {/* Study: count badge + add button */}
+                    {/* Study: sort button + count badge + add button */}
                     {activeSegment === 'study' && (
                         <View style={styles.titleActions}>
                             {studyCount > 0 && (
@@ -879,6 +972,26 @@ export default function LibraryScreen() {
                                         {studyCount}
                                     </Text>
                                 </View>
+                            )}
+                            {/* ── Color sort toggle ── */}
+                            {studyCount > 1 && (
+                                <ScalePressable
+                                    style={[
+                                        styles.sortButton,
+                                        {
+                                            backgroundColor: studySortBy === 'color'
+                                                ? colors.accent + '15'
+                                                : colors.backgroundSubtle,
+                                        }
+                                    ]}
+                                    onPress={toggleStudySort}
+                                >
+                                    <Ionicons
+                                        name="color-palette-outline"
+                                        size={20}
+                                        color={studySortBy === 'color' ? colors.accent : colors.textMuted}
+                                    />
+                                </ScalePressable>
                             )}
                             <ScalePressable
                                 style={[styles.addButton, { backgroundColor: colors.accent, shadowColor: colors.accent }]}
@@ -889,7 +1002,7 @@ export default function LibraryScreen() {
                         </View>
                     )}
 
-                    {/* Row 2: Floating overlay dropdown — appears anchored to the pill */}
+                    {/* Floating dropdown */}
                     {dropdownVisible && (
                         <View style={styles.dropdownOverlayContainer}>
                             <TouchableOpacity
@@ -911,7 +1024,7 @@ export default function LibraryScreen() {
                     )}
                 </View>
 
-                {/* Row 3: Journal sub-tabs (+ optional breadcrumb) */}
+                {/* Row 3: Journal sub-tabs */}
                 {activeSegment === 'journal' && (
                     <JournalSubTabs
                         viewMode={journalViewMode}
@@ -926,7 +1039,7 @@ export default function LibraryScreen() {
                 {/* Row 4: Journal search bar */}
                 {activeSegment === 'journal' &&
                     (journalViewMode === 'recent' || journalViewMode === 'bookDetail') && (
-                        <View style={[styles.searchContainer, { borderBottomColor: colors.border }]}>
+                        <View style={[styles.searchContainer, { borderBottomColor: colors.border, borderTopColor: colors.border }]}>
                             <TextInput
                                 style={[styles.searchInput, {
                                     backgroundColor: colors.searchBackground,
@@ -970,7 +1083,10 @@ export default function LibraryScreen() {
                     />
                 )}
                 {activeSegment === 'study' && (
-                    <StudyContent onCountChange={setStudyCount} />
+                    <StudyContent
+                        onCountChange={setStudyCount}
+                        sortBy={studySortBy}
+                    />
                 )}
                 {activeSegment === 'plan' && (
                     <PlanContent onProgressChange={setPlanProgress} />
@@ -1004,8 +1120,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 6,
     },
-
-    // Main "Library" pill — icon + bold label, rounded rectangle
     libraryPill: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1019,8 +1133,6 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         letterSpacing: -0.5,
     },
-
-    // Standalone chevron pill — mirrors PixelPlay's separate "▾" button
     chevronPill: {
         width: 32,
         height: 40,
@@ -1032,8 +1144,18 @@ const styles = StyleSheet.create({
     titleActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     studyCountBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 20 },
     studyCountText: { fontSize: 13, fontWeight: '700', letterSpacing: -0.3 },
+
+    // ── Study sort button ──────────────────────────────────────────
+    sortButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 14,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
     addButton: {
-        width: 46, height: 46, borderRadius: 23,
+        width: 46, height: 46, borderRadius: 16,
         justifyContent: 'center', alignItems: 'center',
         shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 10, elevation: 4,
     },
@@ -1097,7 +1219,6 @@ const styles = StyleSheet.create({
     breadcrumbCurrent: { fontSize: 14, fontWeight: '600' },
     subTabsRow: {
         flexDirection: 'row',
-        paddingHorizontal: Spacing.layout.screenPadding,
         position: 'relative',
     },
     subTabIndicator: {
@@ -1109,7 +1230,7 @@ const styles = StyleSheet.create({
     },
     subTab: {
         flex: 1,
-        paddingVertical: 12,
+        paddingVertical: 8,
         alignItems: 'center',
         zIndex: 1,
     },
@@ -1117,7 +1238,8 @@ const styles = StyleSheet.create({
     // ── Search bar ─────────────────────────────────────────────────
     searchContainer: {
         paddingHorizontal: Spacing.layout.screenPadding,
-        paddingVertical: 10,
+        paddingVertical: 15,
+        borderTopWidth: 0.5,
         borderBottomWidth: 0.5,
         flexDirection: 'row',
         alignItems: 'center',
@@ -1181,7 +1303,7 @@ const styles = StyleSheet.create({
 
     // ── Plan ───────────────────────────────────────────────────────
     planLegendHeader: { marginBottom: Spacing.sm },
-    planListContent: { padding: Spacing.layout.screenPadding, paddingBottom: 120 },
+    planListContent: { paddingHorizontal: Spacing.layout.screenPadding, paddingTop: 0, paddingBottom: 120 },
     planSectionHeader: {
         marginTop: Spacing.lg, marginBottom: Spacing.sm,
         paddingVertical: 10, paddingHorizontal: 12,
@@ -1193,8 +1315,6 @@ const styles = StyleSheet.create({
     planSectionTitle: { fontSize: 12, fontWeight: '800', letterSpacing: 1, flexShrink: 1 },
     planSectionBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
     planSectionProgress: { fontSize: 10, fontWeight: '800' },
-    miniProgressTrack: { width: 56, height: 6, borderRadius: 3, overflow: 'hidden' },
-    miniProgressFill: { height: '100%', borderRadius: 3 },
     planCard: { borderRadius: 16, borderWidth: 1, marginBottom: Spacing.xs, padding: 16 },
     planCardContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     planBookInfo: { flex: 1, gap: 2 },
@@ -1202,11 +1322,77 @@ const styles = StyleSheet.create({
     planBookName: { fontSize: 17, fontWeight: '700', letterSpacing: -0.3 },
     planChapters: { fontSize: 14, letterSpacing: 0.1 },
     planCheckbox: { width: 26, height: 26, borderRadius: 8, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
-    keyBadge: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6, paddingVertical: 5, borderRadius: 8, width: 24, height: 24 },
     redDiamond: { width: 8, height: 8, transform: [{ rotate: '45deg' }] },
     blueDot: { width: 8, height: 8, borderRadius: 4 },
     planLegendContainer: { marginTop: Spacing.xl, gap: Spacing.md, padding: Spacing.md, borderRadius: 12 },
     planLegendItem: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.md },
     planLegendText: { fontSize: 13, flex: 1, lineHeight: 18 },
     planFootnote: { fontSize: 10, lineHeight: 14, fontStyle: 'italic' },
+
+    // ── Plan redirect explanation modal ────────────────────────────
+    planConfirmOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.55)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 28,
+    },
+    planConfirmCard: {
+        width: '100%',
+        borderRadius: 28,
+        padding: 28,
+        gap: 10,
+        borderWidth: 1,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 16 },
+        shadowOpacity: 0.18,
+        shadowRadius: 24,
+        elevation: 10,
+    },
+    planConfirmIconWrap: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 4,
+    },
+    planConfirmTitle: {
+        fontSize: 20,
+        fontWeight: '800',
+        letterSpacing: -0.5,
+        textAlign: 'center',
+    },
+    planConfirmBody: {
+        fontSize: 14,
+        lineHeight: 22,
+        textAlign: 'center',
+        opacity: 0.85,
+        marginBottom: 6,
+    },
+    planConfirmPrimary: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingVertical: 14,
+        borderRadius: 16,
+        width: '100%',
+        justifyContent: 'center',
+        marginTop: 4,
+    },
+    planConfirmPrimaryText: {
+        fontSize: 16,
+        fontWeight: '700',
+    },
+    planConfirmSecondary: {
+        paddingVertical: 12,
+        borderRadius: 16,
+        width: '100%',
+        alignItems: 'center',
+    },
+    planConfirmSecondaryText: {
+        fontSize: 15,
+        fontWeight: '600',
+    },
 });

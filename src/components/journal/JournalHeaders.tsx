@@ -7,10 +7,7 @@ export const DateGroupHeader = React.memo(({ title }: { title: string }) => {
     const { colors } = useTheme();
     return (
         <View style={styles.dateGroup}>
-            <View style={styles.dateGroupContent}>
-                <View style={[styles.dateGroupDot, { backgroundColor: colors.accent }]} />
-                <Text style={[styles.dateGroupTitle, { color: colors.textPrimary }]}>{title}</Text>
-            </View>
+            <Text style={[styles.dateGroupTitle, { color: colors.textTertiary }]}>{title}</Text>
         </View>
     );
 });
@@ -45,25 +42,15 @@ export const TopicHeader = React.memo(({
 
 const styles = StyleSheet.create({
     dateGroup: {
-        marginTop: 24,
-        marginBottom: 16,
-    },
-    dateGroupContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-    },
-    dateGroupDot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
+        marginTop: 8,
+        marginBottom: 10,
+        paddingHorizontal: 4,
     },
     dateGroupTitle: {
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: '700',
-        letterSpacing: 0.5,
+        letterSpacing: 1,
         textTransform: 'uppercase',
-        opacity: 0.5,
     },
     archiveHeader: {
         marginTop: 24,

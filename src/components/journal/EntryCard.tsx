@@ -36,8 +36,9 @@ export const EntryCard = React.memo(({ entry, onEntryPress }: EntryCardProps) =>
                             </View>
                         )}
                     </View>
-                    <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+                    <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
                 </View>
+
                 <HyperlinkedText
                     style={[
                         styles.entryPreview,
@@ -45,12 +46,13 @@ export const EntryCard = React.memo(({ entry, onEntryPress }: EntryCardProps) =>
                             color: colors.textPrimary,
                             fontSize: dynamic.fontSize,
                             lineHeight: dynamic.lineHeight,
-                            marginBottom: 16
+                            marginBottom: 10,
                         }
                     ]}
                     numberOfLines={3}
                     text={previewText}
                 />
+
                 <View style={styles.entryFooter}>
                     <View style={styles.reflectionIndicator}>
                         {getAnsweredStatus(entry).map((answered, idx) => (
@@ -59,7 +61,7 @@ export const EntryCard = React.memo(({ entry, onEntryPress }: EntryCardProps) =>
                                 style={[
                                     styles.reflectionDot,
                                     { backgroundColor: colors.border },
-                                    answered && [styles.reflectionDotActive, { backgroundColor: colors.accentSecondary }]
+                                    answered && { backgroundColor: colors.accentSecondary }
                                 ]}
                             />
                         ))}
@@ -110,14 +112,11 @@ const styles = StyleSheet.create({
     },
     reflectionIndicator: {
         flexDirection: 'row',
-        gap: 4,
+        gap: 5,
     },
     reflectionDot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-    },
-    reflectionDotActive: {
-        // color set via style prop
+        width: 8,
+        height: 8,
+        borderRadius: 4,
     },
 });

@@ -584,10 +584,13 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
                     renderItem={renderListItem}
                     keyExtractor={(item) => item.id.toString()}
                     contentContainerStyle={[
-                        styles.scrollContent,
+                        {
+                            paddingHorizontal: 20,
+                            paddingBottom: 120,
+                            paddingTop: (viewMode === 'recent' || viewMode === 'bookDetail') ? 0 : 20,
+                        },
                         getFlatListData.length === 0 && styles.emptyContainer
                     ]}
-
                     showsVerticalScrollIndicator={false}
                     initialNumToRender={10}
                     maxToRenderPerBatch={10}
@@ -704,7 +707,8 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     scrollContent: {
-        padding: 20,
+        paddingHorizontal: 20,
+        paddingTop: 20,        // ← was part of padding: 20
         paddingBottom: 120,
     },
     emptyContainer: {
