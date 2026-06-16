@@ -10,7 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import firestore, { Filter } from '@react-native-firebase/firestore';
 import { Button } from '@/src/components/Button';
-import { LoadingView } from '@/src/components/LoadingView';
+import { Skeleton } from '@/src/components/Skeleton';
 import { Avatar } from './[id]';
 
 export default function GroupsScreen() {
@@ -86,14 +86,6 @@ export default function GroupsScreen() {
         return unsubscribeUser;
     }, [user]);
 
-    if (loading || checkingGroups) {
-        return (
-            <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
-                <LoadingView size={40} />
-            </View>
-        );
-    }
-
     if (!user) {
         return (
             <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -128,32 +120,54 @@ export default function GroupsScreen() {
         );
     }
 
-    // If user has joined groups
-    if (joinedGroups.length > 0) {
-        return (
-            <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-                {isOffline && (
-                    <View style={[styles.offlineBanner, { backgroundColor: colors.border }]}>
-                        <Ionicons name="cloud-offline-outline" size={14} color={colors.textSecondary} />
-                        <Text style={[styles.offlineBannerText, { color: colors.textSecondary }]}>
-                            You're offline — showing cached groups
-                        </Text>
+    const isLoading = loading || checkingGroups;
+
+    return (
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+            {(isOffline || isLoading) && (
+                <View style={[styles.offlineBanner, { backgroundColor: colors.border }]}>
+                    <Ionicons name={isOffline ? "cloud-offline-outline" : "sync-outline"} size={14} color={colors.textSecondary} />
+                    <Text style={[styles.offlineBannerText, { color: colors.textSecondary }]}>
+                        {isOffline ? "You're offline — showing cached groups" : "Syncing your groups..."}
+                    </Text>
+                </View>
+            )}
+            <ScrollView
+                ref={scrollViewRef}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+            >
+                <View style={styles.header}>
+                    <View style={styles.headerTitleRow}>
+                        <Text style={[styles.title, { color: colors.textPrimary }]}>My Groups</Text>
+                        <ScalePressable onPress={() => router.push('/(tabs)/groups/join' as any)}>
+                            <Ionicons name="add" size={28} color={colors.textSecondary} />
+                        </ScalePressable>
                     </View>
-                )}
-                <ScrollView
-                    ref={scrollViewRef}
-                    contentContainerStyle={styles.scrollContent}
-                    showsVerticalScrollIndicator={false}
-                >
-                    <View style={styles.header}>
-                        <View style={styles.headerTitleRow}>
-                            <Text style={[styles.title, { color: colors.textPrimary }]}>My Groups</Text>
-                            <ScalePressable onPress={() => router.push('/(tabs)/groups/join' as any)}>
-                                <Ionicons name="add" size={28} color={colors.textSecondary} />
-                            </ScalePressable>
+                </View>
+
+                {isLoading ? (
+                    // ── Skeleton Loader ──
+                    [1, 2, 3].map((i) => (
+                        <View key={i} style={[styles.groupCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder, opacity: 0.6 }]}>
+                            <View style={styles.groupCardTop}>
+                                <Skeleton circle height={48} width={48} />
+                                <View style={styles.groupInfo}>
+                                    <Skeleton width="60%" height={20} borderRadius={4} />
+                                    <View style={{ height: 4 }} />
+                                    <Skeleton width="90%" height={14} borderRadius={4} />
+                                </View>
+                            </View>
+                            <View style={[styles.groupCardDivider, { backgroundColor: colors.borderSubtle + '30' }]} />
+                            <View style={styles.groupCardBottom}>
+                                <Skeleton width={60} height={16} borderRadius={4} />
+                                <Skeleton width={40} height={20} borderRadius={8} />
+                            </View>
                         </View>
-                    </View>
-                    {joinedGroups.map((group) => {
+                    ))
+                ) : joinedGroups.length > 0 ? (
+                    // ── Group Cards ──
+                    joinedGroups.map((group) => {
                         const today = new Date();
                         const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
                         const readTodayCount = group.readTodayDate === todayStr ? (group.readTodayCount || 0) : 0;
@@ -204,57 +218,35 @@ export default function GroupsScreen() {
                                 </View>
                             </ScalePressable>
                         );
-                    })}
-                </ScrollView>
-            </SafeAreaView>
-        );
-    }
+                    })
+                ) : (
+                    // ── Empty State ──
+                    <>
+                        <View style={styles.welcomeHeader}>
+                            <Text style={[styles.label, { color: colors.accentSecondary }]}>HELLO, {displayName?.toUpperCase() || 'READER'}</Text>
+                            <Text style={[styles.subtitle, { color: colors.textSecondary, textAlign: 'left', paddingHorizontal: 0 }]}>
+                                Flying solo, I see?
+                            </Text>
+                        </View>
 
-    return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-            {isOffline && (
-                <View style={[styles.offlineBanner, { backgroundColor: colors.border }]}>
-                    <Ionicons name="cloud-offline-outline" size={14} color={colors.textSecondary} />
-                    <Text style={[styles.offlineBannerText, { color: colors.textSecondary }]}>
-                        You're offline
-                    </Text>
-                </View>
-            )}
-            <ScrollView
-                ref={scrollViewRef}
-                contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
-            >
-                <View style={styles.header}>
-                    <View style={styles.headerTitleRow}>
-                        <Text style={[styles.title, { color: colors.textPrimary }]}>Groups</Text>
-                    </View>
-                </View>
+                        <View style={[styles.welcomeCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
+                            <View style={[styles.welcomeIconIconWrap, { backgroundColor: colors.accentSecondaryLight + '20' }]}>
+                                <Ionicons name="add-outline" size={34} color={colors.accentSecondary} />
+                            </View>
+                            <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>
+                                Accountability is a team sport. Join a group or create one so we can make sure you're actually reading.
+                            </Text>
 
-                <View style={styles.welcomeHeader}>
-                    <Text style={[styles.label, { color: colors.accentSecondary }]}>HELLO, {displayName?.toUpperCase() || 'READER'}</Text>
-                    <Text style={[styles.subtitle, { color: colors.textSecondary, textAlign: 'left', paddingHorizontal: 0 }]}>
-                        Flying solo, I see?
-                    </Text>
-                </View>
-
-                <View style={[styles.welcomeCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
-                    <View style={[styles.welcomeIconIconWrap, { backgroundColor: colors.accentSecondaryLight + '20' }]}>
-                        <Ionicons name="add-outline" size={34} color={colors.accentSecondary} />
-                    </View>
-                    {/* <Text style={[styles.emptyStateTitle, { color: colors.textPrimary }]}>No groups yet</Text> */}
-                    <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>
-                        Accountability is a team sport. Join a group or create one so we can make sure you're actually reading.
-                    </Text>
-
-                    <Button
-                        label="Enter Group Code"
-                        variant="primary"
-                        size="lg"
-                        onPress={() => router.push('/(tabs)/groups/join' as any)}
-                        style={{ marginTop: Spacing.lg, width: '100%' }}
-                    />
-                </View>
+                            <Button
+                                label="Enter Group Code"
+                                variant="primary"
+                                size="lg"
+                                onPress={() => router.push('/(tabs)/groups/join' as any)}
+                                style={{ marginTop: Spacing.lg, width: '100%' }}
+                            />
+                        </View>
+                    </>
+                )}
             </ScrollView>
         </SafeAreaView>
     );
