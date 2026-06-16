@@ -34,8 +34,8 @@ export const TopicCard = React.memo(({ item, onEntryPress, handleToggleTopic }: 
                     <View style={styles.entryHeaderLeft}>
                         <Text style={[styles.entryDate, { color: colors.textTertiary }]}>{formatDate(item.created_at)}</Text>
                         <ScalePressable onPress={() => onEntryPress(item)}>
-                            <View style={[styles.refBadge, { backgroundColor: colors.accentSecondary + '12' }]}>
-                                <Text style={[styles.entryScripture, { color: colors.accentSecondary }]}>
+                            <View style={[styles.refBadge, { backgroundColor: colors.accentSecondary + '15' }]}>
+                                <Text style={[styles.entryScripture, { color: colors.accentSecondary + 'A5' }]}>
                                     {item.book_name} {item.chapter_start}{item.chapter_end && item.chapter_end !== item.chapter_start ? `-${item.chapter_end}` : ''}
                                 </Text>
                             </View>
@@ -122,12 +122,12 @@ const styles = StyleSheet.create({
     refBadge: {
         paddingHorizontal: 8,
         paddingVertical: 2,
-        borderRadius: 4,
+        borderRadius: 8,
     },
     entryScripture: {
-        fontSize: 14,
-        fontWeight: '500',
-        letterSpacing: 0.2,
+        fontSize: 10,
+        fontWeight: '600',
+        letterSpacing: 0.5,
     },
     entryPreview: {
         fontSize: 16,

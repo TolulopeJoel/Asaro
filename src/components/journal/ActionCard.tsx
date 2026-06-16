@@ -30,8 +30,8 @@ export const ActionCard = React.memo(({ item, onEntryPress, handleTogglePin }: A
                                 console.error(e);
                             }
                         }}>
-                            <View style={[styles.refBadge, { backgroundColor: colors.accent + '12' }]}>
-                                <Text style={[styles.entryScripture, { color: colors.accent }]}>
+                            <View style={[styles.refBadge, { backgroundColor: colors.accent + '15' }]}>
+                                <Text style={[styles.entryScripture, { color: colors.accent + 'A5' }]}>
                                     {item.book_name} {item.chapter_start}{item.chapter_end && item.chapter_end !== item.chapter_start ? `-${item.chapter_end}` : ''}
                                 </Text>
                             </View>
@@ -92,12 +92,12 @@ const styles = StyleSheet.create({
     refBadge: {
         paddingHorizontal: 8,
         paddingVertical: 2,
-        borderRadius: 4,
+        borderRadius: 8,
     },
     entryScripture: {
-        fontSize: 14,
-        fontWeight: '500',
-        letterSpacing: 0.2,
+        fontSize: 10,
+        fontWeight: '600',
+        letterSpacing: 0.5,
     },
     entryPreview: {
         fontSize: 16,

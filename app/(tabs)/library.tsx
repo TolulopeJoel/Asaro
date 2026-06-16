@@ -242,27 +242,14 @@ const ReadingCard = React.memo(({
         >
             <View style={styles.planCardContent}>
                 <View style={styles.planBookInfo}>
-                    <View style={styles.planBookHeader}>
-                        {item.isKey && item.id <= 286 && (
-                            <View style={[styles.redDiamond, { backgroundColor: '#E53935' }]} />
-                        )}
-                        {item.isKey && item.id > 286 && (
-                            <View style={[styles.blueDot, { backgroundColor: '#1E88E5' }]} />
-                        )}
+                    <View style={[styles.refBadge, { backgroundColor: colors.accent + '15', alignSelf: 'flex-start', marginBottom: 6 }]}>
                         <Text style={[
-                            styles.planBookName,
-                            { color: isCompleted ? colors.textTertiary : colors.textPrimary },
-                            isCompleted && { textDecorationLine: 'line-through' }
+                            styles.refText,
+                            { color: colors.accent + 'A5' }
                         ]}>
-                            {item.book}
+                            {item.book} {item.chapters || "Full Book"}
                         </Text>
                     </View>
-                    <Text style={[
-                        styles.planChapters,
-                        { color: isCompleted ? colors.textMuted : colors.textSecondary }
-                    ]}>
-                        {item.chapters || "Full Book"}
-                    </Text>
                 </View>
 
                 <View style={[
@@ -1143,6 +1130,16 @@ const styles = StyleSheet.create({
 
     titleActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     studyCountBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 20 },
+    refBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 8,
+    },
+    refText: {
+        fontSize: 10,
+        fontWeight: '600',
+        letterSpacing: 0.5,
+    },
     studyCountText: { fontSize: 13, fontWeight: '700', letterSpacing: -0.3 },
 
     // ── Study sort button ──────────────────────────────────────────

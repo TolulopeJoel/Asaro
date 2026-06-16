@@ -27,7 +27,7 @@ export const BookCard = React.memo(({ book, onNavigate }: BookCardProps) => {
                         <Text style={[styles.bookCardName, { color: colors.textPrimary }]}>{book.name}</Text>
                     </View>
                     <View style={[styles.entryCountBadge, { backgroundColor: colors.accent + '15' }]}>
-                        <Text style={[styles.entryCountText, { color: colors.accent }]}>
+                        <Text style={[styles.entryCountText, { color: colors.accent + 'A5' }]}>
                             {book.entryCount} {book.entryCount === 1 ? 'entry' : 'entries'}
                         </Text>
                     </View>
@@ -67,14 +67,13 @@ const styles = StyleSheet.create({
         letterSpacing: -0.3,
     },
     entryCountBadge: {
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 12,
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 8,
     },
     entryCountText: {
-        fontSize: 11,
-        fontWeight: '700',
-        textTransform: 'uppercase',
+        fontSize: 10,
+        fontWeight: '600',
         letterSpacing: 0.5,
     },
 });

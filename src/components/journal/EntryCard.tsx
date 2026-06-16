@@ -29,8 +29,8 @@ export const EntryCard = React.memo(({ entry, onEntryPress }: EntryCardProps) =>
                             {formatDate(entry.created_at)}
                         </Text>
                         {entry.book_name && (
-                            <View style={[styles.refBadge, { backgroundColor: colors.accent + '12' }]}>
-                                <Text style={[styles.entryScripture, { color: colors.accent }]}>
+                            <View style={[styles.refBadge, { backgroundColor: colors.accent + '15' }]}>
+                                <Text style={[styles.entryScripture, { color: colors.accent + 'A5' }]}>
                                     {entry.book_name} {getChapterText(entry)}
                                 </Text>
                             </View>
@@ -96,12 +96,13 @@ const styles = StyleSheet.create({
     },
     refBadge: {
         paddingHorizontal: 8,
-        paddingVertical: 4,
+        paddingVertical: 2,
         borderRadius: 8,
     },
     entryScripture: {
-        fontSize: 12,
-        fontWeight: '700',
+        fontSize: 10,
+        fontWeight: '600',
+        letterSpacing: 0.5,
     },
     entryPreview: {
         fontWeight: '500',
