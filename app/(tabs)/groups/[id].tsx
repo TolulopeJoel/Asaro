@@ -22,6 +22,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { LoadingView } from '@/src/components/LoadingView';
+import { Skeleton } from '@/src/components/Skeleton';
 import { Button } from '@/src/components/Button';
 import { HyperlinkedText } from '@/src/components/HyperlinkedText';
 
@@ -1038,16 +1039,8 @@ export default function GroupDetailScreen() {
         };
     }, [members, user?.uid, today]);
 
-    if (loading) {
-        return (
-            <ScrollView
-                ref={scrollViewRef}
-                style={[styles.container, { backgroundColor: colors.background }]}
-                contentContainerStyle={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <LoadingView size={40} />
-            </ScrollView>
-        );
-    }
+    // We no longer return early for loading, to keep the UI stable.
+    const isLoading = loading;
 
     const sortedMembers = members
         .filter(m => m.lastReadDate === today)
@@ -1080,9 +1073,17 @@ export default function GroupDetailScreen() {
             >
                 <View style={[styles.header, { paddingBottom: Spacing.sm }]}>
                     <View style={styles.headerLeft}>
-                        <Avatar id={groupId} name={groupData?.name} url={groupData?.photoURL} size={40} radius={12} />
+                        {isLoading ? (
+                            <Skeleton circle height={40} width={40} borderRadius={12} />
+                        ) : (
+                            <Avatar id={groupId} name={groupData?.name} url={groupData?.photoURL} size={40} radius={12} />
+                        )}
                         <View style={styles.titleContainer}>
-                            <Text style={[styles.title, { color: colors.textPrimary }]}>{groupData?.name || 'Loading...'}</Text>
+                            {isLoading ? (
+                                <Skeleton width={120} height={24} borderRadius={4} style={{ marginLeft: Spacing.sm }} />
+                            ) : (
+                                <Text style={[styles.title, { color: colors.textPrimary }]}>{groupData?.name || 'Loading...'}</Text>
+                            )}
                         </View>
                     </View>
                     <View style={styles.headerRight}>
@@ -1106,7 +1107,17 @@ export default function GroupDetailScreen() {
                     </View>
                 </View>
 
-                {sortedMembers.length > 0 ? (
+                {isLoading ? (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.memberList}>
+                        {[1, 2, 3, 4].map(i => (
+                            <View key={i} style={[styles.memberItem, { opacity: 0.5 }]}>
+                                <Skeleton circle height={52} width={52} />
+                                <View style={{ height: 8 }} />
+                                <Skeleton width={40} height={12} borderRadius={4} />
+                            </View>
+                        ))}
+                    </ScrollView>
+                ) : sortedMembers.length > 0 ? (
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.memberList}>
                         {sortedMembers.map((member) => (
                             <ScalePressable
@@ -1196,7 +1207,22 @@ export default function GroupDetailScreen() {
 
                         <View style={styles.feedChainContainer}>
                             <View style={[styles.feedChainLine, { backgroundColor: colors.border }]} />
-                            {feedItems.length > 0 ? feedItems.map((item: FeedItem) => {
+                            {isLoading ? (
+                                // ── Feed Skeleton ──
+                                [1, 2, 3].map(i => (
+                                    <View key={i} style={[styles.activityCard, { opacity: 0.5 }]}>
+                                        <Skeleton circle height={44} width={44} />
+                                        <View style={styles.activityContent}>
+                                            <View style={styles.activityHeader}>
+                                                <Skeleton width="40%" height={16} borderRadius={4} />
+                                                <Skeleton width="20%" height={12} borderRadius={4} />
+                                            </View>
+                                            <View style={{ height: 6 }} />
+                                            <Skeleton width="80%" height={14} borderRadius={4} />
+                                        </View>
+                                    </View>
+                                ))
+                            ) : feedItems.length > 0 ? feedItems.map((item: FeedItem) => {
 
                                 if (item.type === 'separator') {
                                     return (
@@ -1404,10 +1430,16 @@ export default function GroupDetailScreen() {
                             <View style={styles.heroTop}>
                                 <View style={styles.heroMain}>
                                     <View style={styles.heroValRow}>
-                                        <Text style={[styles.heroVal, { color: colors.accentSecondary }]}>
-                                            {accountabilityData.readTodayCount} / {accountabilityData.totalMembers}
-                                        </Text>
-                                        <Ionicons name="people" size={20} color={colors.accentSecondary} />
+                                        {isLoading ? (
+                                            <Skeleton width={100} height={34} borderRadius={8} />
+                                        ) : (
+                                            <>
+                                                <Text style={[styles.heroVal, { color: colors.accentSecondary }]}>
+                                                    {accountabilityData.readTodayCount} / {accountabilityData.totalMembers}
+                                                </Text>
+                                                <Ionicons name="people" size={20} color={colors.accentSecondary} />
+                                            </>
+                                        )}
                                     </View>
                                     <Text style={[styles.heroLabel, { color: colors.textSecondary }]}>People read today</Text>
                                 </View>
@@ -1415,20 +1447,32 @@ export default function GroupDetailScreen() {
                                     <View style={styles.miniStat}>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
                                             <Ionicons name="bonfire" size={14} color={colors.accent} />
-                                            <Text style={[styles.miniStatVal, { color: colors.accent }]}>{groupStreak}</Text>
+                                            {isLoading ? (
+                                                <Skeleton width={20} height={16} borderRadius={4} />
+                                            ) : (
+                                                <Text style={[styles.miniStatVal, { color: colors.accent }]}>{groupStreak}</Text>
+                                            )}
                                         </View>
                                         <Text style={[styles.miniStatLabel, { color: colors.textTertiary }]}>Our streak</Text>
                                     </View>
                                 </View>
                             </View>
                             <View style={[styles.progressTrack, { backgroundColor: colors.borderSubtle }]}>
-                                <Animated.View style={[styles.progressBar, { width: `${accountabilityData.groupProgressPercent}%`, backgroundColor: colors.accentSecondary }]} />
+                                {isLoading ? (
+                                    <View style={[styles.progressBar, { width: '30%', backgroundColor: colors.accentSecondary, opacity: 0.3 }]} />
+                                ) : (
+                                    <Animated.View style={[styles.progressBar, { width: `${accountabilityData.groupProgressPercent}%`, backgroundColor: colors.accentSecondary }]} />
+                                )}
                             </View>
-                            <Text style={[styles.heroHint, { color: colors.textTertiary }]}>
-                                {accountabilityData.groupProgressPercent === 100
-                                    ? 'A good day! Everyone is up to date. 🎉'
-                                    : `Encourage the remaining ${accountabilityData.totalMembers - accountabilityData.readTodayCount}`}
-                            </Text>
+                            {isLoading ? (
+                                <Skeleton width="70%" height={12} borderRadius={4} style={{ marginTop: 8 }} />
+                            ) : (
+                                <Text style={[styles.heroHint, { color: colors.textTertiary }]}>
+                                    {accountabilityData.groupProgressPercent === 100
+                                        ? 'A good day! Everyone is up to date. 🎉'
+                                        : `Encourage the remaining ${accountabilityData.totalMembers - accountabilityData.readTodayCount}`}
+                                </Text>
+                            )}
                         </View>
 
                         {accountabilityData.upToDate.length > 0 && (
