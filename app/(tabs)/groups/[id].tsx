@@ -1413,7 +1413,10 @@ export default function GroupDetailScreen() {
                                 </View>
                                 <View style={styles.heroStats}>
                                     <View style={styles.miniStat}>
-                                        <Text style={[styles.miniStatVal, { color: colors.accent }]}>🔥 {groupStreak}</Text>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                                            <Ionicons name="bonfire" size={14} color={colors.accent} />
+                                            <Text style={[styles.miniStatVal, { color: colors.accent }]}>{groupStreak}</Text>
+                                        </View>
                                         <Text style={[styles.miniStatLabel, { color: colors.textTertiary }]}>Our streak</Text>
                                     </View>
                                 </View>

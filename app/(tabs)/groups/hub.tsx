@@ -181,7 +181,10 @@ export default function GroupsScreen() {
                                 <View style={styles.groupCardBottom}>
                                     <View style={styles.groupStatsRow}>
                                         <View style={styles.groupStatItem}>
-                                            <Text style={[styles.groupStatValue, { color: colors.accent }]}>🔥 {groupStreak}</Text>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                                                <Ionicons name="bonfire" size={14} color={colors.accent} />
+                                                <Text style={[styles.groupStatValue, { color: colors.accent }]}>{groupStreak}</Text>
+                                            </View>
                                         </View>
                                         <View style={[styles.groupStatDivider, { backgroundColor: colors.borderSubtle }]} />
                                     </View>
