@@ -29,6 +29,7 @@ const REFLECTION_QUESTIONS = [
     'How can I realistically apply this in my life?',
     'How can I use these verses to help others?',
     'What would I like to study further?',
+    'Additional Thoughts',
 ];
 
 const ACTION_QUESTION_INDEX = 2;
@@ -346,12 +347,13 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
             entry.reflection_2,
             entry.reflection_4,
             entry.study_further,
+            entry.notes,
         ].filter(r => r && r.trim().length > 0);
         const hasActions = entry.action_items?.some(
             item => item.action.trim() || item.motivation.trim()
         );
         return textReflections.length > 0 || !!hasActions;
-    }, [entry.reflection_1, entry.reflection_2, entry.reflection_4, entry.study_further, entry.action_items]);
+    }, [entry.reflection_1, entry.reflection_2, entry.reflection_4, entry.study_further, entry.action_items, entry.notes]);
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -392,21 +394,12 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                                 entry.reflection_3,
                                 entry.reflection_4,
                                 entry.study_further,
+                                entry.notes,
                             ].map((reflection, index) => renderReflection(reflection, index))}
                         </View>
                     ) : (
                         <View style={[styles.emptyState, { borderLeftColor: colors.border }]}>
                             <Text style={[styles.emptyText, { color: colors.textTertiary }]}>awaiting your reflection</Text>
-                        </View>
-                    )}
-
-                    {/* Notes with unique design */}
-                    {entry.notes && entry.notes.trim() && (
-                        <View style={[styles.notesSection, { borderLeftColor: colors.accentSecondary }]}>
-                            <Text style={[styles.notesTitle, { color: colors.accent }]}>Additional Thoughts</Text>
-                            <View style={[styles.notesContent, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
-                                <HyperlinkedText style={[styles.notesText, { color: colors.textPrimary }]} text={entry.notes.trim()} />
-                            </View>
                         </View>
                     )}
                 </View>
@@ -573,28 +566,6 @@ const styles = StyleSheet.create({
         fontWeight: Typography.weight.regular,
         letterSpacing: Typography.letterSpacing.wider,
         fontStyle: 'italic',
-    },
-    notesSection: {
-        marginTop: Spacing.xxxl,
-        paddingLeft: Spacing.lg,
-        borderLeftWidth: 3,
-    },
-    notesContent: {
-        borderRadius: Spacing.borderRadius.md,
-        padding: Spacing.md,
-        borderWidth: 1,
-    },
-    notesTitle: {
-        fontSize: Typography.size.sm + 1,
-        fontWeight: Typography.weight.medium,
-        letterSpacing: Typography.letterSpacing.normal,
-        marginBottom: Spacing.md,
-    },
-    notesText: {
-        fontSize: Typography.size.lg - 1,
-        lineHeight: Typography.lineHeight.xl,
-        fontWeight: Typography.weight.regular,
-        letterSpacing: Typography.letterSpacing.normal,
     },
     floatingActions: {
         marginHorizontal: Spacing.lg + Spacing.xs,
