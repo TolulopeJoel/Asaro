@@ -93,7 +93,7 @@ export const StudyReminders: React.FC<StudyRemindersProps> = React.memo(({ onEnt
     return (
         <View style={styles.container}>
             <View style={styles.sectionHeaderRow}>
-                <Ionicons name="bookmark" size={14} color={colors.accent} />
+                <Ionicons name="bookmarks" size={14} color={colors.accent} />
                 <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
                     TOPICS TO STUDY FURTHER
                 </Text>

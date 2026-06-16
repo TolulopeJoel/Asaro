@@ -115,7 +115,7 @@ export const Flashback: React.FC<FlashbackProps> = React.memo(({ onEntryPress, f
         >
             <View style={styles.header}>
                 <View style={styles.headerTitleRow}>
-                    <Ionicons name="time" size={14} color={colors.accentSecondary} />
+                    <Ionicons name="folder-open" size={14} color={colors.accentSecondary} />
                     <Text style={[styles.headerTitle, { color: colors.textSecondary }]}>
                         {getTitle().toUpperCase()}
                     </Text>

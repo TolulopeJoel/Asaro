@@ -55,7 +55,7 @@ type PlanListDataItem =
 
 const SEGMENTS: { key: Segment; label: string; icon: string }[] = [
     { key: 'journal', label: 'Journal', icon: 'journal-outline' },
-    { key: 'study', label: 'Study', icon: 'book-outline' },
+    { key: 'study', label: 'Study', icon: 'reader-outline' },
     { key: 'plan', label: 'Plan', icon: 'map-outline' },
 ];
 
