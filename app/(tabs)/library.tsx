@@ -242,14 +242,27 @@ const ReadingCard = React.memo(({
         >
             <View style={styles.planCardContent}>
                 <View style={styles.planBookInfo}>
-                    <View style={[styles.refBadge, { backgroundColor: colors.accent + '15', alignSelf: 'flex-start', marginBottom: 6 }]}>
+                    <View style={styles.planBookHeader}>
+                        {item.isKey && item.id <= 286 && (
+                            <View style={[styles.redDiamond, { backgroundColor: '#E53935' }]} />
+                        )}
+                        {item.isKey && item.id > 286 && (
+                            <View style={[styles.blueDot, { backgroundColor: '#1E88E5' }]} />
+                        )}
                         <Text style={[
-                            styles.refText,
-                            { color: colors.accent + 'A5' }
+                            styles.planBookName,
+                            { color: isCompleted ? colors.textTertiary : colors.textPrimary },
+                            isCompleted && { textDecorationLine: 'line-through' }
                         ]}>
-                            {item.book} {item.chapters || "Full Book"}
+                            {item.book}
                         </Text>
                     </View>
+                    <Text style={[
+                        styles.planChapters,
+                        { color: isCompleted ? colors.textMuted : colors.textSecondary }
+                    ]}>
+                        {item.chapters || "Full Book"}
+                    </Text>
                 </View>
 
                 <View style={[
