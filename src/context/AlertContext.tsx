@@ -4,6 +4,7 @@ export interface AlertButton {
     text: string;
     onPress?: () => void;
     style?: 'default' | 'cancel' | 'destructive';
+    icon?: string;
 }
 
 export interface AlertOptions {
@@ -11,6 +12,9 @@ export interface AlertOptions {
     message: string;
     buttons?: AlertButton[];
     cancelable?: boolean;
+    icon?: string;
+    iconBackground?: string;
+    iconColor?: string;
 }
 
 interface AlertContextType {

@@ -44,6 +44,7 @@ import { getStudyTopics, updateStudyTopic, StudyTopic } from '@/src/data/databas
 // Plan imports
 import { READING_PLAN_DATA, ReadingItem } from '@/src/data/readingPlanData';
 import { getReadingProgress, toggleReadingItem, checkEntryCoversChapters } from '@/src/data/database';
+import { useAlert } from '@/src/context/AlertContext';
 import * as WebBrowser from 'expo-web-browser';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -536,7 +537,7 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: number) => vo
     const [progress, setProgress] = useState(0);
     const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
     const [isInitialLoad, setIsInitialLoad] = useState(true);
-    const [pendingItem, setPendingItem] = useState<ReadingItem | null>(null); // ← redirect explanation
+    const { showAlert } = useAlert();
     const flatListRef = useRef<FlatList>(null);
 
     const sectionData = React.useMemo(() => {
@@ -608,8 +609,28 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: number) => vo
                 setCompletedItems(newCompleted);
                 updateProgress(newCompleted);
             } else {
-                // ── Show explanation modal instead of silently navigating ──
-                setPendingItem(item);
+                const book = item.book;
+                const chapters = item.chapters;
+                showAlert({
+                    title: 'Entry Required',
+                    message: `To mark ${book}${chapters ? ` ${chapters}` : ''} as complete, you need an entry covering this reading.`,
+                    icon: 'journal-outline',
+                    buttons: [
+                        {
+                            text: 'Add Entry',
+                            icon: 'add',
+                            onPress: () => router.push({
+                                pathname: '/addEntry',
+                                params: {
+                                    readingItemId: item.id,
+                                    bookName: book,
+                                    chapters: chapters,
+                                },
+                            }),
+                        },
+                        { text: 'Cancel', style: 'cancel' },
+                    ],
+                });
             }
         } else {
             await toggleReadingItem(id, false);
@@ -619,19 +640,6 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: number) => vo
             updateProgress(newCompleted);
         }
     }, [completedItems, updateProgress]);
-
-    const handleConfirmAddEntry = useCallback(() => {
-        if (!pendingItem) return;
-        router.push({
-            pathname: '/addEntry',
-            params: {
-                readingItemId: pendingItem.id,
-                bookName: pendingItem.book,
-                chapters: pendingItem.chapters,
-            }
-        });
-        setPendingItem(null);
-    }, [pendingItem, router]);
 
     const toggleSection = useCallback((section: string) => {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -758,57 +766,6 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: number) => vo
                     removeClippedSubviews={Platform.OS === 'android'}
                 />
             )}
-
-            {/* ── Plan redirect explanation modal ───────────────────────── */}
-            <Modal
-                visible={!!pendingItem}
-                transparent
-                animationType="fade"
-                onRequestClose={() => setPendingItem(null)}
-            >
-                <View style={styles.planConfirmOverlay}>
-                    <View style={[styles.planConfirmCard, {
-                        backgroundColor: colors.cardBackground,
-                        borderColor: colors.border,
-                    }]}>
-                        <View style={[styles.planConfirmIconWrap, { backgroundColor: colors.accent + '15' }]}>
-                            <Ionicons name="journal-outline" size={28} color={colors.accent} />
-                        </View>
-
-                        <Text style={[styles.planConfirmTitle, { color: colors.textPrimary }]}>
-                            Entry Required
-                        </Text>
-
-                        <Text style={[styles.planConfirmBody, { color: colors.textSecondary }]}>
-                            To mark{' '}
-                            <Text style={{ fontWeight: '700', color: colors.textPrimary }}>
-                                {pendingItem?.book}
-                                {pendingItem?.chapters ? ` ${pendingItem.chapters}` : ''}
-                            </Text>
-                            {' '}as complete, you need an entry covering this reading.
-                        </Text>
-
-                        <ScalePressable
-                            style={[styles.planConfirmPrimary, { backgroundColor: colors.accent }]}
-                            onPress={handleConfirmAddEntry}
-                        >
-                            <Ionicons name="add" size={18} color={colors.buttonPrimaryText} />
-                            <Text style={[styles.planConfirmPrimaryText, { color: colors.buttonPrimaryText }]}>
-                                Add Entry
-                            </Text>
-                        </ScalePressable>
-
-                        <ScalePressable
-                            style={[styles.planConfirmSecondary, { backgroundColor: colors.backgroundSubtle }]}
-                            onPress={() => setPendingItem(null)}
-                        >
-                            <Text style={[styles.planConfirmSecondaryText, { color: colors.textSecondary }]}>
-                                Cancel
-                            </Text>
-                        </ScalePressable>
-                    </View>
-                </View>
-            </Modal>
         </View>
     );
 }
@@ -1510,71 +1467,4 @@ const styles = StyleSheet.create({
     planLegendItem: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.md },
     planLegendText: { fontSize: 13, flex: 1, lineHeight: 18 },
     planFootnote: { fontSize: 10, lineHeight: 14, fontStyle: 'italic' },
-
-    // ── Plan redirect explanation modal ────────────────────────────
-    planConfirmOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.55)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingHorizontal: 28,
-    },
-    planConfirmCard: {
-        width: '100%',
-        borderRadius: 28,
-        padding: 28,
-        gap: 10,
-        borderWidth: 1,
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 16 },
-        shadowOpacity: 0.18,
-        shadowRadius: 24,
-        elevation: 10,
-    },
-    planConfirmIconWrap: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 4,
-    },
-    planConfirmTitle: {
-        fontSize: 20,
-        fontWeight: '800',
-        letterSpacing: -0.5,
-        textAlign: 'center',
-    },
-    planConfirmBody: {
-        fontSize: 14,
-        lineHeight: 22,
-        textAlign: 'center',
-        opacity: 0.85,
-        marginBottom: 6,
-    },
-    planConfirmPrimary: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        paddingVertical: 14,
-        borderRadius: 16,
-        width: '100%',
-        justifyContent: 'center',
-        marginTop: 4,
-    },
-    planConfirmPrimaryText: {
-        fontSize: 16,
-        fontWeight: '700',
-    },
-    planConfirmSecondary: {
-        paddingVertical: 12,
-        borderRadius: 16,
-        width: '100%',
-        alignItems: 'center',
-    },
-    planConfirmSecondaryText: {
-        fontSize: 15,
-        fontWeight: '600',
-    },
 });

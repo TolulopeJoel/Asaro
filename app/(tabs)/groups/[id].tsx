@@ -431,6 +431,18 @@ const GroupEditModal = ({
                         fullWidth
                         style={{ marginTop: Spacing.md }}
                     />
+                    <ScalePressable
+                        onPress={onClose}
+                        style={{
+                            paddingVertical: 12,
+                            borderRadius: 16,
+                            width: '100%',
+                            alignItems: 'center',
+                            backgroundColor: colors.backgroundSubtle,
+                        }}
+                    >
+                        <Text style={{ fontSize: 15, fontWeight: '600', color: colors.textSecondary }}>Cancel</Text>
+                    </ScalePressable>
                 </View>
             </View>
         </Modal>
