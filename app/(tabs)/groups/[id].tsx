@@ -1054,6 +1054,7 @@ export default function GroupDetailScreen() {
             groupProgressPercent,
             readTodayCount,
             totalMembers,
+            iHaveRead: processed.find(m => m.isMe)?.readToday || false,
         };
     }, [members, user?.uid, today]);
 
@@ -1486,9 +1487,11 @@ export default function GroupDetailScreen() {
                                 <Skeleton width="70%" height={12} borderRadius={4} style={{ marginTop: 8 }} />
                             ) : (
                                 <Text style={[styles.heroHint, { color: colors.textTertiary }]}>
-                                    {accountabilityData.groupProgressPercent === 100
-                                        ? 'A good day! Everyone is up to date. 🎉'
-                                        : `Encourage the remaining ${accountabilityData.totalMembers - accountabilityData.readTodayCount}`}
+                                    {!accountabilityData.iHaveRead
+                                        ? "Read now. Don't hold yourself back"
+                                        : accountabilityData.groupProgressPercent === 100
+                                            ? 'A beautiful day! Everyone is glowing and up to date. 🎉'
+                                            : `Almost there! Encourage the remaining ${accountabilityData.totalMembers - accountabilityData.readTodayCount}`}
                                 </Text>
                             )}
                         </View>
