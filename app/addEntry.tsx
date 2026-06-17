@@ -3,7 +3,7 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, AppState, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
+import { Animated, AppState, KeyboardAvoidingView, Platform, Share, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ReflectionAnswers } from '../src/components/ReflectionForm';
 import { LoadingView } from '../src/components/LoadingView';
@@ -20,7 +20,6 @@ import { BookStep, ChapterStep, ReflectionStep, SummaryStep } from '../src/compo
 
 export default function MeditationSessionScreen() {
     const { colors } = useTheme();
-    const { user } = useAuth();
     const { showAlert } = useAlert();
     const router = useRouter();
     const params = useLocalSearchParams();
@@ -37,19 +36,12 @@ export default function MeditationSessionScreen() {
     // New entries need no async work before rendering — skip the loading state.
     const needsAsyncLoad = !!(params.entryId || params.readingItemId || params.resuming);
     const [isLoading, setIsLoading] = useState(needsAsyncLoad);
+    const [savedEntryId, setSavedEntryId] = useState<number | undefined>();
     const isSaving = useRef(false);
 
     const readingItemId = params.readingItemId ? Number(params.readingItemId) : undefined;
 
     const { opacity } = useStepFade(currentStep);
-
-    // Sync pending activities on foreground
-    useEffect(() => {
-        const subscription = AppState.addEventListener('change', (nextState) => {
-            if (nextState === 'active') syncPendingActivities();
-        });
-        return () => subscription.remove();
-    }, []);
 
     // Load data
     useEffect(() => {
@@ -114,7 +106,6 @@ export default function MeditationSessionScreen() {
                         setCurrentStep('reflection');
                     }
                 }
-                // CASE 4: New entry (no-op, starting at 'book' step with isLoading=false)
             } catch (error) {
                 console.error('Error loading data:', error);
             } finally {
@@ -127,16 +118,38 @@ export default function MeditationSessionScreen() {
 
     useAutoSave(reflectionAnswers, selectedBook, selectedChapters, verseRange, currentStep, isEditMode, readingItemId);
 
-    const changeStep = useCallback((step: Step) => {
-        setCurrentStep(step);
+    // Clears all entry state and removes the draft from storage.
+    const clearEntryState = useCallback(async () => {
+        await AsyncStorage.removeItem('reflection_draft');
+        setSelectedBook(undefined);
+        setSelectedChapters(undefined);
+        setVerseRange(null);
+        setReflectionAnswers(undefined);
+        setSavedEntryId(undefined);
+    }, []);
+
+    // Fires daily notification setup and an optional study-further reminder.
+    const runPostSaveNotifications = useCallback(async (
+        isNewEntry: boolean,
+        studyFurtherReminder?: string,
+        studyFurther?: string,
+    ) => {
+        await setupDailyNotifications(isNewEntry);
+        if (studyFurtherReminder && new Date(studyFurtherReminder) > new Date()) {
+            await scheduleReminderNotification(
+                new Date(studyFurtherReminder),
+                '📖 Study Reminder',
+                `Time to study further: ${studyFurther || 'your topic'}`,
+            );
+        }
     }, []);
 
     const handleBookSelect = useCallback((book: BibleBook) => {
         setSelectedBook(book);
         setSelectedChapters(undefined);
         setVerseRange(null);
-        changeStep('chapter');
-    }, [changeStep]);
+        setCurrentStep('chapter');
+    }, []);
 
     const handleChapterSelect = useCallback((chapters: ChapterRange) => {
         setSelectedChapters(chapters);
@@ -151,8 +164,8 @@ export default function MeditationSessionScreen() {
             showAlert({ title: 'Please select a chapter', message: 'You need to select at least one chapter to continue.' });
             return;
         }
-        changeStep('reflection');
-    }, [selectedChapters, changeStep, showAlert]);
+        setCurrentStep('reflection');
+    }, [selectedChapters, showAlert]);
 
     const handleSaveReflection = useCallback(async (answers: ReflectionAnswers) => {
         if (!selectedBook || !selectedChapters || selectedChapters.start === 0) {
@@ -177,48 +190,68 @@ export default function MeditationSessionScreen() {
                 readingItemId: params.readingItemId ? Number(params.readingItemId) : undefined,
             };
 
-            const updateNotifications = async () => {
-                await setupDailyNotifications(isEditMode ? false : true);
-            };
+            // Resolve the target id: an existing edit or a previously auto-saved entry.
+            const targetId = isEditMode ? entryId : savedEntryId;
 
-            if (isEditMode && entryId) {
-                await updateJournalEntry(entryId, entryData);
-                await updateNotifications();
-                if (answers.studyFurtherReminder && new Date(answers.studyFurtherReminder) > new Date()) {
-                    await scheduleReminderNotification(new Date(answers.studyFurtherReminder), '📖 Study Reminder', `Time to study further: ${answers.studyFurther || 'your topic'}`);
+            if (targetId) {
+                await updateJournalEntry(targetId, entryData);
+                await runPostSaveNotifications(false, answers.studyFurtherReminder, answers.studyFurther);
+                if (isEditMode) {
+                    showAlert({ title: 'Success', message: 'Entry updated successfully' });
+                    router.back();
+                } else {
+                    await AsyncStorage.removeItem('reflection_draft');
+                    setReflectionAnswers(answers);
+                    setCurrentStep('summary');
                 }
-                showAlert({ title: 'Success', message: 'Entry updated successfully' });
-                router.back();
             } else {
-                await createJournalEntry(entryData);
+                const newId = await createJournalEntry(entryData);
+                setSavedEntryId(newId);
                 await AsyncStorage.removeItem('reflection_draft');
-                await updateNotifications();
-                if (answers.studyFurtherReminder && new Date(answers.studyFurtherReminder) > new Date()) {
-                    await scheduleReminderNotification(new Date(answers.studyFurtherReminder), '📖 Study Reminder', `Time to study further: ${answers.studyFurther || 'your topic'}`);
-                }
+                await runPostSaveNotifications(true, answers.studyFurtherReminder, answers.studyFurther);
                 setReflectionAnswers(answers);
-                changeStep('summary');
+                setCurrentStep('summary');
             }
         } catch (error) {
             console.error('Error saving entry:', error);
-            showAlert({ title: 'Error', message: `Failed to ${isEditMode ? 'update' : 'save'} your entry. Please try again.` });
+            showAlert({
+                title: 'Error',
+                message: `Failed to ${isEditMode || savedEntryId ? 'update' : 'save'} your entry. Please try again.`,
+            });
         } finally {
             isSaving.current = false;
         }
-    }, [selectedBook, selectedChapters, verseRange, isEditMode, entryId, router, changeStep, params.readingItemId, showAlert]);
+    }, [selectedBook, selectedChapters, verseRange, isEditMode, entryId, savedEntryId, router, params.readingItemId, showAlert, runPostSaveNotifications]);
 
     const handleDone = useCallback(() => {
         router.replace({ pathname: '/(tabs)/library' });
     }, [router]);
 
-    const handleStartOver = useCallback(async () => {
-        await AsyncStorage.removeItem('reflection_draft');
-        setSelectedBook(undefined);
-        setSelectedChapters(undefined);
-        setVerseRange(null);
-        setReflectionAnswers(undefined);
-        changeStep('book');
-    }, [changeStep]);
+    const handleShare = useCallback(async () => {
+        if (!selectedBook || !selectedChapters) return;
+        const reference = `${selectedBook.name} ${selectedChapters.start}${selectedChapters.end && selectedChapters.end !== selectedChapters.start ? '–' + selectedChapters.end : ''}${verseRange?.start ? ':' + verseRange.start : ''}`;
+
+        let content = `Reflection on ${reference}\n\n`;
+        if (reflectionAnswers?.reflection1) content += `${reflectionAnswers.reflection1}\n\n`;
+        content += `🫶 Created with Àṣàrò`;
+
+        try {
+            await Share.share({ message: content, title: reference });
+        } catch (error) {
+            console.error('Error sharing entry:', error);
+        }
+    }, [selectedBook, selectedChapters, verseRange, reflectionAnswers]);
+
+    // Resets all entry state and returns to the book step.
+    // Covers both "Write another" (from summary) and "Start over" flows.
+    const handleWriteAnother = useCallback(async () => {
+        await clearEntryState();
+        setCurrentStep('book');
+    }, [clearEntryState]);
+
+    const handleAddActionItem = useCallback(() => {
+        setCurrentStep('reflection');
+    }, []);
 
     const handleDiscardDraft = useCallback(() => {
         showAlert({
@@ -231,20 +264,16 @@ export default function MeditationSessionScreen() {
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            await AsyncStorage.removeItem('reflection_draft');
-                            setSelectedBook(undefined);
-                            setSelectedChapters(undefined);
-                            setVerseRange(null);
-                            setReflectionAnswers(undefined);
+                            await clearEntryState();
                             router.replace('/');
                         } catch (error) {
                             console.error('Error discarding draft:', error);
                         }
                     },
                 },
-            ]
+            ],
         });
-    }, [router, setSelectedBook, setSelectedChapters, setVerseRange, setReflectionAnswers, showAlert]);
+    }, [router, showAlert, clearEntryState]);
 
     const selectionSummary = useMemo(() => {
         if (!selectedBook) return 'No selection yet';
@@ -287,7 +316,7 @@ export default function MeditationSessionScreen() {
                         selectedChapters={selectedChapters}
                         onChapterSelect={handleChapterSelect}
                         onVerseRangeChange={handleVerseRangeChange}
-                        onBack={() => changeStep('book')}
+                        onBack={() => setCurrentStep('book')}
                         onContinue={handleContinueToReflection}
                         canContinue={!!(selectedChapters && selectedChapters.start > 0)}
                     />
@@ -300,9 +329,10 @@ export default function MeditationSessionScreen() {
                         onAnswersChange={setReflectionAnswers}
                         onSave={handleSaveReflection}
                         isEditMode={isEditMode}
-                        onBack={() => changeStep('chapter')}
+                        onBack={() => setCurrentStep('chapter')}
                         onDiscard={handleDiscardDraft}
                         selectedChapters={selectedChapters}
+                        saveButtonText={savedEntryId ? 'Update entry' : undefined}
                     />
                 );
             case 'summary':
@@ -311,7 +341,10 @@ export default function MeditationSessionScreen() {
                         selectionSummary={selectionSummary}
                         formattedDate={formattedDate}
                         onDone={handleDone}
-                        onStartOver={handleStartOver}
+                        onShare={handleShare}
+                        onWriteAnother={handleWriteAnother}
+                        hasActionItems={!!(reflectionAnswers?.actionItems && reflectionAnswers.actionItems.some(item => item.action.trim().length > 0))}
+                        onAddActionItem={handleAddActionItem}
                     />
                 );
             default: return null;

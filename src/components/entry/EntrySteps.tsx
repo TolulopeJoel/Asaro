@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { ChevronLeft, Trash2, Check } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Trash2, Check, Share2, PlusCircle, Zap } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { Spacing } from '../../theme/spacing';
 import { Typography } from '../../theme/typography';
@@ -10,6 +10,7 @@ import { ReflectionAnswers, ReflectionForm } from '../ReflectionForm';
 import { ScalePressable } from '../ScalePressable';
 import { BookPicker } from '../BookPicker';
 import { ChapterPicker } from '../ChapterPicker';
+import { Confetti, ConfettiRef } from '../Confetti';
 
 interface BookStepProps {
     selectedBook?: BibleBook;
@@ -107,6 +108,7 @@ interface ReflectionStepProps {
     onBack: () => void;
     onDiscard: () => void;
     selectedChapters?: ChapterRange;
+    saveButtonText?: string;
 }
 
 export const ReflectionStep = React.memo(({
@@ -117,7 +119,8 @@ export const ReflectionStep = React.memo(({
     isEditMode,
     onBack,
     onDiscard,
-    selectedChapters
+    selectedChapters,
+    saveButtonText
 }: ReflectionStepProps) => {
     const { colors } = useTheme();
     return (
@@ -139,7 +142,7 @@ export const ReflectionStep = React.memo(({
                             onAnswersChange={onAnswersChange}
                             onSave={onSave}
                             disabled={false}
-                            saveButtonText={isEditMode ? 'Update entry' : 'Record it'}
+                            saveButtonText={saveButtonText || (isEditMode ? 'Update entry' : 'Record it')}
                         />
                     </View>
 
@@ -179,18 +182,33 @@ interface SummaryStepProps {
     selectionSummary: string;
     formattedDate: string;
     onDone: () => void;
-    onStartOver: () => void;
+    onShare: () => void;
+    onWriteAnother: () => void;
+    hasActionItems: boolean;
+    onAddActionItem: () => void;
 }
 
 export const SummaryStep = React.memo(({
     selectionSummary,
     formattedDate,
     onDone,
-    onStartOver
+    onShare,
+    onWriteAnother,
+    hasActionItems,
+    onAddActionItem
 }: SummaryStepProps) => {
     const { colors } = useTheme();
+    const confettiRef = useRef<ConfettiRef>(null);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            confettiRef.current?.start();
+        }, 300);
+        return () => clearTimeout(timer);
+    }, []);
     return (
         <View style={styles.stepContainer}>
+            <Confetti ref={confettiRef} />
             <ScrollView key="step-summary" style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={[styles.stepContent, styles.summaryContent]}>
                     <View style={styles.successHero}>
@@ -221,8 +239,42 @@ export const SummaryStep = React.memo(({
                             style={[styles.primaryButton, { backgroundColor: colors.accent }]}
                             onPress={onDone}
                         >
-                            <Text style={[styles.primaryButtonText, { color: colors.buttonPrimaryText }]}>Check it out</Text>
+                            <Text style={[styles.primaryButtonText, { color: colors.buttonPrimaryText }]}>View in Library</Text>
                         </ScalePressable>
+
+                        <View style={styles.secondaryActionsRow}>
+                            <ScalePressable
+                                style={[styles.secondaryActionButton, { borderColor: colors.border }]}
+                                onPress={onShare}
+                            >
+                                <Share2 size={18} color={colors.textPrimary} />
+                                <Text style={[styles.secondaryActionText, { color: colors.textPrimary }]}>Share</Text>
+                            </ScalePressable>
+
+                            <ScalePressable
+                                style={[styles.secondaryActionButton, { borderColor: colors.border }]}
+                                onPress={onWriteAnother}
+                            >
+                                <PlusCircle size={18} color={colors.textPrimary} />
+                                <Text style={[styles.secondaryActionText, { color: colors.textPrimary }]}>New Entry</Text>
+                            </ScalePressable>
+                        </View>
+
+                        {!hasActionItems && (
+                            <ScalePressable
+                                style={[styles.nudgeContainer, { backgroundColor: colors.accent + '0D', borderColor: colors.accent + '40' }]}
+                                onPress={onAddActionItem}
+                            >
+                                <View style={[styles.nudgeIconContainer, { backgroundColor: colors.accent + '15' }]}>
+                                    <Zap size={16} color={colors.accent} fill={colors.accent} />
+                                </View>
+                                <View style={styles.nudgeTextContainer}>
+                                    <Text style={[styles.nudgeTitle, { color: colors.textPrimary }]}>No action steps?</Text>
+                                    <Text style={[styles.nudgeSubtitle, { color: colors.textSecondary }]}>Add a practical way to apply this today</Text>
+                                </View>
+                                <ChevronRight size={16} color={colors.textTertiary} />
+                            </ScalePressable>
+                        )}
                     </View>
                 </View>
             </ScrollView>
@@ -432,5 +484,52 @@ const styles = StyleSheet.create({
         fontWeight: Typography.weight.semibold,
         textAlign: 'center',
         letterSpacing: 0.3,
+    },
+    secondaryActionsRow: {
+        flexDirection: 'row',
+        gap: Spacing.md,
+        marginTop: Spacing.md,
+    },
+    secondaryActionButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: Spacing.sm,
+        paddingVertical: 14,
+        borderRadius: 12,
+        borderWidth: 1,
+    },
+    secondaryActionText: {
+        fontSize: 15,
+        fontWeight: '600',
+    },
+    nudgeContainer: {
+        marginTop: Spacing.xxl,
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        borderRadius: 16,
+        borderWidth: 1,
+    },
+    nudgeIconContainer: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 12,
+    },
+    nudgeTextContainer: {
+        flex: 1,
+    },
+    nudgeTitle: {
+        fontSize: 15,
+        fontWeight: '700',
+        marginBottom: 2,
+    },
+    nudgeSubtitle: {
+        fontSize: 13,
+        fontWeight: '400',
     },
 });
