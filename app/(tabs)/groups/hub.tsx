@@ -7,7 +7,7 @@ import { Typography } from '@/src/theme/typography';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Users, CloudOff, RefreshCw, Plus, ChevronRight, Flame } from 'lucide-react-native';
 import { getFirestore, collection, doc, onSnapshot, getDocs, query, where, documentId } from '@react-native-firebase/firestore';
 import { Button } from '@/src/components/Button';
 import { Skeleton } from '@/src/components/Skeleton';
@@ -95,7 +95,7 @@ export default function GroupsScreen() {
                     <View style={styles.authContainer}>
                         <View style={[styles.welcomeCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
                             <View style={[styles.welcomeIconIconWrap, { backgroundColor: colors.accentSecondaryLight + '20' }]}>
-                                <Ionicons name="people-outline" size={34} color={colors.accentSecondary} />
+                                <Users size={34} color={colors.accentSecondary} />
                             </View>
 
                             <Text style={[styles.authHeroTitle, { color: colors.textPrimary }]}>Better Together</Text>
@@ -124,7 +124,11 @@ export default function GroupsScreen() {
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
             {(isOffline || isLoading) && (
                 <View style={[styles.offlineBanner, { backgroundColor: colors.border }]}>
-                    <Ionicons name={isOffline ? "cloud-offline-outline" : "sync-outline"} size={14} color={colors.textSecondary} />
+                    {isOffline ? (
+                        <CloudOff size={14} color={colors.textSecondary} />
+                    ) : (
+                        <RefreshCw size={14} color={colors.textSecondary} />
+                    )}
                     <Text style={[styles.offlineBannerText, { color: colors.textSecondary }]}>
                         {isOffline ? "You're offline — showing cached groups" : "Syncing your groups..."}
                     </Text>
@@ -139,7 +143,7 @@ export default function GroupsScreen() {
                     <View style={styles.headerTitleRow}>
                         <Text style={[styles.title, { color: colors.textPrimary }]}>My Groups</Text>
                         <ScalePressable onPress={() => router.push('/(tabs)/groups/join' as any)}>
-                            <Ionicons name="add" size={28} color={colors.textSecondary} />
+                            <Plus size={28} color={colors.textSecondary} />
                         </ScalePressable>
                     </View>
                 </View>
@@ -185,7 +189,7 @@ export default function GroupsScreen() {
                                             {group.description || 'Consistency is key. Read together!'}
                                         </Text>
                                     </View>
-                                    <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+                                    <ChevronRight size={18} color={colors.textTertiary} />
                                 </View>
 
                                 <View style={[styles.groupCardDivider, { backgroundColor: colors.borderSubtle + '30' }]} />
@@ -194,7 +198,7 @@ export default function GroupsScreen() {
                                     <View style={styles.groupStatsRow}>
                                         <View style={styles.groupStatItem}>
                                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-                                                <Ionicons name="bonfire" size={14} color={colors.accent} />
+                                                <Flame size={14} color={colors.accent} />
                                                 <Text style={[styles.groupStatValue, { color: colors.accent }]}>{groupStreak}</Text>
                                             </View>
                                         </View>
@@ -229,7 +233,7 @@ export default function GroupsScreen() {
 
                         <View style={[styles.welcomeCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
                             <View style={[styles.welcomeIconIconWrap, { backgroundColor: colors.accentSecondaryLight + '20' }]}>
-                                <Ionicons name="add-outline" size={34} color={colors.accentSecondary} />
+                                <Plus size={34} color={colors.accentSecondary} />
                             </View>
                             <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>
                                 Accountability is a team sport. Join a group or create one so we can make sure you're actually reading.

@@ -2,7 +2,7 @@ import { View, Text, StyleSheet, TextInput, KeyboardAvoidingView, Platform, Touc
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Mail, Lock, User, LucideIcon } from 'lucide-react-native';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from '@react-native-firebase/auth';
 import { getFirestore, doc, setDoc } from '@react-native-firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -31,7 +31,7 @@ const GenderOption = ({
     selected: boolean;
     onPress: () => void;
     label: string;
-    icon: any;
+    icon: LucideIcon;
     colors: any;
 }) => {
     const progress = useSharedValue(selected ? 1 : 0);
@@ -68,11 +68,11 @@ const GenderOption = ({
                     styles.genderIconWrapper,
                     { backgroundColor: selected ? colors.accent + '15' : colors.cardHover }
                 ]}>
-                    <Ionicons
-                        name={icon}
-                        size={32}
-                        color={selected ? colors.accent : colors.textTertiary}
-                    />
+                    {React.createElement(icon, {
+                        size: 32,
+                        color: selected ? colors.accent : colors.textTertiary,
+                        strokeWidth: 2
+                    })}
                 </View>
                 <Text style={[
                     styles.genderLabel,
@@ -171,7 +171,7 @@ export default function AuthScreen() {
 
                     <View style={styles.form}>
                         <View style={[styles.inputContainer, { backgroundColor: colors.cardBackground, borderColor: colors.borderSubtle }]}>
-                            <Ionicons name="mail-outline" size={20} color={colors.textPrimary} style={styles.inputIcon} />
+                            <Mail size={20} color={colors.textPrimary} style={styles.inputIcon} />
                             <TextInput
                                 style={[styles.input, { color: colors.textPrimary }]}
                                 placeholder="Email Address"
@@ -184,7 +184,7 @@ export default function AuthScreen() {
                         </View>
 
                         <View style={[styles.inputContainer, { backgroundColor: colors.cardBackground, borderColor: colors.borderSubtle }]}>
-                            <Ionicons name="lock-closed-outline" size={20} color={colors.textPrimary} style={styles.inputIcon} />
+                            <Lock size={20} color={colors.textPrimary} style={styles.inputIcon} />
                             <TextInput
                                 style={[styles.input, { color: colors.textPrimary }]}
                                 placeholder="Password"
@@ -203,7 +203,7 @@ export default function AuthScreen() {
                         {isSignUp && (
                             <>
                                 <View style={[styles.inputContainer, { backgroundColor: colors.cardBackground, borderColor: colors.borderSubtle }]}>
-                                    <Ionicons name="lock-closed-outline" size={20} color={colors.textPrimary} style={styles.inputIcon} />
+                                    <Lock size={20} color={colors.textPrimary} style={styles.inputIcon} />
                                     <TextInput
                                         style={[styles.input, { color: colors.textPrimary }]}
                                         placeholder="Confirm Password"
@@ -219,14 +219,14 @@ export default function AuthScreen() {
                                         selected={gender === 'm'}
                                         onPress={() => setGender('m')}
                                         label="Gentleman"
-                                        icon="man-outline"
+                                        icon={User}
                                         colors={colors}
                                     />
                                     <GenderOption
                                         selected={gender === 'f'}
                                         onPress={() => setGender('f')}
                                         label="Lady"
-                                        icon="woman-outline"
+                                        icon={User}
                                         colors={colors}
                                     />
                                 </View>

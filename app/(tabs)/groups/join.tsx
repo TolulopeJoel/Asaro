@@ -7,7 +7,7 @@ import { useAlert } from '@/src/context/AlertContext';
 import { Spacing } from '@/src/theme/spacing';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Key } from 'lucide-react-native';
 import { Button } from '@/src/components/Button';
 
 // In a real app, this might be a dynamic code or fetched from a config
@@ -102,7 +102,7 @@ export default function JoinGroupScreen() {
                 <View style={[styles.card, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
                     <View style={styles.intro}>
                         <View style={[styles.iconContainer, { backgroundColor: colors.accentSecondaryLight + '30' }]}>
-                            <Ionicons name="key-outline" size={32} color={colors.accentSecondary} />
+                            <Key size={32} color={colors.accentSecondary} />
                         </View>
                         <Text style={[styles.title, { color: colors.textPrimary }]}>Access Code</Text>
                         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
