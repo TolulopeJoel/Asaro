@@ -10,11 +10,18 @@ import {
     Platform,
     LayoutAnimation,
     TextInput,
+    Dimensions,
 } from 'react-native';
 import Animated, {
+    useSharedValue,
+    useAnimatedScrollHandler,
+    useAnimatedStyle,
+    interpolate,
+    Extrapolation,
     LinearTransition,
     FadeIn,
     FadeOut,
+    type SharedValue,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -50,6 +57,8 @@ type StudySortBy = 'recent' | 'color';
 type PlanListDataItem =
     | { type: 'sectionHeader'; section: string; id: string }
     | { type: 'reading'; item: ReadingItem; id: string };
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ─── Segment Config ───────────────────────────────────────────────────────────
 
@@ -854,6 +863,132 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: number) => vo
     );
 }
 
+// ─── Animated Indicator ──────────────────────────────────────────────────────
+
+function AnimatedIndicator({ index, scrollX, activeColor, inactiveColor }: {
+    index: number;
+    scrollX: SharedValue<number>;
+    activeColor: string;
+    inactiveColor: string;
+}) {
+    const animatedStyle = useAnimatedStyle(() => {
+        const inputRange = [
+            (index - 1) * SCREEN_WIDTH,
+            index * SCREEN_WIDTH,
+            (index + 1) * SCREEN_WIDTH,
+        ];
+
+        const width = interpolate(
+            scrollX.value,
+            inputRange,
+            [12, 36, 12],
+            Extrapolation.CLAMP
+        );
+
+        const opacity = interpolate(
+            scrollX.value,
+            inputRange,
+            [0.5, 1, 0.5],
+            Extrapolation.CLAMP
+        );
+
+        const backgroundColor = interpolate(
+            scrollX.value,
+            inputRange,
+            [0, 1, 0],
+            Extrapolation.CLAMP
+        ) > 0.5 ? activeColor : inactiveColor;
+
+        return {
+            width,
+            opacity,
+            backgroundColor,
+        };
+    });
+
+    return (
+        <Animated.View
+            style={[
+                {
+                    height: 4.5,
+                    borderRadius: 20,
+                    marginHorizontal: 4,
+                },
+                animatedStyle,
+            ]}
+        />
+    );
+}
+
+function AnimatedTitleStack({ scrollX, colors }: { scrollX: SharedValue<number>; colors: any }) {
+    return (
+        <View style={{ height: 42, justifyContent: 'center' }}>
+            {SEGMENTS.map((seg, index) => {
+                const animatedStyle = useAnimatedStyle(() => {
+                    const opacity = interpolate(
+                        scrollX.value,
+                        [(index - 0.5) * SCREEN_WIDTH, index * SCREEN_WIDTH, (index + 0.5) * SCREEN_WIDTH],
+                        [0, 1, 0],
+                        Extrapolation.CLAMP
+                    );
+                    const translateY = interpolate(
+                        scrollX.value,
+                        [(index - 0.5) * SCREEN_WIDTH, index * SCREEN_WIDTH, (index + 0.5) * SCREEN_WIDTH],
+                        [10, 0, -10],
+                        Extrapolation.CLAMP
+                    );
+                    return {
+                        opacity,
+                        transform: [{ translateY }],
+                        position: index === 0 ? 'relative' : 'absolute',
+                    };
+                });
+                return (
+                    <Animated.Text
+                        key={seg.key}
+                        style={[styles.libraryPillLabel, { color: colors.textPrimary }, animatedStyle]}
+                    >
+                        {seg.label}
+                    </Animated.Text>
+                );
+            })}
+        </View>
+    );
+}
+
+function AnimatedIconStack({ scrollX, colors }: { scrollX: SharedValue<number>; colors: any }) {
+    return (
+        <View style={{ width: 28, height: 28, justifyContent: 'center', alignItems: 'center' }}>
+            {SEGMENTS.map((seg, index) => {
+                const animatedStyle = useAnimatedStyle(() => {
+                    const opacity = interpolate(
+                        scrollX.value,
+                        [(index - 0.5) * SCREEN_WIDTH, index * SCREEN_WIDTH, (index + 0.5) * SCREEN_WIDTH],
+                        [0, 1, 0],
+                        Extrapolation.CLAMP
+                    );
+                    const scale = interpolate(
+                        scrollX.value,
+                        [(index - 0.5) * SCREEN_WIDTH, index * SCREEN_WIDTH, (index + 0.5) * SCREEN_WIDTH],
+                        [0.6, 1, 0.6],
+                        Extrapolation.CLAMP
+                    );
+                    return {
+                        opacity,
+                        transform: [{ scale }],
+                        position: 'absolute',
+                    };
+                });
+                return (
+                    <Animated.View key={seg.key} style={animatedStyle}>
+                        <Ionicons name={seg.icon as any} size={28} color={colors.textMuted} />
+                    </Animated.View>
+                );
+            })}
+        </View>
+    );
+}
+
 // ─── Main Library Screen ──────────────────────────────────────────────────────
 
 export default function LibraryScreen() {
@@ -863,6 +998,15 @@ export default function LibraryScreen() {
 
     const [activeSegment, setActiveSegment] = useState<Segment>('journal');
     const [dropdownVisible, setDropdownVisible] = useState(false);
+
+    const scrollX = useSharedValue(0);
+    const scrollViewRef = useRef<Animated.ScrollView>(null);
+
+    const onScroll = useAnimatedScrollHandler({
+        onScroll: (event) => {
+            scrollX.value = event.contentOffset.x;
+        },
+    });
 
     // Journal header state
     const [journalViewMode, setJournalViewMode] = useState<ViewMode>(
@@ -893,6 +1037,11 @@ export default function LibraryScreen() {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setActiveSegment(s);
         setDropdownVisible(false);
+
+        const index = SEGMENTS.findIndex(seg => seg.key === s);
+        if (index !== -1) {
+            scrollViewRef.current?.scrollTo({ x: index * SCREEN_WIDTH, animated: true });
+        }
     }, []);
 
     const toggleStudySort = useCallback(() => {
@@ -952,13 +1101,11 @@ export default function LibraryScreen() {
                     <View style={styles.pillGroup}>
 
                         <ScalePressable
-                            style={[styles.libraryPill, { backgroundColor: colors.backgroundSubtle }]}
+                            style={[styles.libraryPill, { backgroundColor: colors.backgroundSubtle, minWidth: 140 }]}
                             onPress={toggleDropdown}
                         >
-                            <Ionicons name={activeIcon as any} size={28} color={colors.textMuted} />
-                            <Text style={[styles.libraryPillLabel, { color: colors.textPrimary }]}>
-                                {activeLabel}
-                            </Text>
+                            <AnimatedIconStack scrollX={scrollX} colors={colors} />
+                            <AnimatedTitleStack scrollX={scrollX} colors={colors} />
                         </ScalePressable>
 
                         <ScalePressable
@@ -973,44 +1120,63 @@ export default function LibraryScreen() {
                         </ScalePressable>
                     </View>
 
-                    {/* Study: sort button + count badge + add button */}
-                    {activeSegment === 'study' && (
-                        <View style={styles.titleActions}>
-                            {studyCount > 0 && (
-                                <View style={[styles.studyCountBadge, { backgroundColor: colors.accent + '18' }]}>
-                                    <Text style={[styles.studyCountText, { color: colors.accent }]}>
-                                        {studyCount}
-                                    </Text>
-                                </View>
-                            )}
-                            {/* ── Color sort toggle ── */}
-                            {studyCount > 1 && (
-                                <ScalePressable
-                                    style={[
-                                        styles.sortButton,
-                                        {
-                                            backgroundColor: studySortBy === 'color'
-                                                ? colors.accent + '15'
-                                                : colors.backgroundSubtle,
-                                        }
-                                    ]}
-                                    onPress={toggleStudySort}
-                                >
-                                    <Ionicons
-                                        name="color-palette-outline"
-                                        size={20}
-                                        color={studySortBy === 'color' ? colors.accent : colors.textMuted}
-                                    />
-                                </ScalePressable>
-                            )}
+                    {/* Title actions (e.g. Study buttons) animated visibility */}
+                    <Animated.View style={[
+                        styles.titleActions,
+                        useAnimatedStyle(() => {
+                            const opacity = interpolate(
+                                scrollX.value,
+                                [0, SCREEN_WIDTH, 2 * SCREEN_WIDTH],
+                                [0, 1, 0],
+                                Extrapolation.CLAMP
+                            );
+                            const translateX = interpolate(
+                                scrollX.value,
+                                [0, SCREEN_WIDTH, 2 * SCREEN_WIDTH],
+                                [10, 0, -10],
+                                Extrapolation.CLAMP
+                            );
+                            return {
+                                opacity,
+                                transform: [{ translateX }],
+                                pointerEvents: opacity > 0.5 ? 'auto' : 'none',
+                            };
+                        })
+                    ]}>
+                        {studyCount > 0 && (
+                            <View style={[styles.studyCountBadge, { backgroundColor: colors.accent + '18' }]}>
+                                <Text style={[styles.studyCountText, { color: colors.accent }]}>
+                                    {studyCount}
+                                </Text>
+                            </View>
+                        )}
+                        {/* ── Color sort toggle ── */}
+                        {studyCount > 1 && (
                             <ScalePressable
-                                style={[styles.addButton, { backgroundColor: colors.accent, shadowColor: colors.accent }]}
-                                onPress={() => router.push('/study/new' as any)}
+                                style={[
+                                    styles.sortButton,
+                                    {
+                                        backgroundColor: studySortBy === 'color'
+                                            ? colors.accent + '15'
+                                            : colors.backgroundSubtle,
+                                    }
+                                ]}
+                                onPress={toggleStudySort}
                             >
-                                <Ionicons name="add" size={26} color={colors.buttonPrimaryText} />
+                                <Ionicons
+                                    name="color-palette-outline"
+                                    size={20}
+                                    color={studySortBy === 'color' ? colors.accent : colors.textMuted}
+                                />
                             </ScalePressable>
-                        </View>
-                    )}
+                        )}
+                        <ScalePressable
+                            style={[styles.addButton, { backgroundColor: colors.accent, shadowColor: colors.accent }]}
+                            onPress={() => router.push('/study/new' as any)}
+                        >
+                            <Ionicons name="add" size={26} color={colors.buttonPrimaryText} />
+                        </ScalePressable>
+                    </Animated.View>
 
                     {/* Floating dropdown */}
                     {dropdownVisible && (
@@ -1036,26 +1202,39 @@ export default function LibraryScreen() {
 
                 {/* Row 2: Segment pill switcher */}
                 <View style={styles.segmentPillRow}>
-                    {SEGMENTS.map((seg) => {
-                        const isActive = activeSegment === seg.key;
+                    {SEGMENTS.map((seg, index) => {
                         return (
                             <ScalePressable
                                 key={seg.key}
-                                style={[
-                                    styles.segmentPill,
-                                    {
-                                        backgroundColor: isActive ? colors.accent : colors.textMuted + '33',
-                                    },
-                                ]}
                                 onPress={() => handleSelectSegment(seg.key)}
                             >
+                                <AnimatedIndicator
+                                    index={index}
+                                    scrollX={scrollX}
+                                    activeColor={colors.accentLight}
+                                    inactiveColor={colors.textMuted + '99'}
+                                />
                             </ScalePressable>
                         );
                     })}
                 </View>
 
-                {/* Row 3: Journal sub-tabs */}
-                {activeSegment === 'journal' && (
+            </View>
+
+            {/* ── Content Zone ──────────────────────────────────────────────── */}
+            <Animated.ScrollView
+                ref={scrollViewRef}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onScroll={onScroll}
+                scrollEventThrottle={16}
+                onMomentumScrollEnd={(e) => {
+                    const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+                    setActiveSegment(SEGMENTS[index].key);
+                }}
+            >
+                <View style={{ width: SCREEN_WIDTH }}>
                     <JournalSubTabs
                         viewMode={journalViewMode}
                         selectedBook={journalSelectedBook}
@@ -1064,11 +1243,7 @@ export default function LibraryScreen() {
                         onNavigateActions={() => handleJournalNavigate('actions')}
                         onNavigateTopics={() => handleJournalNavigate('topics')}
                     />
-                )}
-
-                {/* Row 4: Journal search bar */}
-                {activeSegment === 'journal' &&
-                    (journalViewMode === 'recent' || journalViewMode === 'bookDetail') && (
+                    {(journalViewMode === 'recent' || journalViewMode === 'bookDetail') && (
                         <View style={[styles.searchContainer, { borderBottomColor: colors.border, borderTopColor: colors.border }]}>
                             <TextInput
                                 style={[styles.searchInput, {
@@ -1094,15 +1269,6 @@ export default function LibraryScreen() {
                             )}
                         </View>
                     )}
-
-                {/* Row 4: Plan progress bar */}
-                {activeSegment === 'plan' && <PlanProgressBar progress={planProgress} />}
-
-            </View>
-
-            {/* ── Content Zone ──────────────────────────────────────────────── */}
-            <View style={{ flex: 1 }}>
-                {activeSegment === 'journal' && (
                     <JournalContent
                         viewMode={journalViewMode}
                         searchQuery={journalSearch}
@@ -1111,17 +1277,18 @@ export default function LibraryScreen() {
                         onSearchChange={setJournalSearch}
                         onSelectedBookChange={setJournalSelectedBook}
                     />
-                )}
-                {activeSegment === 'study' && (
+                </View>
+                <View style={{ width: SCREEN_WIDTH }}>
                     <StudyContent
                         onCountChange={setStudyCount}
                         sortBy={studySortBy}
                     />
-                )}
-                {activeSegment === 'plan' && (
+                </View>
+                <View style={{ width: SCREEN_WIDTH }}>
+                    <PlanProgressBar progress={planProgress} />
                     <PlanContent onProgressChange={setPlanProgress} />
-                )}
-            </View>
+                </View>
+            </Animated.ScrollView>
 
         </SafeAreaView>
     );
@@ -1262,10 +1429,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         paddingHorizontal: Spacing.layout.screenPadding,
         paddingBottom: Spacing.sm,
-        gap: 8,
+        alignItems: 'center',
     },
     segmentPill: {
-        width: 36,
         height: 4.5,
         alignItems: 'center',
         justifyContent: 'center',
