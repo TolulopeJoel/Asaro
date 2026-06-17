@@ -26,6 +26,10 @@ import { WavyAddIcon } from '@/src/components/WavyAddIcon';
 import { AnimatedModal } from '@/src/components/AnimatedModal';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { LoadingView } from '@/src/components/LoadingView';
+import { CardFAB } from '@/src/components/CardFAB';
+import { Share } from 'react-native';
+import { useAlert } from '@/src/context/AlertContext';
+import { deleteJournalEntry } from '@/src/data/database';
 import { fetchWeeklyStreakData, DayStatus } from '@/src/components/WeeklyStreak';
 import { ActionReminders, fetchActionRemindersData, EnhancedActionItem } from '@/src/components/ActionReminders';
 import { StudyReminders } from '@/src/components/StudyReminders';
@@ -312,6 +316,9 @@ export default function Index() {
     const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
     const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [isSharing, setIsSharing] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const { showAlert } = useAlert();
     const scrollViewRef = useRef<ScrollView>(null);
     const confettiRef = useRef<ConfettiRef>(null);
     const { colors } = useTheme();
@@ -438,6 +445,56 @@ export default function Index() {
         }, [loadHomeData, checkDraft, isLoading])
     );
 
+    // Bottom position for FAB in the modal:
+    // Insets bottom + extra spacing
+    const insets = useSafeAreaInsets();
+    const fabBottomPosition = insets.bottom + Spacing.xl;
+
+    const handleShare = async (entry: JournalEntry) => {
+        setIsSharing(true);
+        try {
+            const reference = `${entry.book_name} ${entry.chapter_start}${entry.verse_start ? ':' + entry.verse_start : ''}`;
+            let content = `Reflection on ${reference}\n\n`;
+            if (entry.reflection_1) content += `${entry.reflection_1}\n\n`;
+            content += `🫶 Created with Àṣàrò`;
+
+            await Share.share({
+                message: content,
+                title: reference,
+            });
+        } catch (error) {
+            console.error("Error sharing entry:", error);
+        } finally {
+            setIsSharing(false);
+        }
+    };
+
+    const handleDelete = (entry: JournalEntry) => {
+        showAlert({
+            title: "Delete Entry?",
+            message: "Are you sure you want to delete this reflection? This cannot be undone.",
+            buttons: [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                        setIsDeleting(true);
+                        try {
+                            await deleteJournalEntry(entry.id!);
+                            setIsDetailModalVisible(false);
+                            loadHomeData(); // Refresh data
+                        } catch (error) {
+                            console.error("Error deleting entry:", error);
+                        } finally {
+                            setIsDeleting(false);
+                        }
+                    },
+                },
+            ]
+        });
+    };
+
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
             <ScrollView
@@ -497,20 +554,35 @@ export default function Index() {
             >
                 <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
                     {selectedEntry && (
-                        <JournalEntryDetail
-                            entry={selectedEntry}
-                            onEdit={(entry) => {
-                                setIsDetailModalVisible(false);
-                                router.push({
-                                    pathname: '/addEntry',
-                                    params: { entryId: entry.id!.toString() }
-                                });
-                            }}
-                            onDelete={() => {
-                                setIsDetailModalVisible(false);
-                            }}
-                            onClose={() => setIsDetailModalVisible(false)}
-                        />
+                        <>
+                            <JournalEntryDetail
+                                entry={selectedEntry}
+                                onEdit={(entry) => {
+                                    setIsDetailModalVisible(false);
+                                    router.push({
+                                        pathname: '/addEntry',
+                                        params: { entryId: entry.id!.toString() }
+                                    });
+                                }}
+                                onDelete={() => handleDelete(selectedEntry)}
+                                onClose={() => setIsDetailModalVisible(false)}
+                            />
+                            <CardFAB
+                                onShare={() => handleShare(selectedEntry)}
+                                onEdit={() => {
+                                    setIsDetailModalVisible(false);
+                                    router.push({
+                                        pathname: '/addEntry',
+                                        params: { entryId: selectedEntry.id!.toString() }
+                                    });
+                                }}
+                                onDelete={() => handleDelete(selectedEntry)}
+                                isSharing={isSharing}
+                                isDeleting={isDeleting}
+                                bottom={fabBottomPosition}
+                                rounded={true}
+                            />
+                        </>
                     )}
                 </SafeAreaView>
             </AnimatedModal>

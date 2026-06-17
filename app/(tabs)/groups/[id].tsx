@@ -1488,7 +1488,7 @@ export default function GroupDetailScreen() {
                             ) : (
                                 <Text style={[styles.heroHint, { color: colors.textTertiary }]}>
                                     {!accountabilityData.iHaveRead
-                                        ? "Read now. Don't hold yourself back"
+                                        ? "Read now. Don't hold yourself back."
                                         : accountabilityData.groupProgressPercent === 100
                                             ? 'A beautiful day! Everyone is glowing and up to date. 🎉'
                                             : `Almost there! Encourage the remaining ${accountabilityData.totalMembers - accountabilityData.readTodayCount}`}

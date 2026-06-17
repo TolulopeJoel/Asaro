@@ -6,12 +6,10 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import { JournalEntryDetail } from '@/src/components/JournalEntryDetail';
 import { JournalEntry, getEntryById, deleteJournalEntry } from '@/src/data/database';
 import { LoadingView } from '@/src/components/LoadingView';
-import { ScalePressable } from '@/src/components/ScalePressable';
 import { Spacing } from '@/src/theme/spacing';
-import { Typography } from '@/src/theme/typography';
-import { Ionicons } from '@expo/vector-icons';
-import { Share, Alert } from 'react-native';
+import { Share } from 'react-native';
 import { useAlert } from '@/src/context/AlertContext';
+import { CardFAB } from '@/src/components/CardFAB';
 
 export default function JournalEntryDetailScreen() {
     const { id } = useLocalSearchParams();
@@ -124,45 +122,14 @@ export default function JournalEntryDetailScreen() {
                 onClose={handleClose}
             />
 
-            {/* The Floating Bar - truly floating at the screen level */}
-            <View style={[
-                styles.floatingActions,
-                {
-                    backgroundColor: colors.cardBackground,
-                    borderColor: colors.border,
-                    // shadowColor: colors.accent,
-                    bottom: bottomPosition,
-                }
-            ]}>
-                <ScalePressable
-                    style={[styles.shareFloatingButton, { backgroundColor: colors.backgroundSubtle }]}
-                    onPress={() => handleShare(entry)}
-                    disabled={isSharing}
-                >
-                    <Text style={[styles.shareFloatingText, { color: colors.textSecondary }]}>
-                        {isSharing ? '↗ sharing' : '↗ share'}
-                    </Text>
-                </ScalePressable>
-
-                <View style={[styles.actionDivider, { backgroundColor: colors.border }]} />
-
-                <ScalePressable
-                    style={styles.iconButton}
-                    onPress={() => handleEdit(entry)}
-                >
-                    <Text style={[styles.iconButtonText, { color: colors.textSecondary }]}>edit</Text>
-                </ScalePressable>
-
-                <ScalePressable
-                    style={styles.iconButton}
-                    onPress={() => entry && handleDelete(entry)}
-                    disabled={isDeleting}
-                >
-                    <Text style={[styles.iconButtonText, { color: colors.textTertiary }]}>
-                        {isDeleting ? 'deleting' : 'delete'}
-                    </Text>
-                </ScalePressable>
-            </View>
+            <CardFAB
+                onShare={() => handleShare(entry)}
+                onEdit={() => handleEdit(entry)}
+                onDelete={() => handleDelete(entry)}
+                isSharing={isSharing}
+                isDeleting={isDeleting}
+                bottom={bottomPosition}
+            />
         </SafeAreaView>
     );
 }
@@ -175,49 +142,5 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    floatingActions: {
-        position: 'absolute',
-        left: Spacing.lg,
-        right: Spacing.lg,
-        marginBottom: 4,
-        marginHorizontal: 1.5,
-        borderRadius: Spacing.borderRadius.lg,
-        borderBottomEndRadius: 4,
-        borderBottomStartRadius: 4,
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: Spacing.md,
-        paddingHorizontal: Spacing.xs + 2,
-        borderWidth: 1,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-        elevation: 1.5,
-    },
-    shareFloatingButton: {
-        flex: 1,
-        paddingVertical: Spacing.md,
-        paddingHorizontal: Spacing.lg,
-        borderRadius: Spacing.borderRadius.md,
-        alignItems: 'center',
-    },
-    shareFloatingText: {
-        fontSize: Typography.size.sm + 1,
-        fontWeight: Typography.weight.medium,
-    },
-    actionDivider: {
-        width: 1,
-        height: Spacing.lg + Spacing.xs,
-        marginHorizontal: Spacing.sm,
-    },
-    iconButton: {
-        paddingVertical: Spacing.md,
-        paddingHorizontal: Spacing.lg,
-        alignItems: 'center',
-    },
-    iconButtonText: {
-        fontSize: Typography.size.sm + 1,
-        fontWeight: Typography.weight.regular,
     },
 });
