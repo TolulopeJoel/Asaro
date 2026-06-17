@@ -817,7 +817,7 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: number) => vo
                         </View>
 
                         <Text style={[styles.planConfirmTitle, { color: colors.textPrimary }]}>
-                            Journal Entry Required
+                            Entry Required
                         </Text>
 
                         <Text style={[styles.planConfirmBody, { color: colors.textSecondary }]}>
@@ -826,7 +826,7 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: number) => vo
                                 {pendingItem?.book}
                                 {pendingItem?.chapters ? ` ${pendingItem.chapters}` : ''}
                             </Text>
-                            {' '}as complete, you need a journal entry covering this reading.
+                            {' '}as complete, you need an entry covering this reading.
                         </Text>
 
                         <ScalePressable
@@ -835,7 +835,7 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: number) => vo
                         >
                             <Ionicons name="add" size={18} color={colors.buttonPrimaryText} />
                             <Text style={[styles.planConfirmPrimaryText, { color: colors.buttonPrimaryText }]}>
-                                Add Journal Entry
+                                Add Entry
                             </Text>
                         </ScalePressable>
 
