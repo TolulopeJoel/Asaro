@@ -88,7 +88,7 @@ export default function TabLayout() {
                             >
                                 <View style={[
                                     styles.iconWrap,
-                                    shouldHighlight && { backgroundColor: colors.background },
+                                    shouldHighlight ? { backgroundColor: colors.background } : null,
                                 ]}>
                                     <Ionicons
                                         name={finalIcon}
@@ -147,6 +147,7 @@ const styles = StyleSheet.create({
         width: 60,
         height: 34,
         borderRadius: 17,
+        overflow: 'hidden',
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 3,
