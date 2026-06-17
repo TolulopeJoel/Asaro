@@ -52,7 +52,7 @@ import { BibleBook } from '@/src/data/bibleBooks';
 
 // Journal imports
 import { JournalEntryList } from '@/src/components/JournalEntryList';
-import { JournalEntry, getEntryById } from '@/src/data/database';
+import { JournalEntry } from '@/src/data/database';
 
 // Study imports
 import { StudyEditor } from '@/src/components/StudyEditor';
@@ -79,10 +79,10 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ─── Segment Config ───────────────────────────────────────────────────────────
 
-const SEGMENTS: { key: Segment; label: string; icon: string; icon2: LucideIcon; subtitle: string }[] = [
-    { key: 'journal', label: 'Journal', icon: 'journal-outline', icon2: Notebook, subtitle: 'Reading entries' },
-    { key: 'study', label: 'Study', icon: 'reader-outline', icon2: BookOpen, subtitle: 'Notes & topics' },
-    { key: 'plan', label: 'Plan', icon: 'map-outline', icon2: BookOpen, subtitle: 'Bible reading plan' },
+const SEGMENTS: { key: Segment; label: string; icon: string; icon2: LucideIcon }[] = [
+    { key: 'journal', label: 'Journal', icon: 'journal-outline', icon2: Notebook },
+    { key: 'study', label: 'Study', icon: 'reader-outline', icon2: BookOpen },
+    { key: 'plan', label: 'Plan', icon: 'map-outline', icon2: BookOpen },
 ];
 
 // ─── Color Sort Helper ────────────────────────────────────────────────────────
@@ -973,9 +973,6 @@ export default function LibraryScreen() {
         setStudySortBy(prev => prev === 'recent' ? 'color' : 'recent');
     }, []);
 
-    const activeLabel = SEGMENTS.find(s => s.key === activeSegment)?.label ?? '';
-    const activeIcon = SEGMENTS.find(s => s.key === activeSegment)?.icon ?? '';
-
     const renderDropdownItem = (seg: typeof SEGMENTS[0], idx: number) => {
         const isActive = activeSegment === seg.key;
         return (
@@ -1002,9 +999,6 @@ export default function LibraryScreen() {
                             styles.dropdownItemPill,
                             { backgroundColor: isActive ? colors.accent + '12' : colors.backgroundSubtle }
                         ]}>
-                            <Text style={[styles.dropdownItemPillText, { color: isActive ? colors.accent : colors.textMuted }]}>
-                                {seg.subtitle}
-                            </Text>
                         </View>
                     </View>
                 </View>
@@ -1102,27 +1096,8 @@ export default function LibraryScreen() {
                         </ScalePressable>
                     </Animated.View>
 
-                    {/* Floating dropdown */}
-                    {dropdownVisible && (
-                        <View style={styles.dropdownOverlayContainer}>
-                            <TouchableOpacity
-                                style={styles.dropdownBackdrop}
-                                activeOpacity={1}
-                                onPress={toggleDropdown}
-                            />
-                            <Animated.View
-                                entering={FadeIn.duration(200)}
-                                exiting={FadeOut.duration(150)}
-                                style={[
-                                    styles.floatingDropdown,
-                                    { backgroundColor: colors.cardBackground, borderColor: colors.border }
-                                ]}
-                            >
-                                {SEGMENTS.map((seg, idx) => renderDropdownItem(seg, idx))}
-                            </Animated.View>
-                        </View>
-                    )}
                 </View>
+
 
                 {/* Row 2: Segment pill switcher */}
                 <View style={styles.segmentPillRow}>
@@ -1214,6 +1189,26 @@ export default function LibraryScreen() {
                 </View>
             </Animated.ScrollView>
 
+            {/* Floating dropdown overlay */}
+            {dropdownVisible && (
+                <View style={styles.dropdownOverlayContainer}>
+                    <TouchableOpacity
+                        style={styles.dropdownBackdrop}
+                        activeOpacity={1}
+                        onPress={toggleDropdown}
+                    />
+                    <Animated.View
+                        entering={FadeIn.duration(200)}
+                        exiting={FadeOut.duration(150)}
+                        style={[
+                            styles.floatingDropdown,
+                            { backgroundColor: colors.cardBackground, borderColor: colors.border }
+                        ]}
+                    >
+                        {SEGMENTS.map((seg, idx) => renderDropdownItem(seg, idx))}
+                    </Animated.View>
+                </View>
+            )}
         </SafeAreaView>
     );
 }
@@ -1293,21 +1288,18 @@ const styles = StyleSheet.create({
 
     // ── Floating dropdown ─────────────────────────────────────────
     dropdownOverlayContainer: {
-        position: 'absolute',
-        top: 60,
-        left: 0,
-        right: 0,
-        zIndex: 1000,
+        ...StyleSheet.absoluteFillObject,
+        zIndex: 5000,
     },
     dropdownBackdrop: {
-        position: 'absolute',
-        top: -1000,
-        left: -100,
-        right: -100,
-        bottom: 2000,
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0,0,0,0)',
     },
     floatingDropdown: {
-        marginHorizontal: 16,
+        position: 'absolute',
+        top: 100,
+        left: 16,
+        right: 16,
         borderRadius: 24,
         padding: 8,
         borderWidth: 1,
@@ -1315,7 +1307,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 12 },
         shadowOpacity: 0.15,
         shadowRadius: 20,
-        elevation: 8,
+        elevation: 10,
     },
     dropdownItem: {
         flexDirection: 'row',
@@ -1341,11 +1333,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 8,
         paddingVertical: 2,
         borderRadius: 20,
-    },
-    dropdownItemPillText: {
-        fontSize: 11,
-        fontWeight: '600',
-        letterSpacing: 0.2,
     },
 
     // ── Segment pill row ────────────────────────────────────────────
