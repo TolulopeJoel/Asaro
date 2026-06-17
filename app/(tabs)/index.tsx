@@ -21,7 +21,9 @@ import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { DeviceEventEmitter, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
+import { JournalEntryDetail } from '@/src/components/JournalEntryDetail';
 import { WavyAddIcon } from '@/src/components/WavyAddIcon';
+import { AnimatedModal } from '@/src/components/AnimatedModal';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { LoadingView } from '@/src/components/LoadingView';
 import { fetchWeeklyStreakData, DayStatus } from '@/src/components/WeeklyStreak';
@@ -307,6 +309,8 @@ export default function Index() {
     const [actionReminders, setActionReminders] = useState<{ pinned: EnhancedActionItem[], rotating: EnhancedActionItem[] } | null>(null);
     const [flashbackEntry, setFlashbackEntry] = useState<{ entry: JournalEntry, type: 'year' | 'month' | 'random' } | null>(null);
     const [draftExists, setDraftExists] = useState(false);
+    const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
+    const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const scrollViewRef = useRef<ScrollView>(null);
     const confettiRef = useRef<ConfettiRef>(null);
@@ -407,8 +411,9 @@ export default function Index() {
     }, []);
 
     const handleEntryPress = useCallback((entry: JournalEntry) => {
-        router.push(`/library/${entry.id}`);
-    }, [router]);
+        setSelectedEntry(entry);
+        setIsDetailModalVisible(true);
+    }, []);
 
     const checkDraft = useCallback(async () => {
         try {
@@ -484,6 +489,31 @@ export default function Index() {
 
             {!draftExists && <FloatingActionButton />}
             {draftExists && <DraftBar />}
+
+            {/* Detail Modal */}
+            <AnimatedModal
+                visible={isDetailModalVisible}
+                onRequestClose={() => setIsDetailModalVisible(false)}
+            >
+                <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+                    {selectedEntry && (
+                        <JournalEntryDetail
+                            entry={selectedEntry}
+                            onEdit={(entry) => {
+                                setIsDetailModalVisible(false);
+                                router.push({
+                                    pathname: '/addEntry',
+                                    params: { entryId: entry.id!.toString() }
+                                });
+                            }}
+                            onDelete={() => {
+                                setIsDetailModalVisible(false);
+                            }}
+                            onClose={() => setIsDetailModalVisible(false)}
+                        />
+                    )}
+                </SafeAreaView>
+            </AnimatedModal>
         </SafeAreaView>
     );
 }
