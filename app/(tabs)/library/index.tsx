@@ -30,12 +30,10 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { LoadingView } from '@/src/components/LoadingView';
-import { AnimatedModal } from '@/src/components/AnimatedModal';
 import { BibleBook } from '@/src/data/bibleBooks';
 
 // Journal imports
 import { JournalEntryList } from '@/src/components/JournalEntryList';
-import { JournalEntryDetail } from '@/src/components/JournalEntryDetail';
 import { JournalEntry, getEntryById } from '@/src/data/database';
 
 // Study imports
@@ -309,51 +307,23 @@ function JournalContent({
 }: JournalContentProps) {
     const router = useRouter();
     const params = useLocalSearchParams();
-    const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
-    const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
-    const { colors } = useTheme();
-
-    useFocusEffect(
-        useCallback(() => {
-            if (selectedEntry?.id) {
-                getEntryById(selectedEntry.id).then(updated => {
-                    if (updated) setSelectedEntry(updated);
-                });
-            }
-        }, [selectedEntry?.id])
-    );
 
     useEffect(() => {
         if (params.openEntryId) {
-            const entryId = Number(params.openEntryId);
-            getEntryById(entryId).then(entry => {
-                if (entry) {
-                    setSelectedEntry(entry);
-                    setIsDetailModalVisible(true);
-                    router.setParams({ openEntryId: undefined });
-                }
+            const entryId = params.openEntryId as string;
+            router.push({
+                pathname: '/(tabs)/library/[id]',
+                params: { id: entryId }
             });
+            router.setParams({ openEntryId: undefined });
         }
     }, [params.openEntryId]);
 
     const handleEntryPress = (entry: JournalEntry) => {
-        setSelectedEntry(entry);
-        setIsDetailModalVisible(true);
-    };
-
-    const handleCloseDetail = () => {
-        setIsDetailModalVisible(false);
-        setSelectedEntry(null);
-        setRefreshTrigger(prev => prev + 1);
-    };
-
-    const handleDeleteEntry = () => handleCloseDetail();
-
-    const handleEditEntry = (entry: JournalEntry) => {
         router.push({
-            pathname: '/addEntry',
-            params: { entryId: entry.id!.toString() }
+            pathname: '/(tabs)/library/[id]',
+            params: { id: entry.id!.toString() }
         });
     };
 
@@ -369,21 +339,6 @@ function JournalContent({
                 onSearchChange={onSearchChange}
                 onSelectedBookChange={onSelectedBookChange}
             />
-            <AnimatedModal
-                visible={isDetailModalVisible}
-                onRequestClose={handleCloseDetail}
-            >
-                <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.background }]}>
-                    {selectedEntry && (
-                        <JournalEntryDetail
-                            entry={selectedEntry}
-                            onEdit={handleEditEntry}
-                            onDelete={handleDeleteEntry}
-                            onClose={handleCloseDetail}
-                        />
-                    )}
-                </SafeAreaView>
-            </AnimatedModal>
         </View>
     );
 }

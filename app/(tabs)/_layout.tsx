@@ -32,7 +32,12 @@ export default function TabLayout() {
                     },
                 ]}>
                     {props.state.routes.map((route, index) => {
+                        // Hide dynamic routes from the tab bar
+                        if (route.name.includes('[id]')) return null;
+
                         const isFocused = props.state.index === index;
+                        const currentRouteName = props.state.routes[props.state.index].name;
+                        const shouldHighlight = isFocused || (route.name === 'library/index' && currentRouteName === 'library/[id]');
 
                         const onPress = () => {
                             const now = Date.now();
@@ -66,14 +71,14 @@ export default function TabLayout() {
 
                         let iconName: any = 'ellipse-outline';
                         if (route.name === 'index') iconName = 'home-outline';
-                        else if (route.name === 'library') iconName = 'albums-outline';
+                        else if (route.name === 'library' || route.name === 'library/index') iconName = 'albums-outline';
                         else if (route.name === 'groups') iconName = 'people-circle-outline';
 
-                        const finalIcon = isFocused ? iconName.replace('-outline', '') : iconName;
+                        const finalIcon = shouldHighlight ? iconName.replace('-outline', '') : iconName;
 
                         let label = '';
                         if (route.name === 'index') label = 'Home';
-                        else if (route.name === 'library') label = 'Library';
+                        else if (route.name === 'library' || route.name === 'library/index') label = 'Library';
                         else if (route.name === 'groups') label = 'Groups';
 
                         return (
@@ -84,19 +89,19 @@ export default function TabLayout() {
                             >
                                 <View style={[
                                     styles.iconWrap,
-                                    isFocused && { backgroundColor: colors.background },
+                                    shouldHighlight && { backgroundColor: colors.background },
                                 ]}>
                                     <Ionicons
                                         name={finalIcon}
                                         size={22}
-                                        color={isFocused ? colors.accent : colors.textTertiary}
+                                        color={shouldHighlight ? colors.accent : colors.textTertiary}
                                     />
                                 </View>
                                 <Text style={[
                                     styles.tabLabel,
                                     {
-                                        color: isFocused ? colors.accent : colors.textTertiary,
-                                        fontWeight: isFocused ? '600' : '400',
+                                        color: shouldHighlight ? colors.accent : colors.textTertiary,
+                                        fontWeight: shouldHighlight ? '600' : '400',
                                     },
                                 ]}>
                                     {label}
@@ -108,7 +113,8 @@ export default function TabLayout() {
             )}
         >
             <Tabs.Screen name="index" />
-            <Tabs.Screen name="library" />
+            <Tabs.Screen name="library/index" options={{ title: 'Library' }} />
+            <Tabs.Screen name="library/[id]" options={{ href: null }} />
             <Tabs.Screen name="groups" />
         </Tabs>
     );
