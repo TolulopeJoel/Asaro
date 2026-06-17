@@ -234,7 +234,7 @@ export const SummaryStep = React.memo(({
                             style={[styles.primaryButton, { backgroundColor: colors.accent }]}
                             onPress={onDone}
                         >
-                            <Text style={[styles.primaryButtonText, { color: colors.buttonPrimaryText }]}>View in Library</Text>
+                            <Text style={[styles.primaryButtonText, { color: colors.buttonPrimaryText }]}>Check in Library</Text>
                         </ScalePressable>
 
                         <ScalePressable
