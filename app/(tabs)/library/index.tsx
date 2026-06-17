@@ -314,6 +314,7 @@ interface JournalContentProps {
     onViewModeChange: (mode: ViewMode) => void;
     onSearchChange: (q: string) => void;
     onSelectedBookChange: (book: BibleBook | undefined) => void;
+    onCountChange: (count: number) => void;
 }
 
 function JournalContent({
@@ -323,6 +324,7 @@ function JournalContent({
     onViewModeChange,
     onSearchChange,
     onSelectedBookChange,
+    onCountChange,
 }: JournalContentProps) {
     const router = useRouter();
     const params = useLocalSearchParams();
@@ -352,6 +354,7 @@ function JournalContent({
                 onViewModeChange={onViewModeChange}
                 onSearchChange={onSearchChange}
                 onSelectedBookChange={onSelectedBookChange}
+                onCountChange={onCountChange}
             />
         </View>
     );
@@ -939,6 +942,7 @@ export default function LibraryScreen() {
     );
     const [journalSearch, setJournalSearch] = useState('');
     const [journalSelectedBook, setJournalSelectedBook] = useState<BibleBook | undefined>();
+    const [journalCount, setJournalCount] = useState(0);
 
     // Study header state
     const [studyCount, setStudyCount] = useState(0);
@@ -1153,7 +1157,9 @@ export default function LibraryScreen() {
                                 placeholder={
                                     journalViewMode === 'bookDetail' && journalSelectedBook
                                         ? `Search ${journalSelectedBook.name}...`
-                                        : 'Search entries...'
+                                        : journalCount > 0
+                                            ? `Search ${journalCount} entries...`
+                                            : 'Search entries...'
                                 }
                                 placeholderTextColor={colors.textTertiary}
                                 value={journalSearch}
@@ -1175,6 +1181,7 @@ export default function LibraryScreen() {
                         onViewModeChange={setJournalViewMode}
                         onSearchChange={setJournalSearch}
                         onSelectedBookChange={setJournalSelectedBook}
+                        onCountChange={setJournalCount}
                     />
                 </View>
                 <View style={{ width: SCREEN_WIDTH }}>
