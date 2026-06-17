@@ -30,12 +30,12 @@ import {
     MoreHorizontal,
     CloudOff,
 } from 'lucide-react-native';
-import { getFirestore, collection, doc, onSnapshot, getDoc, updateDoc, setDoc, addDoc, query, where, orderBy, limit, serverTimestamp, runTransaction } from '@react-native-firebase/firestore';
+import { getFirestore, collection, doc, onSnapshot, getDoc, updateDoc, query, where, orderBy, limit } from '@react-native-firebase/firestore';
 import { useAuth } from '@/src/context/AuthContext';
 import { checkInactiveMembers, getISOWeekString, evaluateGroupAdminRoles } from '@/src/utils/syncActivities';
 import { getTodayDateString } from '@/src/utils/dateUtils';
 import { ALL_BADGES } from '@/src/utils/badges';
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Animated, {
     useSharedValue, useAnimatedStyle, withSpring, withTiming,
     runOnJS,

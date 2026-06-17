@@ -20,7 +20,6 @@ import { Link, useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { DeviceEventEmitter, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { JournalEntryDetail } from '@/src/components/JournalEntryDetail';
 import { WavyAddIcon } from '@/src/components/WavyAddIcon';
 import { AnimatedModal } from '@/src/components/AnimatedModal';

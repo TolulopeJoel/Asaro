@@ -11,7 +11,7 @@ import * as Sharing from 'expo-sharing';
 import { Stack, useRouter } from 'expo-router';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/src/components/Button';
 import { ScalePressable } from '@/src/components/ScalePressable';
@@ -26,11 +26,9 @@ import {
     Smartphone,
     Archive,
     Download,
-    Settings as SettingsIcon,
-    X
 } from 'lucide-react-native';
 import { LoadingView } from '@/src/components/LoadingView';
-import { getFirestore, collection, doc, setDoc, getDoc, writeBatch, query, where, onSnapshot, collectionGroup } from '@react-native-firebase/firestore';
+import { getFirestore, doc, setDoc, getDoc, writeBatch, query, where, onSnapshot, collectionGroup } from '@react-native-firebase/firestore';
 import { useAuth } from '@/src/context/AuthContext';
 import { Avatar } from './(tabs)/groups/[id]';
 import { TextInput } from 'react-native';
@@ -219,37 +217,6 @@ export default function Settings() {
             return () => unsubscribe();
         }
     }, [user?.uid]);
-
-    const handleSaveProfile = async () => {
-        if (!user?.uid) return;
-        setIsSavingProfile(true);
-        try {
-            await setDoc(doc(db, 'users', user.uid), {
-                photoURL: photoURL.trim()
-            }, { merge: true });
-
-            // Update all groups the user is part of
-            const userDoc = await getDoc(doc(db, 'users', user.uid));
-            if (userDoc.exists()) {
-                const groupIds = userDoc.data()?.groupIds || [];
-                if (groupIds.length > 0) {
-                    const batch = writeBatch(db);
-                    groupIds.forEach((groupId: string) => {
-                        const memberRef = doc(db, 'groups', groupId, 'members', user.uid);
-                        batch.set(memberRef, { photoURL: photoURL.trim() }, { merge: true });
-                    });
-                    await batch.commit();
-                }
-            }
-
-            showAlert({ title: 'Success', message: 'Profile photo updated successfully' });
-        } catch (error) {
-            console.error('Failed to save profile:', error);
-            showAlert({ title: 'Error', message: 'Failed to update profile photo' });
-        } finally {
-            setIsSavingProfile(false);
-        }
-    };
 
     const handleNotificationTitleTap = () => {
         const newCount = tapCount + 1;

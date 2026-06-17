@@ -1,7 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 import { formatDateToLocalString, getTodayDateString } from '../utils/dateUtils';
 import { getAuth } from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
 import { queueActivity, syncPendingActivities } from '../utils/syncActivities';
 import { READING_PLAN_DATA } from './readingPlanData';
 

@@ -1,9 +1,8 @@
-import { JournalEntry, deleteJournalEntry, shareReflectionToGroup } from '@/src/data/database';
+import { JournalEntry, shareReflectionToGroup } from '@/src/data/database';
 import { getDaysDifference, getLocalMidnight } from '@/src/utils/dateUtils';
 import React, { useState, useMemo } from 'react';
 import {
     ScrollView,
-    Share,
     StyleSheet,
     Text,
     View,
@@ -12,7 +11,6 @@ import { Share2, Bell, X } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { useAlert } from '../context/AlertContext';
 import { Spacing } from '../theme/spacing';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Typography } from '../theme/typography';
 import { ScalePressable } from './ScalePressable';
 import { HyperlinkedText } from './HyperlinkedText';

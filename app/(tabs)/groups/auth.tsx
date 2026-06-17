@@ -14,7 +14,6 @@ import { Button } from '@/src/components/Button';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import Animated, {
     useAnimatedStyle,
-    withSpring,
     withTiming,
     interpolateColor,
     useSharedValue

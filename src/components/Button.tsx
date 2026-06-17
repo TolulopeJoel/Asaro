@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-    ActivityIndicator,
     StyleProp,
     StyleSheet,
     Text,
@@ -13,8 +12,6 @@ import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
 import { ScalePressable } from './ScalePressable';
-import { LoadingView } from './LoadingView';
-
 import { BouncingDots } from './BouncingDots';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';

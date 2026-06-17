@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, ScrollView } from 'react-native';
-import { getFirestore, doc, collection, getDoc, getDocs, setDoc, query, where, limit, updateDoc, increment, arrayUnion, serverTimestamp, addDoc } from '@react-native-firebase/firestore';
+import { getFirestore, doc, collection, getDoc, getDocs, setDoc, query, where, limit, increment, arrayUnion, serverTimestamp, addDoc } from '@react-native-firebase/firestore';
 import { useAuth } from '@/src/context/AuthContext';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { useAlert } from '@/src/context/AlertContext';

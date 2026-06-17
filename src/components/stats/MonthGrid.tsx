@@ -1,7 +1,7 @@
 import { useTheme } from '@/src/theme/ThemeContext';
 import { formatDateToLocalString, getLocalMidnight, isSameDay } from '@/src/utils/dateUtils';
 import React, { useCallback, useState } from 'react';
-import { StyleSheet, Text, View, Image } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Clover } from '../Clover';
 import { useFocusEffect } from 'expo-router';
 

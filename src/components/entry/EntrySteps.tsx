@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { ChevronLeft, ChevronRight, Trash2, Check, Share2, PlusCircle, Zap } from 'lucide-react-native';
+import { ChevronLeft, Trash2, Check, Share2 } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { Spacing } from '../../theme/spacing';
 import { Typography } from '../../theme/typography';
@@ -183,9 +183,6 @@ interface SummaryStepProps {
     formattedDate: string;
     onDone: () => void;
     onShare: () => void;
-    onWriteAnother: () => void;
-    hasActionItems: boolean;
-    onAddActionItem: () => void;
 }
 
 export const SummaryStep = React.memo(({
@@ -193,9 +190,6 @@ export const SummaryStep = React.memo(({
     formattedDate,
     onDone,
     onShare,
-    onWriteAnother,
-    hasActionItems,
-    onAddActionItem
 }: SummaryStepProps) => {
     const { colors } = useTheme();
     const confettiRef = useRef<ConfettiRef>(null);
@@ -206,6 +200,7 @@ export const SummaryStep = React.memo(({
         }, 300);
         return () => clearTimeout(timer);
     }, []);
+
     return (
         <View style={styles.stepContainer}>
             <Confetti ref={confettiRef} />
@@ -242,39 +237,12 @@ export const SummaryStep = React.memo(({
                             <Text style={[styles.primaryButtonText, { color: colors.buttonPrimaryText }]}>View in Library</Text>
                         </ScalePressable>
 
-                        <View style={styles.secondaryActionsRow}>
-                            <ScalePressable
-                                style={[styles.secondaryActionButton, { borderColor: colors.border }]}
-                                onPress={onShare}
-                            >
-                                <Share2 size={18} color={colors.textPrimary} />
-                                <Text style={[styles.secondaryActionText, { color: colors.textPrimary }]}>Share</Text>
-                            </ScalePressable>
-
-                            <ScalePressable
-                                style={[styles.secondaryActionButton, { borderColor: colors.border }]}
-                                onPress={onWriteAnother}
-                            >
-                                <PlusCircle size={18} color={colors.textPrimary} />
-                                <Text style={[styles.secondaryActionText, { color: colors.textPrimary }]}>New Entry</Text>
-                            </ScalePressable>
-                        </View>
-
-                        {!hasActionItems && (
-                            <ScalePressable
-                                style={[styles.nudgeContainer, { backgroundColor: colors.accent + '0D', borderColor: colors.accent + '40' }]}
-                                onPress={onAddActionItem}
-                            >
-                                <View style={[styles.nudgeIconContainer, { backgroundColor: colors.accent + '15' }]}>
-                                    <Zap size={16} color={colors.accent} fill={colors.accent} />
-                                </View>
-                                <View style={styles.nudgeTextContainer}>
-                                    <Text style={[styles.nudgeTitle, { color: colors.textPrimary }]}>No action steps?</Text>
-                                    <Text style={[styles.nudgeSubtitle, { color: colors.textSecondary }]}>Add a practical way to apply this today</Text>
-                                </View>
-                                <ChevronRight size={16} color={colors.textTertiary} />
-                            </ScalePressable>
-                        )}
+                        <ScalePressable
+                            style={styles.shareLink}
+                            onPress={onShare}
+                        >
+                            <Text style={[styles.shareLinkText, { color: colors.textTertiary }]}>Share this reflection</Text>
+                        </ScalePressable>
                     </View>
                 </View>
             </ScrollView>
@@ -405,7 +373,8 @@ const styles = StyleSheet.create({
         minHeight: 400,
     },
     summaryActions: {
-        gap: 0,
+        gap: Spacing.lg,
+        alignItems: 'center',
     },
     successHero: {
         alignItems: 'center',
@@ -475,6 +444,7 @@ const styles = StyleSheet.create({
         opacity: 0.55,
     },
     primaryButton: {
+        width: '100%',
         paddingVertical: 20,
         paddingHorizontal: Spacing.xxl,
         borderRadius: Spacing.borderRadius.lg,
@@ -485,51 +455,13 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         letterSpacing: 0.3,
     },
-    secondaryActionsRow: {
-        flexDirection: 'row',
-        gap: Spacing.md,
-        marginTop: Spacing.md,
+    shareLink: {
+        paddingVertical: Spacing.sm,
+        paddingHorizontal: Spacing.md,
     },
-    secondaryActionButton: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: Spacing.sm,
-        paddingVertical: 14,
-        borderRadius: 12,
-        borderWidth: 1,
-    },
-    secondaryActionText: {
-        fontSize: 15,
-        fontWeight: '600',
-    },
-    nudgeContainer: {
-        marginTop: Spacing.xxl,
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        borderRadius: 16,
-        borderWidth: 1,
-    },
-    nudgeIconContainer: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 12,
-    },
-    nudgeTextContainer: {
-        flex: 1,
-    },
-    nudgeTitle: {
-        fontSize: 15,
-        fontWeight: '700',
-        marginBottom: 2,
-    },
-    nudgeSubtitle: {
-        fontSize: 13,
-        fontWeight: '400',
+    shareLinkText: {
+        fontSize: Typography.size.sm,
+        fontWeight: Typography.weight.medium,
+        letterSpacing: 0.2,
     },
 });

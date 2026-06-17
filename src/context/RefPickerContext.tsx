@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
-import { Platform, StyleSheet, View, KeyboardAvoidingView } from 'react-native';
+import { Platform, StyleSheet, KeyboardAvoidingView } from 'react-native';
 import { BibleReferencePicker } from '../components/BibleReferencePicker';
 
 interface RefPickerConfig {

@@ -27,7 +27,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
     style,
     circle = false,
 }) => {
-    const { colors, isDark } = useTheme();
+    const { isDark } = useTheme();
     const shimmerValue = useSharedValue(0);
 
     useEffect(() => {

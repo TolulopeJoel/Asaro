@@ -242,17 +242,6 @@ export default function MeditationSessionScreen() {
         }
     }, [selectedBook, selectedChapters, verseRange, reflectionAnswers]);
 
-    // Resets all entry state and returns to the book step.
-    // Covers both "Write another" (from summary) and "Start over" flows.
-    const handleWriteAnother = useCallback(async () => {
-        await clearEntryState();
-        setCurrentStep('book');
-    }, [clearEntryState]);
-
-    const handleAddActionItem = useCallback(() => {
-        setCurrentStep('reflection');
-    }, []);
-
     const handleDiscardDraft = useCallback(() => {
         showAlert({
             title: 'Discard Draft?',
@@ -342,9 +331,6 @@ export default function MeditationSessionScreen() {
                         formattedDate={formattedDate}
                         onDone={handleDone}
                         onShare={handleShare}
-                        onWriteAnother={handleWriteAnother}
-                        hasActionItems={!!(reflectionAnswers?.actionItems && reflectionAnswers.actionItems.some(item => item.action.trim().length > 0))}
-                        onAddActionItem={handleAddActionItem}
                     />
                 );
             default: return null;

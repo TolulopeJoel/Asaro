@@ -26,6 +26,7 @@ import {
     JournalEntry,
     getEntriesByBook,
     getJournalEntries,
+    getTotalJournalCount,
     searchEntries,
     getAllActionItems,
     getAllStudyTopics,
@@ -34,9 +35,8 @@ import {
     toggleActionItemPin,
     getBookEntryCounts,
 } from '../data/database';
-import { ScalePressable } from './ScalePressable';
 import { LoadingView } from './LoadingView';
-import Animated, { LinearTransition } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
 type ViewMode = 'recent' | 'books' | 'bookDetail' | 'actions' | 'topics';
 
@@ -65,6 +65,7 @@ interface JournalEntryListProps {
     onViewModeChange: (mode: ViewMode) => void;
     onSearchChange: (query: string) => void;
     onSelectedBookChange: (book?: BibleBook) => void;
+    onCountChange?: (count: number) => void;
 }
 
 
@@ -77,6 +78,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
     onViewModeChange,
     onSearchChange,
     onSelectedBookChange,
+    onCountChange,
 }) => {
     const { colors } = useTheme();
     const [entries, setEntries] = useState<JournalEntry[]>([]);
@@ -109,6 +111,11 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
 
             // Fetch book counts from DB (covers ALL entries, not just the current page)
             const bookCounts = await getBookEntryCounts();
+            const totalCount = await getTotalJournalCount();
+
+            if (onCountChange) {
+                onCountChange(totalCount);
+            }
 
             const booksWithEntries = ALL_BIBLE_BOOKS
                 .filter(book => bookCounts[book.name] !== undefined)
