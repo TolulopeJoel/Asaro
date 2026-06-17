@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
         left: Spacing.lg,
         right: Spacing.lg,
         marginBottom: 4,
-        marginHorizontal: 0.5,
+        marginHorizontal: 1.5,
         borderRadius: Spacing.borderRadius.lg,
         borderBottomEndRadius: 4,
         borderBottomStartRadius: 4,
