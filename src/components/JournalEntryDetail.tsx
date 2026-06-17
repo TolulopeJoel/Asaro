@@ -55,7 +55,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
         if (diffDays === 0) return 'today';
         if (diffDays === 1) return 'yesterday';
         if (diffDays === 2) return 'the day before yesterday';
-        if (diffDays < 7) return `${diffDays} days ago`;
+        if (diffDays < 7) return `${Math.abs(diffDays)} days ago`;
 
         const day = dateLocal.getDate();
         const suffix = day === 1 || day === 21 || day === 31 ? 'st' :
@@ -289,14 +289,12 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                         <Text style={[styles.dateText, { color: colors.badgeText }]}>{formatDate(entry.created_at)}</Text>
                     </View>
 
-                    <View>
-                        <Text style={[styles.reference, { color: colors.textPrimary }]}>
-                            {entry.book_name}
-                        </Text>
-                        <Text style={[styles.verseReference, { color: colors.accent }]}>
+                    <Text style={[styles.reference, { color: colors.textPrimary }]}>
+                        {entry.book_name}{' '}
+                        <Text style={[styles.verseReference, { color: colors.textPrimary }]}>
                             {formatChapterAndVerses()}
                         </Text>
-                    </View>
+                    </Text>
                 </View>
 
                 {/* Content */}
@@ -370,13 +368,10 @@ const styles = StyleSheet.create({
         fontSize: Typography.size.xxxl,
         fontWeight: Typography.weight.semibold,
         letterSpacing: Typography.letterSpacing.tight,
-        lineHeight: Typography.lineHeight.xxxl + 6,
-        marginBottom: Spacing.sm,
+        marginBottom: Spacing.xxl,
     },
     verseReference: {
-        fontSize: Typography.size.xl,
         fontWeight: Typography.weight.medium,
-        marginBottom: Spacing.xxl,
         letterSpacing: Typography.letterSpacing.normal,
     },
     contentSection: {
