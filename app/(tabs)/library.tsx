@@ -53,10 +53,10 @@ type PlanListDataItem =
 
 // ─── Segment Config ───────────────────────────────────────────────────────────
 
-const SEGMENTS: { key: Segment; label: string; icon: string }[] = [
-    { key: 'journal', label: 'Journal', icon: 'journal-outline' },
-    { key: 'study', label: 'Study', icon: 'reader-outline' },
-    { key: 'plan', label: 'Plan', icon: 'map-outline' },
+const SEGMENTS: { key: Segment; label: string; icon: string; subtitle: string }[] = [
+    { key: 'journal', label: 'Journal', icon: 'journal-outline', subtitle: 'Reading entries' },
+    { key: 'study', label: 'Study', icon: 'reader-outline', subtitle: 'Notes & topics' },
+    { key: 'plan', label: 'Plan', icon: 'map-outline', subtitle: 'Bible reading plan' },
 ];
 
 // ─── Color Sort Helper ────────────────────────────────────────────────────────
@@ -917,12 +917,22 @@ export default function LibraryScreen() {
                     <View style={[styles.dropdownIconBox, { backgroundColor: isActive ? colors.accent + '15' : colors.backgroundSubtle }]}>
                         <Ionicons name={seg.icon as any} size={22} color={isActive ? colors.accent : colors.textMuted} />
                     </View>
-                    <Text style={[
-                        styles.dropdownItemText,
-                        { color: isActive ? colors.accent : colors.textPrimary }
-                    ]}>
-                        {seg.label}
-                    </Text>
+                    <View style={{ gap: 4 }}>
+                        <Text style={[
+                            styles.dropdownItemText,
+                            { color: isActive ? colors.accent : colors.textPrimary }
+                        ]}>
+                            {seg.label}
+                        </Text>
+                        <View style={[
+                            styles.dropdownItemPill,
+                            { backgroundColor: isActive ? colors.accent + '12' : colors.backgroundSubtle }
+                        ]}>
+                            <Text style={[styles.dropdownItemPillText, { color: isActive ? colors.accent : colors.textMuted }]}>
+                                {seg.subtitle}
+                            </Text>
+                        </View>
+                    </View>
                 </View>
                 {isActive && (
                     <Ionicons name="checkmark-circle" size={24} color={colors.accent} />
@@ -1022,6 +1032,26 @@ export default function LibraryScreen() {
                             </Animated.View>
                         </View>
                     )}
+                </View>
+
+                {/* Row 2: Segment pill switcher */}
+                <View style={styles.segmentPillRow}>
+                    {SEGMENTS.map((seg) => {
+                        const isActive = activeSegment === seg.key;
+                        return (
+                            <ScalePressable
+                                key={seg.key}
+                                style={[
+                                    styles.segmentPill,
+                                    {
+                                        backgroundColor: isActive ? colors.accent : colors.textMuted + '33',
+                                    },
+                                ]}
+                                onPress={() => handleSelectSegment(seg.key)}
+                            >
+                            </ScalePressable>
+                        );
+                    })}
                 </View>
 
                 {/* Row 3: Journal sub-tabs */}
@@ -1214,6 +1244,32 @@ const styles = StyleSheet.create({
         fontSize: 20,
         fontWeight: '700',
         letterSpacing: -0.5,
+    },
+    dropdownItemPill: {
+        alignSelf: 'flex-start',
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 20,
+    },
+    dropdownItemPillText: {
+        fontSize: 11,
+        fontWeight: '600',
+        letterSpacing: 0.2,
+    },
+
+    // ── Segment pill row ────────────────────────────────────────────
+    segmentPillRow: {
+        flexDirection: 'row',
+        paddingHorizontal: Spacing.layout.screenPadding,
+        paddingBottom: Spacing.sm,
+        gap: 8,
+    },
+    segmentPill: {
+        width: 36,
+        height: 4.5,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 20,
     },
 
     // ── Journal sub-tabs ───────────────────────────────────────────
