@@ -21,8 +21,8 @@ import {
 import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
 import { ScalePressable } from './ScalePressable';
-
-const TOPIC_COLORS = ['#E18F43', '#27AE60', '#2980B9', '#8E44AD', '#C0392B', '#2C3E50'];
+//                     Sunflower Yellow, Mint Green, Sky Blue, Lavender, Coral Pink, Peach Orange
+const TOPIC_COLORS = ['#FEE440', '#A2E4B8', '#90CAF9', '#C1B4E8', '#F492B4', '#FFB74D'];
 
 interface StudyEditorProps {
     title: string;

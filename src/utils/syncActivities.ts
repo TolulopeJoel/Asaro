@@ -250,7 +250,7 @@ export const syncPendingActivities = async (): Promise<void> => {
                     // ── Fetch current member + group state ──────────────────
                     const db = getFirestore();
                     const groupRef = doc(db, 'groups', groupId);
-                    const memberRef = doc(groupRef, 'members', activity.userId);
+                    const memberRef = doc(db, 'groups', groupId, 'members', activity.userId);
                     const activitiesRef = collection(groupRef, 'activities');
 
                     const [memberDoc, groupDoc] = await Promise.all([
@@ -420,7 +420,7 @@ export const syncPendingActivities = async (): Promise<void> => {
 
                             if (allMembersReadToday) {
                                 const allReadBadge = GROUP_BADGES.find(b => b.id === 'all_read_today')!;
-                                batch.set(activitiesRef.doc(), {
+                                batch.set(doc(activitiesRef), {
                                     type: 'group_milestone',
                                     ...badgeFields(allReadBadge),
                                     timestamp: serverTimestamp(),

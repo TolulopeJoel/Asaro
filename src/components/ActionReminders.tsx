@@ -91,7 +91,7 @@ const ActionCard = React.memo(({
     isTopStacked,
     onEntryPress,
 }: ActionCardProps) => {
-    const { colors } = useTheme();
+    const { colors, isDark } = useTheme();
 
     const handlePress = async () => {
         try {
@@ -143,7 +143,8 @@ const ActionCard = React.memo(({
                     <View style={styles.headerTitleRow}>
                         <Zap
                             size={14}
-                            color={colors.accentSecondary}
+                            color={isDark ? '#f7f4ef' + 'E6' : '#000000' + 'B3'}
+                            fill={colors.accentSecondary}
                         />
                         <Text style={[styles.headerTitle, { color: colors.textSecondary }]}>
                             {isTopStacked

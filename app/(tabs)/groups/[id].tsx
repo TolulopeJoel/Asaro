@@ -1430,19 +1430,19 @@ export default function GroupDetailScreen() {
                                                 <Text style={{ fontSize: 18, marginTop: -2 }}>{activity.badgeEmoji}</Text>
                                             ) : (
                                                 isJournalEntry ? (
-                                                    <NotebookPen size={20} color={colors.accentSecondary} />
+                                                    <NotebookPen size={20} color={colors.accentSecondary} fill={colors.accentSecondary + '20'} />
                                                 ) : isSharedReflection ? (
-                                                    <MessageCircle size={20} color={colors.accentSecondary} />
+                                                    <MessageCircle size={20} color={colors.accentSecondary} fill={colors.accentSecondary + '20'} />
                                                 ) : isJoined ? (
-                                                    <UserPlus size={20} color={colors.indicatorActive} />
+                                                    <UserPlus size={20} color={colors.indicatorActive} fill={colors.indicatorActive + '20'} />
                                                 ) : isAbsent ? (
-                                                    <Moon size={20} color={colors.accent} />
+                                                    <Moon size={20} color={colors.accent} fill={colors.accent + '20'} />
                                                 ) : isRemoved ? (
-                                                    <LogOut size={20} color={colors.textTertiary} />
+                                                    <LogOut size={20} color={colors.textTertiary} fill={colors.textTertiary + '20'} />
                                                 ) : isAdminPromoted ? (
-                                                    <Award size={20} color={colors.accentSecondary} />
+                                                    <Award size={20} color={colors.accentSecondary} fill={colors.accentSecondary + '20'} />
                                                 ) : (
-                                                    <CheckCircle2 size={20} color={colors.textTertiary} />
+                                                    <CheckCircle2 size={20} color={colors.textTertiary} fill={colors.textTertiary + '20'} />
                                                 )
                                             )}
                                         </View>

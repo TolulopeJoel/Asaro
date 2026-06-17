@@ -31,7 +31,6 @@ import {
     Zap,
     Bookmark,
     CheckCircle2,
-    ChevronRight,
     ChevronDown,
     Check,
     Plus,
@@ -505,12 +504,12 @@ function StudyContent({
             >
                 <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
                     <View style={styles.studyPreviewHeader}>
-                        <ScalePressable onPress={closePreview} style={[styles.studyPreviewIconBtn, { backgroundColor: colors.backgroundSubtle }]}>
-                            <X size={22} color={colors.textSecondary} />
-                        </ScalePressable>
                         <ScalePressable onPress={() => viewingTopic && openEditor(viewingTopic)} style={[styles.studyEditButton, { backgroundColor: colors.accent }]}>
                             <Edit2 size={18} color={colors.buttonPrimaryText} />
                             <Text style={[styles.studyEditButtonText, { color: colors.buttonPrimaryText }]}>Edit</Text>
+                        </ScalePressable>
+                        <ScalePressable onPress={closePreview} style={[styles.studyPreviewIconBtn, { backgroundColor: colors.backgroundSubtle }]}>
+                            <X size={22} color={colors.textSecondary} />
                         </ScalePressable>
                     </View>
                     <ScrollView style={styles.studyPreviewContent} showsVerticalScrollIndicator={false}>
@@ -1450,7 +1449,7 @@ const styles = StyleSheet.create({
     studyEmptySubtitle: { fontSize: 14, textAlign: 'center', lineHeight: 21, opacity: 0.7 },
     studyCreateButton: { marginTop: 6, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 20, paddingVertical: 11, borderRadius: 14 },
     studyCreateButtonText: { fontSize: 15, fontWeight: '700' },
-    studyPreviewHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing.layout.screenPadding, paddingVertical: 12 },
+    studyPreviewHeader: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', paddingHorizontal: Spacing.layout.screenPadding, paddingVertical: 12, gap: 8 },
     studyPreviewIconBtn: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
     studyEditButton: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
     studyEditButtonText: { fontSize: 15, fontWeight: '700' },

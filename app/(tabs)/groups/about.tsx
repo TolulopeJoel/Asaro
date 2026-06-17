@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { ChevronLeft } from 'lucide-react-native';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
@@ -86,7 +86,7 @@ export default function AboutGroupsScreen() {
             <Stack.Screen options={{ title: 'Group Logic', headerTitle: 'Group Logic' }} />
             <View style={styles.header}>
                 <ScalePressable onPress={() => router.back()} style={styles.backButton}>
-                    <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
+                    <ChevronLeft size={24} color={colors.textPrimary} />
                 </ScalePressable>
                 <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>How Groups Work</Text>
                 <View style={{ width: 44 }} />

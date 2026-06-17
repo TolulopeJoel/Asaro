@@ -59,7 +59,7 @@ export const fetchFlashbackData = async (): Promise<{ entry: JournalEntry, type:
 };
 
 export const Flashback: React.FC<FlashbackProps> = React.memo(({ onEntryPress, flashbackData: flashbackProp }) => {
-    const { colors } = useTheme();
+    const { colors, isDark } = useTheme();
     const [flashbackDataState, setFlashbackData] = useState<{ entry: JournalEntry, type: 'year' | 'month' | 'random' } | null>(null);
     const flashbackData = flashbackProp !== undefined ? flashbackProp : flashbackDataState;
 
@@ -115,7 +115,7 @@ export const Flashback: React.FC<FlashbackProps> = React.memo(({ onEntryPress, f
         >
             <View style={styles.header}>
                 <View style={styles.headerTitleRow}>
-                    <FolderOpen size={14} fill={colors.accentSecondary} />
+                    <FolderOpen size={14} fill={colors.accentSecondary} color={isDark ? '#f7f4ef' + 'E6' : '#000000' + 'B3'} />
                     <Text style={[styles.headerTitle, { color: colors.textSecondary }]}>
                         {getTitle().toUpperCase()}
                     </Text>
