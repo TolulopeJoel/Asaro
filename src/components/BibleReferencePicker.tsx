@@ -14,7 +14,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
 import { ALL_BIBLE_BOOKS, BibleBook } from '../data/bibleBooks';
-import { Ionicons } from '@expo/vector-icons';
+import { ChevronLeft, Check, ArrowRight, X } from 'lucide-react-native';
 
 const CHIP_THRESHOLD = 30;
 
@@ -58,7 +58,7 @@ const BackPill = ({
         onPress={onPress}
         style={[styles.pill, styles.backPill, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '30' }]}
     >
-        <Ionicons name="chevron-back" size={14} color={colors.primary} />
+        <ChevronLeft size={14} color={colors.primary} />
         <Text style={[styles.pillText, { color: colors.primary, fontWeight: '700' }]}>{label}</Text>
     </TouchableOpacity>
 );
@@ -89,7 +89,7 @@ const LiveNumberInput = ({
     onChange,
     placeholder,
     onSubmit,
-    confirmIcon = 'checkmark',
+    confirmIcon = Check,
     min,
     onInteraction,
     onInvalid,
@@ -100,7 +100,7 @@ const LiveNumberInput = ({
     onChange: (v: string) => void;
     placeholder: string;
     onSubmit: () => void;
-    confirmIcon?: string;
+    confirmIcon?: any;
     min?: number;
     onInteraction?: () => void;
     onInvalid?: () => void;
@@ -142,7 +142,7 @@ const LiveNumberInput = ({
                 borderColor: value ? colors.primary : colors.border,
             }]}
         >
-            <Ionicons name={confirmIcon as any} size={14} color={value ? '#fff' : colors.textTertiary} />
+            {React.createElement(confirmIcon, { size: 14, color: value ? '#fff' : colors.textTertiary })}
         </TouchableOpacity>
     </View>
 );
@@ -205,7 +205,7 @@ const ChapterPills = ({
                 }
             }}
             min={min}
-            confirmIcon="arrow-forward"
+            confirmIcon={ArrowRight}
             onInteraction={onInteraction}
             onInvalid={onInvalid}
             colors={colors}
@@ -655,7 +655,7 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
                     onPress={onDismiss}
                     style={[styles.closeBtn, { borderRightColor: colors.border }]}
                 >
-                    <Ionicons name="close" size={18} color={colors.textTertiary} />
+                    <X size={18} color={colors.textTertiary} />
                 </TouchableOpacity>
 
                 <Animated.View style={{ flex: 1, opacity: fadeAnim }}>

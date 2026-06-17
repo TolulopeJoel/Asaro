@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { ChevronRight } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { JournalEntry } from '../../data/database';
 import { ScalePressable } from '../ScalePressable';
@@ -36,7 +36,7 @@ export const EntryCard = React.memo(({ entry, onEntryPress }: EntryCardProps) =>
                             </View>
                         )}
                     </View>
-                    <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
+                    <ChevronRight size={14} color={colors.textMuted} />
                 </View>
 
                 <HyperlinkedText

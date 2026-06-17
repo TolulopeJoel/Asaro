@@ -1,6 +1,6 @@
 import { getFlashbackEntry, JournalEntry } from '@/src/data/database';
 import { useTheme } from '@/src/theme/ThemeContext';
-import { Ionicons } from '@expo/vector-icons';
+import { FolderOpen } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
@@ -115,7 +115,7 @@ export const Flashback: React.FC<FlashbackProps> = React.memo(({ onEntryPress, f
         >
             <View style={styles.header}>
                 <View style={styles.headerTitleRow}>
-                    <Ionicons name="folder-open" size={14} color={colors.accentSecondary} />
+                    <FolderOpen size={14} fill={colors.accentSecondary} />
                     <Text style={[styles.headerTitle, { color: colors.textSecondary }]}>
                         {getTitle().toUpperCase()}
                     </Text>

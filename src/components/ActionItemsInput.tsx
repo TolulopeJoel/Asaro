@@ -13,7 +13,7 @@ import {
 import { Button } from './Button';
 import { ScalePressable } from './ScalePressable';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { XCircle, X, Plus, Maximize } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
@@ -290,7 +290,7 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                                 <ScalePressable
                                     onPress={() => clearField(index, 'action', isModal)}
                                 >
-                                    <Ionicons name="close-circle" size={16} color={colors.textTertiary} />
+                                    <XCircle size={16} color={colors.textTertiary} />
                                 </ScalePressable>
                             )}
                         </View>
@@ -343,7 +343,7 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                                 <ScalePressable
                                     onPress={() => clearField(index, 'motivation', isModal)}
                                 >
-                                    <Ionicons name="close-circle" size={16} color={colors.textTertiary} />
+                                    <XCircle size={16} color={colors.textTertiary} />
                                 </ScalePressable>
                             )}
                         </View>
@@ -401,7 +401,7 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                         style={[styles.expandButton, { backgroundColor: colors.backgroundSubtle }]}
                         onPress={handleExpand}
                     >
-                        <Ionicons name="square-outline" size={16} color={colors.textSecondary} />
+                        <Maximize size={14} color={colors.textSecondary} />
                     </ScalePressable>
                 )}
             </View>
@@ -412,7 +412,7 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                     label="add action"
                     variant="outline"
                     onPress={() => handleAdd(false)}
-                    icon="add-outline"
+                    icon={Plus}
                     style={styles.addButton}
                 />
             )}
@@ -442,7 +442,7 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                                     onPress={handleCancelExpansion}
                                     style={[fullScreenStyles.iconBtn, { backgroundColor: colors.backgroundSubtle }]}
                                 >
-                                    <Ionicons name="close" size={20} color={colors.textSecondary} />
+                                    <X size={20} color={colors.textSecondary} />
                                 </ScalePressable>
                             </View>
                         </View>
@@ -460,7 +460,7 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                                 label="add action"
                                 variant="outline"
                                 onPress={() => handleAdd(true)}
-                                icon="add-outline"
+                                icon={Plus}
                                 style={[styles.addButton, { marginBottom: Spacing.xl }]}
                             />
 

@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
+import { LucideIcon } from 'lucide-react-native';
 
 export interface AlertButton {
     text: string;
     onPress?: () => void;
     style?: 'default' | 'cancel' | 'destructive';
-    icon?: string;
+    icon?: LucideIcon;
 }
 
 export interface AlertOptions {
@@ -12,7 +13,7 @@ export interface AlertOptions {
     message: string;
     buttons?: AlertButton[];
     cancelable?: boolean;
-    icon?: string;
+    icon?: LucideIcon;
     iconBackground?: string;
     iconColor?: string;
 }

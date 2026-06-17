@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { ChevronDown, ChevronUp } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
 
 export const DateGroupHeader = React.memo(({ title }: { title: string }) => {
@@ -34,7 +34,11 @@ export const TopicHeader = React.memo(({
                 <Text style={[styles.archiveHeaderText, { color: colors.textTertiary }]}>
                     {title} ({count})
                 </Text>
-                <Ionicons name={isArchiveCollapsed ? "chevron-down" : "chevron-up"} size={16} color={colors.textTertiary} />
+                {isArchiveCollapsed ? (
+                    <ChevronDown size={16} color={colors.textTertiary} />
+                ) : (
+                    <ChevronUp size={16} color={colors.textTertiary} />
+                )}
             </View>
         </TouchableOpacity>
     );

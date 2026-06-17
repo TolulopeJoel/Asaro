@@ -9,7 +9,27 @@ import { useAlert } from '@/src/context/AlertContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import {
+    X,
+    BookOpen,
+    ChevronUp,
+    ChevronDown,
+    MessageCircle,
+    NotebookPen,
+    UserPlus,
+    Moon,
+    LogOut,
+    Award,
+    CheckCircle2,
+    Sun,
+    Users,
+    Flame,
+    AlertCircle,
+    ChevronRight,
+    Info,
+    MoreHorizontal,
+    CloudOff,
+} from 'lucide-react-native';
 import { getFirestore, collection, doc, onSnapshot, getDoc, updateDoc, setDoc, addDoc, query, where, orderBy, limit, serverTimestamp, runTransaction } from '@react-native-firebase/firestore';
 import { useAuth } from '@/src/context/AuthContext';
 import { checkInactiveMembers, getISOWeekString, evaluateGroupAdminRoles } from '@/src/utils/syncActivities';
@@ -382,7 +402,7 @@ const GroupEditModal = ({
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.sm }}>
                         <Text style={{ fontSize: 24, fontWeight: '800', color: colors.textPrimary, letterSpacing: -0.5 }}>Edit Group Deets</Text>
                         <ScalePressable onPress={onClose}>
-                            <Ionicons name="close" size={24} color={colors.textSecondary} />
+                            <X size={24} color={colors.textSecondary} />
                         </ScalePressable>
                     </View>
 
@@ -1078,7 +1098,7 @@ export default function GroupDetailScreen() {
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             {isOffline && (
                 <View style={[styles.offlineBanner, { backgroundColor: colors.border }]}>
-                    <Ionicons name="cloud-offline-outline" size={14} color={colors.textSecondary} />
+                    <CloudOff size={14} color={colors.textSecondary} />
                     <Text style={[styles.offlineBannerText, { color: colors.textSecondary }]}>
                         You're offline — showing cached data
                     </Text>
@@ -1107,11 +1127,11 @@ export default function GroupDetailScreen() {
                     </View>
                     <View style={styles.headerRight}>
                         <ScalePressable onPress={() => router.push('/(tabs)/groups/about' as any)} style={styles.infoButton}>
-                            <Ionicons name="information-circle-outline" size={24} color={colors.textSecondary} />
+                            <Info size={24} color={colors.textSecondary} />
                         </ScalePressable>
                         {isAdmin && (
                             <ScalePressable onPress={() => setIsEditModalVisible(true)} style={styles.editButton}>
-                                <Ionicons name="ellipsis-horizontal-circle-outline" size={24} color={colors.textSecondary} />
+                                <MoreHorizontal size={24} color={colors.textSecondary} />
                             </ScalePressable>
                         )}
                     </View>
@@ -1275,7 +1295,7 @@ export default function GroupDetailScreen() {
                                         <View key={digest.id} style={styles.digestCard}>
                                             <ScalePressable style={styles.digestHeader} onPress={toggleDigest}>
                                                 <View style={[styles.digestIconWrap, { backgroundColor: colors.accentSecondaryLight + '40' }]}>
-                                                    <Ionicons name="journal-outline" size={20} color={colors.accent} />
+                                                    <BookOpen size={20} color={colors.accent} />
                                                 </View>
                                                 <View style={styles.digestContent}>
                                                     <Text style={[styles.digestLine, { color: colors.textPrimary }]}>{nameStr}</Text>
@@ -1283,7 +1303,13 @@ export default function GroupDetailScreen() {
                                                         {digest.entries.length} people read · {formatRelativeTime(digest.timestamp)}
                                                     </Text>
                                                 </View>
-                                                <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textTertiary} />
+                                                <View style={styles.digestIconWrap}>
+                                                    {isExpanded ? (
+                                                        <ChevronUp size={18} color={colors.textTertiary} />
+                                                    ) : (
+                                                        <ChevronDown size={18} color={colors.textTertiary} />
+                                                    )}
+                                                </View>
                                             </ScalePressable>
 
                                             {isExpanded && (
@@ -1403,32 +1429,32 @@ export default function GroupDetailScreen() {
                                             {isMilestone ? (
                                                 <Text style={{ fontSize: 18, marginTop: -2 }}>{activity.badgeEmoji}</Text>
                                             ) : (
-                                                <Ionicons
-                                                    name={
-                                                        isJournalEntry ? 'journal-outline'
-                                                            : isSharedReflection ? 'chatbubbles-outline'
-                                                                : isJoined ? 'person-add-outline'
-                                                                    : isAbsent ? 'moon-outline'
-                                                                        : isRemoved ? 'exit-outline'
-                                                                            : isAdminPromoted ? 'ribbon-outline'
-                                                                                : 'checkmark-circle'
-                                                    }
-                                                    size={20}
-                                                    color={
-                                                        isJournalEntry || isSharedReflection ? colors.accentSecondary
-                                                            : isJoined ? colors.indicatorActive
-                                                                : isAbsent ? colors.accent
-                                                                    : isAdminPromoted ? colors.accentSecondary
-                                                                        : colors.textTertiary
-                                                    }
-                                                />
+                                                isJournalEntry ? (
+                                                    <NotebookPen size={20} color={colors.accentSecondary} />
+                                                ) : isSharedReflection ? (
+                                                    <MessageCircle size={20} color={colors.accentSecondary} />
+                                                ) : isJoined ? (
+                                                    <UserPlus size={20} color={colors.indicatorActive} />
+                                                ) : isAbsent ? (
+                                                    <Moon size={20} color={colors.accent} />
+                                                ) : isRemoved ? (
+                                                    <LogOut size={20} color={colors.textTertiary} />
+                                                ) : isAdminPromoted ? (
+                                                    <Award size={20} color={colors.accentSecondary} />
+                                                ) : (
+                                                    <CheckCircle2 size={20} color={colors.textTertiary} />
+                                                )
                                             )}
                                         </View>
                                     </View>
                                 );
                             }) : (
                                 <View style={styles.emptyFeed}>
-                                    <Ionicons name={isOffline ? 'cloud-offline-outline' : 'sunny-outline'} size={28} color={colors.textTertiary} />
+                                    {isOffline ? (
+                                        <CloudOff size={28} color={colors.textTertiary} />
+                                    ) : (
+                                        <Sun size={28} color={colors.textTertiary} />
+                                    )}
                                     <Text style={[styles.emptyFeedText, { color: colors.textTertiary }]}>
                                         {isOffline ? 'Feed unavailable offline. Check back when connected.' : 'No activity yet. Be the first!'}
                                     </Text>
@@ -1456,7 +1482,7 @@ export default function GroupDetailScreen() {
                                                 <Text style={[styles.heroVal, { color: colors.accentSecondary }]}>
                                                     {accountabilityData.readTodayCount} / {accountabilityData.totalMembers}
                                                 </Text>
-                                                <Ionicons name="people" size={20} color={colors.accentSecondary} />
+                                                <Users size={20} color={colors.accentSecondary} />
                                             </>
                                         )}
                                     </View>
@@ -1465,7 +1491,7 @@ export default function GroupDetailScreen() {
                                 <View style={styles.heroStats}>
                                     <View style={styles.miniStat}>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-                                            <Ionicons name="bonfire" size={14} color={colors.accent} />
+                                            <Flame size={14} color={colors.accent} />
                                             {isLoading ? (
                                                 <Skeleton width={20} height={16} borderRadius={4} />
                                             ) : (
@@ -1499,7 +1525,7 @@ export default function GroupDetailScreen() {
                         {accountabilityData.upToDate.length > 0 && (
                             <View style={styles.accountabilitySection}>
                                 <View style={styles.subHeader}>
-                                    <Ionicons name="checkmark-circle" size={16} color="#34C759" />
+                                    <CheckCircle2 size={16} color="#34C759" />
                                     <Text style={[styles.subHeaderText, { color: colors.textSecondary }]}>
                                         UP TO DATE — {accountabilityData.upToDate.length}
                                     </Text>
@@ -1519,7 +1545,7 @@ export default function GroupDetailScreen() {
                         {accountabilityData.needsSupport.length > 0 && (
                             <View style={[styles.accountabilitySection, { marginTop: Spacing.xl }]}>
                                 <View style={styles.subHeader}>
-                                    <Ionicons name="alert-circle" size={16} color={colors.accent} />
+                                    <AlertCircle size={16} color={colors.accent} />
                                     <Text style={[styles.subHeaderText, { color: colors.textSecondary }]}>
                                         NEEDS GINGERING — {accountabilityData.needsSupport.length}
                                     </Text>
@@ -1566,7 +1592,7 @@ export default function GroupDetailScreen() {
                                         <Text style={[styles.adminBadgeText, { color: colors.accentSecondary }]}>ADMIN</Text>
                                     </View>
                                 )}
-                                <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+                                <ChevronRight size={18} color={colors.textTertiary} />
                             </ScalePressable>
                         ))}
 
@@ -1576,14 +1602,14 @@ export default function GroupDetailScreen() {
                         >
                             <View style={styles.infoLinkContent}>
                                 <View style={[styles.infoIconWrap, { backgroundColor: colors.accent + '15' }]}>
-                                    <Ionicons name="information-circle" size={18} color={colors.accent} />
+                                    <Info size={18} color={colors.accent} />
                                 </View>
                                 <View>
                                     <Text style={[styles.infoLinkTitle, { color: colors.textPrimary }]}>Group Logic & Rules</Text>
                                     <Text style={[styles.infoLinkSubtitle, { color: colors.textTertiary }]}>Learn about streaks, admins, and removals</Text>
                                 </View>
                             </View>
-                            <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+                            <ChevronRight size={18} color={colors.textTertiary} />
                         </ScalePressable>
                     </View>
                 )}

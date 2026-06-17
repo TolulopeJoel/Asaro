@@ -1,6 +1,6 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { ChevronLeft, Trash2, Check } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { Spacing } from '../../theme/spacing';
 import { Typography } from '../../theme/typography';
@@ -148,7 +148,7 @@ export const ReflectionStep = React.memo(({
                             style={styles.footerNavButton}
                             onPress={onBack}
                         >
-                            <Ionicons name="chevron-back" size={14} color={colors.textTertiary} />
+                            <ChevronLeft size={14} color={colors.textTertiary} />
                             <Text style={[styles.footerNavText, { color: colors.textTertiary }]}>
                                 {`Change chapter${selectedChapters?.end && selectedChapters.end !== selectedChapters.start ? 's' : ''}`}
                             </Text>
@@ -161,7 +161,7 @@ export const ReflectionStep = React.memo(({
                                     style={styles.footerDiscardButton}
                                     onPress={onDiscard}
                                 >
-                                    <Ionicons name="trash-outline" size={13} color={'#C0392B'} />
+                                    <Trash2 size={13} color={'#C0392B'} />
                                     <Text style={[styles.footerDiscardText, { color: '#C0392B' }]}>
                                         Discard draft
                                     </Text>
@@ -196,7 +196,7 @@ export const SummaryStep = React.memo(({
                     <View style={styles.successHero}>
                         <View style={[styles.successRing, { borderColor: colors.accent + '30' }]}>
                             <View style={[styles.successIconOuter, { backgroundColor: colors.accent + '18' }]}>
-                                <Ionicons name="checkmark" size={38} color={colors.accent} />
+                                <Check size={38} color={colors.accent} />
                             </View>
                         </View>
                         <Text style={[styles.successTitle, { color: colors.textPrimary }]}>Recorded</Text>

@@ -1,7 +1,7 @@
 import { getDailyEntryCounts } from '@/src/data/database';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { formatDateToLocalString, getLocalMidnight } from '@/src/utils/dateUtils';
-import { Ionicons } from '@expo/vector-icons';
+import { ChevronRight } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState, useRef } from 'react';
@@ -115,7 +115,7 @@ export const WeeklyStreak = React.memo(({ weekDays: weekDaysProp }: { weekDays?:
     const cardContent = (
         <>
             <View style={styles.header}>
-                <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+                <ChevronRight size={16} color={colors.textTertiary} />
             </View>
 
             <View style={styles.daysContainer}>

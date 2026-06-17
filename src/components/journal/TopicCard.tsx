@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Bell, CheckCircle2, Check } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { JournalEntry } from '../../data/database';
 import { ScalePressable } from '../ScalePressable';
@@ -65,7 +65,7 @@ export const TopicCard = React.memo(({ item, onEntryPress, handleToggleTopic }: 
                         </View>
                         {item.study_further_reminder && new Date(item.study_further_reminder) > new Date() ? (
                             <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, backgroundColor: colors.backgroundSubtle, borderColor: colors.border, alignSelf: 'flex-start', marginTop: 8, gap: 4 }}>
-                                <Ionicons name="notifications-outline" size={12} color={colors.textSecondary} />
+                                <Bell size={12} color={colors.textSecondary} />
                                 <Text style={{ fontSize: 11, fontWeight: '500', color: colors.textSecondary }}>
                                     {new Date(item.study_further_reminder).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
                                 </Text>
@@ -83,11 +83,11 @@ export const TopicCard = React.memo(({ item, onEntryPress, handleToggleTopic }: 
                             }
                         ]}
                     >
-                        <Ionicons
-                            name={isCompleted ? "checkmark-circle" : "checkmark"}
-                            size={14}
-                            color={isCompleted ? colors.accentSecondary : colors.textTertiary}
-                        />
+                        {isCompleted ? (
+                            <CheckCircle2 size={14} color={colors.accentSecondary} />
+                        ) : (
+                            <Check size={14} color={colors.textTertiary} />
+                        )}
                     </ScalePressable>
                 </View>
             </View>

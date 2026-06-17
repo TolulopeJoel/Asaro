@@ -8,7 +8,7 @@ import {
     Text,
     View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Share2, Bell, X } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { useAlert } from '../context/AlertContext';
 import { Spacing } from '../theme/spacing';
@@ -166,7 +166,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: Spacing.md }}>
                         <Text style={[styles.questionText, { color: colors.accent, flex: 1, marginBottom: 0 }]}>{REFLECTION_QUESTIONS[questionIndex]}</Text>
                         <ScalePressable onPress={handleShareActionItems} style={{ padding: Spacing.sm, marginTop: -Spacing.sm, marginRight: -Spacing.sm }}>
-                            <Ionicons name="share-social-outline" size={20} color={colors.textTertiary} />
+                            <Share2 size={20} color={colors.textTertiary} />
                         </ScalePressable>
                     </View>
                     <View style={styles.answerContainer}>
@@ -220,7 +220,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                     </View>
                     {entry.study_further_reminder && new Date(entry.study_further_reminder) > new Date() && (
                         <View style={[styles.reminderChip, { backgroundColor: colors.backgroundSubtle, borderColor: colors.border }]}>
-                            <Ionicons name="notifications-outline" size={14} color={colors.textSecondary} />
+                            <Bell size={14} color={colors.textSecondary} />
                             <Text style={[styles.reminderChipText, { color: colors.textSecondary }]}>
                                 Reminder set for {new Date(entry.study_further_reminder).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
                             </Text>
@@ -240,7 +240,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: Spacing.md }}>
                     <Text style={[styles.questionText, { color: colors.accent, flex: 1, marginBottom: 0 }]}>{REFLECTION_QUESTIONS[questionIndex]}</Text>
                     <ScalePressable onPress={() => handleShareReflection(actualReflection, questionIndex)} style={{ padding: Spacing.sm, marginTop: -Spacing.sm, marginRight: -Spacing.sm }}>
-                        <Ionicons name="share-social-outline" size={20} color={colors.textTertiary} />
+                        <Share2 size={20} color={colors.textTertiary} />
                     </ScalePressable>
                 </View>
                 <View style={styles.answerContainer}>
@@ -286,7 +286,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
 
                         {onClose && (
                             <ScalePressable style={[styles.closeButton, { backgroundColor: colors.backgroundSubtle }]} onPress={onClose}>
-                                <Ionicons name="close" size={20} color={colors.textSecondary} />
+                                <X size={20} color={colors.textSecondary} />
                             </ScalePressable>
                         )}
                     </View>

@@ -14,7 +14,7 @@ import { READING_PLAN_DATA, ReadingItem } from "@/src/data/readingPlanData";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { Spacing } from "@/src/theme/spacing";
 import { Typography } from "@/src/theme/typography";
-import { Ionicons } from "@expo/vector-icons";
+import { Book, Snowflake, Settings, ArrowRight, Notebook } from "lucide-react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Link, useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState, useRef } from 'react';
@@ -40,53 +40,18 @@ import { formatDateToLocalString } from '@/src/utils/dateUtils';
 
 
 const DRAFT_KEY = "reflection_draft";
-type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
+import { LucideIcon } from "lucide-react-native";
 
 interface StatCardProps {
-    icon: IoniconName;
+    icon: LucideIcon;
     value: number;
     label: string;
     unit?: string;
 }
 
-const AnimatedFlame = React.memo(({ size, color }: { size: number; color: string }) => {
-    const scale = useSharedValue(1);
-    const opacity = useSharedValue(0.9);
-
-    useEffect(() => {
-        scale.value = withRepeat(
-            withSequence(
-                withTiming(1.15, { duration: 600 }),
-                withTiming(1, { duration: 800 })
-            ),
-            -1,
-            true
-        );
-        opacity.value = withRepeat(
-            withSequence(
-                withTiming(1, { duration: 400 }),
-                withTiming(0.7, { duration: 600 })
-            ),
-            -1,
-            true
-        );
-    }, [scale, opacity]);
-
-    const animatedStyle = useAnimatedStyle(() => ({
-        transform: [{ scale: scale.value }],
-        opacity: opacity.value,
-    }));
-
-    return (
-        <Animated.View style={animatedStyle}>
-            <Ionicons name="flame" size={size} color={color} />
-        </Animated.View>
-    );
-});
 
 const StatCard = React.memo(({ icon, value, label, unit }: StatCardProps) => {
     const { colors } = useTheme();
-    const isFlame = icon === 'flame' && value > 0;
 
     return (
         <View
@@ -98,16 +63,12 @@ const StatCard = React.memo(({ icon, value, label, unit }: StatCardProps) => {
                 },
             ]}
         >
-            <View style={[styles.statIconContainer, { backgroundColor: isFlame ? colors.accent + '20' : colors.accent + '10' }]}>
-                {isFlame ? (
-                    <AnimatedFlame size={20} color={colors.accent} />
-                ) : (
-                    <Ionicons
-                        name={icon}
-                        size={20}
-                        color={colors.accent}
-                    />
-                )}
+            <View style={[styles.statIconContainer, { backgroundColor: colors.accent + '10' }]}>
+                {React.createElement(icon, {
+                    size: 20,
+                    color: colors.accent,
+                    strokeWidth: 2.5
+                })}
             </View>
 
             <View style={styles.statInfo}>
@@ -152,8 +113,8 @@ interface QuickStatsProps {
 const QuickStats = React.memo(({ totalEntries, missedDays }: QuickStatsProps) => {
     return (
         <View style={styles.statsContainer}>
-            <StatCard icon="journal" value={totalEntries} label="Entries" />
-            <StatCard icon="snow" value={missedDays} label="Missed" unit="days" />
+            <StatCard icon={Notebook} value={totalEntries} label="Entries" />
+            <StatCard icon={Snowflake} value={missedDays} label="Missed" unit="days" />
         </View>
     );
 });
@@ -219,7 +180,7 @@ const NextReading = React.memo(({ nextItem, onRefresh }: NextReadingProps) => {
                     <View style={styles.nextReadingHeader}>
                         <View style={styles.nextReadingLabelContainer}>
                             <View style={[styles.nextReadingIconWrap, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                                <Ionicons name="book" size={12} color={colors.background} />
+                                <Book size={12} color={colors.background} />
                             </View>
                             <Text style={[styles.nextReadingLabel, { color: colors.background }]}>NEXT READING</Text>
                         </View>
@@ -237,7 +198,7 @@ const NextReading = React.memo(({ nextItem, onRefresh }: NextReadingProps) => {
                             </Text>
                         </View>
                         <View style={[styles.nextReadingGo, { backgroundColor: colors.background, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 }]}>
-                            <Ionicons name="arrow-forward" size={18} color={colors.accent} />
+                            <ArrowRight size={18} color={colors.accent} />
                         </View>
                     </View>
                 </View>
@@ -297,7 +258,7 @@ const DraftBar = React.memo(() => {
                     </View>
 
                     <View style={[styles.draftIcon, { backgroundColor: colors.draftIconBg }]}>
-                        <Ionicons name="arrow-forward" size={Typography.size.xl} color={colors.accent} />
+                        <ArrowRight size={24} color={colors.accent} />
                     </View>
                 </ScalePressable>
             </Link>
@@ -517,7 +478,7 @@ export default function Index() {
                             style={[styles.settingsButton, { backgroundColor: colors.backgroundSubtle }]}
                             onPress={() => router.push('/settings')}
                         >
-                            <Ionicons name="settings-sharp" size={18} color={colors.textSecondary} />
+                            <Settings size={18} color={colors.textSecondary} />
                         </ScalePressable>
                     </View>
                 </View>

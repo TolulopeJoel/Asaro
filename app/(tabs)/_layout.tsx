@@ -1,5 +1,5 @@
 import { useTheme } from '@/src/theme/ThemeContext';
-import { Ionicons } from '@expo/vector-icons';
+import { Home, Library, Users, Circle } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DeviceEventEmitter, StyleSheet, View, Text } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
@@ -68,12 +68,11 @@ export default function TabLayout() {
                             }
                         };
 
-                        let iconName: any = 'ellipse-outline';
-                        if (route.name === 'index') iconName = 'home-outline';
-                        else if (route.name === 'library') iconName = 'albums-outline';
-                        else if (route.name === 'groups') iconName = 'people-circle-outline';
-
-                        const finalIcon = shouldHighlight ? iconName.replace('-outline', '') : iconName;
+                        const IconComponent =
+                            route.name === 'index' ? Home :
+                                route.name === 'library' ? Library :
+                                    route.name === 'groups' ? Users :
+                                        Circle;
 
                         let label = '';
                         if (route.name === 'index') label = 'Home';
@@ -90,10 +89,10 @@ export default function TabLayout() {
                                     styles.iconWrap,
                                     shouldHighlight ? { backgroundColor: colors.background } : null,
                                 ]}>
-                                    <Ionicons
-                                        name={finalIcon}
+                                    <IconComponent
                                         size={22}
                                         color={shouldHighlight ? colors.accent : colors.textTertiary}
+                                        strokeWidth={shouldHighlight ? 2.5 : 2}
                                     />
                                 </View>
                                 <Text style={[

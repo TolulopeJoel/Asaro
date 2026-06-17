@@ -6,10 +6,15 @@ import {
     Platform,
     StyleSheet,
     Text,
-    TextInput,
     View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import {
+    BookCopy,
+    Bookmark,
+    Search,
+    Notebook,
+    Zap
+} from 'lucide-react-native';
 import { ALL_BIBLE_BOOKS, BibleBook } from '../data/bibleBooks';
 import { EntryCard } from './journal/EntryCard';
 import { ActionCard } from './journal/ActionCard';
@@ -477,57 +482,29 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
         return items;
     }, [viewMode, filteredEntries, debouncedSearchQuery, availableBooks, bookEntries, selectedBook, groupEntriesByDate, actionsList, topicsList, isArchiveCollapsed]);
 
-
-    const renderBreadcrumbs = () => {
-        const breadcrumbs = getBreadcrumbs();
-        if (breadcrumbs.length === 0) return null;
-
-        return (
-            <View style={[styles.breadcrumbsContainer, { backgroundColor: colors.backgroundElevated, borderBottomColor: colors.border }]}>
-                {breadcrumbs.map((crumb, index) => (
-                    <React.Fragment key={crumb.label}>
-                        {index > 0 && <Text style={[styles.breadcrumbSeparator, { color: colors.textTertiary }]}> / </Text>}
-                        <ScalePressable
-                            onPress={crumb.onPress}
-                            disabled={index === breadcrumbs.length - 1}
-                        >
-                            <Text style={[
-                                styles.breadcrumbText,
-                                { color: colors.textSecondary },
-                                index === breadcrumbs.length - 1 && [styles.breadcrumbTextCurrent, { color: colors.textPrimary }]
-                            ]}>
-                                {crumb.label}
-                            </Text>
-                        </ScalePressable>
-                    </React.Fragment>
-                ))}
-            </View>
-        );
-    };
-
     const renderEmptyState = useCallback(() => {
-        let iconName: any = "journal-outline";
+        let iconName: any = Notebook;
         let title = "It's awful quiet in here...";
         let subtext = "Don't just stare at the screen. Read your Bible and tell me about it!";
 
         if (viewMode === 'books') {
-            iconName = "library-outline";
+            iconName = BookCopy;
             title = "Empty shelves";
             subtext = "Read a book of the Bible so we can put something here.";
         } else if (viewMode === 'actions') {
-            iconName = "flash-outline";
+            iconName = Zap;
             title = "No actions recorded";
             subtext = "You didn't learn anything practical today? Write an action step";
         } else if (viewMode === 'topics') {
-            iconName = "bookmark-outline";
+            iconName = Bookmark;
             title = "No study topics";
             subtext = "Is there really nothing more you want to study? Add a topic.";
         } else if (debouncedSearchQuery) {
-            iconName = "search-outline";
+            iconName = Search;
             title = "Nothing to see here";
             subtext = "I couldn't find what you're looking for. Try another search.";
         } else if (viewMode === 'bookDetail') {
-            iconName = "book-outline";
+            iconName = Notebook;
             title = "Empty book";
             subtext = "You haven't read this book yet. Go read it!";
         }
@@ -535,7 +512,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
         return (
             <View style={styles.emptyState}>
                 <View style={[styles.emptyIconContainer, { backgroundColor: colors.backgroundSubtle }]}>
-                    <Ionicons name={iconName} size={32} color={colors.textTertiary} />
+                    {React.createElement(iconName, { size: 32, color: colors.textTertiary })}
                 </View>
                 <Text style={[styles.emptyStateText, { color: colors.textPrimary }]}>{title}</Text>
                 <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>{subtext}</Text>

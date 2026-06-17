@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { ChevronRight } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { BibleBook } from '../../data/bibleBooks';
 import { ScalePressable } from '../ScalePressable';
@@ -32,7 +32,7 @@ export const BookCard = React.memo(({ book, onNavigate }: BookCardProps) => {
                         </Text>
                     </View>
                 </View>
-                <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+                <ChevronRight size={16} color={colors.textTertiary} />
             </ScalePressable>
         </View>
     );

@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { Bell } from 'lucide-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { useTheme } from '../theme/ThemeContext';
@@ -53,7 +54,7 @@ const BookmarkCard = React.memo(({ item, onEntryPress }: { item: JournalEntry, o
 
                     {item.study_further_reminder && new Date(item.study_further_reminder) > new Date() && (
                         <View style={[styles.reminderContainer, { backgroundColor: colors.backgroundSubtle + '40', borderColor: colors.border + '30' }]}>
-                            <Ionicons name="notifications-outline" size={12} color={colors.textTertiary} />
+                            <Bell size={12} color={colors.textTertiary} />
                             <Text style={[styles.reminderText, { color: colors.textSecondary }]}>
                                 {new Date(item.study_further_reminder).toLocaleString('en-US', {
                                     month: 'short',

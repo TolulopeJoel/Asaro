@@ -5,6 +5,7 @@ import { ScalePressable } from '@/src/components/ScalePressable';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Share2, Edit2, Trash2 } from 'lucide-react-native';
 
 interface CardFABProps {
     onShare: () => void;
@@ -50,9 +51,12 @@ export const CardFAB: React.FC<CardFABProps> = ({
                 onPress={onShare}
                 disabled={isSharing}
             >
-                <Text style={[styles.shareFloatingText, { color: colors.textSecondary }]}>
-                    {isSharing ? '↗ sharing' : '↗ share'}
-                </Text>
+                <View style={styles.buttonContent}>
+                    <Share2 size={16} color={colors.textSecondary} strokeWidth={2.5} />
+                    <Text style={[styles.shareFloatingText, { color: colors.textSecondary }]}>
+                        {isSharing ? 'sharing' : 'share'}
+                    </Text>
+                </View>
             </ScalePressable>
 
             <View style={[styles.actionDivider, { backgroundColor: colors.border }]} />
@@ -61,17 +65,21 @@ export const CardFAB: React.FC<CardFABProps> = ({
                 style={styles.iconButton}
                 onPress={onEdit}
             >
-                <Text style={[styles.iconButtonText, { color: colors.textSecondary }]}>edit</Text>
+                <View style={styles.buttonContent}>
+                    <Edit2 size={16} color={colors.textSecondary} strokeWidth={2} />
+                </View>
             </ScalePressable>
+
+            <View style={[styles.actionDivider, { backgroundColor: colors.border }]} />
 
             <ScalePressable
                 style={styles.iconButton}
                 onPress={onDelete}
                 disabled={isDeleting}
             >
-                <Text style={[styles.iconButtonText, { color: colors.textTertiary }]}>
-                    {isDeleting ? 'deleting' : 'delete'}
-                </Text>
+                <View style={styles.buttonContent}>
+                    <Trash2 size={16} color={colors.textTertiary} strokeWidth={2} />
+                </View>
             </ScalePressable>
         </View>
     );
@@ -107,6 +115,12 @@ const styles = StyleSheet.create({
     shareFloatingText: {
         fontSize: Typography.size.sm + 1,
         fontWeight: Typography.weight.medium,
+        marginLeft: 6,
+    },
+    buttonContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     actionDivider: {
         width: 1,
@@ -121,5 +135,6 @@ const styles = StyleSheet.create({
     iconButtonText: {
         fontSize: Typography.size.sm + 1,
         fontWeight: Typography.weight.regular,
+        marginLeft: 6,
     },
 });

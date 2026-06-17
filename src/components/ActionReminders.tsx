@@ -1,6 +1,6 @@
 import React, { useCallback, useState, useMemo } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, LayoutAnimation } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Zap, ChevronUp, ChevronDown } from 'lucide-react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useFocusEffect } from 'expo-router';
 import { useTheme } from '../theme/ThemeContext';
@@ -141,8 +141,7 @@ const ActionCard = React.memo(({
                 {/* ── Header row ── */}
                 <View style={styles.header}>
                     <View style={styles.headerTitleRow}>
-                        <Ionicons
-                            name="flash"
+                        <Zap
                             size={14}
                             color={colors.accentSecondary}
                         />
@@ -360,11 +359,11 @@ export const ActionReminders: React.FC<ActionRemindersProps> = React.memo(({ onE
                     <Text style={[styles.expandText, { color: colors.textSecondary }]}>
                         {isExpanded ? 'Collapse' : `${totalCards} reminders`}
                     </Text>
-                    <Ionicons
-                        name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                        size={14}
-                        color={colors.textSecondary}
-                    />
+                    {isExpanded ? (
+                        <ChevronUp size={14} color={colors.textSecondary} />
+                    ) : (
+                        <ChevronDown size={14} color={colors.textSecondary} />
+                    )}
                 </TouchableOpacity>
             )}
         </View>

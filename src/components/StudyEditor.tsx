@@ -8,7 +8,16 @@ import {
     KeyboardAvoidingView,
     Platform,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import {
+    Palette,
+    Type,
+    Check,
+    X,
+    Minus,
+    List,
+    Code,
+    LucideIcon
+} from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
 import { ScalePressable } from './ScalePressable';
@@ -78,7 +87,7 @@ export const StudyEditor: React.FC<StudyEditorProps> = ({
                         onPress={() => { setShowColorPicker(p => !p); setShowFormatting(false); }}
                         style={[styles.colorDot, { backgroundColor: color }]}
                     >
-                        <Ionicons name="color-palette-outline" size={14} color="rgba(255,255,255,0.9)" />
+                        <Palette size={14} color="rgba(255,255,255,0.9)" />
                     </ScalePressable>
                 </View>
 
@@ -87,7 +96,7 @@ export const StudyEditor: React.FC<StudyEditorProps> = ({
                         onPress={() => { setShowFormatting(p => !p); setShowColorPicker(false); }}
                         style={[styles.iconBtn, { backgroundColor: showFormatting ? colors.accent + '20' : colors.backgroundSubtle }]}
                     >
-                        <Ionicons name="text-outline" size={18} color={showFormatting ? colors.accent : colors.textSecondary} />
+                        <Type size={18} color={showFormatting ? colors.accent : colors.textSecondary} />
                     </ScalePressable>
 
                     <ScalePressable
@@ -98,8 +107,7 @@ export const StudyEditor: React.FC<StudyEditorProps> = ({
                             shadowColor: isSaveable ? colors.accent : 'transparent',
                         }]}
                     >
-                        <Ionicons
-                            name="checkmark"
+                        <Check
                             size={15}
                             color={isSaveable ? colors.buttonPrimaryText : colors.textTertiary}
                         />
@@ -114,7 +122,7 @@ export const StudyEditor: React.FC<StudyEditorProps> = ({
                         onPress={onCancel}
                         style={[styles.cancelButton, { borderColor: colors.border }]}
                     >
-                        <Ionicons name="close" size={15} color={colors.textSecondary} />
+                        <X size={15} color={colors.textSecondary} />
                         <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>
                             Cancel
                         </Text>
@@ -136,7 +144,7 @@ export const StudyEditor: React.FC<StudyEditorProps> = ({
                                     onPress={() => { onColorChange(c); setShowColorPicker(false); }}
                                     style={[styles.swatch, { backgroundColor: c }, color === c && styles.swatchSelected]}
                                 >
-                                    {color === c && <Ionicons name="checkmark" size={12} color="#fff" />}
+                                    {color === c && <Check size={12} color="#fff" />}
                                 </ScalePressable>
                             ))}
                         </View>
@@ -144,11 +152,11 @@ export const StudyEditor: React.FC<StudyEditorProps> = ({
 
                     {showFormatting && (
                         <View style={styles.formatRow}>
-                            <ToolbarButton icon="text-outline" label="H1" onPress={() => applyFormat('# ', '', true)} colors={colors} />
-                            <ToolbarButton icon="text" label="H2" onPress={() => applyFormat('## ', '', true)} colors={colors} />
-                            <ToolbarButton icon="remove-outline" label="Divider" onPress={() => applyFormat('\n---\n')} colors={colors} />
-                            <ToolbarButton icon="list-outline" label="List" onPress={() => applyFormat('- ', '', true)} colors={colors} />
-                            <ToolbarButton icon="code-slash-outline" label="Bold" onPress={() => applyFormat('**', '**')} colors={colors} />
+                            <ToolbarButton icon={Type} label="H1" onPress={() => applyFormat('# ', '', true)} colors={colors} />
+                            <ToolbarButton icon={Type} label="H2" onPress={() => applyFormat('## ', '', true)} colors={colors} />
+                            <ToolbarButton icon={Minus} label="Divider" onPress={() => applyFormat('\n---\n')} colors={colors} />
+                            <ToolbarButton icon={List} label="List" onPress={() => applyFormat('- ', '', true)} colors={colors} />
+                            <ToolbarButton icon={Code} label="Bold" onPress={() => applyFormat('**', '**')} colors={colors} />
                         </View>
                     )}
                 </View>
@@ -201,10 +209,10 @@ export const StudyEditor: React.FC<StudyEditorProps> = ({
 const ToolbarButton = ({
     icon, label, onPress, colors,
 }: {
-    icon: any; label: string; onPress: () => void; colors: any;
+    icon: LucideIcon; label: string; onPress: () => void; colors: any;
 }) => (
     <ScalePressable onPress={onPress} style={styles.toolbarButton}>
-        <Ionicons name={icon} size={18} color={colors.textSecondary} />
+        {React.createElement(icon, { size: 18, color: colors.textSecondary })}
         <Text style={[styles.toolbarLabel, { color: colors.textTertiary }]}>{label}</Text>
     </ScalePressable>
 );

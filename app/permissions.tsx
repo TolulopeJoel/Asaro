@@ -6,7 +6,7 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Bell, ArrowRight } from 'lucide-react-native';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { useAlert } from '@/src/context/AlertContext';
 
@@ -64,7 +64,7 @@ export default function PermissionsScreen() {
             <View style={styles.content}>
                 <View style={styles.header}>
                     <View style={[styles.iconContainer, { backgroundColor: 'rgba(225, 143, 67, 0.1)' }]}>
-                        <Ionicons name="notifications" size={Typography.size.display} color={colors.primary} />
+                        <Bell size={Typography.size.display} color={colors.primary} />
                     </View>
                 </View>
 
@@ -88,7 +88,7 @@ export default function PermissionsScreen() {
                         onPress={handleRequestPermission}
                     >
                         <Text style={[styles.buttonText, { color: colors.background }]}>Allow Notifications</Text>
-                        <Ionicons name="arrow-forward" size={Typography.size.lg} color={colors.background} style={{ marginLeft: Spacing.sm }} />
+                        <ArrowRight size={Typography.size.lg} color={colors.background} style={{ marginLeft: Spacing.sm }} />
                     </ScalePressable>
 
                     {permissionStatus === 'denied' && (

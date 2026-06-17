@@ -25,6 +25,25 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import {
+    Clock,
+    Library,
+    Zap,
+    Bookmark,
+    CheckCircle2,
+    ChevronRight,
+    ChevronDown,
+    Check,
+    Plus,
+    X,
+    Edit2,
+    BookOpen,
+    Palette,
+    ChevronUp,
+    Notebook,
+    LucideIcon,
+    BookCopy
+} from 'lucide-react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
@@ -61,10 +80,10 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ─── Segment Config ───────────────────────────────────────────────────────────
 
-const SEGMENTS: { key: Segment; label: string; icon: string; subtitle: string }[] = [
-    { key: 'journal', label: 'Journal', icon: 'journal-outline', subtitle: 'Reading entries' },
-    { key: 'study', label: 'Study', icon: 'reader-outline', subtitle: 'Notes & topics' },
-    { key: 'plan', label: 'Plan', icon: 'map-outline', subtitle: 'Bible reading plan' },
+const SEGMENTS: { key: Segment; label: string; icon: string; icon2: LucideIcon; subtitle: string }[] = [
+    { key: 'journal', label: 'Journal', icon: 'journal-outline', icon2: Notebook, subtitle: 'Reading entries' },
+    { key: 'study', label: 'Study', icon: 'reader-outline', icon2: BookOpen, subtitle: 'Notes & topics' },
+    { key: 'plan', label: 'Plan', icon: 'map-outline', icon2: BookOpen, subtitle: 'Bible reading plan' },
 ];
 
 // ─── Color Sort Helper ────────────────────────────────────────────────────────
@@ -134,19 +153,19 @@ function JournalSubTabs({
                     layout={LinearTransition}
                 />
                 <ScalePressable style={styles.subTab} onPress={onNavigateRecent}>
-                    <Ionicons name="time" size={20}
+                    <Clock size={20}
                         color={viewMode === 'recent' ? colors.accent : colors.textTertiary} />
                 </ScalePressable>
                 <ScalePressable style={styles.subTab} onPress={onNavigateBooks}>
-                    <Ionicons name="library" size={20}
+                    <BookCopy size={20}
                         color={(viewMode === 'books' || viewMode === 'bookDetail') ? colors.accent : colors.textTertiary} />
                 </ScalePressable>
                 <ScalePressable style={styles.subTab} onPress={onNavigateActions}>
-                    <Ionicons name="flash" size={20}
+                    <Zap size={20}
                         color={viewMode === 'actions' ? colors.accent : colors.textTertiary} />
                 </ScalePressable>
                 <ScalePressable style={styles.subTab} onPress={onNavigateTopics}>
-                    <Ionicons name="bookmark" size={20}
+                    <Bookmark size={20}
                         color={viewMode === 'topics' ? colors.accent : colors.textTertiary} />
                 </ScalePressable>
             </View>
@@ -280,7 +299,7 @@ const ReadingCard = React.memo(({
                         borderColor: isCompleted ? colors.accent : colors.border,
                     }
                 ]}>
-                    {isCompleted && <Ionicons name="checkmark" size={14} color={colors.background} />}
+                    {isCompleted && <Check size={14} color={colors.background} />}
                 </View>
             </View>
         </ScalePressable>
@@ -454,7 +473,7 @@ function StudyContent({
             ) : topics.length === 0 ? (
                 <View style={styles.studyEmptyContainer}>
                     <View style={[styles.studyEmptyIconContainer, { backgroundColor: colors.accent + '12' }]}>
-                        <Ionicons name="library-outline" size={44} color={colors.accent} />
+                        <Library size={44} color={colors.accent} />
                     </View>
                     <Text style={[styles.studyEmptyTitle, { color: colors.textPrimary }]}>Empty Library</Text>
                     <Text style={[styles.studyEmptySubtitle, { color: colors.textSecondary }]}>
@@ -464,7 +483,7 @@ function StudyContent({
                         style={[styles.studyCreateButton, { backgroundColor: colors.accent + '15' }]}
                         onPress={() => router.push('/study/new' as any)}
                     >
-                        <Ionicons name="add" size={16} color={colors.accent} />
+                        <Plus size={16} color={colors.accent} />
                         <Text style={[styles.studyCreateButtonText, { color: colors.accent }]}>New Topic</Text>
                     </ScalePressable>
                 </View>
@@ -487,10 +506,10 @@ function StudyContent({
                 <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
                     <View style={styles.studyPreviewHeader}>
                         <ScalePressable onPress={closePreview} style={[styles.studyPreviewIconBtn, { backgroundColor: colors.backgroundSubtle }]}>
-                            <Ionicons name="close" size={22} color={colors.textSecondary} />
+                            <X size={22} color={colors.textSecondary} />
                         </ScalePressable>
                         <ScalePressable onPress={() => viewingTopic && openEditor(viewingTopic)} style={[styles.studyEditButton, { backgroundColor: colors.accent }]}>
-                            <Ionicons name="create-outline" size={18} color={colors.buttonPrimaryText} />
+                            <Edit2 size={18} color={colors.buttonPrimaryText} />
                             <Text style={[styles.studyEditButtonText, { color: colors.buttonPrimaryText }]}>Edit</Text>
                         </ScalePressable>
                     </View>
@@ -614,11 +633,11 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: number) => vo
                 showAlert({
                     title: 'Entry Required',
                     message: `To mark ${book}${chapters ? ` ${chapters}` : ''} as complete, you need an entry covering this reading.`,
-                    icon: 'journal-outline',
+                    icon: Notebook,
                     buttons: [
                         {
                             text: 'Add Entry',
-                            icon: 'add',
+                            icon: Plus,
                             onPress: () => router.push({
                                 pathname: '/addEntry',
                                 params: {
@@ -991,7 +1010,7 @@ export default function LibraryScreen() {
                     </View>
                 </View>
                 {isActive && (
-                    <Ionicons name="checkmark-circle" size={24} color={colors.accent} />
+                    <CheckCircle2 size={24} color={colors.accent} />
                 )}
             </ScalePressable>
         );
@@ -1019,11 +1038,11 @@ export default function LibraryScreen() {
                             style={[styles.chevronPill, { backgroundColor: colors.backgroundSubtle }]}
                             onPress={toggleDropdown}
                         >
-                            <Ionicons
-                                name={dropdownVisible ? 'chevron-up' : 'chevron-down'}
-                                size={15}
-                                color={colors.textSecondary}
-                            />
+                            {dropdownVisible ? (
+                                <ChevronUp size={15} color={colors.textSecondary} />
+                            ) : (
+                                <ChevronDown size={15} color={colors.textSecondary} />
+                            )}
                         </ScalePressable>
                     </View>
 
@@ -1070,8 +1089,7 @@ export default function LibraryScreen() {
                                 ]}
                                 onPress={toggleStudySort}
                             >
-                                <Ionicons
-                                    name="color-palette-outline"
+                                <Palette
                                     size={20}
                                     color={studySortBy === 'color' ? colors.accent : colors.textMuted}
                                 />
@@ -1081,7 +1099,7 @@ export default function LibraryScreen() {
                             style={[styles.addButton, { backgroundColor: colors.accent, shadowColor: colors.accent }]}
                             onPress={() => router.push('/study/new' as any)}
                         >
-                            <Ionicons name="add" size={26} color={colors.buttonPrimaryText} />
+                            <Plus size={26} color={colors.buttonPrimaryText} />
                         </ScalePressable>
                     </Animated.View>
 

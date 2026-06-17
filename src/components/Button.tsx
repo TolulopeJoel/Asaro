@@ -8,7 +8,7 @@ import {
     View,
     ViewStyle,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { LucideIcon } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
@@ -25,7 +25,7 @@ interface ButtonProps {
     onPress: () => void;
     variant?: ButtonVariant;
     size?: ButtonSize;
-    icon?: keyof typeof Ionicons.glyphMap;
+    icon?: LucideIcon;
     iconPosition?: 'left' | 'right';
     loading?: boolean;
     disabled?: boolean;
@@ -169,21 +169,23 @@ export const Button: React.FC<ButtonProps> = ({
             <View style={styles.content}>
                 <View style={[styles.innerContent, loading && { opacity: 0 }]}>
                     {icon && iconPosition === 'left' && (
-                        <Ionicons
-                            name={icon}
-                            size={iconSize}
-                            color={iconColor as string}
-                            style={styles.leftIcon}
-                        />
+                        <View style={styles.leftIcon}>
+                            {React.createElement(icon, {
+                                size: iconSize,
+                                color: iconColor as string,
+                                strokeWidth: 2,
+                            })}
+                        </View>
                     )}
                     {label ? <Text style={combinedLabelStyle}>{label}</Text> : children}
                     {icon && iconPosition === 'right' && (
-                        <Ionicons
-                            name={icon}
-                            size={iconSize}
-                            color={iconColor as string}
-                            style={styles.rightIcon}
-                        />
+                        <View style={styles.rightIcon}>
+                            {React.createElement(icon, {
+                                size: iconSize,
+                                color: iconColor as string,
+                                strokeWidth: 2,
+                            })}
+                        </View>
                     )}
                 </View>
                 {loading && (

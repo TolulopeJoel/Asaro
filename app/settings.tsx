@@ -15,7 +15,20 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/src/components/Button';
 import { ScalePressable } from '@/src/components/ScalePressable';
-import { Ionicons } from '@expo/vector-icons';
+import {
+    Bed,
+    Bell,
+    RefreshCw,
+    ChevronRight,
+    ArrowLeft,
+    Sun,
+    Moon,
+    Smartphone,
+    Archive,
+    Download,
+    Settings as SettingsIcon,
+    X
+} from 'lucide-react-native';
 import { LoadingView } from '@/src/components/LoadingView';
 import { getFirestore, collection, doc, setDoc, getDoc, writeBatch, query, where, onSnapshot, collectionGroup } from '@react-native-firebase/firestore';
 import { useAuth } from '@/src/context/AuthContext';
@@ -84,6 +97,8 @@ const ProfilePhotoCard = React.memo(({
     );
 });
 
+import { LucideIcon } from 'lucide-react-native';
+
 const SettingsItem = ({
     label,
     value,
@@ -96,7 +111,7 @@ const SettingsItem = ({
     label: string;
     value?: string;
     onPress: () => void;
-    icon: React.ComponentProps<typeof Ionicons>['name'];
+    icon: LucideIcon;
     destructive?: boolean;
     showChevron?: boolean;
     colors: any;
@@ -106,13 +121,13 @@ const SettingsItem = ({
         onPress={onPress}
     >
         <View style={[styles.itemIconWrap, { backgroundColor: destructive ? '#FF3B3010' : colors.accent + '10' }]}>
-            <Ionicons name={icon} size={18} color={destructive ? '#FF3B30' : colors.accent} />
+            {React.createElement(icon, { size: 18, color: destructive ? '#FF3B30' : colors.accent, strokeWidth: 2 })}
         </View>
         <View style={styles.itemContent}>
             <Text style={[styles.itemLabel, { color: colors.textPrimary }]}>{label}</Text>
             {value && <Text style={[styles.itemValue, { color: colors.textTertiary }]}>{value}</Text>}
         </View>
-        {showChevron && <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />}
+        {showChevron && <ChevronRight size={16} color={colors.textMuted} />}
     </ScalePressable>
 );
 
@@ -493,7 +508,7 @@ export default function Settings() {
                 <View style={styles.header}>
                     <View style={styles.headerTitleRow}>
                         <ScalePressable onPress={() => router.back()} style={{ marginRight: 8 }}>
-                            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+                            <ArrowLeft size={24} color={colors.textPrimary} />
                         </ScalePressable>
                         <Text style={[styles.title, { color: colors.textPrimary, flex: 1 }]}>Engine Room</Text>
                     </View>
@@ -525,11 +540,13 @@ export default function Settings() {
                                     { borderColor: theme === mode ? 'transparent' : colors.buttonSecondaryBorder }
                                 ]}
                             >
-                                <Ionicons
-                                    name={mode === 'light' ? 'sunny' : mode === 'dark' ? 'moon' : 'phone-portrait'}
-                                    size={20}
-                                    color={theme === mode ? colors.background : colors.textSecondary}
-                                />
+                                {React.createElement(
+                                    mode === 'light' ? Sun : mode === 'dark' ? Moon : Smartphone,
+                                    {
+                                        size: 20,
+                                        color: theme === mode ? colors.background : colors.textSecondary
+                                    }
+                                )}
                             </ScalePressable>
                         ))}
                     </View>
@@ -543,14 +560,14 @@ export default function Settings() {
                             disabled={isExporting}
                             style={[styles.actionButton, { backgroundColor: colors.buttonSecondary, borderColor: colors.buttonSecondaryBorder }]}
                         >
-                            {isExporting ? <LoadingView size={20} /> : <Ionicons name="archive-outline" size={20} color={colors.textSecondary} />}
+                            {isExporting ? <LoadingView size={20} /> : <Archive size={20} color={colors.textSecondary} />}
                         </ScalePressable>
                         <ScalePressable
                             onPress={handleImport}
                             disabled={isImporting}
                             style={[styles.actionButton, { backgroundColor: colors.buttonSecondary, borderColor: colors.buttonSecondaryBorder }]}
                         >
-                            {isImporting ? <LoadingView size={20} /> : <Ionicons name="cloud-download-outline" size={20} color={colors.textSecondary} />}
+                            {isImporting ? <LoadingView size={20} /> : <Download size={20} color={colors.textSecondary} />}
                         </ScalePressable>
                     </View>
                     {lastBackupDate ? (
@@ -576,7 +593,7 @@ export default function Settings() {
                     <SettingsItem
                         label="Sleep Time"
                         value={formatSleepTime(sleepTime)}
-                        icon="bed-outline"
+                        icon={Bed}
                         onPress={handleUpdateSleepTime}
                         colors={colors}
                     />
@@ -603,7 +620,7 @@ export default function Settings() {
                     <SettingsGroup title="Scheduled Notifications" colors={colors}>
                         <View style={styles.notificationsHeaderRow}>
                             <View style={styles.headerTitleRow}>
-                                <Ionicons name="notifications" size={14} color={colors.accent} />
+                                <Bell size={14} color={colors.accent} />
                                 <Text style={[styles.headerTitle, { color: colors.textSecondary }]}>
                                     NOTIFICATIONS
                                 </Text>
@@ -613,7 +630,7 @@ export default function Settings() {
                                     variant="ghost"
                                     onPress={handleTestNotification}
                                     disabled={isLoadingNotifications}
-                                    icon="notifications-outline"
+                                    icon={Bell}
                                     size="sm"
                                 />
                                 <Button
@@ -621,7 +638,7 @@ export default function Settings() {
                                     onPress={handleForceReschedule}
                                     disabled={isLoadingNotifications}
                                     loading={isLoadingNotifications}
-                                    icon="refresh"
+                                    icon={RefreshCw}
                                     size="sm"
                                 />
                             </View>

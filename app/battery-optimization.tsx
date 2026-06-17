@@ -6,7 +6,7 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { BatteryCharging, BatteryWarning, ArrowRight } from 'lucide-react-native';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import * as IntentLauncher from 'expo-intent-launcher';
 
@@ -74,7 +74,7 @@ export default function BatteryOptimizationScreen() {
             <View style={styles.content}>
                 <View style={styles.header}>
                     <View style={[styles.iconContainer, { backgroundColor: 'rgba(225, 143, 67, 0.1)' }]}>
-                        <Ionicons name="battery-charging" size={Typography.size.display} color={colors.primary} />
+                        <BatteryCharging size={Typography.size.display} color={colors.primary} />
                     </View>
                 </View>
 
@@ -89,7 +89,7 @@ export default function BatteryOptimizationScreen() {
 
                     <View style={[styles.infoBox, { backgroundColor: colors.cardBackground, borderColor: colors.border, flexDirection: 'column', alignItems: 'flex-start', gap: Spacing.md }]}>
                         <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-                            <Ionicons name="battery-dead-outline" size={Typography.size.xl} color={colors.textSecondary} style={{ marginRight: Spacing.sm }} />
+                            <BatteryWarning size={Typography.size.xl} color={colors.textSecondary} style={{ marginRight: Spacing.sm }} />
                             <Text style={[styles.infoText, { color: colors.textSecondary, fontStyle: 'italic', opacity: 0.8 }]}>
                                 Your phone will probably lie to you about how bad this is for your battery. But do you think Àṣàrò would ever harm you? 🥹
                             </Text>
@@ -103,7 +103,7 @@ export default function BatteryOptimizationScreen() {
                         onPress={handleFixSettings}
                     >
                         <Text style={[styles.buttonText, { color: colors.background }]}>Fix Settings</Text>
-                        <Ionicons name="arrow-forward" size={Typography.size.lg} color={colors.background} style={{ marginLeft: Spacing.sm }} />
+                        <ArrowRight size={Typography.size.lg} color={colors.background} style={{ marginLeft: Spacing.sm }} />
                     </ScalePressable>
                 </View>
             </View>

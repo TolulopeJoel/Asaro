@@ -10,7 +10,7 @@ import {
     View,
     ScrollView
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Maximize, X } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BibleReferencePicker } from './BibleReferencePicker';
@@ -133,7 +133,7 @@ const TextArea: React.FC<{
                                 style={[textAreaStyles.expandButton, { backgroundColor: colors.backgroundSubtle }]}
                                 onPress={handleExpand}
                             >
-                                <Ionicons name="square-outline" size={16} color={colors.textSecondary} />
+                                <Maximize size={14} color={colors.textSecondary} />
                             </ScalePressable>
                         )}
                     </View>
@@ -165,7 +165,7 @@ const TextArea: React.FC<{
                                         onPress={handleCancel}
                                         style={[fullScreenStyles.iconBtn, { backgroundColor: colors.backgroundSubtle }]}
                                     >
-                                        <Ionicons name="close" size={20} color={colors.textSecondary} />
+                                        <X size={20} color={colors.textSecondary} />
                                     </ScalePressable>
                                 </View>
                             </View>

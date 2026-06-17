@@ -6,7 +6,6 @@ import {
     Modal,
     Pressable,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import { useAlert } from '../context/AlertContext';
 import { ScalePressable } from './ScalePressable';
@@ -47,7 +46,7 @@ export const CustomAlert: React.FC = () => {
                     {/* Optional header icon */}
                     {icon && (
                         <View style={[styles.iconWrap, { backgroundColor: iconBackground ?? (colors.accent + '15') }]}>
-                            <Ionicons name={icon as any} size={28} color={iconColor ?? colors.accent} />
+                            {React.createElement(icon, { size: 28, color: iconColor ?? colors.accent })}
                         </View>
                     )}
 
@@ -77,7 +76,7 @@ export const CustomAlert: React.FC = () => {
                                         }}
                                     >
                                         {btn.icon && (
-                                            <Ionicons name={btn.icon as any} size={18} color={textColor} />
+                                            React.createElement(btn.icon, { size: 18, color: textColor })
                                         )}
                                         <Text style={[styles.pillText, { color: textColor, fontWeight: isCancel ? '600' : '700' }]}>
                                             {btn.text}
