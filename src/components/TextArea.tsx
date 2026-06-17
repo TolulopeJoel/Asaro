@@ -7,15 +7,16 @@ import {
     StyleSheet,
     Text,
     TextInput,
-    TouchableOpacity,
     View,
     ScrollView
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BibleReferencePicker } from './BibleReferencePicker';
 import { getBibleStyledParts } from '../utils/bibleUtils';
 import { useBibleRefPicker } from '../hooks/useBibleRefPicker';
+import { ScalePressable } from './ScalePressable';
 
 const TextArea: React.FC<{
     label: string;
@@ -115,9 +116,9 @@ const TextArea: React.FC<{
                                 <Text key={index} style={part.isReference ? { color: colors.accent, fontWeight: '600' } : {}}>
                                     {part.isReference ? (
                                         <Text>
-                                            <Text style={{ color: colors.textTertiary, fontWeight: '400' }}>[[</Text>
+                                            <Text style={{ color: colors.accent, opacity: 0.3, fontWeight: '400' }}>[[</Text>
                                             {part.refContent}
-                                            <Text style={{ color: colors.textTertiary, fontWeight: '400' }}>]]</Text>
+                                            <Text style={{ color: colors.accent, opacity: 0.3, fontWeight: '400' }}>]]</Text>
                                         </Text>
                                     ) : (
                                         part.text
@@ -125,19 +126,15 @@ const TextArea: React.FC<{
                                 </Text>
                             ))}
                         </TextInput>
-                        {isAnswered && <View style={[textAreaStyles.answeredIndicator, { backgroundColor: colors.primary }]} />}
+                        {isAnswered && <View style={[textAreaStyles.answeredIndicator, { backgroundColor: colors.accent }]} />}
 
                         {!disabled && (
-                            <TouchableOpacity
-                                style={[textAreaStyles.expandButton, { backgroundColor: colors.background, borderColor: colors.border }]}
+                            <ScalePressable
+                                style={[textAreaStyles.expandButton, { backgroundColor: colors.backgroundSubtle }]}
                                 onPress={handleExpand}
-                                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                                activeOpacity={0.7}
                             >
-                                <View style={textAreaStyles.expandIcon}>
-                                    <View style={[textAreaStyles.expandIconInner, { borderColor: colors.textSecondary }]} />
-                                </View>
-                            </TouchableOpacity>
+                                <Ionicons name="square-outline" size={16} color={colors.textSecondary} />
+                            </ScalePressable>
                         )}
                     </View>
                 </View>
@@ -155,20 +152,25 @@ const TextArea: React.FC<{
                             style={fullScreenStyles.keyboardView}
                             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                         >
-                            <View style={fullScreenStyles.content}>
-                                <TouchableOpacity
-                                    style={fullScreenStyles.cancelButton}
-                                    onPress={handleCancel}
-                                    hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-                                >
-                                    <Text style={[fullScreenStyles.cancelText, { color: colors.textTertiary }]}>Don&apos;t Save</Text>
-                                </TouchableOpacity>
-
-                                {label && (
-                                    <View style={fullScreenStyles.labelContainer}>
+                            {/* ── Header ── */}
+                            <View style={[fullScreenStyles.header, { borderBottomColor: colors.border }]}>
+                                <View style={fullScreenStyles.headerLeft}>
+                                    {label && (
                                         <Text style={[fullScreenStyles.label, { color: colors.textSecondary }]}>{label}</Text>
-                                    </View>
-                                )}
+                                    )}
+                                </View>
+
+                                <View style={fullScreenStyles.headerRight}>
+                                    <ScalePressable
+                                        onPress={handleCancel}
+                                        style={[fullScreenStyles.iconBtn, { backgroundColor: colors.backgroundSubtle }]}
+                                    >
+                                        <Ionicons name="close" size={20} color={colors.textSecondary} />
+                                    </ScalePressable>
+                                </View>
+                            </View>
+
+                            <View style={fullScreenStyles.content}>
 
                                 <ScrollView
                                     style={{ flex: 1 }}
@@ -196,9 +198,9 @@ const TextArea: React.FC<{
                                             <Text key={index} style={part.isReference ? { color: colors.accent, fontWeight: '600' } : {}}>
                                                 {part.isReference ? (
                                                     <Text>
-                                                        <Text style={{ color: colors.textTertiary, fontWeight: '400' }}>[[</Text>
+                                                        <Text style={{ color: colors.accent, opacity: 0.3, fontWeight: '400' }}>[[</Text>
                                                         {part.refContent}
-                                                        <Text style={{ color: colors.textTertiary, fontWeight: '400' }}>]]</Text>
+                                                        <Text style={{ color: colors.accent, opacity: 0.3, fontWeight: '400' }}>]]</Text>
                                                     </Text>
                                                 ) : (
                                                     part.text
@@ -208,13 +210,12 @@ const TextArea: React.FC<{
                                     </TextInput>
                                 </ScrollView>
 
-                                <TouchableOpacity
+                                <ScalePressable
                                     style={fullScreenStyles.saveButton}
                                     onPress={handleSave}
-                                    hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                                 >
                                     <Text style={[fullScreenStyles.saveText, { color: colors.textSecondary }]}>Save</Text>
-                                </TouchableOpacity>
+                                </ScalePressable>
                             </View>
 
                             <BibleReferencePicker {...modalPicker.pickerProps} />
@@ -254,27 +255,13 @@ const textAreaStyles = StyleSheet.create({
     },
     expandButton: {
         position: 'absolute',
-        top: 12,
-        right: 12,
+        top: 10,
+        right: 10,
         width: 32,
         height: 32,
         justifyContent: 'center',
         alignItems: 'center',
         borderRadius: 12,
-        borderWidth: 1,
-    },
-    expandIcon: {
-        width: 14,
-        height: 14,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    expandIconInner: {
-        width: 10,
-        height: 10,
-        borderWidth: 1.5,
-        borderRadius: 3,
-        backgroundColor: 'transparent',
     },
 });
 
@@ -286,25 +273,19 @@ const fullScreenStyles = StyleSheet.create({
         flex: 1,
         position: 'relative',
     },
-    labelContainer: {
-        paddingTop: 20,
-        paddingBottom: 8,
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderBottomWidth: StyleSheet.hairlineWidth,
     },
-    label: {
-        fontSize: 14,
-        fontWeight: '500',
-        lineHeight: 20,
-        letterSpacing: 0.1,
-    },
-    cancelButton: {},
-    cancelText: {
-        fontSize: 15,
-        fontWeight: '400',
-        letterSpacing: 0.1,
-    },
-    content: {
-        flex: 1,
-        padding: 24,
+    headerLeft: { flex: 1 },
+    headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    iconBtn: {
+        width: 36, height: 36, borderRadius: 18,
+        justifyContent: 'center', alignItems: 'center',
     },
     saveButton: {
         alignSelf: 'flex-end',
@@ -315,6 +296,16 @@ const fullScreenStyles = StyleSheet.create({
         fontSize: 15,
         fontWeight: '600',
         letterSpacing: 0.1,
+    },
+    label: {
+        fontSize: 16,
+        fontWeight: '800',
+        letterSpacing: -0.5,
+    },
+    content: {
+        flex: 1,
+        paddingHorizontal: 24,
+        paddingVertical: 12,
     },
     textInput: {
         fontSize: 16,

@@ -8,10 +8,10 @@ import {
     StyleSheet,
     Text,
     TextInput,
-    TouchableOpacity,
     View,
 } from 'react-native';
 import { Button } from './Button';
+import { ScalePressable } from './ScalePressable';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
@@ -244,19 +244,6 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
         }, 50);
     };
 
-    const handleRemove = (index: number, isModal: boolean = false) => {
-        const currentItems = isModal ? tempItems : items;
-        if (currentItems.length === 1) {
-            const cleared = [{ action: '', motivation: '' }];
-            if (isModal) setTempItems(cleared);
-            else onChange(cleared);
-            return;
-        }
-        const filtered = currentItems.filter((_, i) => i !== index);
-        if (isModal) setTempItems(filtered);
-        else onChange(filtered);
-    };
-
     const handleExpand = () => {
         setTempItems([...items]);
         setIsExpanded(true);
@@ -284,8 +271,7 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
         }
     };
 
-    const renderActionItemPair = (item: ActionItemPair, index: number, isModal: boolean, currentItems: ActionItemPair[]) => {
-        const hAction = isModal ? actionHeightsModal[index] : actionHeights[index];
+    const renderActionItemPair = (item: ActionItemPair, index: number, isModal: boolean) => {
         const hMotiv = isModal ? motivationHeightsModal[index] : motivationHeights[index];
 
         return (
@@ -301,12 +287,11 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                         <View style={styles.fieldHeader}>
                             <Text style={[styles.fieldLabel, { color: colors.textTertiary }]}>action</Text>
                             {!disabled && item.action.length > 0 && (
-                                <TouchableOpacity
+                                <ScalePressable
                                     onPress={() => clearField(index, 'action', isModal)}
-                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                                 >
                                     <Ionicons name="close-circle" size={16} color={colors.textTertiary} />
-                                </TouchableOpacity>
+                                </ScalePressable>
                             )}
                         </View>
                         <TextInput
@@ -335,9 +320,9 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                                 <Text key={index} style={part.isReference ? { color: colors.accent, fontWeight: '600' } : {}}>
                                     {part.isReference ? (
                                         <Text>
-                                            <Text style={{ color: colors.textTertiary, fontWeight: '400' }}>[[</Text>
+                                            <Text style={{ color: colors.accent, opacity: 0.3, fontWeight: '400' }}>[[</Text>
                                             {part.refContent}
-                                            <Text style={{ color: colors.textTertiary, fontWeight: '400' }}>]]</Text>
+                                            <Text style={{ color: colors.accent, opacity: 0.3, fontWeight: '400' }}>]]</Text>
                                         </Text>
                                     ) : (
                                         part.text
@@ -355,12 +340,11 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                         <View style={styles.fieldHeader}>
                             <Text style={[styles.fieldLabel, { color: colors.textTertiary }]}>motivated by</Text>
                             {!disabled && item.motivation.length > 0 && (
-                                <TouchableOpacity
+                                <ScalePressable
                                     onPress={() => clearField(index, 'motivation', isModal)}
-                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                                 >
                                     <Ionicons name="close-circle" size={16} color={colors.textTertiary} />
-                                </TouchableOpacity>
+                                </ScalePressable>
                             )}
                         </View>
                         <TextInput
@@ -389,9 +373,9 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                                 <Text key={index} style={part.isReference ? { color: colors.accent, fontWeight: '600' } : {}}>
                                     {part.isReference ? (
                                         <Text>
-                                            <Text style={{ color: colors.textTertiary, fontWeight: '400' }}>[[</Text>
+                                            <Text style={{ color: colors.accent, opacity: 0.3, fontWeight: '400' }}>[[</Text>
                                             {part.refContent}
-                                            <Text style={{ color: colors.textTertiary, fontWeight: '400' }}>]]</Text>
+                                            <Text style={{ color: colors.accent, opacity: 0.3, fontWeight: '400' }}>]]</Text>
                                         </Text>
                                     ) : (
                                         part.text
@@ -409,20 +393,16 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
         <View style={styles.container}>
             {/* Main card containing all pairs */}
             <View style={[styles.card, { borderColor: colors.border, backgroundColor: colors.cardBackground }]}>
-                {items.map((item, index) => renderActionItemPair(item, index, false, items))}
+                {items.map((item, index) => renderActionItemPair(item, index, false))}
 
                 {/* Expand button */}
                 {!disabled && (
-                    <TouchableOpacity
-                        style={[styles.expandButton, { backgroundColor: colors.background, borderColor: colors.border }]}
+                    <ScalePressable
+                        style={[styles.expandButton, { backgroundColor: colors.backgroundSubtle }]}
                         onPress={handleExpand}
-                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                        activeOpacity={0.7}
                     >
-                        <View style={styles.expandIcon}>
-                            <View style={[styles.expandIconInner, { borderColor: colors.textSecondary }]} />
-                        </View>
-                    </TouchableOpacity>
+                        <Ionicons name="square-outline" size={16} color={colors.textSecondary} />
+                    </ScalePressable>
                 )}
             </View>
 
@@ -450,20 +430,21 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                         style={fullScreenStyles.keyboardView}
                         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     >
-                        <View style={fullScreenStyles.header}>
-                            <Button
-                                label="Don't Save"
-                                variant="ghost"
-                                onPress={handleCancelExpansion}
-                                labelStyle={[fullScreenStyles.cancelText, { color: colors.textTertiary }]}
-                            />
+                        <View style={[fullScreenStyles.header, { borderBottomColor: colors.border }]}>
+                            <View style={fullScreenStyles.headerLeft}>
+                                {label && (
+                                    <Text style={[fullScreenStyles.label, { color: colors.textSecondary }]}>{label}</Text>
+                                )}
+                            </View>
 
-                            <Button
-                                label="Save"
-                                variant="ghost"
-                                onPress={handleSaveExpansion}
-                                labelStyle={[fullScreenStyles.saveText, { color: colors.textSecondary }]}
-                            />
+                            <View style={fullScreenStyles.headerRight}>
+                                <ScalePressable
+                                    onPress={handleCancelExpansion}
+                                    style={[fullScreenStyles.iconBtn, { backgroundColor: colors.backgroundSubtle }]}
+                                >
+                                    <Ionicons name="close" size={20} color={colors.textSecondary} />
+                                </ScalePressable>
+                            </View>
                         </View>
 
                         <ScrollView
@@ -471,14 +452,8 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                             showsVerticalScrollIndicator={false}
                             keyboardShouldPersistTaps="always"
                         >
-                            {label && (
-                                <View style={fullScreenStyles.labelContainer}>
-                                    <Text style={[fullScreenStyles.label, { color: colors.textSecondary }]}>{label}</Text>
-                                </View>
-                            )}
-
                             <View style={[styles.card, { borderColor: colors.border, backgroundColor: colors.cardBackground, marginBottom: Spacing.xl }]}>
-                                {tempItems.map((item, index) => renderActionItemPair(item, index, true, tempItems))}
+                                {tempItems.map((item, index) => renderActionItemPair(item, index, true))}
                             </View>
 
                             <Button
@@ -486,8 +461,14 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                                 variant="outline"
                                 onPress={() => handleAdd(true)}
                                 icon="add-outline"
-                                style={[styles.addButton, { marginBottom: Spacing.xxl }]}
+                                style={[styles.addButton, { marginBottom: Spacing.xl }]}
                             />
+
+                            <View style={fullScreenStyles.footer}>
+                                <ScalePressable onPress={handleSaveExpansion} style={fullScreenStyles.saveButton}>
+                                    <Text style={[fullScreenStyles.saveText, { color: colors.textSecondary }]}>Save</Text>
+                                </ScalePressable>
+                            </View>
                         </ScrollView>
 
                         {/* Bible Reference Picker for Modal mode */}
@@ -553,28 +534,14 @@ const styles = StyleSheet.create({
     },
     expandButton: {
         position: 'absolute',
-        top: 12,
-        right: 12,
+        top: 10,
+        right: 10,
         width: 32,
         height: 32,
         justifyContent: 'center',
         alignItems: 'center',
         borderRadius: 12,
-        borderWidth: 1,
         zIndex: 20,
-    },
-    expandIcon: {
-        width: 14,
-        height: 14,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    expandIconInner: {
-        width: 10,
-        height: 10,
-        borderWidth: 1.5,
-        borderRadius: 3,
-        backgroundColor: 'transparent',
     },
     addButton: {
         flexDirection: 'row',
@@ -601,18 +568,23 @@ const fullScreenStyles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 24,
-        paddingLeft: 12,
-        paddingVertical: 16,
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+    },
+    headerLeft: { flex: 1 },
+    headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    iconBtn: {
+        width: 36, height: 36, borderRadius: 18,
+        justifyContent: 'center', alignItems: 'center',
     },
     labelContainer: {
         paddingBottom: 24,
     },
     label: {
-        fontSize: Typography.size.md,
-        fontWeight: Typography.weight.medium,
-        lineHeight: 20,
-        letterSpacing: 0.1,
+        fontSize: 16,
+        fontWeight: '800',
+        letterSpacing: -0.5,
     },
     cancelText: {
         fontSize: 15,
@@ -627,5 +599,17 @@ const fullScreenStyles = StyleSheet.create({
     content: {
         flex: 1,
         paddingHorizontal: 24,
+        paddingVertical: 12,
+    },
+    footer: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        alignItems: 'center',
+        gap: 20,
+        marginTop: Spacing.lg,
+        marginBottom: Spacing.xxl,
+    },
+    saveButton: {
+        paddingVertical: 8,
     },
 });

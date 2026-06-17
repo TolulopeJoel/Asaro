@@ -279,14 +279,16 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
             >
                 {/* Hero Header */}
                 <View style={[styles.heroHeader, { backgroundColor: colors.background }]}>
-                    {onClose && (
-                        <ScalePressable style={[styles.closeButton, { backgroundColor: colors.cardBackground, borderColor: colors.border }]} onPress={onClose}>
-                            <Ionicons name="close" size={20} color={colors.textPrimary} />
-                        </ScalePressable>
-                    )}
+                    <View style={styles.topRow}>
+                        <View style={[styles.dateChip, { backgroundColor: colors.badge, borderColor: colors.badgeBorder }]}>
+                            <Text style={[styles.dateText, { color: colors.badgeText }]}>{formatDate(entry.created_at)}</Text>
+                        </View>
 
-                    <View style={[styles.dateChip, { backgroundColor: colors.badge, borderColor: colors.badgeBorder }]}>
-                        <Text style={[styles.dateText, { color: colors.badgeText }]}>{formatDate(entry.created_at)}</Text>
+                        {onClose && (
+                            <ScalePressable style={[styles.closeButton, { backgroundColor: colors.backgroundSubtle }]} onPress={onClose}>
+                                <Ionicons name="close" size={20} color={colors.textSecondary} />
+                            </ScalePressable>
+                        )}
                     </View>
 
                     <Text style={[styles.reference, { color: colors.textPrimary }]}>
@@ -336,26 +338,26 @@ const styles = StyleSheet.create({
     heroHeader: {
         paddingBottom: 0,
         paddingHorizontal: Spacing.layout.screenPadding,
-        position: 'relative',
+        paddingTop: Spacing.md,
+    },
+    topRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: Spacing.lg + Spacing.xs,
     },
     closeButton: {
-        position: 'absolute',
-        top: 56,
-        right: Spacing.layout.screenPadding,
         width: 36,
         height: 36,
+        borderRadius: 18,
         justifyContent: 'center',
         alignItems: 'center',
-        zIndex: 10,
-        borderRadius: 18,
-        borderWidth: 1.5,
     },
     dateChip: {
         alignSelf: 'flex-start',
         paddingHorizontal: Spacing.md,
         paddingVertical: Spacing.xs + 2,
         borderRadius: Spacing.borderRadius.sm,
-        marginBottom: Spacing.lg + Spacing.xs,
         borderWidth: 1,
     },
     dateText: {

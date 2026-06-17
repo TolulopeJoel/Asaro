@@ -75,13 +75,6 @@ export const StudyEditor: React.FC<StudyEditorProps> = ({
             <View style={[styles.header, { borderBottomColor: colors.border }]}>
                 <View style={styles.headerLeft}>
                     <ScalePressable
-                        onPress={onCancel}
-                        style={[styles.iconBtn, { backgroundColor: colors.backgroundSubtle }]}
-                    >
-                        <Ionicons name="close" size={20} color={colors.textSecondary} />
-                    </ScalePressable>
-
-                    <ScalePressable
                         onPress={() => { setShowColorPicker(p => !p); setShowFormatting(false); }}
                         style={[styles.colorDot, { backgroundColor: color }]}
                     >
@@ -110,6 +103,13 @@ export const StudyEditor: React.FC<StudyEditorProps> = ({
                         }]}>
                             Save
                         </Text>
+                    </ScalePressable>
+
+                    <ScalePressable
+                        onPress={onCancel}
+                        style={[styles.iconBtn, { backgroundColor: colors.backgroundSubtle }]}
+                    >
+                        <Ionicons name="close" size={20} color={colors.textSecondary} />
                     </ScalePressable>
                 </View>
             </View>
