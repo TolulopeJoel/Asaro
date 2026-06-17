@@ -211,10 +211,10 @@ const TextArea: React.FC<{
                                 </ScrollView>
 
                                 <ScalePressable
-                                    style={fullScreenStyles.saveButton}
+                                    style={[fullScreenStyles.saveButton, { backgroundColor: colors.accent }]}
                                     onPress={handleSave}
                                 >
-                                    <Text style={[fullScreenStyles.saveText, { color: colors.textSecondary }]}>Save</Text>
+                                    <Text style={[fullScreenStyles.saveText, { color: colors.buttonPrimaryText }]}>Save</Text>
                                 </ScalePressable>
                             </View>
 
@@ -288,14 +288,15 @@ const fullScreenStyles = StyleSheet.create({
         justifyContent: 'center', alignItems: 'center',
     },
     saveButton: {
-        alignSelf: 'flex-end',
-        paddingHorizontal: 20,
-        marginTop: 10,
+        paddingVertical: 14,
+        borderRadius: 16,
+        width: '100%',
+        alignItems: 'center',
+        marginTop: 8,
     },
     saveText: {
-        fontSize: 15,
-        fontWeight: '600',
-        letterSpacing: 0.1,
+        fontSize: 16,
+        fontWeight: '700',
     },
     label: {
         fontSize: 16,
@@ -306,6 +307,7 @@ const fullScreenStyles = StyleSheet.create({
         flex: 1,
         paddingHorizontal: 24,
         paddingVertical: 12,
+        gap: 8,
     },
     textInput: {
         fontSize: 16,

@@ -465,8 +465,11 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                             />
 
                             <View style={fullScreenStyles.footer}>
-                                <ScalePressable onPress={handleSaveExpansion} style={fullScreenStyles.saveButton}>
-                                    <Text style={[fullScreenStyles.saveText, { color: colors.textSecondary }]}>Save</Text>
+                                <ScalePressable
+                                    onPress={handleSaveExpansion}
+                                    style={[fullScreenStyles.saveButton, { backgroundColor: colors.accent }]}
+                                >
+                                    <Text style={[fullScreenStyles.saveText, { color: colors.buttonPrimaryText }]}>Save</Text>
                                 </ScalePressable>
                             </View>
                         </ScrollView>
@@ -586,30 +589,24 @@ const fullScreenStyles = StyleSheet.create({
         fontWeight: '800',
         letterSpacing: -0.5,
     },
-    cancelText: {
-        fontSize: 15,
-        fontWeight: '400',
-        letterSpacing: 0.1,
-    },
-    saveText: {
-        fontSize: 15,
-        fontWeight: '600',
-        letterSpacing: 0.1,
-    },
     content: {
         flex: 1,
         paddingHorizontal: 24,
         paddingVertical: 12,
     },
     footer: {
-        flexDirection: 'row',
-        justifyContent: 'flex-end',
-        alignItems: 'center',
-        gap: 20,
+        gap: 8,
         marginTop: Spacing.lg,
         marginBottom: Spacing.xxl,
     },
     saveButton: {
-        paddingVertical: 8,
+        paddingVertical: 14,
+        borderRadius: 16,
+        width: '100%',
+        alignItems: 'center',
+    },
+    saveText: {
+        fontSize: 16,
+        fontWeight: '700',
     },
 });
