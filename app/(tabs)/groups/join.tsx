@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, ScrollView } from 'react-native';
-import firestore from '@react-native-firebase/firestore';
+import { getFirestore, doc, collection, getDoc, getDocs, setDoc, query, where, limit, updateDoc, increment, arrayUnion, serverTimestamp, addDoc } from '@react-native-firebase/firestore';
 import { useAuth } from '@/src/context/AuthContext';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { useAlert } from '@/src/context/AlertContext';
@@ -19,6 +19,7 @@ export default function JoinGroupScreen() {
     const { colors } = useTheme();
     const { showAlert } = useAlert();
     const router = useRouter();
+    const db = getFirestore();
 
     const handleJoin = async () => {
         const inputCode = code.trim().toUpperCase();
@@ -29,11 +30,9 @@ export default function JoinGroupScreen() {
         setLoading(true);
         try {
             // Query for group with this code
-            const groupQuery = await firestore()
-                .collection('groups')
-                .where('code', '==', inputCode)
-                .limit(1)
-                .get();
+            const groupQuery = await getDocs(
+                query(collection(db, 'groups'), where('code', '==', inputCode), limit(1))
+            );
 
             if (groupQuery.empty) {
                 showAlert({ title: 'Invalid Code', message: 'No group found with this access code. Please check and try again.' });
@@ -46,59 +45,46 @@ export default function JoinGroupScreen() {
             const groupData = groupDoc.data();
 
             // Add user to the members subcollection of the group
-            const memberRef = firestore()
-                .collection('groups')
-                .doc(groupId)
-                .collection('members')
-                .doc(user.uid);
+            const memberRef = doc(db, 'groups', groupId, 'members', user.uid);
 
-            const existingMember = await memberRef.get();
+            const existingMember = await getDoc(memberRef);
             if (existingMember.exists()) {
                 showAlert({ title: 'Already a Member', message: `You are already part of "${groupData.name}".` });
                 router.replace('/(tabs)/groups' as any);
                 return;
             }
 
-            const userDocData = (await firestore().collection('users').doc(user.uid).get()).data() || {};
+            const userDocSnap = await getDoc(doc(db, 'users', user.uid));
+            const userDocData = userDocSnap.data() || {};
             const userGender = userDocData.gender;
 
-            await memberRef.set({
+            await setDoc(memberRef, {
                 userId: user.uid,
                 displayName: displayName || user.email?.split('@')[0] || 'User',
                 gender: userGender || 'm',
                 photoURL: userDocData.photoURL || null,
-                joinedAt: firestore.FieldValue.serverTimestamp(),
-                lastActive: firestore.FieldValue.serverTimestamp(),
+                joinedAt: serverTimestamp(),
+                lastActive: serverTimestamp(),
             });
 
             // Keep memberCount accurate on the group doc
-            await firestore()
-                .collection('groups')
-                .doc(groupId)
-                .set({ memberCount: firestore.FieldValue.increment(1) }, { merge: true });
+            await setDoc(doc(db, 'groups', groupId), { memberCount: increment(1) }, { merge: true });
 
             // Also keep track of groups the user is in at the user level
-            await firestore()
-                .collection('users')
-                .doc(user.uid)
-                .set({
-                    groupIds: firestore.FieldValue.arrayUnion(groupId),
-                    lastModified: firestore.FieldValue.serverTimestamp(),
-                }, { merge: true });
+            await setDoc(doc(db, 'users', user.uid), {
+                groupIds: arrayUnion(groupId),
+                lastModified: serverTimestamp(),
+            }, { merge: true });
 
             // 5. Success - Trigger joined activity
             const resolvedName = displayName || user.displayName || user.email?.split('@')[0] || 'User';
 
-            await firestore()
-                .collection('groups')
-                .doc(groupId)
-                .collection('activities')
-                .add({
-                    userId: user.uid,
-                    userName: resolvedName,
-                    type: 'member_joined',
-                    timestamp: firestore.FieldValue.serverTimestamp(),
-                });
+            await addDoc(collection(db, 'groups', groupId, 'activities'), {
+                userId: user.uid,
+                userName: resolvedName,
+                type: 'member_joined',
+                timestamp: serverTimestamp(),
+            });
 
             showAlert({ title: 'Welcome!', message: `You have joined "${groupData.name}".` });
             router.replace('/(tabs)/groups' as any);

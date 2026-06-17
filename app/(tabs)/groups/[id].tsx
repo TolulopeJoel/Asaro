@@ -10,7 +10,7 @@ import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import firestore from '@react-native-firebase/firestore';
+import { getFirestore, collection, doc, onSnapshot, getDoc, updateDoc, setDoc, addDoc, query, where, orderBy, limit, serverTimestamp, runTransaction } from '@react-native-firebase/firestore';
 import { useAuth } from '@/src/context/AuthContext';
 import { checkInactiveMembers, getISOWeekString, evaluateGroupAdminRoles } from '@/src/utils/syncActivities';
 import { getTodayDateString } from '@/src/utils/dateUtils';
@@ -345,6 +345,7 @@ const GroupEditModal = ({
     const [photoURL, setPhotoURL] = useState(groupData?.photoURL || '');
     const [saving, setSaving] = useState(false);
     const { showAlert } = useAlert();
+    const db = getFirestore();
 
     useEffect(() => {
         if (visible) {
@@ -362,7 +363,7 @@ const GroupEditModal = ({
 
         setSaving(true);
         try {
-            await firestore().collection('groups').doc(groupId).update({
+            await updateDoc(doc(db, 'groups', groupId), {
                 name: name.trim(),
                 description: description.trim(),
                 photoURL: photoURL.trim(),
@@ -500,39 +501,46 @@ const MemberProfileSheet = ({
         if (!member || !groupId) { setLoadingReads(false); return; }
 
         const memberId = member.userId || member.id;
-        const baseRef = firestore()
-            .collection('groups').doc(groupId)
-            .collection('activities');
+        const db = getFirestore();
+        const baseRef = collection(db, 'groups', groupId, 'activities');
 
-        const unsubReads = baseRef
-            .where('userId', '==', memberId)
-            .where('type', '==', 'journal_entry')
-            .orderBy('timestamp', 'desc')
-            .limit(30)
-            .onSnapshot(
-                (snapshot) => {
-                    setPastReads(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-                    setLoadingReads(false);
-                },
-                (error) => {
-                    console.error('[MemberProfileSheet] Error fetching past reads:', error);
-                    setLoadingReads(false);
-                }
-            );
+        const qReads = query(
+            baseRef,
+            where('userId', '==', memberId),
+            where('type', '==', 'journal_entry'),
+            orderBy('timestamp', 'desc'),
+            limit(30)
+        );
 
-        const unsubReflections = baseRef
-            .where('userId', '==', memberId)
-            .where('type', '==', 'reflection_shared')
-            .orderBy('timestamp', 'desc')
-            .limit(30)
-            .onSnapshot(
-                (snapshot) => {
-                    setSharedReflections(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-                },
-                (error) => {
-                    console.error('[MemberProfileSheet] Error fetching reflections:', error);
-                }
-            );
+        const unsubReads = onSnapshot(
+            qReads,
+            (snapshot: any) => {
+                setPastReads(snapshot.docs.map((docSnap: any) => ({ id: docSnap.id, ...docSnap.data() })));
+                setLoadingReads(false);
+            },
+            (error) => {
+                console.error('[MemberProfileSheet] Error fetching past reads:', error);
+                setLoadingReads(false);
+            }
+        );
+
+        const qReflections = query(
+            baseRef,
+            where('userId', '==', memberId),
+            where('type', '==', 'reflection_shared'),
+            orderBy('timestamp', 'desc'),
+            limit(30)
+        );
+
+        const unsubReflections = onSnapshot(
+            qReflections,
+            (snapshot: any) => {
+                setSharedReflections(snapshot.docs.map((docSnap: any) => ({ id: docSnap.id, ...docSnap.data() })));
+            },
+            (error) => {
+                console.error('[MemberProfileSheet] Error fetching reflections:', error);
+            }
+        );
 
         return () => {
             unsubReads();
@@ -946,54 +954,54 @@ export default function GroupDetailScreen() {
     React.useEffect(() => {
         if (!groupId) return;
 
-        const unsubscribeGroup = firestore()
-            .collection('groups').doc(groupId)
-            .onSnapshot(
-                (doc) => {
-                    setIsOffline(false);
-                    setGroupData(doc.data() || null);
-                    markResolved();
-                    if (doc.exists()) {
-                        checkInactiveMembers(groupId);
-                        evaluateGroupAdminRoles(groupId);
-                    }
-                },
-                (error) => {
-                    console.error('[GroupDetail] group snapshot error:', error);
-                    setIsOffline(true);
-                    markResolved();
+        const db = getFirestore();
+        const unsubscribeGroup = onSnapshot(
+            doc(db, 'groups', groupId),
+            (docSnap: any) => {
+                setIsOffline(false);
+                setGroupData(docSnap.data() || null);
+                markResolved();
+                if (docSnap.exists()) {
+                    checkInactiveMembers(groupId);
+                    evaluateGroupAdminRoles(groupId);
                 }
-            );
+            },
+            (error: any) => {
+                console.error('[GroupDetail] group snapshot error:', error);
+                setIsOffline(true);
+                markResolved();
+            }
+        );
 
-        const unsubscribeActivities = firestore()
-            .collection('groups').doc(groupId)
-            .collection('activities')
-            .orderBy('timestamp', 'desc').limit(30)
-            .onSnapshot(
-                (querySnapshot) => {
-                    const feed = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    setActivities(feed);
-                    markResolved();
-                },
-                (error) => {
-                    console.error('[GroupDetail] activities snapshot error:', error);
-                    markResolved();
-                }
-            );
+        const qActivities = query(
+            collection(db, 'groups', groupId, 'activities'),
+            orderBy('timestamp', 'desc'),
+            limit(30)
+        );
+        const unsubscribeActivities = onSnapshot(
+            qActivities,
+            (querySnapshot: any) => {
+                const feed = querySnapshot.docs.map((docSnap: any) => ({ id: docSnap.id, ...docSnap.data() }));
+                setActivities(feed);
+                markResolved();
+            },
+            (error: any) => {
+                console.error('[GroupDetail] activities snapshot error:', error);
+                markResolved();
+            }
+        );
 
-        const unsubscribeMembers = firestore()
-            .collection('groups').doc(groupId)
-            .collection('members')
-            .onSnapshot(
-                (querySnapshot) => {
-                    setMembers(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-                    markResolved();
-                },
-                (error) => {
-                    console.error('[GroupDetail] members snapshot error:', error);
-                    markResolved();
-                }
-            );
+        const unsubscribeMembers = onSnapshot(
+            collection(db, 'groups', groupId, 'members'),
+            (querySnapshot: any) => {
+                setMembers(querySnapshot.docs.map((docSnap: any) => ({ id: docSnap.id, ...docSnap.data() })));
+                markResolved();
+            },
+            (error: any) => {
+                console.error('[GroupDetail] members snapshot error:', error);
+                markResolved();
+            }
+        );
 
         return () => {
             unsubscribeGroup();

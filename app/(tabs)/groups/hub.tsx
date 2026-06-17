@@ -8,7 +8,7 @@ import { ScalePressable } from '@/src/components/ScalePressable';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import firestore, { Filter } from '@react-native-firebase/firestore';
+import { getFirestore, collection, doc, onSnapshot, getDocs, query, where, documentId } from '@react-native-firebase/firestore';
 import { Button } from '@/src/components/Button';
 import { Skeleton } from '@/src/components/Skeleton';
 import { Avatar } from './[id]';
@@ -17,6 +17,7 @@ export default function GroupsScreen() {
     const { user, loading, displayName } = useAuth();
     const { colors } = useTheme();
     const router = useRouter();
+    const db = getFirestore();
     const [joinedGroups, setJoinedGroups] = useState<any[]>([]);
     const [checkingGroups, setCheckingGroups] = useState(true);
     const [isOffline, setIsOffline] = useState(false);
@@ -37,51 +38,48 @@ export default function GroupsScreen() {
         }
 
         // Listen for user's group IDs
-        const unsubscribeUser = firestore()
-            .collection('users')
-            .doc(user.uid)
-            .onSnapshot(
-                { includeMetadataChanges: false },
-                async (doc) => {
-                    setIsOffline(false);
-                    const userData = doc.data();
-                    const groupIds: string[] = userData?.groupIds || [];
+        const unsubscribeUser = onSnapshot(
+            doc(db, 'users', user.uid),
+            { includeMetadataChanges: false },
+            async (docSnap: any) => {
+                setIsOffline(false);
+                const userData = docSnap.data();
+                const groupIds: string[] = userData?.groupIds || [];
 
-                    if (groupIds.length > 0) {
-                        try {
-                            // Batch fetch groups using 'in' query (max 30 per query)
-                            const chunks: string[][] = [];
-                            for (let i = 0; i < groupIds.length; i += 30) {
-                                chunks.push(groupIds.slice(i, i + 30));
-                            }
-                            const snapshots = await Promise.all(
-                                chunks.map(chunk =>
-                                    firestore()
-                                        .collection('groups')
-                                        .where(firestore.FieldPath.documentId(), 'in', chunk)
-                                        .get({ source: 'default' })
-                                )
-                            );
-                            const groupsData = snapshots.flatMap(snap =>
-                                snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-                            );
-                            setJoinedGroups(groupsData);
-                        } catch (error) {
-                            console.error('Error fetching group metadata:', error);
-                            // Don't clear existing groups — keep showing whatever we have
-                            setIsOffline(true);
+                if (groupIds.length > 0) {
+                    try {
+                        // Batch fetch groups using 'in' query (max 30 per query)
+                        const chunks: string[][] = [];
+                        for (let i = 0; i < groupIds.length; i += 30) {
+                            chunks.push(groupIds.slice(i, i + 30));
                         }
-                    } else {
-                        setJoinedGroups([]);
+                        const snapshots = await Promise.all(
+                            chunks.map(chunk =>
+                                getDocs(
+                                    query(collection(db, 'groups'), where(documentId(), 'in', chunk))
+                                )
+                            )
+                        );
+                        const groupsData = snapshots.flatMap((snap: any) =>
+                            snap.docs.map((docSnap: any) => ({ id: docSnap.id, ...docSnap.data() }))
+                        );
+                        setJoinedGroups(groupsData);
+                    } catch (error) {
+                        console.error('Error fetching group metadata:', error);
+                        // Don't clear existing groups — keep showing whatever we have
+                        setIsOffline(true);
                     }
-                    setCheckingGroups(false);
-                },
-                (error) => {
-                    console.error('Error fetching user groups:', error);
-                    setIsOffline(true);
-                    setCheckingGroups(false);
+                } else {
+                    setJoinedGroups([]);
                 }
-            );
+                setCheckingGroups(false);
+            },
+            (error: any) => {
+                console.error('Error fetching user groups:', error);
+                setIsOffline(true);
+                setCheckingGroups(false);
+            }
+        );
 
         return unsubscribeUser;
     }, [user]);

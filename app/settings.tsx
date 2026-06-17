@@ -17,7 +17,7 @@ import { Button } from '@/src/components/Button';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { Ionicons } from '@expo/vector-icons';
 import { LoadingView } from '@/src/components/LoadingView';
-import firestore from '@react-native-firebase/firestore';
+import { getFirestore, collection, doc, setDoc, getDoc, writeBatch, query, where, onSnapshot, collectionGroup } from '@react-native-firebase/firestore';
 import { useAuth } from '@/src/context/AuthContext';
 import { Avatar } from './(tabs)/groups/[id]';
 import { TextInput } from 'react-native';
@@ -139,6 +139,7 @@ export default function Settings() {
     const [lastBackupDate, setLastBackupDate] = useState<string | null>(null);
     const scrollViewRef = useRef<ScrollView>(null);
     const { user } = useAuth();
+    const db = getFirestore();
     const [isAdmin, setIsAdmin] = useState(false);
     const [photoURL, setPhotoURL] = useState('');
     const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -150,15 +151,15 @@ export default function Settings() {
         if (!user?.uid) return;
         setIsSavingProfile(true);
         try {
-            await firestore().collection('users').doc(user.uid).set({ photoURL: url.trim() }, { merge: true });
-            const userDoc = await firestore().collection('users').doc(user.uid).get();
+            await setDoc(doc(db, 'users', user.uid), { photoURL: url.trim() }, { merge: true });
+            const userDoc = await getDoc(doc(db, 'users', user.uid));
             if (userDoc.exists()) {
                 const groupIds = userDoc.data()?.groupIds || [];
                 if (groupIds.length > 0) {
-                    const batch = firestore().batch();
+                    const batch = writeBatch(db);
                     groupIds.forEach((groupId: string) => {
                         batch.set(
-                            firestore().collection('groups').doc(groupId).collection('members').doc(user.uid),
+                            doc(db, 'groups', groupId, 'members', user.uid),
                             { photoURL: url.trim() }, { merge: true }
                         );
                     });
@@ -184,18 +185,19 @@ export default function Settings() {
 
         if (user?.uid) {
             // Check if user is an admin in any group
-            const unsubscribe = firestore()
-                .collectionGroup('members')
-                .where('userId', '==', user.uid)
-                .where('role', '==', 'admin')
-                .onSnapshot(snapshot => {
-                    setIsAdmin(!snapshot.empty);
-                });
+            const q = query(
+                collectionGroup(db, 'members'),
+                where('userId', '==', user.uid),
+                where('role', '==', 'admin')
+            );
+            const unsubscribe = onSnapshot(q, snapshot => {
+                setIsAdmin(!snapshot.empty);
+            });
 
             // Fetch current user's photoURL
-            firestore().collection('users').doc(user.uid).get().then(doc => {
-                if (doc.exists()) {
-                    setPhotoURL(doc.data()?.photoURL || '');
+            getDoc(doc(db, 'users', user.uid)).then(docSnap => {
+                if (docSnap.exists()) {
+                    setPhotoURL(docSnap.data()?.photoURL || '');
                 }
             });
 
@@ -207,22 +209,18 @@ export default function Settings() {
         if (!user?.uid) return;
         setIsSavingProfile(true);
         try {
-            await firestore().collection('users').doc(user.uid).set({
+            await setDoc(doc(db, 'users', user.uid), {
                 photoURL: photoURL.trim()
             }, { merge: true });
 
             // Update all groups the user is part of
-            const userDoc = await firestore().collection('users').doc(user.uid).get();
+            const userDoc = await getDoc(doc(db, 'users', user.uid));
             if (userDoc.exists()) {
                 const groupIds = userDoc.data()?.groupIds || [];
                 if (groupIds.length > 0) {
-                    const batch = firestore().batch();
+                    const batch = writeBatch(db);
                     groupIds.forEach((groupId: string) => {
-                        const memberRef = firestore()
-                            .collection('groups')
-                            .doc(groupId)
-                            .collection('members')
-                            .doc(user.uid);
+                        const memberRef = doc(db, 'groups', groupId, 'members', user.uid);
                         batch.set(memberRef, { photoURL: photoURL.trim() }, { merge: true });
                     });
                     await batch.commit();

@@ -3,8 +3,8 @@ import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from '@react-native-firebase/auth';
+import { getFirestore, doc, setDoc } from '@react-native-firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { useAlert } from '@/src/context/AlertContext';
@@ -111,8 +111,10 @@ export default function AuthScreen() {
 
         setLoading(true);
         try {
+            const authInstance = getAuth();
+            const db = getFirestore();
             if (isSignUp) {
-                const userCredential = await auth().createUserWithEmailAndPassword(email, password);
+                const userCredential = await createUserWithEmailAndPassword(authInstance, email, password);
 
                 // Update profile from local onboarding data
                 const localName = await AsyncStorage.getItem('user_name');
@@ -121,7 +123,7 @@ export default function AuthScreen() {
                 if (userCredential.user) {
                     const profileUpdates: any = {};
                     if (localName) {
-                        await userCredential.user.updateProfile({ displayName: localName });
+                        await updateProfile(userCredential.user, { displayName: localName });
                         profileUpdates.displayName = localName;
                     }
 
@@ -132,16 +134,17 @@ export default function AuthScreen() {
                     }
 
                     if (Object.keys(profileUpdates).length > 0) {
-                        await firestore()
-                            .collection('users')
-                            .doc(userCredential.user.uid)
-                            .set(profileUpdates, { merge: true });
+                        await setDoc(
+                            doc(db, 'users', userCredential.user.uid),
+                            profileUpdates,
+                            { merge: true }
+                        );
                     }
                 }
 
                 showAlert({ title: 'Success', message: 'Account created successfully!' });
             } else {
-                await auth().signInWithEmailAndPassword(email, password);
+                await signInWithEmailAndPassword(authInstance, email, password);
             }
             router.back();
         } catch (error: any) {
