@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import {
     View, Text, StyleSheet, ScrollView,
-    Platform, UIManager, Modal, Pressable, Dimensions, DeviceEventEmitter, TextInput, Image
+    Modal, Pressable, Dimensions, DeviceEventEmitter, TextInput, Image
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useTheme } from '@/src/theme/ThemeContext';
@@ -26,9 +26,7 @@ import { Skeleton } from '@/src/components/Skeleton';
 import { Button } from '@/src/components/Button';
 import { HyperlinkedText } from '@/src/components/HyperlinkedText';
 
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-    UIManager.setLayoutAnimationEnabledExperimental(true);
-}
+
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
