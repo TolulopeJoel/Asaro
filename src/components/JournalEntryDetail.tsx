@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import { useAlert } from '../context/AlertContext';
 import { Spacing } from '../theme/spacing';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Typography } from '../theme/typography';
 import { ScalePressable } from './ScalePressable';
 import { HyperlinkedText } from './HyperlinkedText';
@@ -43,7 +44,6 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
 }) => {
     const { colors } = useTheme();
     const { showAlert } = useAlert();
-    const [isDeleting, setIsDeleting] = useState(false);
     const [isSharing, setIsSharing] = useState(false);
 
     const formatDate = (dateString: string): string => {
@@ -74,119 +74,34 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
         const hasChapterRange = entry.chapter_end && entry.chapter_end !== entry.chapter_start;
         const hasVerses = entry.verse_start || entry.verse_end;
 
-        // Single chapter with verses: "3:16" or "3:16–20"
         if (!hasChapterRange && hasVerses) {
             let result = entry.chapter_start.toString();
             if (entry.verse_start) {
                 result += `:${entry.verse_start}`;
                 if (entry.verse_end && entry.verse_end !== entry.verse_start) {
-                    result += `–${entry.verse_end} `;
+                    result += `–${entry.verse_end}`;
                 }
             }
             return result;
         }
 
-        // Chapter range with verses: "3:16–5:20"
         if (hasChapterRange && hasVerses) {
             let result = entry.chapter_start.toString();
             if (entry.verse_start) {
-                result += `:${entry.verse_start} `;
+                result += `:${entry.verse_start}`;
             }
-            result += `– ${entry.chapter_end}`;
+            result += `–${entry.chapter_end}`;
             if (entry.verse_end) {
-                result += `:${entry.verse_end} `;
+                result += `:${entry.verse_end}`;
             }
             return result;
         }
 
-        // Chapter range without verses: "3–5"
         if (hasChapterRange) {
-            return `${entry.chapter_start} – ${entry.chapter_end} `;
+            return `${entry.chapter_start}–${entry.chapter_end}`;
         }
 
-        // Single chapter without verses: "3"
         return entry.chapter_start.toString();
-    };
-
-    const handleDelete = () => {
-        showAlert({
-            title: 'Delete Entry',
-            message: 'Are you sure you want to delete this entry? This action cannot be undone.',
-            buttons: [
-                { text: 'Keep', style: 'cancel' },
-                {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: async () => {
-                        setIsDeleting(true);
-                        try {
-                            await deleteJournalEntry(entry.id!);
-                            onDelete?.();
-                        } catch (error) {
-                            console.error("Error deleting entry:", error);
-                            showAlert({ title: 'Error', message: 'Failed to delete entry.' });
-                        } finally {
-                            setIsDeleting(false);
-                        }
-                    },
-                },
-            ],
-        });
-    };
-
-    const handleShare = async () => {
-        setIsSharing(true);
-        try {
-            const reference = `${entry.book_name} ${formatChapterAndVerses()} `;
-            const studyDate = formatDate(entry.created_at);
-
-            let content = `Bible Reading(${reference}) for `;
-            content += `${studyDate}\n\n`;
-
-            const reflections = [
-                entry.reflection_1,
-                entry.reflection_2,
-                entry.reflection_3,
-                entry.reflection_4,
-            ];
-
-            reflections.forEach((reflection, index) => {
-                if (index === ACTION_QUESTION_INDEX) {
-                    // Format action items
-                    if (entry.action_items && entry.action_items.length > 0) {
-                        content += `Q${index + 1}. ${REFLECTION_QUESTIONS[index]} \n\n`;
-                        entry.action_items.forEach((item) => {
-                            if (item.action.trim()) {
-                                content += `* ${item.action.trim()}\n\n`;
-                                if (item.motivation.trim()) {
-                                    content += `motivation:\n\n${item.motivation.trim()}\n\n`;
-                                }
-                            } else if (item.motivation.trim()) {
-                                content += `motivation:\n\n${item.motivation.trim()}\n\n`;
-                            }
-                        });
-                    }
-                } else if (reflection && reflection.trim()) {
-                    content += `Q${index + 1}. ${REFLECTION_QUESTIONS[index]} \n\n`;
-                    content += `${reflection.trim()} \n\n`;
-                }
-            });
-
-            if (entry.notes && entry.notes.trim()) {
-                content += `Additional Thoughts\n`;
-                content += `${entry.notes.trim()} \n\n`;
-            }
-            content += `🫶 Created with Àṣàrò`;
-
-            await Share.share({
-                message: content,
-                title: reference,
-            });
-        } catch (error) {
-            console.error("Error sharing entry:", error);
-        } finally {
-            setIsSharing(false);
-        }
     };
 
     const handleShareReflection = (reflectionText: string, questionIndex: number) => {
@@ -236,7 +151,6 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
     };
 
     const renderReflection = (reflection: string | undefined, questionIndex: number) => {
-        // For Q3, render action items instead
         if (questionIndex === ACTION_QUESTION_INDEX) {
             if (!entry.action_items || entry.action_items.length === 0) return null;
             const hasContent = entry.action_items.some(item => item.action.trim() || item.motivation.trim());
@@ -316,15 +230,16 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
             );
         }
 
-        if (!reflection || !reflection.trim()) return null;
+        const actualReflection = (questionIndex === 5) ? entry.notes : reflection;
+        if (!actualReflection || !actualReflection.trim()) return null;
 
-        const paragraphs = reflection.trim().split('\n\n').filter(p => p.trim());
+        const paragraphs = actualReflection.trim().split('\n\n').filter(p => p.trim());
 
         return (
             <View key={questionIndex} style={[styles.reflectionCard, { borderLeftColor: colors.accentSecondary }]}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: Spacing.md }}>
                     <Text style={[styles.questionText, { color: colors.accent, flex: 1, marginBottom: 0 }]}>{REFLECTION_QUESTIONS[questionIndex]}</Text>
-                    <ScalePressable onPress={() => handleShareReflection(reflection, questionIndex)} style={{ padding: Spacing.sm, marginTop: -Spacing.sm, marginRight: -Spacing.sm }}>
+                    <ScalePressable onPress={() => handleShareReflection(actualReflection, questionIndex)} style={{ padding: Spacing.sm, marginTop: -Spacing.sm, marginRight: -Spacing.sm }}>
                         <Ionicons name="share-social-outline" size={20} color={colors.textTertiary} />
                     </ScalePressable>
                 </View>
@@ -402,40 +317,6 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                             <Text style={[styles.emptyText, { color: colors.textTertiary }]}>awaiting your reflection</Text>
                         </View>
                     )}
-                </View>
-
-                {/* Floating Action Bar */}
-                <View style={[styles.floatingActions, { backgroundColor: colors.cardBackground, borderColor: colors.border, shadowColor: colors.accent }]}>
-                    <ScalePressable
-                        style={[styles.shareFloatingButton, { backgroundColor: colors.backgroundSubtle }]}
-                        onPress={handleShare}
-                        disabled={isSharing}
-                    >
-                        <Text style={[styles.shareFloatingText, { color: colors.textSecondary }]}>
-                            {isSharing ? '↗ sharing' : '↗ share'}
-                        </Text>
-                    </ScalePressable>
-
-                    <View style={[styles.actionDivider, { backgroundColor: colors.border }]} />
-
-                    {onEdit && (
-                        <ScalePressable
-                            style={styles.iconButton}
-                            onPress={() => onEdit(entry)}
-                        >
-                            <Text style={[styles.iconButtonText, { color: colors.textSecondary }]}>edit</Text>
-                        </ScalePressable>
-                    )}
-
-                    <ScalePressable
-                        style={styles.iconButton}
-                        onPress={handleDelete}
-                        disabled={isDeleting}
-                    >
-                        <Text style={[styles.iconButtonText, { color: colors.textTertiary }]}>
-                            {isDeleting ? 'deleting' : 'delete'}
-                        </Text>
-                    </ScalePressable>
                 </View>
 
                 <View style={styles.bottomSpacer} />
@@ -567,49 +448,8 @@ const styles = StyleSheet.create({
         letterSpacing: Typography.letterSpacing.wider,
         fontStyle: 'italic',
     },
-    floatingActions: {
-        marginHorizontal: Spacing.lg + Spacing.xs,
-        marginTop: Spacing.xxxl,
-        borderRadius: Spacing.borderRadius.lg,
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: Spacing.xs,
-        paddingHorizontal: Spacing.xs + 2,
-        borderWidth: 1,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: Spacing.sm,
-        elevation: 3,
-    },
-    shareFloatingButton: {
-        flex: 1,
-        paddingVertical: Spacing.md,
-        paddingHorizontal: Spacing.lg,
-        borderRadius: Spacing.borderRadius.md,
-        alignItems: 'center',
-    },
-    shareFloatingText: {
-        fontSize: Typography.size.sm + 1,
-        fontWeight: Typography.weight.medium,
-        letterSpacing: Typography.letterSpacing.normal,
-    },
-    actionDivider: {
-        width: 1,
-        height: Spacing.lg + Spacing.xs,
-        marginHorizontal: Spacing.sm,
-    },
-    iconButton: {
-        paddingVertical: Spacing.md,
-        paddingHorizontal: Spacing.lg,
-        alignItems: 'center',
-    },
-    iconButtonText: {
-        fontSize: Typography.size.sm + 1,
-        fontWeight: Typography.weight.regular,
-        letterSpacing: Typography.letterSpacing.normal,
-    },
     bottomSpacer: {
-        height: Spacing.xxxl,
+        height: 160, // Increased to account for the floating bar plus some breathing room
     },
     reminderChip: {
         flexDirection: 'row',

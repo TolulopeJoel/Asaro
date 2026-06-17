@@ -637,10 +637,10 @@ const styles = StyleSheet.create({
     /* Draft bar */
     draftBar: {
         position: "absolute",
-        left: Spacing.xl,
-        right: Spacing.xl,
+        left: Spacing.lg,
+        right: Spacing.lg,
         marginBottom: 4,
-        marginHorizontal: -6,
+        marginHorizontal: 1.5,
         borderRadius: Spacing.borderRadius.lg,
         borderBottomEndRadius: 4,
         borderBottomStartRadius: 4,
