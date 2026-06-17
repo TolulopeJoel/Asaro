@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
+import { getAuth, onAuthStateChanged, signOut as firebaseSignOut, FirebaseAuthTypes } from '@react-native-firebase/auth';
+import { getFirestore, doc, setDoc, serverTimestamp } from '@react-native-firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface AuthContextType {
@@ -32,7 +32,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         loadLocalName();
 
-        const unsubscribe = auth().onAuthStateChanged(async (firebaseUser) => {
+        const unsubscribe = onAuthStateChanged(getAuth(), async (firebaseUser) => {
             setUser(firebaseUser);
             setLoading(false);
 
@@ -42,9 +42,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     const storedName = await AsyncStorage.getItem('user_name');
                     if (firebaseUser.displayName !== storedName) {
                         await AsyncStorage.setItem('user_name', firebaseUser.displayName);
-                        await firestore().collection('users').doc(firebaseUser.uid).set({
+                        await setDoc(doc(getFirestore(), 'users', firebaseUser.uid), {
                             displayName: firebaseUser.displayName,
-                            lastModified: firestore.FieldValue.serverTimestamp(),
+                            lastModified: serverTimestamp(),
                         }, { merge: true });
                     }
                     setDisplayName(firebaseUser.displayName);
@@ -61,7 +61,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
 
     const signOut = async () => {
-        await auth().signOut();
+        await firebaseSignOut(getAuth());
     };
 
     return (

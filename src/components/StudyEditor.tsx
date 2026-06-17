@@ -98,6 +98,11 @@ export const StudyEditor: React.FC<StudyEditorProps> = ({
                             shadowColor: isSaveable ? colors.accent : 'transparent',
                         }]}
                     >
+                        <Ionicons
+                            name="checkmark"
+                            size={15}
+                            color={isSaveable ? colors.buttonPrimaryText : colors.textTertiary}
+                        />
                         <Text style={[styles.saveButtonText, {
                             color: isSaveable ? colors.buttonPrimaryText : colors.textTertiary,
                         }]}>
@@ -107,9 +112,12 @@ export const StudyEditor: React.FC<StudyEditorProps> = ({
 
                     <ScalePressable
                         onPress={onCancel}
-                        style={[styles.iconBtn, { backgroundColor: colors.backgroundSubtle }]}
+                        style={[styles.cancelButton, { borderColor: colors.border }]}
                     >
-                        <Ionicons name="close" size={20} color={colors.textSecondary} />
+                        <Ionicons name="close" size={15} color={colors.textSecondary} />
+                        <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>
+                            Cancel
+                        </Text>
                     </ScalePressable>
                 </View>
             </View>
@@ -226,11 +234,18 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.2, shadowRadius: 3, elevation: 2,
     },
     saveButton: {
-        paddingHorizontal: 16, paddingVertical: 7, borderRadius: 18,
+        flexDirection: 'row', alignItems: 'center', gap: 5,
+        paddingHorizontal: 14, paddingVertical: 7, borderRadius: 18,
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.2, shadowRadius: 6, elevation: 3,
     },
     saveButtonText: { fontSize: 14, fontWeight: '700' },
+    cancelButton: {
+        flexDirection: 'row', alignItems: 'center', gap: 5,
+        paddingHorizontal: 14, paddingVertical: 7, borderRadius: 18,
+        borderWidth: 1.5,
+    },
+    cancelButtonText: { fontSize: 14, fontWeight: '600' },
 
     toolStrip: {
         borderBottomWidth: StyleSheet.hairlineWidth,

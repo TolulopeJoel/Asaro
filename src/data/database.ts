@@ -1,6 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 import { formatDateToLocalString, getTodayDateString } from '../utils/dateUtils';
-import auth from '@react-native-firebase/auth';
+import { getAuth } from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import { queueActivity, syncPendingActivities } from '../utils/syncActivities';
 import { READING_PLAN_DATA } from './readingPlanData';
@@ -538,7 +538,7 @@ export const createJournalEntry = async (data: JournalEntryInput) => {
         // If offline, the payload is queued in AsyncStorage and retried later.
         void (async () => {
             try {
-                const user = auth().currentUser;
+                const user = getAuth().currentUser;
                 if (!user) return;
 
                 const chapters = data.chapterEnd && data.chapterEnd !== data.chapterStart
@@ -1346,7 +1346,7 @@ export const shareReflectionToGroup = async (
     // We only push this to Firestore, not storing it locally.
     // Since syncActivities uses AsyncStorage to queue, it will be handled there.
     try {
-        const user = auth().currentUser;
+        const user = getAuth().currentUser;
         if (!user) return false;
 
         const chapters = entry.chapter_end && entry.chapter_end !== entry.chapter_start

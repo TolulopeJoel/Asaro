@@ -1,6 +1,22 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import auth from '@react-native-firebase/auth';
-import firestore, { FirebaseFirestoreTypes } from '@react-native-firebase/firestore';
+import { getAuth } from '@react-native-firebase/auth';
+import {
+    getFirestore,
+    doc,
+    collection,
+    getDoc,
+    getDocs,
+    setDoc,
+    addDoc,
+    query,
+    where,
+    orderBy,
+    limit,
+    writeBatch,
+    serverTimestamp,
+    deleteField,
+    FirebaseFirestoreTypes
+} from '@react-native-firebase/firestore';
 import { parseLocalDateString, getDaysDifference, formatDateToLocalString } from './dateUtils';
 import { getNewlyEarnedStreakBadges, getNewlyEarnedReflectionBadges, MILESTONE_BADGES, GROUP_BADGES, Badge } from './badges';
 
@@ -155,11 +171,11 @@ const applyNewBadges = (
     batch.set(docRef, { badges: updatedIds }, { merge: true });
 
     for (const badge of earned) {
-        batch.set(activitiesRef.doc(), {
+        batch.set(doc(activitiesRef), {
             type: activityType,
             ...badgeFields(badge),
             ...extraActivityFields,
-            timestamp: firestore.FieldValue.serverTimestamp(),
+            timestamp: serverTimestamp(),
         });
     }
 };
@@ -200,12 +216,12 @@ export const syncPendingActivities = async (): Promise<void> => {
         const queue: PendingActivity[] = JSON.parse(existing);
         if (queue.length === 0) return;
 
-        const user = auth().currentUser;
+        const user = getAuth().currentUser;
         if (!user) return; // Not signed in — leave the queue intact
 
         const displayName = user.displayName || 'Reader';
 
-        const userDoc = await firestore().collection('users').doc(user.uid).get();
+        const userDoc = await getDoc(doc(getFirestore(), 'users', user.uid));
         const userData = userDoc.data() || {};
         const groupIds: string[] = userData.groupIds || [];
         const userGender = userData.gender;
@@ -232,13 +248,14 @@ export const syncPendingActivities = async (): Promise<void> => {
             for (const groupId of groupIds) {
                 try {
                     // ── Fetch current member + group state ──────────────────
-                    const groupRef = firestore().collection('groups').doc(groupId);
-                    const memberRef = groupRef.collection('members').doc(activity.userId);
-                    const activitiesRef = groupRef.collection('activities');
+                    const db = getFirestore();
+                    const groupRef = doc(db, 'groups', groupId);
+                    const memberRef = doc(groupRef, 'members', activity.userId);
+                    const activitiesRef = collection(groupRef, 'activities');
 
                     const [memberDoc, groupDoc] = await Promise.all([
-                        memberRef.get(),
-                        groupRef.get(),
+                        getDoc(memberRef),
+                        getDoc(groupRef),
                     ]);
 
                     const memberData: Record<string, any> = memberDoc.data() || {};
@@ -298,7 +315,7 @@ export const syncPendingActivities = async (): Promise<void> => {
                     const memberCount = groupData.memberCount || 1;
 
                     // ── Commit batch ────────────────────────────────────────
-                    const batch = firestore().batch();
+                    const batch = writeBatch(getFirestore());
 
                     // 1. Activity feed entry
                     // Use activityId as the Firestore doc ID so that if this item is
@@ -307,7 +324,7 @@ export const syncPendingActivities = async (): Promise<void> => {
                     const activityPayload: Record<string, any> = {
                         userId: activity.userId,
                         userName: activity.userName || displayName,
-                        timestamp: firestore.FieldValue.serverTimestamp(),
+                        timestamp: serverTimestamp(),
                         type: activity.type,
                     };
 
@@ -317,7 +334,7 @@ export const syncPendingActivities = async (): Promise<void> => {
                     if (activity.sharedQuestionTitle) activityPayload.sharedQuestionTitle = activity.sharedQuestionTitle;
                     if (activity.sharedReflectionText) activityPayload.sharedReflectionText = activity.sharedReflectionText;
 
-                    batch.set(activitiesRef.doc(activity.activityId), activityPayload);
+                    batch.set(doc(activitiesRef, activity.activityId), activityPayload);
 
                     // 2. Member / group updates
                     if (activity.type === 'journal_entry' || activity.type === 'reflection_shared') {
@@ -406,7 +423,7 @@ export const syncPendingActivities = async (): Promise<void> => {
                                 batch.set(activitiesRef.doc(), {
                                     type: 'group_milestone',
                                     ...badgeFields(allReadBadge),
-                                    timestamp: firestore.FieldValue.serverTimestamp(),
+                                    timestamp: serverTimestamp(),
                                 });
                             }
 
@@ -479,9 +496,10 @@ export const syncPendingActivities = async (): Promise<void> => {
  */
 export const checkInactiveMembers = async (groupId: string): Promise<void> => {
     try {
-        const groupRef = firestore().collection('groups').doc(groupId);
-        const membersSnapshot = await groupRef.collection('members').get();
-        const activitiesRef = groupRef.collection('activities');
+        const db = getFirestore();
+        const groupRef = doc(db, 'groups', groupId);
+        const membersSnapshot = await getDocs(collection(groupRef, 'members'));
+        const activitiesRef = collection(groupRef, 'activities');
 
         const today = new Date();
 
@@ -494,23 +512,25 @@ export const checkInactiveMembers = async (groupId: string): Promise<void> => {
 
             const threshold = diff >= 30 ? 30 : 7;
 
-            const recentAlerts = await activitiesRef
-                .where('userId', '==', doc.id)
-                .where('type', '==', 'member_absent')
-                .orderBy('timestamp', 'desc')
-                .limit(1)
-                .get();
+            const q = query(
+                activitiesRef,
+                where('userId', '==', doc.id),
+                where('type', '==', 'member_absent'),
+                orderBy('timestamp', 'desc'),
+                limit(1)
+            );
+            const recentAlerts = await getDocs(q);
 
             if (!recentAlerts.empty) {
                 const lastAlertDate = recentAlerts.docs[0].data().timestamp?.toDate() || new Date(0);
                 if (getDaysDifference(lastAlertDate, today) < 7) continue;
             }
 
-            await activitiesRef.add({
+            await addDoc(activitiesRef, {
                 userId: doc.id,
                 userName: member.displayName || 'Reader',
                 type: 'member_absent',
-                timestamp: firestore.FieldValue.serverTimestamp(),
+                timestamp: serverTimestamp(),
                 threshold,
             });
         }
@@ -556,22 +576,23 @@ export const evaluateGroupAdminRoles = async (groupId: string): Promise<void> =>
         ];
         const monthName = monthNames[now.getMonth()];
 
-        const groupRef = firestore().collection('groups').doc(groupId);
-        const membersSnapshot = await groupRef.collection('members').get();
-        const activitiesRef = groupRef.collection('activities');
+        const db = getFirestore();
+        const groupRef = doc(db, 'groups', groupId);
+        const membersSnapshot = await getDocs(collection(groupRef, 'members'));
+        const activitiesRef = collection(groupRef, 'activities');
 
         // Collect members that need evaluation this month
         const toEvaluate = membersSnapshot.docs.filter(
-            doc => doc.data().adminRoleMonth !== currentMonth
+            (doc: any) => doc.data().adminRoleMonth !== currentMonth
         );
 
         if (toEvaluate.length === 0) return;
 
-        const batch = firestore().batch();
+        const batch = writeBatch(db);
 
         for (const doc of toEvaluate) {
             const data = doc.data();
-            const memberRef = groupRef.collection('members').doc(doc.id);
+            const memberRef = doc(collection(groupRef, 'members'), doc.id);
 
             if (data.adminRoleMonth === undefined) {
                 // First-contact grace period — stamp the month, leave role as-is
@@ -590,18 +611,18 @@ export const evaluateGroupAdminRoles = async (groupId: string): Promise<void> =>
 
                 if (currentRole !== 'admin') {
                     // New promotion!
-                    batch.set(activitiesRef.doc(), {
+                    batch.set(doc(activitiesRef), {
                         userId: doc.id,
                         userName: data.displayName || 'Reader',
                         type: 'admin_promoted',
                         monthName,
-                        timestamp: firestore.FieldValue.serverTimestamp(),
+                        timestamp: serverTimestamp(),
                     });
                 }
             } else {
                 // Not qualified — clear the role field
                 batch.set(memberRef, {
-                    role: firestore.FieldValue.delete(),
+                    role: deleteField(),
                     adminRoleMonth: currentMonth,
                 }, { merge: true });
             }
