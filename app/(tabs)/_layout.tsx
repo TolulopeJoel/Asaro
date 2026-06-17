@@ -36,8 +36,7 @@ export default function TabLayout() {
                         if (route.name.includes('[id]')) return null;
 
                         const isFocused = props.state.index === index;
-                        const currentRouteName = props.state.routes[props.state.index].name;
-                        const shouldHighlight = isFocused || (route.name === 'library/index' && currentRouteName === 'library/[id]');
+                        const shouldHighlight = isFocused;
 
                         const onPress = () => {
                             const now = Date.now();
@@ -71,14 +70,14 @@ export default function TabLayout() {
 
                         let iconName: any = 'ellipse-outline';
                         if (route.name === 'index') iconName = 'home-outline';
-                        else if (route.name === 'library' || route.name === 'library/index') iconName = 'albums-outline';
+                        else if (route.name === 'library') iconName = 'albums-outline';
                         else if (route.name === 'groups') iconName = 'people-circle-outline';
 
                         const finalIcon = shouldHighlight ? iconName.replace('-outline', '') : iconName;
 
                         let label = '';
                         if (route.name === 'index') label = 'Home';
-                        else if (route.name === 'library' || route.name === 'library/index') label = 'Library';
+                        else if (route.name === 'library') label = 'Library';
                         else if (route.name === 'groups') label = 'Groups';
 
                         return (
@@ -112,10 +111,9 @@ export default function TabLayout() {
                 </View>
             )}
         >
-            <Tabs.Screen name="index" />
-            <Tabs.Screen name="library/index" options={{ title: 'Library' }} />
-            <Tabs.Screen name="library/[id]" options={{ href: null }} />
-            <Tabs.Screen name="groups" />
+            <Tabs.Screen name="index" options={{ title: 'Home' }} />
+            <Tabs.Screen name="library" options={{ title: 'Library' }} />
+            <Tabs.Screen name="groups" options={{ title: 'Groups' }} />
         </Tabs>
     );
 }

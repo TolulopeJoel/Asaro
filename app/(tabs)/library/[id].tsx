@@ -62,7 +62,7 @@ export default function JournalEntryDetailScreen() {
                         setIsDeleting(true);
                         try {
                             await deleteJournalEntry(entry.id!);
-                            router.replace('/(tabs)/library');
+                            router.replace('/library');
                         } catch (error) {
                             console.error("Error deleting entry:", error);
                         } finally {
@@ -75,7 +75,7 @@ export default function JournalEntryDetailScreen() {
     };
 
     const handleClose = () => {
-        router.replace('/(tabs)/library');
+        router.back();
     };
 
     const handleShare = async (entry: JournalEntry) => {

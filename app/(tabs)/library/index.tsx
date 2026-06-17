@@ -309,23 +309,18 @@ function JournalContent({
     const params = useLocalSearchParams();
     const [refreshTrigger, setRefreshTrigger] = useState(0);
 
+    const handleEntryPress = (entry: JournalEntry) => {
+        router.push(`/library/${entry.id}`);
+    };
+
     useEffect(() => {
         if (params.openEntryId) {
             const entryId = params.openEntryId as string;
-            router.push({
-                pathname: '/(tabs)/library/[id]',
-                params: { id: entryId }
-            });
+            router.push(`/library/${entryId}`);
             router.setParams({ openEntryId: undefined });
         }
     }, [params.openEntryId]);
 
-    const handleEntryPress = (entry: JournalEntry) => {
-        router.push({
-            pathname: '/(tabs)/library/[id]',
-            params: { id: entry.id!.toString() }
-        });
-    };
 
     return (
         <View style={{ flex: 1 }}>

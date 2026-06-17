@@ -381,7 +381,6 @@ const styles = StyleSheet.create({
     },
     contentSection: {
         paddingHorizontal: Spacing.lg + Spacing.xs,
-        paddingTop: Spacing.xxl + Spacing.xs,
     },
     reflectionsContainer: {
         gap: Spacing.xxl + Spacing.xs,
