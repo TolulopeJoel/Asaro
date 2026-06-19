@@ -806,8 +806,8 @@ export const exportJournalEntriesToJson = async (): Promise<string> => {
                 study_further,
                 study_further_reminder,
                 study_completed,
-                datetime(created_at, 'localtime') as created_at,
-                datetime(updated_at, 'localtime') as updated_at
+                created_at,
+                updated_at
             FROM journal_entries
             ORDER BY created_at ASC
         `);
@@ -815,7 +815,7 @@ export const exportJournalEntriesToJson = async (): Promise<string> => {
         const entriesWithItems = await attachActionItems(database, entries);
 
         const readingProgress = await database.getAllAsync<{ item_id: number; completed_at: string }>(
-            `SELECT item_id, datetime(completed_at, 'localtime') as completed_at FROM reading_progress`
+            `SELECT item_id, completed_at FROM reading_progress`
         );
 
         const payload = {
