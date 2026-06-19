@@ -351,7 +351,7 @@ export default function Settings() {
                 const daysLeft = Math.ceil(30 - diffDays);
                 showAlert({
                     title: 'Patience o! ✋',
-                    message: `Trying to change your sleep time already? That's suspicious 🤨. You still have ${daysLeft} days to suffer your current schedule. Àṣàrò sees everything! 😉`
+                    message: `Trying to change your sleep time already? That's suspicious. You still have ${daysLeft} days to suffer your current schedule. Àṣàrò sees everything.`
                 });
                 return;
             }

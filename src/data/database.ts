@@ -615,7 +615,7 @@ export const getJournalEntries = async (limit = 50, offset = 0): Promise<Journal
 export const getEntriesByBook = async (bookName: string): Promise<JournalEntry[]> => {
     return await withDatabase(async (database) => {
         const entries = await database.getAllAsync<JournalEntry>(
-            `SELECT * FROM journal_entries WHERE book_name = ? ORDER BY chapter_start ASC`, [bookName]
+            `SELECT *, datetime(created_at, 'localtime') as created_at, datetime(updated_at, 'localtime') as updated_at FROM journal_entries WHERE book_name = ? ORDER BY chapter_start ASC`, [bookName]
         );
         return await attachActionItems(database, entries);
     });
@@ -632,7 +632,7 @@ export const searchEntries = async (term: string): Promise<JournalEntry[]> => {
     return await withDatabase(async (database) => {
         // Use FTS5 MATCH with UNION to find all matching entries
         const query = `
-            SELECT je.* FROM journal_entries je
+            SELECT je.*, datetime(je.created_at, 'localtime') as created_at, datetime(je.updated_at, 'localtime') as updated_at FROM journal_entries je
             WHERE je.id IN (
                 SELECT rowid FROM journal_entries_fts WHERE journal_entries_fts MATCH ?
                 UNION
@@ -652,7 +652,7 @@ export const searchEntries = async (term: string): Promise<JournalEntry[]> => {
 export const getEntryById = async (id: number): Promise<JournalEntry | null> => {
     return await withDatabase(async (database) => {
         const entry = await database.getFirstAsync<JournalEntry>(
-            `SELECT * FROM journal_entries WHERE id = ?`, [id]
+            `SELECT *, datetime(created_at, 'localtime') as created_at, datetime(updated_at, 'localtime') as updated_at FROM journal_entries WHERE id = ?`, [id]
         ) ?? null;
         if (!entry) return null;
 

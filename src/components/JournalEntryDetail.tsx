@@ -45,25 +45,36 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
     const [isSharing, setIsSharing] = useState(false);
 
     const formatDate = (dateString: string): string => {
-        const date = new Date(dateString);
+        // SQLite local time string 'YYYY-MM-DD HH:MM:SS' needs 'T' for reliable JS parsing
+        const date = new Date(dateString.replace(' ', 'T'));
         const dateLocal = getLocalMidnight(date);
         const nowLocal = getLocalMidnight();
         const diffDays = getDaysDifference(nowLocal, dateLocal);
 
-        if (diffDays === 0) return 'today';
-        if (diffDays === 1) return 'yesterday';
-        if (diffDays === 2) return 'the day before yesterday';
-        if (diffDays < 7) return `${Math.abs(diffDays)} days ago`;
-
-        const day = dateLocal.getDate();
-        const suffix = day === 1 || day === 21 || day === 31 ? 'st' :
-            day === 2 || day === 22 ? 'nd' :
-                day === 3 || day === 23 ? 'rd' : 'th';
-
-        return `${day}${suffix}, ` + dateLocal.toLocaleDateString('en-US', {
-            month: 'long',
-            year: 'numeric',
+        const timeString = date.toLocaleTimeString([], {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
         });
+
+        let datePart = '';
+        if (diffDays === 0) datePart = 'today';
+        else if (diffDays === 1) datePart = 'yesterday';
+        else if (diffDays === 2) datePart = 'the day before yesterday';
+        else if (diffDays < 7) datePart = `${Math.abs(diffDays)} days ago`;
+        else {
+            const day = dateLocal.getDate();
+            const suffix = day === 1 || day === 21 || day === 31 ? 'st' :
+                day === 2 || day === 22 ? 'nd' :
+                    day === 3 || day === 23 ? 'rd' : 'th';
+
+            datePart = `${day}${suffix}, ` + dateLocal.toLocaleDateString('en-US', {
+                month: 'long',
+                year: 'numeric',
+            });
+        }
+
+        return `${datePart} at ${timeString}`;
     };
 
     const formatChapterAndVerses = (): string => {
