@@ -1,4 +1,5 @@
-import { JournalEntry, shareReflectionToGroup } from '@/src/data/database';
+import { JournalEntry } from '@/src/data/database';
+import { shareReflectionToGroup } from '@/src/services/groupActivityService';
 import { getDaysDifference, getLocalMidnight } from '@/src/utils/dateUtils';
 import React, { useState, useMemo } from 'react';
 import {

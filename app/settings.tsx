@@ -4,6 +4,7 @@ import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { getAllScheduledNotifications, setupDailyNotifications, sendTestNotification } from '@/src/utils/notifications';
 import { exportJournalEntriesToJson, importJournalEntriesFromJson } from '@/src/data/database';
+import { STORAGE_KEYS } from '@/src/storage/storageKeys';
 import Constants from 'expo-constants';
 import * as DocumentPicker from 'expo-document-picker';
 import { documentDirectory, writeAsStringAsync, readAsStringAsync } from 'expo-file-system/legacy';
@@ -192,9 +193,9 @@ export default function Settings() {
 
 
     useEffect(() => {
-        AsyncStorage.getItem('lastBackupDate').then(val => setLastBackupDate(val));
-        AsyncStorage.getItem('sleep_time').then(val => setSleepTime(val));
-        AsyncStorage.getItem('last_sleep_change_at').then(val => setLastSleepChangeAt(val));
+        AsyncStorage.getItem(STORAGE_KEYS.LAST_BACKUP_DATE).then(val => setLastBackupDate(val));
+        AsyncStorage.getItem(STORAGE_KEYS.SLEEP_TIME).then(val => setSleepTime(val));
+        AsyncStorage.getItem(STORAGE_KEYS.LAST_SLEEP_CHANGE_AT).then(val => setLastSleepChangeAt(val));
 
         if (user?.uid) {
             // Check if user is an admin in any group
@@ -317,7 +318,7 @@ export default function Settings() {
             await writeAsStringAsync(uri, json);
 
             const nowIso = now.toISOString();
-            await AsyncStorage.setItem('lastBackupDate', nowIso);
+            await AsyncStorage.setItem(STORAGE_KEYS.LAST_BACKUP_DATE, nowIso);
             setLastBackupDate(nowIso);
 
             if (await Sharing.isAvailableAsync()) {
@@ -381,8 +382,8 @@ export default function Settings() {
                 const iso = sleepDate.toISOString();
                 const nowIso = now.toISOString();
 
-                await AsyncStorage.setItem('sleep_time', iso);
-                await AsyncStorage.setItem('last_sleep_change_at', nowIso);
+                await AsyncStorage.setItem(STORAGE_KEYS.SLEEP_TIME, iso);
+                await AsyncStorage.setItem(STORAGE_KEYS.LAST_SLEEP_CHANGE_AT, nowIso);
 
                 setSleepTime(iso);
                 setLastSleepChangeAt(nowIso);

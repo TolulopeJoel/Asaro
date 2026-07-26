@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { getAuth, onAuthStateChanged, signOut as firebaseSignOut, FirebaseAuthTypes } from '@react-native-firebase/auth';
 import { getFirestore, doc, setDoc, serverTimestamp } from '@react-native-firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { STORAGE_KEYS } from '../storage/storageKeys';
 
 interface AuthContextType {
     user: FirebaseAuthTypes.User | null;
@@ -27,7 +28,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     useEffect(() => {
         // Initial load of display name from local storage
         const loadLocalName = async () => {
-            const name = await AsyncStorage.getItem('user_name');
+            const name = await AsyncStorage.getItem(STORAGE_KEYS.USER_NAME);
             setDisplayName(name);
         };
         loadLocalName();
@@ -39,9 +40,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (firebaseUser) {
                 if (firebaseUser.displayName) {
                     // Only persist to Firestore when the name has actually changed
-                    const storedName = await AsyncStorage.getItem('user_name');
+                    const storedName = await AsyncStorage.getItem(STORAGE_KEYS.USER_NAME);
                     if (firebaseUser.displayName !== storedName) {
-                        await AsyncStorage.setItem('user_name', firebaseUser.displayName);
+                        await AsyncStorage.setItem(STORAGE_KEYS.USER_NAME, firebaseUser.displayName);
                         await setDoc(doc(getFirestore(), 'users', firebaseUser.uid), {
                             displayName: firebaseUser.displayName,
                             lastModified: serverTimestamp(),
@@ -49,7 +50,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     }
                     setDisplayName(firebaseUser.displayName);
                 } else {
-                    const localName = await AsyncStorage.getItem('user_name');
+                    const localName = await AsyncStorage.getItem(STORAGE_KEYS.USER_NAME);
                     if (localName) setDisplayName(localName);
                 }
             } else {

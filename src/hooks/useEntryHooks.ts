@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Animated } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { STORAGE_KEYS } from '../storage/storageKeys';
 import { BibleBook } from '../data/bibleBooks';
 import { ReflectionAnswers } from '../components/ReflectionForm';
 
@@ -58,7 +59,7 @@ export function useAutoSave(
             if (!isMountedRef.current) return;
             try {
                 const draftData: DraftData = { selectedBook, selectedChapters, verseRange, reflectionAnswers, readingItemId };
-                await AsyncStorage.setItem('reflection_draft', JSON.stringify(draftData));
+                await AsyncStorage.setItem(STORAGE_KEYS.REFLECTION_DRAFT, JSON.stringify(draftData));
                 lastSaveTime.current = Date.now();
             } catch (e) {
                 console.error('Failed to save draft:', e);

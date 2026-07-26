@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { STORAGE_KEYS } from '../storage/storageKeys';
 import { getAuth } from '@react-native-firebase/auth';
 import {
     getFirestore,
@@ -19,7 +20,7 @@ import {
 import { parseLocalDateString, getDaysDifference, formatDateToLocalString } from './dateUtils';
 import { getNewlyEarnedStreakBadges, getNewlyEarnedReflectionBadges, MILESTONE_BADGES, GROUP_BADGES, Badge } from './badges';
 
-const PENDING_ACTIVITIES_KEY = 'pending_firestore_activities';
+const PENDING_ACTIVITIES_KEY = STORAGE_KEYS.PENDING_ACTIVITIES;
 
 export interface PendingActivity {
     userId: string;

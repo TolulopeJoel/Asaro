@@ -1,6 +1,8 @@
-import { createJournalEntry, getEntryById, JournalEntryInput, updateJournalEntry } from '@/src/data/database';
+import { createJournalEntry, getEntryById, getTotalJournalCount, JournalEntryInput, updateJournalEntry } from '@/src/data/database';
 import { useTheme } from '@/src/theme/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { STORAGE_KEYS } from '@/src/storage/storageKeys';
+import { getAuth } from '@react-native-firebase/auth';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, AppState, KeyboardAvoidingView, Platform, Share, StyleSheet, View } from 'react-native';
@@ -9,7 +11,7 @@ import { ReflectionAnswers } from '../src/components/ReflectionForm';
 import { LoadingView } from '../src/components/LoadingView';
 import { BibleBook, getBookByName } from '../src/data/bibleBooks';
 import { setupDailyNotifications, scheduleReminderNotification } from '../src/utils/notifications';
-import { syncPendingActivities } from '../src/utils/syncActivities';
+import { queueActivity, syncPendingActivities } from '../src/utils/syncActivities';
 import { useAlert } from '@/src/context/AlertContext';
 import { useAuth } from '@/src/context/AuthContext';
 import { useAutoSave, useStepFade, Step, DraftData, ChapterRange, VerseRange } from '../src/hooks/useEntryHooks';
@@ -85,7 +87,7 @@ export default function MeditationSessionScreen() {
                         const [start, end] = chaptersStr.split('-').map(Number);
                         setSelectedChapters({ start, end: end || start });
                     }
-                    const draftJson = await AsyncStorage.getItem('reflection_draft');
+                    const draftJson = await AsyncStorage.getItem(STORAGE_KEYS.REFLECTION_DRAFT);
                     if (draftJson) {
                         const draft: DraftData = JSON.parse(draftJson);
                         if (draft.readingItemId === rId) {
@@ -96,7 +98,7 @@ export default function MeditationSessionScreen() {
                     setCurrentStep('reflection');
                 } else if (isResuming) {
                     // CASE 3: Resuming generic draft
-                    const draftJson = await AsyncStorage.getItem('reflection_draft');
+                    const draftJson = await AsyncStorage.getItem(STORAGE_KEYS.REFLECTION_DRAFT);
                     if (draftJson) {
                         const draft: DraftData = JSON.parse(draftJson);
                         if (draft.selectedBook) setSelectedBook(draft.selectedBook);
@@ -120,7 +122,7 @@ export default function MeditationSessionScreen() {
 
     // Clears all entry state and removes the draft from storage.
     const clearEntryState = useCallback(async () => {
-        await AsyncStorage.removeItem('reflection_draft');
+        await AsyncStorage.removeItem(STORAGE_KEYS.REFLECTION_DRAFT);
         setSelectedBook(undefined);
         setSelectedChapters(undefined);
         setVerseRange(null);
@@ -200,14 +202,57 @@ export default function MeditationSessionScreen() {
                     showAlert({ title: 'Success', message: 'Entry updated successfully' });
                     router.back();
                 } else {
-                    await AsyncStorage.removeItem('reflection_draft');
+                    await AsyncStorage.removeItem(STORAGE_KEYS.REFLECTION_DRAFT);
+                    await runPostSaveNotifications(true, answers.studyFurtherReminder, answers.studyFurther);
                     setReflectionAnswers(answers);
                     setCurrentStep('summary');
                 }
             } else {
                 const newId = await createJournalEntry(entryData);
                 setSavedEntryId(newId);
-                await AsyncStorage.removeItem('reflection_draft');
+
+                // Push sharing/group activity to Firestore (layer violation fix)
+                void (async () => {
+                    try {
+                        const user = getAuth().currentUser;
+                        if (!user) return;
+
+                        const chapters = entryData.chapterEnd && entryData.chapterEnd !== entryData.chapterStart
+                            ? `${entryData.chapterStart}-${entryData.chapterEnd}`
+                            : `${entryData.chapterStart}`;
+
+                        const previewText = (
+                            entryData.reflections?.find(r => r?.trim().length > 0)?.trim() ||
+                            entryData.notes?.trim() ||
+                            entryData.actionItems?.find(a => a?.action?.trim().length > 0)?.action?.trim()
+                        );
+                        const reflectionPreview = previewText
+                            ? previewText.slice(0, 45) + (previewText.length > 45 ? '…' : '')
+                            : undefined;
+
+                        const resolvedName = user.displayName || user.email?.split('@')[0] || 'Reader';
+                        const totalEntries = await getTotalJournalCount();
+
+                        const activity = {
+                            userId: user.uid,
+                            activityId: `${user.uid}_journal_${newId}`,
+                            userName: resolvedName,
+                            bookName: entryData.bookName,
+                            chapters,
+                            type: 'journal_entry' as any,
+                            queuedAt: new Date().toISOString(),
+                            reflectionPreview,
+                            totalEntries,
+                        };
+
+                        await queueActivity(activity);
+                        await syncPendingActivities();
+                    } catch (error) {
+                        console.error('[addEntry] Background Firestore sync error:', error);
+                    }
+                })();
+
+                await AsyncStorage.removeItem(STORAGE_KEYS.REFLECTION_DRAFT);
                 await runPostSaveNotifications(true, answers.studyFurtherReminder, answers.studyFurther);
                 setReflectionAnswers(answers);
                 setCurrentStep('summary');

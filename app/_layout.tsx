@@ -1,5 +1,6 @@
 import { initializeDatabase } from '@/src/data/database';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { STORAGE_KEYS } from '@/src/storage/storageKeys';
 import {
   initializeNotificationChannel,
   hasNotificationPermissions,
@@ -79,8 +80,8 @@ export default function RootLayout() {
 
         // Load all four requirement values in parallel — they're independent.
         const [name, sleep, perms, batteryOk] = await Promise.all([
-          AsyncStorage.getItem('user_name'),
-          AsyncStorage.getItem('sleep_time'),
+          AsyncStorage.getItem(STORAGE_KEYS.USER_NAME),
+          AsyncStorage.getItem(STORAGE_KEYS.SLEEP_TIME),
           hasNotificationPermissions(),
           isBatteryOptimizationDisabled(),
         ]);
