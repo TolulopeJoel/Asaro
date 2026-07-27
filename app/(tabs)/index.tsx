@@ -112,8 +112,8 @@ interface QuickStatsProps {
 const QuickStats = React.memo(({ totalEntries, missedDays }: QuickStatsProps) => {
     return (
         <View style={styles.statsContainer}>
-            <StatCard icon={Notebook} value={totalEntries} label="Entries" />
-            <StatCard icon={Snowflake} value={missedDays} label="Missed" unit="days" />
+            <StatCard icon={Notebook} value={totalEntries} label="Entries so far" />
+            {/* <StatCard icon={Snowflake} value={missedDays} label="Missed" unit="days" /> */}
         </View>
     );
 });
@@ -181,7 +181,7 @@ const NextReading = React.memo(({ nextItem, onRefresh }: NextReadingProps) => {
                             <View style={[styles.nextReadingIconWrap, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
                                 <Book size={12} color={colors.background} />
                             </View>
-                            <Text style={[styles.nextReadingLabel, { color: colors.background }]}>NEXT READING</Text>
+                            <Text style={[styles.nextReadingLabel, { color: colors.background }]}>NEXT CHAPTERS</Text>
                         </View>
                         <View style={[styles.nextReadingSectionPill, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
                             <Text style={[styles.nextReadingSection, { color: colors.background }]} numberOfLines={1}>
@@ -736,7 +736,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
         shadowRadius: 12,
-        elevation: 5,
+        elevation: 2,
     },
     nextReadingHeader: {
         flexDirection: 'row',
