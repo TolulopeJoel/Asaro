@@ -27,8 +27,8 @@ export default function TabLayout() {
                         borderColor: colors.border,
                         bottom: insets.bottom > 0 ? insets.bottom : 24,
                         // Bottom corners match the phone's screen corner radius
-                        borderBottomLeftRadius: insets.bottom > 0 ? 44 : 20,
-                        borderBottomRightRadius: insets.bottom > 0 ? 44 : 20,
+                        borderBottomLeftRadius: insets.bottom > 0 ? 34 : 20,
+                        borderBottomRightRadius: insets.bottom > 0 ? 34 : 20,
                     },
                 ]}>
                     {props.state.routes.map((route, index) => {
