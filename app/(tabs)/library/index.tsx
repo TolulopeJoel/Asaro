@@ -49,6 +49,8 @@ import { Spacing } from '@/src/theme/spacing';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { LoadingView } from '@/src/components/LoadingView';
 import { BibleBook } from '@/src/data/bibleBooks';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { STORAGE_KEYS } from '@/src/storage/storageKeys';
 
 // Journal imports
 import { JournalEntryList } from '@/src/components/JournalEntryList';
@@ -79,7 +81,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ─── Segment Config ───────────────────────────────────────────────────────────
 
-const SEGMENTS: { key: Segment; label: string; icon: string; icon2: LucideIcon }[] = [
+const ALL_SEGMENTS: { key: Segment; label: string; icon: string; icon2: LucideIcon }[] = [
     { key: 'journal', label: 'Journal', icon: 'journal-outline', icon2: Notebook },
     { key: 'study', label: 'Study', icon: 'reader-outline', icon2: BookOpen },
     { key: 'plan', label: 'Plan', icon: 'map-outline', icon2: BookOpen },
@@ -848,75 +850,6 @@ function AnimatedIndicator({ index, scrollX, activeColor, inactiveColor }: {
     );
 }
 
-function AnimatedTitleStack({ scrollX, colors }: { scrollX: SharedValue<number>; colors: any }) {
-    return (
-        <View style={{ height: 42, justifyContent: 'center' }}>
-            {SEGMENTS.map((seg, index) => {
-                const animatedStyle = useAnimatedStyle(() => {
-                    const opacity = interpolate(
-                        scrollX.value,
-                        [(index - 0.5) * SCREEN_WIDTH, index * SCREEN_WIDTH, (index + 0.5) * SCREEN_WIDTH],
-                        [0, 1, 0],
-                        Extrapolation.CLAMP
-                    );
-                    const translateY = interpolate(
-                        scrollX.value,
-                        [(index - 0.5) * SCREEN_WIDTH, index * SCREEN_WIDTH, (index + 0.5) * SCREEN_WIDTH],
-                        [10, 0, -10],
-                        Extrapolation.CLAMP
-                    );
-                    return {
-                        opacity,
-                        transform: [{ translateY }],
-                        position: index === 0 ? 'relative' : 'absolute',
-                    };
-                });
-                return (
-                    <Animated.Text
-                        key={seg.key}
-                        style={[styles.libraryPillLabel, { color: colors.textPrimary }, animatedStyle]}
-                    >
-                        {seg.label}
-                    </Animated.Text>
-                );
-            })}
-        </View>
-    );
-}
-
-function AnimatedIconStack({ scrollX, colors }: { scrollX: SharedValue<number>; colors: any }) {
-    return (
-        <View style={{ width: 28, height: 28, justifyContent: 'center', alignItems: 'center' }}>
-            {SEGMENTS.map((seg, index) => {
-                const animatedStyle = useAnimatedStyle(() => {
-                    const opacity = interpolate(
-                        scrollX.value,
-                        [(index - 0.5) * SCREEN_WIDTH, index * SCREEN_WIDTH, (index + 0.5) * SCREEN_WIDTH],
-                        [0, 1, 0],
-                        Extrapolation.CLAMP
-                    );
-                    const scale = interpolate(
-                        scrollX.value,
-                        [(index - 0.5) * SCREEN_WIDTH, index * SCREEN_WIDTH, (index + 0.5) * SCREEN_WIDTH],
-                        [0.6, 1, 0.6],
-                        Extrapolation.CLAMP
-                    );
-                    return {
-                        opacity,
-                        transform: [{ scale }],
-                        position: 'absolute',
-                    };
-                });
-                return (
-                    <Animated.View key={seg.key} style={animatedStyle}>
-                        <Ionicons name={seg.icon as any} size={28} color={colors.textMuted} />
-                    </Animated.View>
-                );
-            })}
-        </View>
-    );
-}
-
 // ─── Main Library Screen ──────────────────────────────────────────────────────
 
 export default function LibraryScreen() {
@@ -926,9 +859,118 @@ export default function LibraryScreen() {
 
     const [activeSegment, setActiveSegment] = useState<Segment>('journal');
     const [dropdownVisible, setDropdownVisible] = useState(false);
+    const [studyTabEnabled, setStudyTabEnabled] = useState(true);
 
     const scrollX = useSharedValue(0);
     const scrollViewRef = useRef<Animated.ScrollView>(null);
+
+    // Load study tab preference and handle scroll position changes
+    useEffect(() => {
+        AsyncStorage.getItem(STORAGE_KEYS.STUDY_TAB_ENABLED).then(val => {
+            const enabled = val === 'true';
+            setStudyTabEnabled(enabled);
+            // If study tab is disabled and user is on study tab, switch to journal
+            if (!enabled && activeSegment === 'study') {
+                setActiveSegment('journal');
+                scrollViewRef.current?.scrollTo({ x: 0, animated: true });
+            }
+            // If study tab is enabled and user is on plan, adjust scroll position
+            if (enabled && activeSegment === 'plan') {
+                scrollViewRef.current?.scrollTo({ x: 2 * SCREEN_WIDTH, animated: true });
+            }
+        });
+    }, []);
+
+    // Adjust scroll position when study tab preference changes
+    useEffect(() => {
+        if (!studyTabEnabled && activeSegment === 'study') {
+            // If study tab is disabled while on it, switch to journal
+            setActiveSegment('journal');
+            scrollViewRef.current?.scrollTo({ x: 0, animated: true });
+        } else if (activeSegment === 'plan') {
+            // Adjust plan position based on study tab state
+            const targetX = studyTabEnabled ? 2 * SCREEN_WIDTH : SCREEN_WIDTH;
+            scrollViewRef.current?.scrollTo({ x: targetX, animated: true });
+        }
+    }, [studyTabEnabled, activeSegment]);
+
+    // Compute visible segments based on study tab preference
+    const SEGMENTS = useMemo(() => {
+        if (studyTabEnabled) {
+            return ALL_SEGMENTS;
+        }
+        return ALL_SEGMENTS.filter(seg => seg.key !== 'study');
+    }, [studyTabEnabled]);
+
+    // Animated components that need access to SEGMENTS
+    const AnimatedTitleStack = useCallback(({ scrollX, colors }: { scrollX: SharedValue<number>; colors: any }) => {
+        return (
+            <View style={{ height: 42, justifyContent: 'center' }}>
+                {SEGMENTS.map((seg, index) => {
+                    const animatedStyle = useAnimatedStyle(() => {
+                        const opacity = interpolate(
+                            scrollX.value,
+                            [(index - 0.5) * SCREEN_WIDTH, index * SCREEN_WIDTH, (index + 0.5) * SCREEN_WIDTH],
+                            [0, 1, 0],
+                            Extrapolation.CLAMP
+                        );
+                        const translateY = interpolate(
+                            scrollX.value,
+                            [(index - 0.5) * SCREEN_WIDTH, index * SCREEN_WIDTH, (index + 0.5) * SCREEN_WIDTH],
+                            [10, 0, -10],
+                            Extrapolation.CLAMP
+                        );
+                        return {
+                            opacity,
+                            transform: [{ translateY }],
+                            position: index === 0 ? 'relative' : 'absolute',
+                        };
+                    });
+                    return (
+                        <Animated.Text
+                            key={seg.key}
+                            style={[styles.libraryPillLabel, { color: colors.textPrimary }, animatedStyle]}
+                        >
+                            {seg.label}
+                        </Animated.Text>
+                    );
+                })}
+            </View>
+        );
+    }, [SEGMENTS]);
+
+    const AnimatedIconStack = useCallback(({ scrollX, colors }: { scrollX: SharedValue<number>; colors: any }) => {
+        return (
+            <View style={{ width: 28, height: 28, justifyContent: 'center', alignItems: 'center' }}>
+                {SEGMENTS.map((seg, index) => {
+                    const animatedStyle = useAnimatedStyle(() => {
+                        const opacity = interpolate(
+                            scrollX.value,
+                            [(index - 0.5) * SCREEN_WIDTH, index * SCREEN_WIDTH, (index + 0.5) * SCREEN_WIDTH],
+                            [0, 1, 0],
+                            Extrapolation.CLAMP
+                        );
+                        const scale = interpolate(
+                            scrollX.value,
+                            [(index - 0.5) * SCREEN_WIDTH, index * SCREEN_WIDTH, (index + 0.5) * SCREEN_WIDTH],
+                            [0.6, 1, 0.6],
+                            Extrapolation.CLAMP
+                        );
+                        return {
+                            opacity,
+                            transform: [{ scale }],
+                            position: 'absolute',
+                        };
+                    });
+                    return (
+                        <Animated.View key={seg.key} style={animatedStyle}>
+                            <Ionicons name={seg.icon as any} size={28} color={colors.textMuted} />
+                        </Animated.View>
+                    );
+                })}
+            </View>
+        );
+    }, [SEGMENTS]);
 
     const onScroll = useAnimatedScrollHandler({
         onScroll: (event) => {
@@ -971,7 +1013,7 @@ export default function LibraryScreen() {
         if (index !== -1) {
             scrollViewRef.current?.scrollTo({ x: index * SCREEN_WIDTH, animated: true });
         }
-    }, []);
+    }, [SEGMENTS]);
 
     const toggleStudySort = useCallback(() => {
         setStudySortBy(prev => prev === 'recent' ? 'color' : 'recent');
@@ -1134,7 +1176,9 @@ export default function LibraryScreen() {
                 scrollEventThrottle={16}
                 onMomentumScrollEnd={(e) => {
                     const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
-                    setActiveSegment(SEGMENTS[index].key);
+                    if (index >= 0 && index < SEGMENTS.length) {
+                        setActiveSegment(SEGMENTS[index].key);
+                    }
                 }}
             >
                 <View style={{ width: SCREEN_WIDTH }}>
@@ -1184,12 +1228,14 @@ export default function LibraryScreen() {
                         onCountChange={setJournalCount}
                     />
                 </View>
-                <View style={{ width: SCREEN_WIDTH }}>
-                    <StudyContent
-                        onCountChange={setStudyCount}
-                        sortBy={studySortBy}
-                    />
-                </View>
+                {studyTabEnabled && (
+                    <View style={{ width: SCREEN_WIDTH }}>
+                        <StudyContent
+                            onCountChange={setStudyCount}
+                            sortBy={studySortBy}
+                        />
+                    </View>
+                )}
                 <View style={{ width: SCREEN_WIDTH }}>
                     <PlanProgressBar progress={planProgress} />
                     <PlanContent onProgressChange={setPlanProgress} />

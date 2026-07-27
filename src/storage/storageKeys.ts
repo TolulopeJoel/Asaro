@@ -5,4 +5,5 @@ export const STORAGE_KEYS = {
     LAST_BACKUP_DATE: 'lastBackupDate',
     REFLECTION_DRAFT: 'reflection_draft',
     PENDING_ACTIVITIES: 'pending_firestore_activities',
+    STUDY_TAB_ENABLED: 'study_tab_enabled',
 } as const;

@@ -27,6 +27,7 @@ import {
     Smartphone,
     Archive,
     Download,
+    BookOpen,
 } from 'lucide-react-native';
 import { LoadingView } from '@/src/components/LoadingView';
 import { getFirestore, doc, setDoc, getDoc, writeBatch, query, where, onSnapshot, collectionGroup } from '@react-native-firebase/firestore';
@@ -160,6 +161,7 @@ export default function Settings() {
     const [sleepTime, setSleepTime] = useState<string | null>(null);
     const [lastSleepChangeAt, setLastSleepChangeAt] = useState<string | null>(null);
     const [isUpdatingSleep, setIsUpdatingSleep] = useState(false);
+    const [studyTabEnabled, setStudyTabEnabled] = useState(true);
 
     const handleSaveProfileURL = useCallback(async (url: string) => {
         if (!user?.uid) return;
@@ -196,6 +198,7 @@ export default function Settings() {
         AsyncStorage.getItem(STORAGE_KEYS.LAST_BACKUP_DATE).then(val => setLastBackupDate(val));
         AsyncStorage.getItem(STORAGE_KEYS.SLEEP_TIME).then(val => setSleepTime(val));
         AsyncStorage.getItem(STORAGE_KEYS.LAST_SLEEP_CHANGE_AT).then(val => setLastSleepChangeAt(val));
+        AsyncStorage.getItem(STORAGE_KEYS.STUDY_TAB_ENABLED).then(val => setStudyTabEnabled(val === 'true'));
 
         if (user?.uid) {
             // Check if user is an admin in any group
@@ -463,6 +466,12 @@ export default function Settings() {
         }
     };
 
+    const handleToggleStudyTab = async () => {
+        const newValue = !studyTabEnabled;
+        setStudyTabEnabled(newValue);
+        await AsyncStorage.setItem(STORAGE_KEYS.STUDY_TAB_ENABLED, newValue.toString());
+    };
+
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -518,6 +527,17 @@ export default function Settings() {
                             </ScalePressable>
                         ))}
                     </View>
+                </SettingsGroup>
+
+                {/* Features */}
+                <SettingsGroup title="Features" colors={colors}>
+                    <SettingsItem
+                        label="Study Tab"
+                        value={studyTabEnabled ? 'Enabled' : 'Disabled'}
+                        onPress={handleToggleStudyTab}
+                        icon={BookOpen}
+                        colors={colors}
+                    />
                 </SettingsGroup>
 
                 {/* Data Management */}
