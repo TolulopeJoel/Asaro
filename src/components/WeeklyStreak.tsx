@@ -1,5 +1,6 @@
 import { getDailyEntryCounts } from '@/src/data/database';
 import { useTheme } from '@/src/theme/ThemeContext';
+import { Colors } from '@/src/theme/colors';
 import { formatDateToLocalString, getLocalMidnight } from '@/src/utils/dateUtils';
 import { ChevronRight } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -69,8 +70,23 @@ export const fetchWeeklyStreakData = async (): Promise<DayStatus[]> => {
     return days;
 };
 
-export const WeeklyStreak = React.memo(({ weekDays: weekDaysProp }: { weekDays?: DayStatus[] }) => {
-    const { colors } = useTheme();
+export const WeeklyStreak = React.memo(({
+    weekDays: weekDaysProp,
+    lockedIn = false,
+    locked = false,
+    lockedCaption,
+    onPress,
+}: {
+    weekDays?: DayStatus[];
+    lockedIn?: boolean;
+    /** When lockedIn, disables tap-through (e.g. a cooldown gate) and shows lockedCaption instead. */
+    locked?: boolean;
+    lockedCaption?: string;
+    /** Overrides the default navigate-to-/stats behavior. */
+    onPress?: () => void;
+}) => {
+    const { colors: themeColors } = useTheme();
+    const colors = lockedIn ? Colors.lockedIn : themeColors;
     const [weekDaysState, setWeekDays] = useState<DayStatus[]>([]);
     const weekDays = weekDaysProp || weekDaysState;
     const hasAnimated = useRef(false);
@@ -115,7 +131,7 @@ export const WeeklyStreak = React.memo(({ weekDays: weekDaysProp }: { weekDays?:
     const cardContent = (
         <>
             <View style={styles.header}>
-                <ChevronRight size={16} color={colors.textTertiary} />
+                {(!lockedIn || !locked) && <ChevronRight size={16} color={colors.textTertiary} />}
             </View>
 
             <View style={styles.daysContainer}>
@@ -128,17 +144,19 @@ export const WeeklyStreak = React.memo(({ weekDays: weekDaysProp }: { weekDays?:
                             entering={hasAnimated.current ? undefined : FadeInDown.delay(index * 60).duration(400)}
                             style={styles.dayItem}
                         >
-                            <Text style={[
-                                styles.dayName,
-                                {
-                                    color: isFullWeek ? dayColor : (day.isToday ? colors.textPrimary : colors.textTertiary),
-                                    opacity: day.isFuture ? 0.35 : 1,
-                                    fontWeight: day.isToday ? '600' : '500',
-                                    letterSpacing: 1,
-                                }
-                            ]}>
-                                {day.dayName.charAt(0)}
-                            </Text>
+                            {!lockedIn && (
+                                <Text style={[
+                                    styles.dayName,
+                                    {
+                                        color: isFullWeek ? dayColor : (day.isToday ? colors.textPrimary : colors.textTertiary),
+                                        opacity: day.isFuture ? 0.35 : 1,
+                                        fontWeight: day.isToday ? '600' : '500',
+                                        letterSpacing: 1,
+                                    }
+                                ]}>
+                                    {day.dayName.charAt(0)}
+                                </Text>
+                            )}
 
                             {isFullWeek && day.hasEntry ? (
                                 // Each day gets its own rainbow color
@@ -201,8 +219,8 @@ export const WeeklyStreak = React.memo(({ weekDays: weekDaysProp }: { weekDays?:
         </>
     );
 
-    // Full week: wrap in a rainbow gradient border
-    if (isFullWeek) {
+    // Full week: wrap in a rainbow gradient border (skipped in locked-in mode — no borders/boxes there)
+    if (isFullWeek && !lockedIn) {
         return (
             <ScalePressable onPress={() => router.push('/stats')}>
                 <LinearGradient
@@ -219,10 +237,36 @@ export const WeeklyStreak = React.memo(({ weekDays: weekDaysProp }: { weekDays?:
         );
     }
 
+    // Locked In Mode: gated by a cooldown (e.g. every 2 weeks) rather than always
+    // open — the stats page is a browse/reflect surface, so access is a scheduled
+    // release valve, not a permanent door.
+    if (lockedIn) {
+        if (locked) {
+            return (
+                <View style={[styles.container, { backgroundColor: 'transparent', borderWidth: 0, padding: 0 }]}>
+                    {cardContent}
+                    {lockedCaption && (
+                        <Text style={[styles.lockedCaption, { color: colors.textTertiary }]}>
+                            {lockedCaption}
+                        </Text>
+                    )}
+                </View>
+            );
+        }
+        return (
+            <ScalePressable
+                style={[styles.container, { backgroundColor: 'transparent', borderWidth: 0, padding: 0 }]}
+                onPress={onPress ?? (() => router.push('/stats'))}
+            >
+                {cardContent}
+            </ScalePressable>
+        );
+    }
+
     return (
         <ScalePressable
             style={[styles.container, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
-            onPress={() => router.push('/stats')}
+            onPress={onPress ?? (() => router.push('/stats'))}
         >
             {cardContent}
         </ScalePressable>
@@ -274,5 +318,12 @@ const styles = StyleSheet.create({
         width: 6,
         height: 6,
         borderRadius: 3,
+    },
+    lockedCaption: {
+        fontSize: 11,
+        fontWeight: '600',
+        textAlign: 'center',
+        marginTop: 12,
+        letterSpacing: 0.2,
     },
 });

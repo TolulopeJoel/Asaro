@@ -1,17 +1,34 @@
 import { useTheme } from '@/src/theme/ThemeContext';
+import { Colors } from '@/src/theme/colors';
 import { Home, Library, Users, Circle } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DeviceEventEmitter, StyleSheet, View, Text } from 'react-native';
-import { Tabs, useRouter } from 'expo-router';
+import { Tabs, useRouter, useFocusEffect } from 'expo-router';
 import { ScalePressable } from '@/src/components/ScalePressable';
-import { useRef } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { STORAGE_KEYS } from '@/src/storage/storageKeys';
 
 export default function TabLayout() {
-    const { colors } = useTheme();
+    const { colors: themeColors } = useTheme();
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const lastPressTime = useRef<number>(0);
     const lastPressTab = useRef<string | null>(null);
+    const [lockedInMode, setLockedInMode] = useState(false);
+
+    useFocusEffect(
+        useCallback(() => {
+            AsyncStorage.getItem(STORAGE_KEYS.LOCKED_IN_MODE).then(val => setLockedInMode(val === 'true'));
+        }, [])
+    );
+
+    useEffect(() => {
+        const subscription = DeviceEventEmitter.addListener('locked-in-mode-changed', (val: boolean) => {
+            setLockedInMode(val);
+        });
+        return () => subscription.remove();
+    }, []);
 
     return (
         <Tabs
@@ -19,7 +36,15 @@ export default function TabLayout() {
                 headerShown: false,
                 animation: 'none',
             }}
-            tabBar={(props) => (
+            tabBar={(props) => {
+                // The tab bar itself follows whichever screen is actually in view —
+                // only Home is re-skinned for Locked In Mode, so the bar should only
+                // go stark while Home is focused, not globally whenever the setting
+                // is on. That's what kept it mismatched on Library.
+                const focusedRouteName = props.state.routes[props.state.index]?.name;
+                const colors = (lockedInMode && focusedRouteName === 'index') ? Colors.lockedIn : themeColors;
+
+                return (
                 <View style={[
                     styles.tabBar,
                     {
@@ -34,6 +59,8 @@ export default function TabLayout() {
                     {props.state.routes.map((route, index) => {
                         // Hide dynamic routes from the tab bar
                         if (route.name.includes('[id]')) return null;
+                        // Locked In Mode hides the social surface too, not just home clutter
+                        if (route.name === 'groups' && lockedInMode) return null;
 
                         const isFocused = props.state.index === index;
                         const shouldHighlight = isFocused;
@@ -108,7 +135,8 @@ export default function TabLayout() {
                         );
                     })}
                 </View>
-            )}
+                );
+            }}
         >
             <Tabs.Screen name="index" options={{ title: 'Home' }} />
             <Tabs.Screen name="library" options={{ title: 'Library' }} />

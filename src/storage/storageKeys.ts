@@ -6,4 +6,6 @@ export const STORAGE_KEYS = {
     REFLECTION_DRAFT: 'reflection_draft',
     PENDING_ACTIVITIES: 'pending_firestore_activities',
     STUDY_TAB_ENABLED: 'study_tab_enabled',
+    LOCKED_IN_MODE: 'locked_in_mode',
+    LOCKED_IN_STATS_LAST_VIEWED: 'locked_in_stats_last_viewed',
 } as const;

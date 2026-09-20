@@ -36,9 +36,24 @@ import { fetchFlashbackData } from '@/src/components/Flashback';
 import { getDailyTitle } from '@/src/data/homeTitles';
 import { Confetti, ConfettiRef } from '@/src/components/Confetti';
 import { formatDateToLocalString } from '@/src/utils/dateUtils';
+import { LockedInHome } from '@/src/components/LockedInHome';
+import { STORAGE_KEYS } from '@/src/storage/storageKeys';
+import { Colors } from '@/src/theme/colors';
 
 
 const DRAFT_KEY = "reflection_draft";
+const STATS_UNLOCK_INTERVAL_DAYS = 14;
+
+async function checkStatsGate(): Promise<{ locked: boolean; daysRemaining: number }> {
+    const lastViewedStr = await AsyncStorage.getItem(STORAGE_KEYS.LOCKED_IN_STATS_LAST_VIEWED);
+    if (!lastViewedStr) return { locked: false, daysRemaining: 0 };
+
+    const lastViewed = parseInt(lastViewedStr, 10);
+    const elapsedDays = (Date.now() - lastViewed) / (1000 * 60 * 60 * 24);
+
+    if (elapsedDays >= STATS_UNLOCK_INTERVAL_DAYS) return { locked: false, daysRemaining: 0 };
+    return { locked: true, daysRemaining: Math.ceil(STATS_UNLOCK_INTERVAL_DAYS - elapsedDays) };
+}
 import { LucideIcon } from "lucide-react-native";
 
 interface StatCardProps {
@@ -118,6 +133,53 @@ const QuickStats = React.memo(({ totalEntries, missedDays }: QuickStatsProps) =>
     );
 });
 
+// Shared by the normal NextReading card and LockedInHome so tapping "next reading"
+// behaves identically in both modes.
+async function handleNextReadingPress(
+    nextItem: ReadingItem,
+    router: ReturnType<typeof useRouter>,
+    onRefresh: () => void
+) {
+    // Strip verse notation: "119:64-176" → start=119, end=119; "116-119:63" → start=116, end=119
+    const rawChapters = nextItem.chapters;
+    const parts = rawChapters.split('-');
+    const firstHasVerse = parts[0].includes(':');
+    const planStart = parseInt(parts[0].split(':')[0], 10);
+
+    let planEnd: number;
+    if (parts.length > 1) {
+        if (firstHasVerse) {
+            // If the FIRST part has a verse (119:64), the SECOND part is a verse in the same chapter
+            planEnd = planStart;
+        } else {
+            // Example: "116-119:63" -> start is 116, end is 119
+            planEnd = parseInt(parts[parts.length - 1].split(':')[0], 10);
+        }
+    } else {
+        planEnd = planStart;
+    }
+
+    const isCovered = !isNaN(planStart)
+        ? await checkEntryCoversChapters(nextItem.book, planStart, planEnd)
+        : false;
+
+    if (isCovered) {
+        // Entry already covers this — mark as completed and move on
+        await toggleReadingItem(nextItem.id, true);
+        onRefresh();
+    } else {
+        // No entry yet — go write one
+        router.push({
+            pathname: '/addEntry' as any,
+            params: {
+                readingItemId: nextItem.id,
+                bookName: nextItem.book,
+                chapters: nextItem.chapters
+            }
+        });
+    }
+}
+
 interface NextReadingProps {
     nextItem: ReadingItem | null;
     onRefresh: () => void;
@@ -127,47 +189,9 @@ const NextReading = React.memo(({ nextItem, onRefresh }: NextReadingProps) => {
     const { colors } = useTheme();
     const router = useRouter();
 
-    const handlePress = useCallback(async () => {
+    const handlePress = useCallback(() => {
         if (!nextItem) return;
-
-        // Strip verse notation: "119:64-176" → start=119, end=119; "116-119:63" → start=116, end=119
-        const rawChapters = nextItem.chapters;
-        const parts = rawChapters.split('-');
-        const firstHasVerse = parts[0].includes(':');
-        const planStart = parseInt(parts[0].split(':')[0], 10);
-
-        let planEnd: number;
-        if (parts.length > 1) {
-            if (firstHasVerse) {
-                // If the FIRST part has a verse (119:64), the SECOND part is a verse in the same chapter
-                planEnd = planStart;
-            } else {
-                // Example: "116-119:63" -> start is 116, end is 119
-                planEnd = parseInt(parts[parts.length - 1].split(':')[0], 10);
-            }
-        } else {
-            planEnd = planStart;
-        }
-
-        const isCovered = !isNaN(planStart)
-            ? await checkEntryCoversChapters(nextItem.book, planStart, planEnd)
-            : false;
-
-        if (isCovered) {
-            // Entry already covers this — mark as completed and move on
-            await toggleReadingItem(nextItem.id, true);
-            onRefresh();
-        } else {
-            // No entry yet — go write one
-            router.push({
-                pathname: '/addEntry' as any,
-                params: {
-                    readingItemId: nextItem.id,
-                    bookName: nextItem.book,
-                    chapters: nextItem.chapters
-                }
-            });
-        }
+        handleNextReadingPress(nextItem, router, onRefresh);
     }, [nextItem, router, onRefresh]);
 
     if (!nextItem) return null;
@@ -206,16 +230,17 @@ const NextReading = React.memo(({ nextItem, onRefresh }: NextReadingProps) => {
     );
 });
 
-const FloatingActionButton = React.memo(() => {
+const FloatingActionButton = React.memo(({ lockedIn = false }: { lockedIn?: boolean }) => {
     const { colors, isDark } = useTheme();
     const router = useRouter();
     const insets = useSafeAreaInsets();
     // Tab bar height (60) + bottom inset + extra spacing
     const bottomPosition = 60 + insets.bottom + Spacing.xl;
 
-    // Use light neutral color in dark mode, dark in light mode
-    const fabBackground = isDark ? colors.textPrimary : colors.textPrimary;
-    const iconColor = isDark ? colors.background : '#FFFFFF';
+    // Locked In Mode always uses the stark palette; otherwise light neutral in
+    // dark mode, dark in light mode.
+    const fabBackground = lockedIn ? Colors.lockedIn.textPrimary : (isDark ? colors.textPrimary : colors.textPrimary);
+    const iconColor = lockedIn ? Colors.lockedIn.background : (isDark ? colors.background : '#FFFFFF');
 
     return (
         <ScalePressable
@@ -227,8 +252,9 @@ const FloatingActionButton = React.memo(() => {
     );
 });
 
-const DraftBar = React.memo(() => {
-    const { colors } = useTheme();
+const DraftBar = React.memo(({ lockedIn = false }: { lockedIn?: boolean }) => {
+    const { colors: themeColors } = useTheme();
+    const colors = lockedIn ? Colors.lockedIn : themeColors;
     const insets = useSafeAreaInsets();
     // Tab bar height (60) + bottom inset + extra spacing
     const bottomPosition = 60 + insets.bottom + Spacing.xl;
@@ -278,6 +304,9 @@ export default function Index() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSharing, setIsSharing] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [lockedInMode, setLockedInMode] = useState(false);
+    const [statsLocked, setStatsLocked] = useState(true);
+    const [statsUnlockInDays, setStatsUnlockInDays] = useState(0);
     const { showAlert } = useAlert();
     const scrollViewRef = useRef<ScrollView>(null);
     const confettiRef = useRef<ConfettiRef>(null);
@@ -377,6 +406,20 @@ export default function Index() {
         return () => subscription.remove();
     }, []);
 
+    // Locked In Mode: read on mount/focus, and stay in sync if toggled in Settings
+    // while this screen is still mounted underneath.
+    useEffect(() => {
+        AsyncStorage.getItem(STORAGE_KEYS.LOCKED_IN_MODE).then(val => setLockedInMode(val === 'true'));
+        checkStatsGate().then(({ locked, daysRemaining }) => {
+            setStatsLocked(locked);
+            setStatsUnlockInDays(daysRemaining);
+        });
+        const subscription = DeviceEventEmitter.addListener('locked-in-mode-changed', (val: boolean) => {
+            setLockedInMode(val);
+        });
+        return () => subscription.remove();
+    }, []);
+
     const handleEntryPress = useCallback((entry: JournalEntry) => {
         setSelectedEntry(entry);
         setIsDetailModalVisible(true);
@@ -396,6 +439,11 @@ export default function Index() {
         useCallback(() => {
             loadHomeData();
             checkDraft();
+            AsyncStorage.getItem(STORAGE_KEYS.LOCKED_IN_MODE).then(val => setLockedInMode(val === 'true'));
+            checkStatsGate().then(({ locked, daysRemaining }) => {
+                setStatsLocked(locked);
+                setStatsUnlockInDays(daysRemaining);
+            });
 
             // Simulate initial load if it's very fast
             if (isLoading) {
@@ -454,6 +502,43 @@ export default function Index() {
             ]
         });
     };
+
+    if (lockedInMode) {
+        return (
+            <SafeAreaView style={[styles.container, { backgroundColor: Colors.lockedIn.background }]} edges={['top']}>
+                {isLoading ? (
+                    <View style={{ flex: 1, justifyContent: 'center' }}>
+                        <LoadingView size={48} />
+                    </View>
+                ) : (
+                    <LockedInHome
+                        daysCompleted={stats.totalEntries}
+                        dayOfMonth={new Date().getDate()}
+                        nextItem={nextReading}
+                        weekDays={weekDays}
+                        statsLocked={statsLocked}
+                        // statsLockedCaption={statsLocked ? `Stats unlock in ${statsUnlockInDays} day${statsUnlockInDays === 1 ? '' : 's'}` : undefined}
+                        statsLockedCaption={""}
+                        onStatsPress={async () => {
+                            await AsyncStorage.setItem(STORAGE_KEYS.LOCKED_IN_STATS_LAST_VIEWED, Date.now().toString());
+                            setStatsLocked(true);
+                            setStatsUnlockInDays(STATS_UNLOCK_INTERVAL_DAYS);
+                            router.push('/stats');
+                        }}
+                        onNextReadingPress={() => {
+                            if (nextReading) handleNextReadingPress(nextReading, router, loadHomeData);
+                        }}
+                        onSettingsPress={() => router.push('/settings')}
+                    />
+                )}
+
+                <Confetti ref={confettiRef} />
+
+                {!draftExists && <FloatingActionButton lockedIn />}
+                {draftExists && <DraftBar lockedIn />}
+            </SafeAreaView>
+        );
+    }
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>

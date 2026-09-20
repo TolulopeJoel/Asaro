@@ -11,7 +11,7 @@ import { Users, CloudOff, RefreshCw, Plus, ChevronRight, Flame } from 'lucide-re
 import { getFirestore, collection, doc, onSnapshot, getDocs, query, where, documentId } from '@react-native-firebase/firestore';
 import { Button } from '@/src/components/Button';
 import { Skeleton } from '@/src/components/Skeleton';
-import { Avatar } from './[id]';
+import { Avatar } from '@/src/components/Avatar';
 
 export default function GroupsScreen() {
     const { user, loading, displayName } = useAuth();

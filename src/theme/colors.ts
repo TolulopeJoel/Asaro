@@ -137,6 +137,66 @@ export const Colors = {
         card: '#26241f',
         text: '#e5e0d8',
     },
+    // A deliberately stark, high-contrast skin for Locked In Mode — pure black/white
+    // instead of the warm paper tones, so the mode reads differently at a glance,
+    // not just "same app, fewer cards."
+    lockedIn: {
+        background: '#0a0a0a',
+        backgroundElevated: '#141414',
+        backgroundSubtle: '#1a1a1a',
+
+        textPrimary: '#ffffff',
+        textSecondary: '#a3a3a3',
+        textTertiary: '#737373',
+        textMuted: '#525252',
+
+        border: '#262626',
+        borderSubtle: '#1a1a1a',
+        borderStrong: '#404040',
+        borderActive: '#e18f43',
+
+        accent: '#e18f43',
+        accentDark: '#c97a35',
+        accentLight: '#eca866',
+
+        accentSecondary: '#d4a5a5',
+        accentSecondaryDark: '#c28f8f',
+        accentSecondaryLight: '#e0b8b8',
+
+        cardBackground: '#141414',
+        cardBorder: '#262626',
+        cardHover: '#1a1a1a',
+        searchBackground: '#1a1a1a',
+
+        buttonPrimary: '#e18f43',
+        buttonPrimaryText: '#0a0a0a',
+        buttonSecondary: '#141414',
+        buttonSecondaryText: '#e18f43',
+        buttonSecondaryBorder: '#262626',
+
+        indicatorActive: '#e18f43',
+        indicatorInactive: '#262626',
+
+        badge: '#141414',
+        badgeBorder: '#262626',
+        badgeText: '#e18f43',
+        draftBar: '#141414',
+        draftBarBorder: '#e18f43',
+        draftIconBg: '#1a1a1a',
+
+        tabBar: '#141414',
+        tabIndicator: '#e18f43',
+        tabLabel: '#a3a3a3',
+        tabLabelActive: '#e18f43',
+
+        icon: '#e18f43',
+        iconSecondary: '#0a0a0a',
+        iconActive: '#eca866',
+
+        primary: '#e18f43',
+        card: '#141414',
+        text: '#ffffff',
+    },
 };
 
 export type ThemeColors = typeof Colors.light;

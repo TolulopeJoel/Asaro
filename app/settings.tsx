@@ -12,7 +12,7 @@ import * as Sharing from 'expo-sharing';
 import { Stack, useRouter } from 'expo-router';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { DeviceEventEmitter, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/src/components/Button';
 import { ScalePressable } from '@/src/components/ScalePressable';
@@ -28,11 +28,12 @@ import {
     Archive,
     Download,
     BookOpen,
+    Lock,
 } from 'lucide-react-native';
 import { LoadingView } from '@/src/components/LoadingView';
 import { getFirestore, doc, setDoc, getDoc, writeBatch, query, where, onSnapshot, collectionGroup } from '@react-native-firebase/firestore';
 import { useAuth } from '@/src/context/AuthContext';
-import { Avatar } from './(tabs)/groups/[id]';
+import { Avatar } from '@/src/components/Avatar';
 import { TextInput } from 'react-native';
 import React from 'react';
 
@@ -162,6 +163,7 @@ export default function Settings() {
     const [lastSleepChangeAt, setLastSleepChangeAt] = useState<string | null>(null);
     const [isUpdatingSleep, setIsUpdatingSleep] = useState(false);
     const [studyTabEnabled, setStudyTabEnabled] = useState(true);
+    const [lockedInMode, setLockedInMode] = useState(false);
 
     const handleSaveProfileURL = useCallback(async (url: string) => {
         if (!user?.uid) return;
@@ -199,6 +201,7 @@ export default function Settings() {
         AsyncStorage.getItem(STORAGE_KEYS.SLEEP_TIME).then(val => setSleepTime(val));
         AsyncStorage.getItem(STORAGE_KEYS.LAST_SLEEP_CHANGE_AT).then(val => setLastSleepChangeAt(val));
         AsyncStorage.getItem(STORAGE_KEYS.STUDY_TAB_ENABLED).then(val => setStudyTabEnabled(val === 'true'));
+        AsyncStorage.getItem(STORAGE_KEYS.LOCKED_IN_MODE).then(val => setLockedInMode(val === 'true'));
 
         if (user?.uid) {
             // Check if user is an admin in any group
@@ -472,6 +475,14 @@ export default function Settings() {
         await AsyncStorage.setItem(STORAGE_KEYS.STUDY_TAB_ENABLED, newValue.toString());
     };
 
+    const handleToggleLockedInMode = async () => {
+        const newValue = !lockedInMode;
+        setLockedInMode(newValue);
+        await AsyncStorage.setItem(STORAGE_KEYS.LOCKED_IN_MODE, newValue.toString());
+        // Let the home screen know immediately, in case it's already mounted underneath.
+        DeviceEventEmitter.emit('locked-in-mode-changed', newValue);
+    };
+
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -537,6 +548,14 @@ export default function Settings() {
                         onPress={handleToggleStudyTab}
                         icon={BookOpen}
                         colors={colors}
+                    />
+                    <SettingsItem
+                        label="Locked In Mode"
+                        value={lockedInMode ? 'On' : 'Off'}
+                        onPress={handleToggleLockedInMode}
+                        icon={Lock}
+                        colors={colors}
+                        showChevron={false}
                     />
                 </SettingsGroup>
 
