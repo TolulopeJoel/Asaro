@@ -314,7 +314,11 @@ export default function Index() {
     const router = useRouter();
 
     const loadStats = useCallback(async () => {
-        const currentMonth = new Date().toISOString().slice(0, 7);
+        // Must be the LOCAL month: the queries filter on
+        // strftime('%Y-%m', created_at, 'localtime'). toISOString() is UTC, so near a
+        // month boundary it asked for the wrong month (e.g. 00:30 on Nov 1 in Lagos
+        // returned October's count while dayOfMonth rendered 1).
+        const currentMonth = formatDateToLocalString(new Date()).slice(0, 7);
         const [totalEntries, missedDays] = await Promise.all([
             getTotalEntryCount(currentMonth),
             getMissedDaysCount(currentMonth),

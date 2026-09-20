@@ -89,6 +89,8 @@ export const LockedInHome = React.memo(({
     );
 });
 
+LockedInHome.displayName = 'LockedInHome';
+
 const styles = StyleSheet.create({
     container: {
         flex: 1,

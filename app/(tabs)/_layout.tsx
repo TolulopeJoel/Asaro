@@ -26,9 +26,13 @@ export default function TabLayout() {
     useEffect(() => {
         const subscription = DeviceEventEmitter.addListener('locked-in-mode-changed', (val: boolean) => {
             setLockedInMode(val);
+            // Turning the mode on hides the Groups button, but that alone does not move
+            // you off the Groups screen — you'd be left on a hidden tab with nothing
+            // highlighted in the bar. Send the user to Home, which is the mode's surface.
+            if (val) router.navigate('/(tabs)');
         });
         return () => subscription.remove();
-    }, []);
+    }, [router]);
 
     return (
         <Tabs
