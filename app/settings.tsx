@@ -27,7 +27,6 @@ import {
     Smartphone,
     Archive,
     Download,
-    BookOpen,
     Lock,
 } from 'lucide-react-native';
 import { LoadingView } from '@/src/components/LoadingView';
@@ -162,7 +161,6 @@ export default function Settings() {
     const [sleepTime, setSleepTime] = useState<string | null>(null);
     const [lastSleepChangeAt, setLastSleepChangeAt] = useState<string | null>(null);
     const [isUpdatingSleep, setIsUpdatingSleep] = useState(false);
-    const [studyTabEnabled, setStudyTabEnabled] = useState(true);
     const [lockedInMode, setLockedInMode] = useState(false);
 
     const handleSaveProfileURL = useCallback(async (url: string) => {
@@ -200,7 +198,6 @@ export default function Settings() {
         AsyncStorage.getItem(STORAGE_KEYS.LAST_BACKUP_DATE).then(val => setLastBackupDate(val));
         AsyncStorage.getItem(STORAGE_KEYS.SLEEP_TIME).then(val => setSleepTime(val));
         AsyncStorage.getItem(STORAGE_KEYS.LAST_SLEEP_CHANGE_AT).then(val => setLastSleepChangeAt(val));
-        AsyncStorage.getItem(STORAGE_KEYS.STUDY_TAB_ENABLED).then(val => setStudyTabEnabled(val === 'true'));
         AsyncStorage.getItem(STORAGE_KEYS.LOCKED_IN_MODE).then(val => setLockedInMode(val === 'true'));
 
         if (user?.uid) {
@@ -469,12 +466,6 @@ export default function Settings() {
         }
     };
 
-    const handleToggleStudyTab = async () => {
-        const newValue = !studyTabEnabled;
-        setStudyTabEnabled(newValue);
-        await AsyncStorage.setItem(STORAGE_KEYS.STUDY_TAB_ENABLED, newValue.toString());
-    };
-
     const handleToggleLockedInMode = async () => {
         const newValue = !lockedInMode;
         setLockedInMode(newValue);
@@ -542,13 +533,6 @@ export default function Settings() {
 
                 {/* Features */}
                 <SettingsGroup title="Features" colors={colors}>
-                    <SettingsItem
-                        label="Study Tab"
-                        value={studyTabEnabled ? 'Enabled' : 'Disabled'}
-                        onPress={handleToggleStudyTab}
-                        icon={BookOpen}
-                        colors={colors}
-                    />
                     <SettingsItem
                         label="Locked In Mode"
                         value={lockedInMode ? 'On' : 'Off'}

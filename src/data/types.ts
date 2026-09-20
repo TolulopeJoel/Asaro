@@ -43,32 +43,6 @@ export interface JournalEntryInput {
     readingItemId?: number;
 }
 
-export interface StudyTopic {
-    id: number;
-    title: string;
-    content: string;
-    color: string;
-    created_at: string;
-    updated_at: string;
-    references?: StudyTopicReference[];
-}
-
-export interface StudyTopicReference {
-    id: number;
-    topic_id: number;
-    book_name: string;
-    chapter: number;
-    verse_start?: string;
-    verse_end?: string;
-}
-
-export interface StudyTopicInput {
-    title: string;
-    content?: string;
-    color?: string;
-    references?: Omit<StudyTopicReference, 'id' | 'topic_id'>[];
-}
-
 export interface EnhancedActionItem extends ActionItem {
     book_name: string;
     chapter_start: number;

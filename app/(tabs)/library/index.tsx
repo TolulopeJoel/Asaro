@@ -4,25 +4,12 @@ import {
     Text,
     View,
     FlatList,
-    Modal,
     ScrollView,
     TouchableOpacity,
     Platform,
     LayoutAnimation,
     TextInput,
-    Dimensions,
 } from 'react-native';
-import Animated, {
-    useSharedValue,
-    useAnimatedScrollHandler,
-    useAnimatedStyle,
-    interpolate,
-    Extrapolation,
-    LinearTransition,
-    FadeIn,
-    FadeOut,
-    type SharedValue,
-} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -30,15 +17,8 @@ import {
     Library,
     Zap,
     Bookmark,
-    CheckCircle2,
-    ChevronDown,
     Check,
     Plus,
-    X,
-    Edit2,
-    BookOpen,
-    Palette,
-    ChevronUp,
     Notebook,
     LucideIcon,
     BookCopy
@@ -49,17 +29,10 @@ import { Spacing } from '@/src/theme/spacing';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { LoadingView } from '@/src/components/LoadingView';
 import { BibleBook } from '@/src/data/bibleBooks';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { STORAGE_KEYS } from '@/src/storage/storageKeys';
 
 // Journal imports
 import { JournalEntryList } from '@/src/components/JournalEntryList';
 import { JournalEntry } from '@/src/data/database';
-
-// Study imports
-import { StudyEditor } from '@/src/components/StudyEditor';
-import { MarkdownRenderer } from '@/src/components/MarkdownRenderer';
-import { getStudyTopics, updateStudyTopic, StudyTopic } from '@/src/data/database';
 
 // Plan imports
 import { READING_PLAN_DATA, ReadingItem } from '@/src/data/readingPlanData';
@@ -69,110 +42,23 @@ import * as WebBrowser from 'expo-web-browser';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Segment = 'journal' | 'study' | 'plan';
 export type ViewMode = 'recent' | 'books' | 'bookDetail' | 'actions' | 'topics';
-type StudySortBy = 'recent' | 'color';
+/** 'bookDetail' is a drill-in from Books, not a tab of its own. */
+export type Tab = ViewMode | 'plan';
 
 type PlanListDataItem =
     | { type: 'sectionHeader'; section: string; id: string }
     | { type: 'reading'; item: ReadingItem; id: string };
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+// ─── Tab Config ───────────────────────────────────────────────────────────────
 
-// ─── Segment Config ───────────────────────────────────────────────────────────
-
-const ALL_SEGMENTS: { key: Segment; label: string; icon: string; icon2: LucideIcon }[] = [
-    { key: 'journal', label: 'Journal', icon: 'journal-outline', icon2: Notebook },
-    { key: 'study', label: 'Study', icon: 'reader-outline', icon2: BookOpen },
-    { key: 'plan', label: 'Plan', icon: 'map-outline', icon2: BookOpen },
+const TABS: { key: Exclude<Tab, 'bookDetail'>; label: string; icon: LucideIcon }[] = [
+    { key: 'recent', label: 'Entries', icon: Clock },
+    { key: 'books', label: 'Books', icon: BookCopy },
+    { key: 'actions', label: 'Actions', icon: Zap },
+    { key: 'topics', label: 'Follow-ups', icon: Bookmark },
+    { key: 'plan', label: 'Plan', icon: Library },
 ];
-
-// ─── Color Sort Helper ────────────────────────────────────────────────────────
-
-function hexToHue(hex: string): number {
-    try {
-        const clean = hex.replace('#', '');
-        if (clean.length !== 6) return 0;
-        const r = parseInt(clean.slice(0, 2), 16) / 255;
-        const g = parseInt(clean.slice(2, 4), 16) / 255;
-        const b = parseInt(clean.slice(4, 6), 16) / 255;
-        const max = Math.max(r, g, b), min = Math.min(r, g, b);
-        if (max === min) return 0;
-        const d = max - min;
-        let h = 0;
-        if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
-        else if (max === g) h = ((b - r) / d + 2) / 6;
-        else h = ((r - g) / d + 4) / 6;
-        return h;
-    } catch {
-        return 0;
-    }
-}
-
-// ─── Journal Sub-Tabs ─────────────────────────────────────────────────────────
-
-function JournalSubTabs({
-    viewMode,
-    selectedBook,
-    onNavigateRecent,
-    onNavigateBooks,
-    onNavigateActions,
-    onNavigateTopics,
-}: {
-    viewMode: ViewMode;
-    selectedBook?: BibleBook;
-    onNavigateRecent: () => void;
-    onNavigateBooks: () => void;
-    onNavigateActions: () => void;
-    onNavigateTopics: () => void;
-}) {
-    const { colors } = useTheme();
-
-    return (
-        <View>
-            {viewMode === 'bookDetail' && selectedBook && (
-                <View style={[styles.breadcrumbRow, { borderBottomColor: colors.border }]}>
-                    <ScalePressable onPress={onNavigateBooks}>
-                        <Text style={[styles.breadcrumbText, { color: colors.textSecondary }]}>Books</Text>
-                    </ScalePressable>
-                    <Text style={[styles.breadcrumbSep, { color: colors.textTertiary }]}> / </Text>
-                    <Text style={[styles.breadcrumbCurrent, { color: colors.textPrimary }]}>
-                        {selectedBook.name}
-                    </Text>
-                </View>
-            )}
-
-            <View style={styles.subTabsRow}>
-                <Animated.View
-                    style={[styles.subTabIndicator, {
-                        backgroundColor: colors.accent,
-                        left: viewMode === 'recent' ? '0%'
-                            : (viewMode === 'books' || viewMode === 'bookDetail') ? '25%'
-                                : viewMode === 'actions' ? '50%'
-                                    : '75%',
-                    }]}
-                    layout={LinearTransition}
-                />
-                <ScalePressable style={styles.subTab} onPress={onNavigateRecent}>
-                    <Clock size={20}
-                        color={viewMode === 'recent' ? colors.accent : colors.textTertiary} />
-                </ScalePressable>
-                <ScalePressable style={styles.subTab} onPress={onNavigateBooks}>
-                    <BookCopy size={20}
-                        color={(viewMode === 'books' || viewMode === 'bookDetail') ? colors.accent : colors.textTertiary} />
-                </ScalePressable>
-                <ScalePressable style={styles.subTab} onPress={onNavigateActions}>
-                    <Zap size={20}
-                        color={viewMode === 'actions' ? colors.accent : colors.textTertiary} />
-                </ScalePressable>
-                <ScalePressable style={styles.subTab} onPress={onNavigateTopics}>
-                    <Bookmark size={20}
-                        color={viewMode === 'topics' ? colors.accent : colors.textTertiary} />
-                </ScalePressable>
-            </View>
-        </View>
-    );
-}
 
 // ─── Plan Progress Bar ────────────────────────────────────────────────────────
 
@@ -329,20 +215,11 @@ function JournalContent({
     onCountChange,
 }: JournalContentProps) {
     const router = useRouter();
-    const params = useLocalSearchParams();
     const [refreshTrigger, setRefreshTrigger] = useState(0);
 
     const handleEntryPress = (entry: JournalEntry) => {
         router.push(`/library/${entry.id}`);
     };
-
-    useEffect(() => {
-        if (params.openEntryId) {
-            const entryId = params.openEntryId as string;
-            router.push(`/library/${entryId}`);
-            router.setParams({ openEntryId: undefined });
-        }
-    }, [params.openEntryId]);
 
 
     return (
@@ -358,195 +235,6 @@ function JournalContent({
                 onSelectedBookChange={onSelectedBookChange}
                 onCountChange={onCountChange}
             />
-        </View>
-    );
-}
-
-// ─── Study Content ────────────────────────────────────────────────────────────
-
-function StudyContent({
-    onCountChange,
-    sortBy,
-}: {
-    onCountChange: (count: number) => void;
-    sortBy: StudySortBy;
-}) {
-    const { colors } = useTheme();
-    const router = useRouter();
-    const [topics, setTopics] = useState<StudyTopic[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [viewingTopic, setViewingTopic] = useState<StudyTopic | null>(null);
-    const [editingTopic, setEditingTopic] = useState<StudyTopic | null>(null);
-    const [editTitle, setEditTitle] = useState('');
-    const [editContent, setEditContent] = useState('');
-    const [editColor, setEditColor] = useState(colors.accent);
-
-    const loadTopics = useCallback(async () => {
-        try {
-            const data = await getStudyTopics();
-            setTopics(data);
-            onCountChange(data.length);
-        } catch (error) {
-            console.error('Failed to load study topics:', error);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [onCountChange]);
-
-    useFocusEffect(useCallback(() => { loadTopics(); }, [loadTopics]));
-
-    // ── Sort logic ────────────────────────────────────────────────
-    const sortedTopics = useMemo(() => {
-        if (sortBy === 'color') {
-            return [...topics].sort((a, b) => {
-                const hueA = hexToHue(a.color || colors.accent);
-                const hueB = hexToHue(b.color || colors.accent);
-                return hueA - hueB;
-            });
-        }
-        return topics; // 'recent': DB order (updated_at desc)
-    }, [topics, sortBy, colors.accent]);
-
-    const openPreview = (topic: StudyTopic) => setViewingTopic(topic);
-    const closePreview = () => setViewingTopic(null);
-
-    const openEditor = (topic: StudyTopic) => {
-        setEditingTopic(topic);
-        setEditTitle(topic.title);
-        setEditContent(topic.content || '');
-        setEditColor(topic.color || colors.accent);
-        closePreview();
-    };
-
-    const closeEditor = () => setEditingTopic(null);
-
-    const handleSave = async () => {
-        if (!editingTopic || !editTitle.trim()) return;
-        try {
-            await updateStudyTopic(editingTopic.id, {
-                title: editTitle,
-                content: editContent,
-                color: editColor,
-            });
-            closeEditor();
-            loadTopics();
-        } catch (error) {
-            console.error('Failed to update topic:', error);
-        }
-    };
-
-    const renderTopicCard = ({ item }: { item: StudyTopic }) => {
-        const cardColor = item.color || colors.accent;
-        return (
-            <ScalePressable
-                style={[
-                    styles.studyCard,
-                    {
-                        backgroundColor: colors.cardBackground,
-                        borderColor: cardColor + '50',
-                        borderLeftColor: cardColor,
-                        borderLeftWidth: 4,
-                    }
-                ]}
-                onPress={() => openPreview(item)}
-                onLongPress={() => openEditor(item)}
-            >
-                <View style={styles.studyCardTop}>
-                    <Text style={[styles.studyDateText, { color: colors.textTertiary }]}>
-                        {new Date(item.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </Text>
-                </View>
-                <Text style={[styles.studyCardTitle, { color: colors.textPrimary }]} numberOfLines={2}>
-                    {item.title}
-                </Text>
-                {!!item.content && (
-                    <Text style={[styles.studyCardSnippet, { color: colors.textSecondary }]} numberOfLines={2}>
-                        {item.content}
-                    </Text>
-                )}
-            </ScalePressable>
-        );
-    };
-
-    return (
-        <View style={{ flex: 1 }}>
-            {isLoading ? (
-                <View style={styles.center}>
-                    <LoadingView size={48} />
-                </View>
-            ) : topics.length === 0 ? (
-                <View style={styles.studyEmptyContainer}>
-                    <View style={[styles.studyEmptyIconContainer, { backgroundColor: colors.accent + '12' }]}>
-                        <Library size={44} color={colors.accent} />
-                    </View>
-                    <Text style={[styles.studyEmptyTitle, { color: colors.textPrimary }]}>Empty Library</Text>
-                    <Text style={[styles.studyEmptySubtitle, { color: colors.textSecondary }]}>
-                        Create your first study topic to start organizing your research.
-                    </Text>
-                    <ScalePressable
-                        style={[styles.studyCreateButton, { backgroundColor: colors.accent + '15' }]}
-                        onPress={() => router.push('/study/new' as any)}
-                    >
-                        <Plus size={16} color={colors.accent} />
-                        <Text style={[styles.studyCreateButtonText, { color: colors.accent }]}>New Topic</Text>
-                    </ScalePressable>
-                </View>
-            ) : (
-                <FlatList
-                    data={sortedTopics}
-                    renderItem={renderTopicCard}
-                    keyExtractor={(item) => item.id.toString()}
-                    contentContainerStyle={styles.studyListContent}
-                    showsVerticalScrollIndicator={false}
-                />
-            )}
-
-            <Modal
-                visible={!!viewingTopic}
-                animationType="slide"
-                presentationStyle="pageSheet"
-                onRequestClose={closePreview}
-            >
-                <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
-                    <View style={styles.studyPreviewHeader}>
-                        <ScalePressable onPress={() => viewingTopic && openEditor(viewingTopic)} style={[styles.studyEditButton, { backgroundColor: colors.accent }]}>
-                            <Edit2 size={18} color={colors.buttonPrimaryText} />
-                            <Text style={[styles.studyEditButtonText, { color: colors.buttonPrimaryText }]}>Edit</Text>
-                        </ScalePressable>
-                        <ScalePressable onPress={closePreview} style={[styles.studyPreviewIconBtn, { backgroundColor: colors.backgroundSubtle }]}>
-                            <X size={22} color={colors.textSecondary} />
-                        </ScalePressable>
-                    </View>
-                    <ScrollView style={styles.studyPreviewContent} showsVerticalScrollIndicator={false}>
-                        <Text style={[styles.studyPreviewTitle, { color: colors.textPrimary }]}>{viewingTopic?.title}</Text>
-                        <View style={[styles.studyPreviewDivider, { backgroundColor: viewingTopic?.color || colors.accent }]} />
-                        <MarkdownRenderer
-                            content={viewingTopic?.content || ''}
-                            accentColor={viewingTopic?.color}
-                        />
-                    </ScrollView>
-                </SafeAreaView>
-            </Modal>
-
-            <Modal
-                visible={!!editingTopic}
-                animationType="slide"
-                presentationStyle="pageSheet"
-                onRequestClose={closeEditor}
-            >
-                <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
-                    <StudyEditor
-                        title={editTitle}
-                        content={editContent}
-                        color={editColor}
-                        onTitleChange={setEditTitle}
-                        onContentChange={setEditContent}
-                        onColorChange={setEditColor}
-                        onSave={handleSave}
-                        onCancel={closeEditor}
-                    />
-                </SafeAreaView>
-            </Modal>
         </View>
     );
 }
@@ -793,63 +481,6 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: number) => vo
     );
 }
 
-// ─── Animated Indicator ──────────────────────────────────────────────────────
-
-function AnimatedIndicator({ index, scrollX, activeColor, inactiveColor }: {
-    index: number;
-    scrollX: SharedValue<number>;
-    activeColor: string;
-    inactiveColor: string;
-}) {
-    const animatedStyle = useAnimatedStyle(() => {
-        const inputRange = [
-            (index - 1) * SCREEN_WIDTH,
-            index * SCREEN_WIDTH,
-            (index + 1) * SCREEN_WIDTH,
-        ];
-
-        const width = interpolate(
-            scrollX.value,
-            inputRange,
-            [12, 36, 12],
-            Extrapolation.CLAMP
-        );
-
-        const opacity = interpolate(
-            scrollX.value,
-            inputRange,
-            [0.5, 1, 0.5],
-            Extrapolation.CLAMP
-        );
-
-        const backgroundColor = interpolate(
-            scrollX.value,
-            inputRange,
-            [0, 1, 0],
-            Extrapolation.CLAMP
-        ) > 0.5 ? activeColor : inactiveColor;
-
-        return {
-            width,
-            opacity,
-            backgroundColor,
-        };
-    });
-
-    return (
-        <Animated.View
-            style={[
-                {
-                    height: 4.5,
-                    borderRadius: 20,
-                    marginHorizontal: 4,
-                },
-                animatedStyle,
-            ]}
-        />
-    );
-}
-
 // ─── Main Library Screen ──────────────────────────────────────────────────────
 
 export default function LibraryScreen() {
@@ -857,410 +488,125 @@ export default function LibraryScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
 
-    const [activeSegment, setActiveSegment] = useState<Segment>('journal');
-    const [dropdownVisible, setDropdownVisible] = useState(false);
-    const [studyTabEnabled, setStudyTabEnabled] = useState(true);
-
-    const scrollX = useSharedValue(0);
-    const scrollViewRef = useRef<Animated.ScrollView>(null);
-
-    // Load study tab preference and handle scroll position changes
-    useEffect(() => {
-        AsyncStorage.getItem(STORAGE_KEYS.STUDY_TAB_ENABLED).then(val => {
-            const enabled = val === 'true';
-            setStudyTabEnabled(enabled);
-            // If study tab is disabled and user is on study tab, switch to journal
-            if (!enabled && activeSegment === 'study') {
-                setActiveSegment('journal');
-                scrollViewRef.current?.scrollTo({ x: 0, animated: true });
-            }
-            // If study tab is enabled and user is on plan, adjust scroll position
-            if (enabled && activeSegment === 'plan') {
-                scrollViewRef.current?.scrollTo({ x: 2 * SCREEN_WIDTH, animated: true });
-            }
-        });
-    }, []);
-
-    // Adjust scroll position when study tab preference changes
-    useEffect(() => {
-        if (!studyTabEnabled && activeSegment === 'study') {
-            // If study tab is disabled while on it, switch to journal
-            setActiveSegment('journal');
-            scrollViewRef.current?.scrollTo({ x: 0, animated: true });
-        } else if (activeSegment === 'plan') {
-            // Adjust plan position based on study tab state
-            const targetX = studyTabEnabled ? 2 * SCREEN_WIDTH : SCREEN_WIDTH;
-            scrollViewRef.current?.scrollTo({ x: targetX, animated: true });
-        }
-    }, [studyTabEnabled, activeSegment]);
-
-    // Compute visible segments based on study tab preference
-    const SEGMENTS = useMemo(() => {
-        if (studyTabEnabled) {
-            return ALL_SEGMENTS;
-        }
-        return ALL_SEGMENTS.filter(seg => seg.key !== 'study');
-    }, [studyTabEnabled]);
-
-    // Animated components that need access to SEGMENTS
-    const AnimatedTitleStack = useCallback(({ scrollX, colors }: { scrollX: SharedValue<number>; colors: any }) => {
-        return (
-            <View style={{ height: 42, justifyContent: 'center' }}>
-                {SEGMENTS.map((seg, index) => {
-                    const animatedStyle = useAnimatedStyle(() => {
-                        const opacity = interpolate(
-                            scrollX.value,
-                            [(index - 0.5) * SCREEN_WIDTH, index * SCREEN_WIDTH, (index + 0.5) * SCREEN_WIDTH],
-                            [0, 1, 0],
-                            Extrapolation.CLAMP
-                        );
-                        const translateY = interpolate(
-                            scrollX.value,
-                            [(index - 0.5) * SCREEN_WIDTH, index * SCREEN_WIDTH, (index + 0.5) * SCREEN_WIDTH],
-                            [10, 0, -10],
-                            Extrapolation.CLAMP
-                        );
-                        return {
-                            opacity,
-                            transform: [{ translateY }],
-                            position: index === 0 ? 'relative' : 'absolute',
-                        };
-                    });
-                    return (
-                        <Animated.Text
-                            key={seg.key}
-                            style={[styles.libraryPillLabel, { color: colors.textPrimary }, animatedStyle]}
-                        >
-                            {seg.label}
-                        </Animated.Text>
-                    );
-                })}
-            </View>
-        );
-    }, [SEGMENTS]);
-
-    const AnimatedIconStack = useCallback(({ scrollX, colors }: { scrollX: SharedValue<number>; colors: any }) => {
-        return (
-            <View style={{ width: 28, height: 28, justifyContent: 'center', alignItems: 'center' }}>
-                {SEGMENTS.map((seg, index) => {
-                    const animatedStyle = useAnimatedStyle(() => {
-                        const opacity = interpolate(
-                            scrollX.value,
-                            [(index - 0.5) * SCREEN_WIDTH, index * SCREEN_WIDTH, (index + 0.5) * SCREEN_WIDTH],
-                            [0, 1, 0],
-                            Extrapolation.CLAMP
-                        );
-                        const scale = interpolate(
-                            scrollX.value,
-                            [(index - 0.5) * SCREEN_WIDTH, index * SCREEN_WIDTH, (index + 0.5) * SCREEN_WIDTH],
-                            [0.6, 1, 0.6],
-                            Extrapolation.CLAMP
-                        );
-                        return {
-                            opacity,
-                            transform: [{ scale }],
-                            position: 'absolute',
-                        };
-                    });
-                    return (
-                        <Animated.View key={seg.key} style={animatedStyle}>
-                            <Ionicons name={seg.icon as any} size={28} color={colors.textMuted} />
-                        </Animated.View>
-                    );
-                })}
-            </View>
-        );
-    }, [SEGMENTS]);
-
-    const onScroll = useAnimatedScrollHandler({
-        onScroll: (event) => {
-            scrollX.value = event.contentOffset.x;
-        },
-    });
-
-    // Journal header state
-    const [journalViewMode, setJournalViewMode] = useState<ViewMode>(
-        (params.view as ViewMode) || 'recent'
-    );
+    const [tab, setTab] = useState<Tab>((params.view as Tab) || 'recent');
     const [journalSearch, setJournalSearch] = useState('');
     const [journalSelectedBook, setJournalSelectedBook] = useState<BibleBook | undefined>();
     const [journalCount, setJournalCount] = useState(0);
-
-    // Study header state
-    const [studyCount, setStudyCount] = useState(0);
-    const [studySortBy, setStudySortBy] = useState<StudySortBy>('recent'); // ← sort state
-
-    // Plan header state
     const [planProgress, setPlanProgress] = useState(0);
 
-    const handleJournalNavigate = useCallback((mode: ViewMode) => {
-        setJournalViewMode(mode);
+    // Books drills into bookDetail, so that view keeps the Books tab lit.
+    const activeTabKey = tab === 'bookDetail' ? 'books' : tab;
+    const showSearch = tab === 'recent' || tab === 'bookDetail';
+
+    const handleNavigate = useCallback((next: Tab) => {
+        setTab(next);
         setJournalSearch('');
-        if (mode !== 'bookDetail') setJournalSelectedBook(undefined);
+        if (next !== 'bookDetail') setJournalSelectedBook(undefined);
     }, []);
 
-    const toggleDropdown = useCallback(() => {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        setDropdownVisible(prev => !prev);
-    }, []);
-
-    const handleSelectSegment = useCallback((s: Segment) => {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        setActiveSegment(s);
-        setDropdownVisible(false);
-
-        const index = SEGMENTS.findIndex(seg => seg.key === s);
-        if (index !== -1) {
-            scrollViewRef.current?.scrollTo({ x: index * SCREEN_WIDTH, animated: true });
+    useEffect(() => {
+        if (params.openEntryId) {
+            const entryId = params.openEntryId as string;
+            router.push(`/library/${entryId}`);
+            router.setParams({ openEntryId: undefined });
         }
-    }, [SEGMENTS]);
-
-    const toggleStudySort = useCallback(() => {
-        setStudySortBy(prev => prev === 'recent' ? 'color' : 'recent');
-    }, []);
-
-    const renderDropdownItem = (seg: typeof SEGMENTS[0], idx: number) => {
-        const isActive = activeSegment === seg.key;
-        return (
-            <ScalePressable
-                key={seg.key}
-                style={[
-                    styles.dropdownItem,
-                    { borderBottomColor: idx === SEGMENTS.length - 1 ? 'transparent' : colors.border + '20' }
-                ]}
-                onPress={() => handleSelectSegment(seg.key)}
-            >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                    <View style={[styles.dropdownIconBox, { backgroundColor: isActive ? colors.accent + '15' : colors.backgroundSubtle }]}>
-                        <Ionicons name={seg.icon as any} size={22} color={isActive ? colors.accent : colors.textMuted} />
-                    </View>
-                    <View style={{ gap: 4 }}>
-                        <Text style={[
-                            styles.dropdownItemText,
-                            { color: isActive ? colors.accent : colors.textPrimary }
-                        ]}>
-                            {seg.label}
-                        </Text>
-                        <View style={[
-                            styles.dropdownItemPill,
-                            { backgroundColor: isActive ? colors.accent + '12' : colors.backgroundSubtle }
-                        ]}>
-                        </View>
-                    </View>
-                </View>
-                {isActive && (
-                    <CheckCircle2 size={24} color={colors.accent} />
-                )}
-            </ScalePressable>
-        );
-    };
+    }, [params.openEntryId]);
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
 
             {/* ── Header Zone ───────────────────────────────────────────────── */}
             <View>
-
-                {/* Row 1: pill + section name + contextual action */}
-                <View style={[styles.titleRow, { zIndex: 10 }]}>
-                    <View style={styles.pillGroup}>
-
-                        <ScalePressable
-                            style={[styles.libraryPill, { backgroundColor: colors.backgroundSubtle, minWidth: 140 }]}
-                            onPress={toggleDropdown}
-                        >
-                            <AnimatedIconStack scrollX={scrollX} colors={colors} />
-                            <AnimatedTitleStack scrollX={scrollX} colors={colors} />
-                        </ScalePressable>
-
-                        <ScalePressable
-                            style={[styles.chevronPill, { backgroundColor: colors.backgroundSubtle }]}
-                            onPress={toggleDropdown}
-                        >
-                            {dropdownVisible ? (
-                                <ChevronUp size={15} color={colors.textSecondary} />
-                            ) : (
-                                <ChevronDown size={15} color={colors.textSecondary} />
-                            )}
-                        </ScalePressable>
-                    </View>
-
-                    {/* Title actions (e.g. Study buttons) animated visibility */}
-                    <Animated.View style={[
-                        styles.titleActions,
-                        useAnimatedStyle(() => {
-                            const opacity = interpolate(
-                                scrollX.value,
-                                [0, SCREEN_WIDTH, 2 * SCREEN_WIDTH],
-                                [0, 1, 0],
-                                Extrapolation.CLAMP
-                            );
-                            const translateX = interpolate(
-                                scrollX.value,
-                                [0, SCREEN_WIDTH, 2 * SCREEN_WIDTH],
-                                [10, 0, -10],
-                                Extrapolation.CLAMP
-                            );
-                            return {
-                                opacity,
-                                transform: [{ translateX }],
-                                pointerEvents: opacity > 0.5 ? 'auto' : 'none',
-                            };
-                        })
-                    ]}>
-                        {studyCount > 0 && (
-                            <View style={[styles.studyCountBadge, { backgroundColor: colors.accent + '18' }]}>
-                                <Text style={[styles.studyCountText, { color: colors.accent }]}>
-                                    {studyCount}
-                                </Text>
-                            </View>
-                        )}
-                        {/* ── Color sort toggle ── */}
-                        {studyCount > 1 && (
-                            <ScalePressable
-                                style={[
-                                    styles.sortButton,
-                                    {
-                                        backgroundColor: studySortBy === 'color'
-                                            ? colors.accent + '15'
-                                            : colors.backgroundSubtle,
-                                    }
-                                ]}
-                                onPress={toggleStudySort}
-                            >
-                                <Palette
-                                    size={20}
-                                    color={studySortBy === 'color' ? colors.accent : colors.textMuted}
-                                />
-                            </ScalePressable>
-                        )}
-                        <ScalePressable
-                            style={[styles.addButton, { backgroundColor: colors.accent, shadowColor: colors.accent }]}
-                            onPress={() => router.push('/study/new' as any)}
-                        >
-                            <Plus size={26} color={colors.buttonPrimaryText} />
-                        </ScalePressable>
-                    </Animated.View>
-
-                </View>
-
-
-                {/* Row 2: Segment pill switcher */}
-                <View style={styles.segmentPillRow}>
-                    {SEGMENTS.map((seg, index) => {
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.tabsRow}
+                >
+                    {TABS.map(t => {
+                        const isActive = activeTabKey === t.key;
                         return (
                             <ScalePressable
-                                key={seg.key}
-                                onPress={() => handleSelectSegment(seg.key)}
+                                key={t.key}
+                                style={[
+                                    styles.tabPill,
+                                    { backgroundColor: isActive ? colors.accent + '15' : colors.backgroundSubtle },
+                                ]}
+                                onPress={() => handleNavigate(t.key)}
                             >
-                                <AnimatedIndicator
-                                    index={index}
-                                    scrollX={scrollX}
-                                    activeColor={colors.accentLight}
-                                    inactiveColor={colors.textMuted + '99'}
-                                />
+                                {React.createElement(t.icon, {
+                                    size: 16,
+                                    color: isActive ? colors.accent : colors.textTertiary,
+                                })}
+                                <Text
+                                    style={[
+                                        styles.tabLabel,
+                                        { color: isActive ? colors.accent : colors.textSecondary },
+                                    ]}
+                                >
+                                    {t.label}
+                                </Text>
                             </ScalePressable>
                         );
                     })}
-                </View>
+                </ScrollView>
 
+                {tab === 'bookDetail' && journalSelectedBook && (
+                    <View style={[styles.breadcrumbRow, { borderBottomColor: colors.border }]}>
+                        <ScalePressable onPress={() => handleNavigate('books')}>
+                            <Text style={[styles.breadcrumbText, { color: colors.textSecondary }]}>Books</Text>
+                        </ScalePressable>
+                        <Text style={[styles.breadcrumbSep, { color: colors.textTertiary }]}> / </Text>
+                        <Text style={[styles.breadcrumbCurrent, { color: colors.textPrimary }]}>
+                            {journalSelectedBook.name}
+                        </Text>
+                    </View>
+                )}
+
+                {showSearch && (
+                    <View style={[styles.searchContainer, { borderBottomColor: colors.border, borderTopColor: colors.border }]}>
+                        <TextInput
+                            style={[styles.searchInput, {
+                                backgroundColor: colors.searchBackground,
+                                color: colors.textPrimary,
+                                borderColor: colors.border,
+                            }]}
+                            placeholder={
+                                tab === 'bookDetail' && journalSelectedBook
+                                    ? `Search ${journalSelectedBook.name}...`
+                                    : journalCount > 0
+                                        ? `Search ${journalCount} entries...`
+                                        : 'Search entries...'
+                            }
+                            placeholderTextColor={colors.textTertiary}
+                            value={journalSearch}
+                            onChangeText={setJournalSearch}
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                        />
+                        {journalSearch.length > 0 && (
+                            <ScalePressable style={styles.clearSearch} onPress={() => setJournalSearch('')}>
+                                <Text style={[styles.clearSearchText, { color: colors.textSecondary }]}>×</Text>
+                            </ScalePressable>
+                        )}
+                    </View>
+                )}
+
+                {tab === 'plan' && <PlanProgressBar progress={planProgress} />}
             </View>
 
             {/* ── Content Zone ──────────────────────────────────────────────── */}
-            <Animated.ScrollView
-                ref={scrollViewRef}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                onScroll={onScroll}
-                scrollEventThrottle={16}
-                onMomentumScrollEnd={(e) => {
-                    const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
-                    if (index >= 0 && index < SEGMENTS.length) {
-                        setActiveSegment(SEGMENTS[index].key);
-                    }
-                }}
-            >
-                <View style={{ width: SCREEN_WIDTH }}>
-                    <JournalSubTabs
-                        viewMode={journalViewMode}
-                        selectedBook={journalSelectedBook}
-                        onNavigateRecent={() => handleJournalNavigate('recent')}
-                        onNavigateBooks={() => handleJournalNavigate('books')}
-                        onNavigateActions={() => handleJournalNavigate('actions')}
-                        onNavigateTopics={() => handleJournalNavigate('topics')}
-                    />
-                    {(journalViewMode === 'recent' || journalViewMode === 'bookDetail') && (
-                        <View style={[styles.searchContainer, { borderBottomColor: colors.border, borderTopColor: colors.border }]}>
-                            <TextInput
-                                style={[styles.searchInput, {
-                                    backgroundColor: colors.searchBackground,
-                                    color: colors.textPrimary,
-                                    borderColor: colors.border,
-                                }]}
-                                placeholder={
-                                    journalViewMode === 'bookDetail' && journalSelectedBook
-                                        ? `Search ${journalSelectedBook.name}...`
-                                        : journalCount > 0
-                                            ? `Search ${journalCount} entries...`
-                                            : 'Search entries...'
-                                }
-                                placeholderTextColor={colors.textTertiary}
-                                value={journalSearch}
-                                onChangeText={setJournalSearch}
-                                autoCapitalize="none"
-                                autoCorrect={false}
-                            />
-                            {journalSearch.length > 0 && (
-                                <ScalePressable style={styles.clearSearch} onPress={() => setJournalSearch('')}>
-                                    <Text style={[styles.clearSearchText, { color: colors.textSecondary }]}>×</Text>
-                                </ScalePressable>
-                            )}
-                        </View>
-                    )}
-                    <JournalContent
-                        viewMode={journalViewMode}
-                        searchQuery={journalSearch}
-                        selectedBook={journalSelectedBook}
-                        onViewModeChange={setJournalViewMode}
-                        onSearchChange={setJournalSearch}
-                        onSelectedBookChange={setJournalSelectedBook}
-                        onCountChange={setJournalCount}
-                    />
-                </View>
-                {studyTabEnabled && (
-                    <View style={{ width: SCREEN_WIDTH }}>
-                        <StudyContent
-                            onCountChange={setStudyCount}
-                            sortBy={studySortBy}
-                        />
-                    </View>
-                )}
-                <View style={{ width: SCREEN_WIDTH }}>
-                    <PlanProgressBar progress={planProgress} />
-                    <PlanContent onProgressChange={setPlanProgress} />
-                </View>
-            </Animated.ScrollView>
-
-            {/* Floating dropdown overlay */}
-            {dropdownVisible && (
-                <View style={styles.dropdownOverlayContainer}>
-                    <TouchableOpacity
-                        style={styles.dropdownBackdrop}
-                        activeOpacity={1}
-                        onPress={toggleDropdown}
-                    />
-                    <Animated.View
-                        entering={FadeIn.duration(200)}
-                        exiting={FadeOut.duration(150)}
-                        style={[
-                            styles.floatingDropdown,
-                            { backgroundColor: colors.cardBackground, borderColor: colors.border }
-                        ]}
-                    >
-                        {SEGMENTS.map((seg, idx) => renderDropdownItem(seg, idx))}
-                    </Animated.View>
-                </View>
+            {tab === 'plan' ? (
+                <PlanContent onProgressChange={setPlanProgress} />
+            ) : (
+                <JournalContent
+                    viewMode={tab}
+                    searchQuery={journalSearch}
+                    selectedBook={journalSelectedBook}
+                    onViewModeChange={setTab}
+                    onSearchChange={setJournalSearch}
+                    onSelectedBookChange={setJournalSelectedBook}
+                    onCountChange={setJournalCount}
+                />
             )}
         </SafeAreaView>
     );
@@ -1270,137 +616,39 @@ export default function LibraryScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    modalContainer: { flex: 1 },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
-    // ── Header: title row ──────────────────────────────────────────
-    titleRow: {
+    // ── Header: single tab row ─────────────────────────────────────
+    tabsRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
+        gap: 8,
         paddingHorizontal: Spacing.layout.screenPadding,
         paddingTop: Spacing.md,
         paddingBottom: Spacing.sm,
     },
-
-    // ── PixelPlay-style pill group ─────────────────────────────────
-    pillGroup: {
+    tabPill: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
-    },
-    libraryPill: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 7,
         paddingHorizontal: 14,
         paddingVertical: 9,
         borderRadius: 14,
     },
-    libraryPillLabel: {
-        fontSize: 34,
-        fontWeight: '800',
-        letterSpacing: -0.5,
-    },
-    chevronPill: {
-        width: 32,
-        height: 40,
-        borderRadius: 10,
-        alignItems: 'center',
-        justifyContent: 'center',
+    tabLabel: {
+        fontSize: 14,
+        fontWeight: '700',
+        letterSpacing: -0.2,
     },
 
-    titleActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    studyCountBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 20 },
-    refBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: 8,
-    },
-    refText: {
-        fontSize: 10,
-        fontWeight: '600',
-        letterSpacing: 0.5,
-    },
-    studyCountText: { fontSize: 13, fontWeight: '700', letterSpacing: -0.3 },
+    // ── Header: title row ──────────────────────────────────────────
+
+    // ── PixelPlay-style pill group ─────────────────────────────────
 
     // ── Study sort button ──────────────────────────────────────────
-    sortButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 14,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-
-    addButton: {
-        width: 46, height: 46, borderRadius: 16,
-        justifyContent: 'center', alignItems: 'center',
-        shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 10, elevation: 4,
-    },
 
     // ── Floating dropdown ─────────────────────────────────────────
-    dropdownOverlayContainer: {
-        ...StyleSheet.absoluteFillObject,
-        zIndex: 5000,
-    },
-    dropdownBackdrop: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(0,0,0,0)',
-    },
-    floatingDropdown: {
-        position: 'absolute',
-        top: 100,
-        left: 16,
-        right: 16,
-        borderRadius: 24,
-        padding: 8,
-        borderWidth: 1,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.15,
-        shadowRadius: 20,
-        elevation: 10,
-    },
-    dropdownItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingVertical: 14,
-    },
-    dropdownIconBox: {
-        width: 42,
-        height: 42,
-        borderRadius: 14,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    dropdownItemText: {
-        fontSize: 20,
-        fontWeight: '700',
-        letterSpacing: -0.5,
-    },
-    dropdownItemPill: {
-        alignSelf: 'flex-start',
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: 20,
-    },
 
     // ── Segment pill row ────────────────────────────────────────────
-    segmentPillRow: {
-        flexDirection: 'row',
-        paddingHorizontal: Spacing.layout.screenPadding,
-        paddingBottom: Spacing.sm,
-        alignItems: 'center',
-    },
-    segmentPill: {
-        height: 4.5,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: 20,
-    },
 
     // ── Journal sub-tabs ───────────────────────────────────────────
     breadcrumbRow: {
@@ -1413,23 +661,6 @@ const styles = StyleSheet.create({
     breadcrumbText: { fontSize: 14, fontWeight: '400' },
     breadcrumbSep: { fontSize: 14, marginHorizontal: 6 },
     breadcrumbCurrent: { fontSize: 14, fontWeight: '600' },
-    subTabsRow: {
-        flexDirection: 'row',
-        position: 'relative',
-    },
-    subTabIndicator: {
-        position: 'absolute',
-        bottom: 0,
-        width: '25%',
-        height: 3,
-        borderRadius: 1.5,
-    },
-    subTab: {
-        flex: 1,
-        paddingVertical: 8,
-        alignItems: 'center',
-        zIndex: 1,
-    },
 
     // ── Search bar ─────────────────────────────────────────────────
     searchContainer: {
@@ -1468,37 +699,8 @@ const styles = StyleSheet.create({
     planProgressPct: { fontSize: 13, fontWeight: '800', letterSpacing: -0.5, minWidth: 46, textAlign: 'right' },
 
     // ── Study ──────────────────────────────────────────────────────
-    studyCard: {
-        borderTopLeftRadius: 0, borderBottomLeftRadius: 0,
-        borderTopRightRadius: 12, borderBottomRightRadius: 12,
-        borderWidth: 1, padding: 18, gap: 8,
-    },
-    studyCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
-    studyDateText: { fontSize: 11, fontWeight: '600', letterSpacing: 0.3 },
-    studyCardTitle: { fontSize: 18, fontWeight: '800', letterSpacing: -0.5, lineHeight: 24 },
-    studyCardSnippet: { fontSize: 13, lineHeight: 19, fontWeight: '500', opacity: 0.75 },
-    studyListContent: {
-        paddingHorizontal: Spacing.layout.screenPadding,
-        paddingTop: Spacing.md,
-        paddingBottom: 110,
-        gap: Spacing.md,
-    },
-    studyEmptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40, gap: 14 },
-    studyEmptyIconContainer: { width: 88, height: 88, borderRadius: 44, justifyContent: 'center', alignItems: 'center', marginBottom: 4 },
-    studyEmptyTitle: { fontSize: 22, fontWeight: '800', letterSpacing: -0.5 },
-    studyEmptySubtitle: { fontSize: 14, textAlign: 'center', lineHeight: 21, opacity: 0.7 },
-    studyCreateButton: { marginTop: 6, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 20, paddingVertical: 11, borderRadius: 14 },
-    studyCreateButtonText: { fontSize: 15, fontWeight: '700' },
-    studyPreviewHeader: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', paddingHorizontal: Spacing.layout.screenPadding, paddingVertical: 12, gap: 8 },
-    studyPreviewIconBtn: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
-    studyEditButton: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
-    studyEditButtonText: { fontSize: 15, fontWeight: '700' },
-    studyPreviewContent: { flex: 1, paddingHorizontal: Spacing.layout.screenPadding },
-    studyPreviewTitle: { fontSize: 32, fontWeight: '800', letterSpacing: -1, marginBottom: 8 },
-    studyPreviewDivider: { height: 4, width: 40, borderRadius: 2, marginBottom: 20 },
 
     // ── Plan ───────────────────────────────────────────────────────
-    planLegendHeader: { marginBottom: Spacing.sm },
     planListContent: { paddingHorizontal: Spacing.layout.screenPadding, paddingTop: 0, paddingBottom: 120 },
     planSectionHeader: {
         marginTop: Spacing.lg, marginBottom: Spacing.sm,

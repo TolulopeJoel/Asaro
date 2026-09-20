@@ -1,5 +1,5 @@
 import { withDatabase } from './db';
-import { JournalEntry, StudyTopic, StudyTopicInput, StudyTopicReference } from './types';
+import { JournalEntry } from './types';
 
 /**
  * Fetch study further topics from the last X days.
@@ -107,79 +107,5 @@ export const getAllStudyTopics = async (): Promise<JournalEntry[]> => {
             ORDER BY created_at DESC
         `;
         return await database.getAllAsync<JournalEntry>(query);
-    });
-};
-
-export const getStudyTopics = async (): Promise<StudyTopic[]> => {
-    return await withDatabase(async (database) => {
-        const result = await database.getAllAsync<StudyTopic>(
-            `SELECT * FROM study_topics ORDER BY updated_at DESC`
-        );
-
-        // Fetch references for each topic
-        const topics = [...result];
-        for (let i = 0; i < topics.length; i++) {
-            const refs = await database.getAllAsync<StudyTopicReference>(
-                `SELECT * FROM study_topic_references WHERE topic_id = ?`,
-                [topics[i].id]
-            );
-            topics[i].references = refs;
-        }
-
-        return topics;
-    });
-};
-
-export const createStudyTopic = async (input: StudyTopicInput): Promise<number> => {
-    return await withDatabase(async (database) => {
-        const result = await database.runAsync(
-            `INSERT INTO study_topics (title, content, color) VALUES (?, ?, ?)`,
-            [input.title, input.content || '', input.color || '#E18F43']
-        );
-
-        const topicId = result.lastInsertRowId;
-
-        if (input.references && input.references.length > 0) {
-            for (const ref of input.references) {
-                await database.runAsync(
-                    `INSERT INTO study_topic_references (topic_id, book_name, chapter, verse_start, verse_end) 
-                     VALUES (?, ?, ?, ?, ?)`,
-                    [topicId, ref.book_name, ref.chapter, ref.verse_start || null, ref.verse_end || null]
-                );
-            }
-        }
-
-        return topicId;
-    });
-};
-
-export const updateStudyTopic = async (id: number, input: Partial<StudyTopicInput>): Promise<void> => {
-    return await withDatabase(async (database) => {
-        const fields: string[] = [];
-        const values: any[] = [];
-
-        if (input.title !== undefined) { fields.push('title = ?'); values.push(input.title); }
-        if (input.content !== undefined) { fields.push('content = ?'); values.push(input.content); }
-        if (input.color !== undefined) { fields.push('color = ?'); values.push(input.color); }
-
-        fields.push('updated_at = CURRENT_TIMESTAMP');
-
-        if (fields.length > 1) {
-            await database.runAsync(
-                `UPDATE study_topics SET ${fields.join(', ')} WHERE id = ?`,
-                [...values, id]
-            );
-        }
-
-        if (input.references !== undefined) {
-            await database.runAsync(`DELETE FROM study_topic_references WHERE topic_id = ?`, [id]);
-            for (const ref of input.references) {
-                await database.runAsync(
-                    `INSERT INTO study_topic_references (topic_id, book_name, chapter, verse_start, verse_end) 
-                     VALUES (?, ?, ?, ?, ?)`,
-                    [id, ref.book_name, ref.chapter, ref.verse_start || null, ref.verse_end || null]
-                );
-            }
-        }
     });
 };

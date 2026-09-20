@@ -1,6 +1,6 @@
 import { withDatabase, getDbVersion, setDbVersion } from './db';
 
-const CURRENT_DB_VERSION = 7;
+const CURRENT_DB_VERSION = 8;
 
 export const initializeDatabase = async (): Promise<boolean> => {
     try {
@@ -194,6 +194,17 @@ export const initializeDatabase = async (): Promise<boolean> => {
                         verse_end TEXT,
                         FOREIGN KEY (topic_id) REFERENCES study_topics(id) ON DELETE CASCADE
                     );
+                `);
+            }
+
+            if (currentVersion < 8) {
+                // Migration to v8: drop standalone study topics.
+                // "Study" is now a single concept — the study_further field on a
+                // journal entry, which is born out of the reflection flow. The
+                // separate topics table was a parallel model under the same name.
+                await database.execAsync(`
+                    DROP TABLE IF EXISTS study_topic_references;
+                    DROP TABLE IF EXISTS study_topics;
                 `);
             }
 

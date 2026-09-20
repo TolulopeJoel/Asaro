@@ -73,15 +73,10 @@ export const fetchWeeklyStreakData = async (): Promise<DayStatus[]> => {
 export const WeeklyStreak = React.memo(({
     weekDays: weekDaysProp,
     lockedIn = false,
-    locked = false,
-    lockedCaption,
     onPress,
 }: {
     weekDays?: DayStatus[];
     lockedIn?: boolean;
-    /** When lockedIn, disables tap-through (e.g. a cooldown gate) and shows lockedCaption instead. */
-    locked?: boolean;
-    lockedCaption?: string;
     /** Overrides the default navigate-to-/stats behavior. */
     onPress?: () => void;
 }) => {
@@ -131,7 +126,7 @@ export const WeeklyStreak = React.memo(({
     const cardContent = (
         <>
             <View style={styles.header}>
-                {(!lockedIn || !locked) && <ChevronRight size={16} color={colors.textTertiary} />}
+                <ChevronRight size={16} color={colors.textTertiary} />
             </View>
 
             <View style={styles.daysContainer}>
@@ -237,22 +232,8 @@ export const WeeklyStreak = React.memo(({
         );
     }
 
-    // Locked In Mode: gated by a cooldown (e.g. every 2 weeks) rather than always
-    // open — the stats page is a browse/reflect surface, so access is a scheduled
-    // release valve, not a permanent door.
+    // Locked In Mode: same tap-through to /stats, just without the card chrome.
     if (lockedIn) {
-        if (locked) {
-            return (
-                <View style={[styles.container, { backgroundColor: 'transparent', borderWidth: 0, padding: 0 }]}>
-                    {cardContent}
-                    {lockedCaption && (
-                        <Text style={[styles.lockedCaption, { color: colors.textTertiary }]}>
-                            {lockedCaption}
-                        </Text>
-                    )}
-                </View>
-            );
-        }
         return (
             <ScalePressable
                 style={[styles.container, { backgroundColor: 'transparent', borderWidth: 0, padding: 0 }]}
@@ -318,12 +299,5 @@ const styles = StyleSheet.create({
         width: 6,
         height: 6,
         borderRadius: 3,
-    },
-    lockedCaption: {
-        fontSize: 11,
-        fontWeight: '600',
-        textAlign: 'center',
-        marginTop: 12,
-        letterSpacing: 0.2,
     },
 });

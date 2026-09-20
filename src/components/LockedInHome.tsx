@@ -18,8 +18,6 @@ interface LockedInHomeProps {
     dayOfMonth: number;
     nextItem: ReadingItem | null;
     weekDays: DayStatus[];
-    statsLocked: boolean;
-    statsLockedCaption?: string;
     onNextReadingPress: () => void;
     onSettingsPress: () => void;
     onStatsPress: () => void;
@@ -30,8 +28,6 @@ export const LockedInHome = React.memo(({
     dayOfMonth,
     nextItem,
     weekDays,
-    statsLocked,
-    statsLockedCaption,
     onNextReadingPress,
     onSettingsPress,
     onStatsPress,
@@ -79,8 +75,6 @@ export const LockedInHome = React.memo(({
                     <WeeklyStreak
                         weekDays={weekDays}
                         lockedIn
-                        locked={statsLocked}
-                        lockedCaption={statsLockedCaption}
                         onPress={onStatsPress}
                     />
                 </View>

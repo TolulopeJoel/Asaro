@@ -396,7 +396,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
             if (completedTopics.length > 0) {
                 items.push({
                     type: 'topicHeader',
-                    title: 'COMPLETED TOPICS',
+                    title: 'COMPLETED FOLLOW-UPS',
                     count: completedTopics.length,
                     id: 'completed-topics-header'
                 });
@@ -504,8 +504,8 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
             subtext = "You didn't learn anything practical today? Write an action step";
         } else if (viewMode === 'topics') {
             iconName = Bookmark;
-            title = "No study topics";
-            subtext = "Is there really nothing more you want to study? Add a topic.";
+            title = "No follow-ups";
+            subtext = "Is there really nothing more you want to study? Add one to an entry.";
         } else if (debouncedSearchQuery) {
             iconName = Search;
             title = "Nothing to see here";

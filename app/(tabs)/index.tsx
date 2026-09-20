@@ -1,7 +1,6 @@
 import { Flashback } from '@/src/components/Flashback';
 import { WeeklyStreak } from '@/src/components/WeeklyStreak';
 import {
-    getMissedDaysCount,
     getTotalEntryCount,
     JournalEntry,
     getReadingProgress,
@@ -14,7 +13,7 @@ import { READING_PLAN_DATA, ReadingItem } from "@/src/data/readingPlanData";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { Spacing } from "@/src/theme/spacing";
 import { Typography } from "@/src/theme/typography";
-import { Book, Snowflake, Settings, ArrowRight, Notebook } from "lucide-react-native";
+import { Book, Settings, ArrowRight, Notebook } from "lucide-react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Link, useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState, useRef } from 'react';
@@ -42,18 +41,6 @@ import { Colors } from '@/src/theme/colors';
 
 
 const DRAFT_KEY = "reflection_draft";
-const STATS_UNLOCK_INTERVAL_DAYS = 14;
-
-async function checkStatsGate(): Promise<{ locked: boolean; daysRemaining: number }> {
-    const lastViewedStr = await AsyncStorage.getItem(STORAGE_KEYS.LOCKED_IN_STATS_LAST_VIEWED);
-    if (!lastViewedStr) return { locked: false, daysRemaining: 0 };
-
-    const lastViewed = parseInt(lastViewedStr, 10);
-    const elapsedDays = (Date.now() - lastViewed) / (1000 * 60 * 60 * 24);
-
-    if (elapsedDays >= STATS_UNLOCK_INTERVAL_DAYS) return { locked: false, daysRemaining: 0 };
-    return { locked: true, daysRemaining: Math.ceil(STATS_UNLOCK_INTERVAL_DAYS - elapsedDays) };
-}
 import { LucideIcon } from "lucide-react-native";
 
 interface StatCardProps {
@@ -121,14 +108,12 @@ const StatCard = React.memo(({ icon, value, label, unit }: StatCardProps) => {
 
 interface QuickStatsProps {
     totalEntries: number;
-    missedDays: number;
 }
 
-const QuickStats = React.memo(({ totalEntries, missedDays }: QuickStatsProps) => {
+const QuickStats = React.memo(({ totalEntries }: QuickStatsProps) => {
     return (
         <View style={styles.statsContainer}>
             <StatCard icon={Notebook} value={totalEntries} label="Entries so far" />
-            {/* <StatCard icon={Snowflake} value={missedDays} label="Missed" unit="days" /> */}
         </View>
     );
 });
@@ -292,7 +277,7 @@ const DraftBar = React.memo(({ lockedIn = false }: { lockedIn?: boolean }) => {
 });
 
 export default function Index() {
-    const [stats, setStats] = useState({ totalEntries: 0, missedDays: 0 });
+    const [stats, setStats] = useState({ totalEntries: 0 });
     const [nextReading, setNextReading] = useState<ReadingItem | null>(null);
     const [topics, setTopics] = useState<JournalEntry[]>([]);
     const [weekDays, setWeekDays] = useState<DayStatus[]>([]);
@@ -305,8 +290,6 @@ export default function Index() {
     const [isSharing, setIsSharing] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [lockedInMode, setLockedInMode] = useState(false);
-    const [statsLocked, setStatsLocked] = useState(true);
-    const [statsUnlockInDays, setStatsUnlockInDays] = useState(0);
     const { showAlert } = useAlert();
     const scrollViewRef = useRef<ScrollView>(null);
     const confettiRef = useRef<ConfettiRef>(null);
@@ -319,11 +302,8 @@ export default function Index() {
         // month boundary it asked for the wrong month (e.g. 00:30 on Nov 1 in Lagos
         // returned October's count while dayOfMonth rendered 1).
         const currentMonth = formatDateToLocalString(new Date()).slice(0, 7);
-        const [totalEntries, missedDays] = await Promise.all([
-            getTotalEntryCount(currentMonth),
-            getMissedDaysCount(currentMonth),
-        ]);
-        return { totalEntries, missedDays };
+        const totalEntries = await getTotalEntryCount(currentMonth);
+        return { totalEntries };
     }, []);
 
     const loadNextReading = useCallback(async () => {
@@ -414,10 +394,6 @@ export default function Index() {
     // while this screen is still mounted underneath.
     useEffect(() => {
         AsyncStorage.getItem(STORAGE_KEYS.LOCKED_IN_MODE).then(val => setLockedInMode(val === 'true'));
-        checkStatsGate().then(({ locked, daysRemaining }) => {
-            setStatsLocked(locked);
-            setStatsUnlockInDays(daysRemaining);
-        });
         const subscription = DeviceEventEmitter.addListener('locked-in-mode-changed', (val: boolean) => {
             setLockedInMode(val);
         });
@@ -444,10 +420,6 @@ export default function Index() {
             loadHomeData();
             checkDraft();
             AsyncStorage.getItem(STORAGE_KEYS.LOCKED_IN_MODE).then(val => setLockedInMode(val === 'true'));
-            checkStatsGate().then(({ locked, daysRemaining }) => {
-                setStatsLocked(locked);
-                setStatsUnlockInDays(daysRemaining);
-            });
 
             // Simulate initial load if it's very fast
             if (isLoading) {
@@ -520,15 +492,7 @@ export default function Index() {
                         dayOfMonth={new Date().getDate()}
                         nextItem={nextReading}
                         weekDays={weekDays}
-                        statsLocked={statsLocked}
-                        // statsLockedCaption={statsLocked ? `Stats unlock in ${statsUnlockInDays} day${statsUnlockInDays === 1 ? '' : 's'}` : undefined}
-                        statsLockedCaption={""}
-                        onStatsPress={async () => {
-                            await AsyncStorage.setItem(STORAGE_KEYS.LOCKED_IN_STATS_LAST_VIEWED, Date.now().toString());
-                            setStatsLocked(true);
-                            setStatsUnlockInDays(STATS_UNLOCK_INTERVAL_DAYS);
-                            router.push('/stats');
-                        }}
+                        onStatsPress={() => router.push('/stats')}
                         onNextReadingPress={() => {
                             if (nextReading) handleNextReadingPress(nextReading, router, loadHomeData);
                         }}
@@ -577,7 +541,7 @@ export default function Index() {
                     </View>
                 ) : (
                     <>
-                        <QuickStats totalEntries={stats.totalEntries} missedDays={stats.missedDays} />
+                        <QuickStats totalEntries={stats.totalEntries} />
                         <NextReading nextItem={nextReading} onRefresh={loadHomeData} />
                         <WeeklyStreak weekDays={weekDays} />
                         <ActionReminders
