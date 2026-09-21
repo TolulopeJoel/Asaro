@@ -21,7 +21,8 @@ import {
     Plus,
     Notebook,
     LucideIcon,
-    BookCopy
+    BookCopy,
+    Sparkles
 } from 'lucide-react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useTheme } from '@/src/theme/ThemeContext';
@@ -33,6 +34,7 @@ import { BibleBook } from '@/src/data/bibleBooks';
 // Journal imports
 import { JournalEntryList } from '@/src/components/JournalEntryList';
 import { JournalEntry } from '@/src/data/database';
+import { ThemesContent } from '@/src/components/ThemesContent';
 
 // Plan imports
 import { READING_PLAN_DATA, ReadingItem } from '@/src/data/readingPlanData';
@@ -44,7 +46,7 @@ import * as WebBrowser from 'expo-web-browser';
 
 export type ViewMode = 'recent' | 'books' | 'bookDetail' | 'actions' | 'topics';
 /** 'bookDetail' is a drill-in from Books, not a tab of its own. */
-export type Tab = ViewMode | 'plan';
+export type Tab = ViewMode | 'plan' | 'themes';
 
 type PlanListDataItem =
     | { type: 'sectionHeader'; section: string; id: string }
@@ -57,6 +59,7 @@ const TABS: { key: Exclude<Tab, 'bookDetail'>; label: string; icon: LucideIcon }
     { key: 'books', label: 'Books', icon: BookCopy },
     { key: 'actions', label: 'Actions', icon: Zap },
     { key: 'topics', label: 'Follow-ups', icon: Bookmark },
+    { key: 'themes', label: 'Themes', icon: Sparkles },
     { key: 'plan', label: 'Plan', icon: Library },
 ];
 
@@ -597,6 +600,8 @@ export default function LibraryScreen() {
             {/* ── Content Zone ──────────────────────────────────────────────── */}
             {tab === 'plan' ? (
                 <PlanContent onProgressChange={setPlanProgress} />
+            ) : tab === 'themes' ? (
+                <ThemesContent />
             ) : (
                 <JournalContent
                     viewMode={tab}

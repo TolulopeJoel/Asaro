@@ -39,3 +39,7 @@ yarn-error.*
 *.tsbuildinfo
 
 app-example
+
+# Python (scripts/thought-echoes)
+.venv/
+__pycache__/

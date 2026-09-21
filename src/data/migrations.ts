@@ -1,6 +1,6 @@
 import { withDatabase, getDbVersion, setDbVersion } from './db';
 
-const CURRENT_DB_VERSION = 8;
+const CURRENT_DB_VERSION = 9;
 
 export const initializeDatabase = async (): Promise<boolean> => {
     try {
@@ -205,6 +205,52 @@ export const initializeDatabase = async (): Promise<boolean> => {
                 await database.execAsync(`
                     DROP TABLE IF EXISTS study_topic_references;
                     DROP TABLE IF EXISTS study_topics;
+                `);
+            }
+
+            if (currentVersion < 9) {
+                // Migration to v9: embeddings for Themes.
+                //
+                // One row per (entry, field) rather than per entry: the four
+                // prompts are compared separately, since every answer to one
+                // prompt shares a direction that would otherwise drown out
+                // what each answer is actually about.
+                //
+                // `model` is recorded so a future model change can invalidate
+                // and re-embed only what it needs to, instead of silently
+                // mixing vectors from two different spaces — which would
+                // produce plausible-looking nonsense.
+                await database.execAsync(`
+                    CREATE TABLE IF NOT EXISTS entry_embeddings (
+                        entry_id INTEGER NOT NULL,
+                        field TEXT NOT NULL,
+                        model TEXT NOT NULL,
+                        vector BLOB NOT NULL,
+                        text_hash TEXT NOT NULL,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        PRIMARY KEY (entry_id, field),
+                        FOREIGN KEY (entry_id) REFERENCES journal_entries(id) ON DELETE CASCADE
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_embeddings_model ON entry_embeddings(model);
+
+                    -- Themes the reader has named. Clusters are recomputed as
+                    -- entries accumulate, so a theme is anchored to the entries
+                    -- that formed it; that way a name the person chose survives
+                    -- re-clustering instead of being silently reshuffled.
+                    CREATE TABLE IF NOT EXISTS themes (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    );
+                    CREATE TABLE IF NOT EXISTS theme_members (
+                        theme_id INTEGER NOT NULL,
+                        entry_id INTEGER NOT NULL,
+                        field TEXT NOT NULL,
+                        PRIMARY KEY (theme_id, entry_id, field),
+                        FOREIGN KEY (theme_id) REFERENCES themes(id) ON DELETE CASCADE,
+                        FOREIGN KEY (entry_id) REFERENCES journal_entries(id) ON DELETE CASCADE
+                    );
                 `);
             }
 
