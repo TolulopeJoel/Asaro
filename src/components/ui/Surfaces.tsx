@@ -3,7 +3,10 @@
  *
  * Twenty screens in the mockups are built from roughly this set — hero, strip,
  * card, row, segments, button. Nothing invents its own container, which is
- * what keeps the two styles as themes rather than two separate apps.
+ * what keeps the three styles as themes rather than three separate apps.
+ *
+ * Shape comes from the theme rather than from constants here, because Classic
+ * is rounded and bordered where the other two are flat and square.
  */
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, View, ViewProps, ViewStyle } from 'react-native';
@@ -38,8 +41,10 @@ export function Screen({ children, style, edges = ['top'] }: {
 export function Hero({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {
     const { colors, style: themeStyle } = useTheme();
 
-    if (themeStyle === 'colossal') {
-        return <View style={[styles.heroColossal, style]}>{children}</View>;
+    // Neither Colossal nor Classic wears a band: Colossal marks a screen by
+    // scale, Classic simply put its title on the page.
+    if (themeStyle !== 'cloth') {
+        return <View style={[styles.heroPlain, style]}>{children}</View>;
     }
 
     return (
@@ -53,9 +58,14 @@ export function Hero({ children, style }: { children: React.ReactNode; style?: V
     );
 }
 
-/** A panel. Cloth fills it; Colossal separates with a hairline instead. */
+/**
+ * A panel.
+ *
+ * Cloth fills it, Colossal separates with a hairline and no fill, Classic
+ * rounds and outlines it — the three ways this app has ever grouped things.
+ */
 export function Card({ children, style, ...rest }: ViewProps & { children: React.ReactNode }) {
-    const { colors, style: themeStyle } = useTheme();
+    const { colors, shape, style: themeStyle } = useTheme();
 
     if (themeStyle === 'colossal') {
         return (
@@ -69,7 +79,20 @@ export function Card({ children, style, ...rest }: ViewProps & { children: React
     }
 
     return (
-        <View style={[styles.cardCloth, { backgroundColor: colors.cardBackground }, style]} {...rest}>
+        <View
+            style={[
+                styles.cardFilled,
+                {
+                    backgroundColor: colors.cardBackground,
+                    borderRadius: shape.card,
+                    borderWidth: shape.cardBorder ? shape.hairline : 0,
+                    borderColor: colors.cardBorder,
+                },
+                shape.elevation,
+                style,
+            ]}
+            {...rest}
+        >
             {children}
         </View>
     );
@@ -102,13 +125,42 @@ export interface SegmentsProps {
     scrollable?: boolean;
 }
 
-/** The tab strip. Underline in Cloth, plain weighted text in Colossal. */
+/**
+ * The tab strip.
+ *
+ * Underline in Cloth, plain weighted text in Colossal, tinted pills in
+ * Classic — which is how the original Library row looked.
+ */
 export function Segments({ items, value, onChange, scrollable = false }: SegmentsProps) {
-    const { colors, style: themeStyle } = useTheme();
+    const { colors, shape, style: themeStyle } = useTheme();
     const isCloth = themeStyle === 'cloth';
+    const isClassic = themeStyle === 'classic';
 
     const buttons = items.map((item) => {
         const active = item.key === value;
+
+        if (isClassic) {
+            return (
+                <Pressable
+                    key={item.key}
+                    onPress={() => onChange(item.key)}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected: active }}
+                    style={[
+                        styles.segClassic,
+                        {
+                            borderRadius: shape.button,
+                            backgroundColor: active ? colors.accent + '15' : colors.backgroundSubtle,
+                        },
+                    ]}
+                >
+                    <Text variant="label" tone={active ? 'accent' : 'secondary'}>
+                        {item.label}
+                    </Text>
+                </Pressable>
+            );
+        }
+
         return (
             <Pressable
                 key={item.key}
@@ -128,18 +180,16 @@ export function Segments({ items, value, onChange, scrollable = false }: Segment
         );
     });
 
-    const rowStyle = [
-        isCloth ? styles.segsCloth : styles.segsColossal,
-        { borderBottomColor: colors.border },
-    ];
+    const inlineStyle = isCloth ? styles.segsCloth : isClassic ? styles.segsClassic : styles.segsColossal;
+    const scrollStyle = isCloth ? styles.segsScrollCloth : isClassic ? styles.segsClassic : styles.segsColossal;
 
     if (scrollable) {
         return (
-            <View style={[{ borderBottomWidth: Spacing.border.hairline, borderBottomColor: colors.border }]}>
+            <View style={isClassic ? undefined : { borderBottomWidth: Spacing.border.hairline, borderBottomColor: colors.border }}>
                 <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={isCloth ? styles.segsScrollCloth : styles.segsColossal}
+                    contentContainerStyle={scrollStyle}
                 >
                     {buttons}
                 </ScrollView>
@@ -147,7 +197,7 @@ export function Segments({ items, value, onChange, scrollable = false }: Segment
         );
     }
 
-    return <View style={rowStyle}>{buttons}</View>;
+    return <View style={[inlineStyle, !isClassic && { borderBottomColor: colors.border }]}>{buttons}</View>;
 }
 
 const styles = StyleSheet.create({
@@ -161,14 +211,13 @@ const styles = StyleSheet.create({
         paddingBottom: Spacing.xl - 2,
     },
     heroContent: { position: 'relative' },
-    heroColossal: {
+    heroPlain: {
         paddingTop: Spacing.layout.heroPaddingTop,
         paddingHorizontal: Spacing.layout.screenPaddingTight,
     },
 
-    cardCloth: {
+    cardFilled: {
         padding: Spacing.layout.cardPadding,
-        borderRadius: Spacing.borderRadius.none,
     },
     cardColossal: {
         paddingVertical: Spacing.lg - 1,
@@ -202,6 +251,20 @@ const styles = StyleSheet.create({
         borderBottomWidth: Spacing.border.hairline,
     },
     segColossal: { paddingVertical: Spacing.xs },
+    segsClassic: {
+        flexDirection: 'row',
+        gap: Spacing.sm,
+        paddingHorizontal: Spacing.layout.screenPadding,
+        paddingTop: Spacing.md,
+        paddingBottom: Spacing.sm,
+    },
+    segClassic: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.xs + 2,
+        paddingHorizontal: Spacing.md + 2,
+        paddingVertical: Spacing.sm + 1,
+    },
     segScrollable: { flex: 0, paddingHorizontal: Spacing.lg },
     segsScrollCloth: {
         flexDirection: 'row',

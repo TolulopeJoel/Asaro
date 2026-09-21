@@ -3,7 +3,8 @@
  *
  * Callers ask for a role — `title`, `label`, `quote` — and the active style
  * decides the face, size and weight. Cloth answers in Fraunces over Work Sans;
- * Colossal answers in Schibsted Grotesk and lets weight do the hierarchy.
+ * Colossal answers in Schibsted Grotesk and lets weight do the hierarchy;
+ * Classic answers in the system face, as the app originally did.
  *
  * Screens should not set `fontSize` or `fontFamily` directly. That habit is
  * what produced 13 raw font sizes and a serif token that was defined and then
@@ -163,7 +164,79 @@ const colossal: Record<TextVariant, TextStyle> = {
     },
 };
 
-const VARIANTS: Record<ThemeStyle, Record<TextVariant, TextStyle>> = { cloth, colossal };
+
+/**
+ * Classic — the original app.
+ *
+ * System face, the sizes the app actually shipped with, hierarchy carried by
+ * weight rather than by a display face. Deliberately the plainest of the
+ * three: that plainness is what it looked like.
+ */
+const classic: Record<TextVariant, TextStyle> = {
+    hero: {
+        fontFamily: FontFamily.system,
+        fontSize: 40,
+        lineHeight: 48,
+        fontWeight: '700',
+        letterSpacing: letterSpacing.tight,
+    },
+    display: {
+        fontFamily: FontFamily.system,
+        fontSize: 32,
+        lineHeight: 40,
+        fontWeight: '700',
+        letterSpacing: letterSpacing.tight,
+    },
+    title: {
+        fontFamily: FontFamily.system,
+        fontSize: size.xl,
+        lineHeight: 28,
+        fontWeight: '700',
+    },
+    subtitle: {
+        fontFamily: FontFamily.system,
+        fontSize: size.lg,
+        lineHeight: lineHeight.lg,
+        fontWeight: '600',
+    },
+    body: {
+        fontFamily: FontFamily.system,
+        fontSize: size.md,
+        lineHeight: lineHeight.lg,
+    },
+    bodySmall: {
+        fontFamily: FontFamily.system,
+        fontSize: size.sm,
+        lineHeight: lineHeight.md,
+    },
+    label: {
+        fontFamily: FontFamily.system,
+        fontSize: size.xs,
+        lineHeight: lineHeight.xs,
+        fontWeight: '600',
+        letterSpacing: letterSpacing.wide,
+        textTransform: 'uppercase',
+    },
+    caption: {
+        fontFamily: FontFamily.system,
+        fontSize: size.sm,
+        lineHeight: lineHeight.md,
+    },
+    quote: {
+        fontFamily: FontFamily.systemSerif,
+        fontSize: size.lg,
+        lineHeight: lineHeight.xl,
+        fontStyle: 'italic',
+    },
+    button: {
+        fontFamily: FontFamily.system,
+        fontSize: size.md,
+        lineHeight: lineHeight.md,
+        fontWeight: '600',
+    },
+};
+
+const VARIANTS: Record<ThemeStyle, Record<TextVariant, TextStyle>> = { cloth, colossal, classic };
 
 /** Variants whose natural tone is not `primary`. */
 const DEFAULT_TONE: Partial<Record<TextVariant, TextProps['tone']>> = {

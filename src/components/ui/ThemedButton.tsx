@@ -36,7 +36,7 @@ export function ThemedButton({
     style,
     accessibilityHint,
 }: ThemedButtonProps) {
-    const { colors, style: themeStyle } = useTheme();
+    const { colors, shape, style: themeStyle } = useTheme();
     const scale = useRef(new Animated.Value(1)).current;
 
     const spring = useCallback((to: number) => {
@@ -74,6 +74,7 @@ export function ThemedButton({
                 style={[
                     styles.base,
                     isColossal ? styles.padColossal : styles.padCloth,
+                    { borderRadius: shape.button },
                     surface,
                     block && styles.block,
                     inactive && styles.inactive,
@@ -92,7 +93,7 @@ const styles = StyleSheet.create({
         minHeight: Spacing.touchTarget,
         alignItems: 'center',
         justifyContent: 'center',
-        borderRadius: Spacing.borderRadius.none,
+
     },
     padCloth: { paddingVertical: Spacing.md + 1, paddingHorizontal: Spacing.xl - 2 },
     padColossal: { paddingVertical: Spacing.lg + 1, paddingHorizontal: Spacing.xl - 2 },

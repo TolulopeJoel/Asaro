@@ -1,4 +1,4 @@
-import { useTheme } from '@/src/theme/ThemeContext';
+import { THEME_STYLES, useTheme } from '@/src/theme/ThemeContext';
 import {
     Card,
     Hero,
@@ -33,7 +33,7 @@ import {
     Smartphone,
     Archive,
     Download,
-    Lock,
+    Check,
 } from 'lucide-react-native';
 import { LoadingView } from '@/src/components/LoadingView';
 import { getFirestore, doc, setDoc, getDoc, writeBatch, query, where, onSnapshot, collectionGroup } from '@react-native-firebase/firestore';
@@ -147,7 +147,7 @@ const SettingsGroup = ({ title, children, colors }: { title: string; children: R
 );
 
 export default function Settings() {
-    const { colors, theme, setTheme, setLockedIn: setThemeLockedIn } = useTheme();
+    const { colors, shape, theme, setTheme, style: themeStyle, setStyle: setThemeStyle } = useTheme();
     const router = useRouter();
     const { showAlert } = useAlert();
 
@@ -167,7 +167,6 @@ export default function Settings() {
     const [sleepTime, setSleepTime] = useState<string | null>(null);
     const [lastSleepChangeAt, setLastSleepChangeAt] = useState<string | null>(null);
     const [isUpdatingSleep, setIsUpdatingSleep] = useState(false);
-    const [lockedInMode, setLockedInMode] = useState(false);
 
     const handleSaveProfileURL = useCallback(async (url: string) => {
         if (!user?.uid) return;
@@ -204,7 +203,6 @@ export default function Settings() {
         AsyncStorage.getItem(STORAGE_KEYS.LAST_BACKUP_DATE).then(val => setLastBackupDate(val));
         AsyncStorage.getItem(STORAGE_KEYS.SLEEP_TIME).then(val => setSleepTime(val));
         AsyncStorage.getItem(STORAGE_KEYS.LAST_SLEEP_CHANGE_AT).then(val => setLastSleepChangeAt(val));
-        AsyncStorage.getItem(STORAGE_KEYS.LOCKED_IN_MODE).then(val => setLockedInMode(val === 'true'));
 
         if (user?.uid) {
             // Check if user is an admin in any group
@@ -472,14 +470,6 @@ export default function Settings() {
         }
     };
 
-    const handleToggleLockedInMode = async () => {
-        const newValue = !lockedInMode;
-        setLockedInMode(newValue);
-        // The theme owns the flag: it persists it and broadcasts the change, so
-        // every screen restyles at once instead of each reading storage itself.
-        await setThemeLockedIn(newValue);
-    };
-
 
     return (
         <Screen>
@@ -542,16 +532,46 @@ export default function Settings() {
                     </View>
                 </SettingsGroup>
 
-                {/* Features */}
-                <SettingsGroup title="Features" colors={colors}>
-                    <SettingsItem
-                        label="Locked In Mode"
-                        value={lockedInMode ? 'On' : 'Off'}
-                        onPress={handleToggleLockedInMode}
-                        icon={Lock}
-                        colors={colors}
-                        showChevron={false}
-                    />
+                {/* Appearance */}
+                <SettingsGroup title="Appearance" colors={colors}>
+                    <View style={styles.styleChoices}>
+                        {THEME_STYLES.map(option => {
+                            const active = themeStyle === option.key;
+                            return (
+                                <ScalePressable
+                                    key={option.key}
+                                    onPress={() => setThemeStyle(option.key)}
+                                    accessibilityRole="radio"
+                                    accessibilityState={{ selected: active }}
+                                    accessibilityLabel={`${option.label}. ${option.blurb}`}
+                                    style={[
+                                        styles.styleChoice,
+                                        {
+                                            borderRadius: shape.card,
+                                            borderColor: active ? colors.accent : colors.border,
+                                            backgroundColor: active ? colors.accent + '12' : 'transparent',
+                                        },
+                                    ]}
+                                >
+                                    <View style={styles.styleChoiceText}>
+                                        <UIText variant="body" tone={active ? 'accent' : 'primary'}>
+                                            {option.label}
+                                        </UIText>
+                                        <UIText variant="caption">{option.blurb}</UIText>
+                                    </View>
+                                    <View
+                                        style={[
+                                            styles.styleChoiceMark,
+                                            { borderColor: active ? colors.accent : colors.borderStrong },
+                                            active && { backgroundColor: colors.accent },
+                                        ]}
+                                    >
+                                        {active && <Check size={12} color={colors.background} strokeWidth={3} />}
+                                    </View>
+                                </ScalePressable>
+                            );
+                        })}
+                    </View>
                 </SettingsGroup>
 
                 {/* Data Management */}
@@ -698,6 +718,28 @@ const styles = StyleSheet.create({
     backButton: {
         width: Spacing.touchTarget,
         height: Spacing.touchTarget,
+        justifyContent: 'center',
+    },
+    styleChoices: {
+        gap: Spacing.sm,
+        paddingHorizontal: Spacing.layout.cardPadding,
+        paddingVertical: Spacing.md,
+    },
+    styleChoice: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.md,
+        padding: Spacing.md + 2,
+        borderWidth: Spacing.border.hairline,
+        minHeight: Spacing.touchTarget + 12,
+    },
+    styleChoiceText: { flex: 1, gap: 2 },
+    styleChoiceMark: {
+        width: 20,
+        height: 20,
+        borderRadius: Spacing.borderRadius.round,
+        borderWidth: Spacing.border.strong,
+        alignItems: 'center',
         justifyContent: 'center',
     },
     scrollContent: {

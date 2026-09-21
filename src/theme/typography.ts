@@ -1,7 +1,10 @@
+import { Platform } from 'react-native';
+
 /**
- * Type for both styles.
+ * Type for all three styles.
  *
  *   Cloth     — Fraunces (display) over Work Sans (everything else).
+ *   Classic   — the platform system face, as the app originally shipped.
  *   Colossal  — Archivo throughout; weight does the hierarchy.
  *
  * Font family names must match the keys passed to `useFonts` in app/_layout.tsx.
@@ -25,6 +28,15 @@ export const FontFamily = {
     body: 'WorkSans_400Regular',
     bodyMedium: 'WorkSans_500Medium',
     bodySemibold: 'WorkSans_600SemiBold',
+
+    /**
+     * Classic — the platform face, exactly as the original app used it.
+     * `undefined` means "the system default", which is what React Native
+     * renders when no family is named. Georgia/serif is the one the original
+     * declared for quotes and then never actually used.
+     */
+    system: undefined,
+    systemSerif: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
 
     // Colossal
     mono: 'Archivo_400Regular',
