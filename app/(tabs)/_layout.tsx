@@ -10,22 +10,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '@/src/storage/storageKeys';
 
 export default function TabLayout() {
-    const { colors: themeColors } = useTheme();
+    const { colors: themeColors, isLockedIn: lockedInMode } = useTheme();
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const lastPressTime = useRef<number>(0);
     const lastPressTab = useRef<string | null>(null);
-    const [lockedInMode, setLockedInMode] = useState(false);
-
-    useFocusEffect(
-        useCallback(() => {
-            AsyncStorage.getItem(STORAGE_KEYS.LOCKED_IN_MODE).then(val => setLockedInMode(val === 'true'));
-        }, [])
-    );
 
     useEffect(() => {
         const subscription = DeviceEventEmitter.addListener('locked-in-mode-changed', (val: boolean) => {
-            setLockedInMode(val);
             // Turning the mode on hides the Groups button, but that alone does not move
             // you off the Groups screen — you'd be left on a hidden tab with nothing
             // highlighted in the bar. Send the user to Home, which is the mode's surface.
@@ -46,7 +38,7 @@ export default function TabLayout() {
                 // go stark while Home is focused, not globally whenever the setting
                 // is on. That's what kept it mismatched on Library.
                 const focusedRouteName = props.state.routes[props.state.index]?.name;
-                const colors = (lockedInMode && focusedRouteName === 'index') ? Colors.lockedIn : themeColors;
+                const colors = themeColors;
 
                 return (
                 <View style={[

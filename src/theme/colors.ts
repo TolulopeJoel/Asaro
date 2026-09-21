@@ -1,202 +1,267 @@
-export const Colors = {
-    light: {
-        // Backgrounds - warm, elegant but not muted
-        background: '#f7f4ef',           // Warm paper white
-        backgroundElevated: '#fdfbf7',   // Clean cream
-        backgroundSubtle: '#f2ede5',     // Warm linen
+/**
+ * Two styles, one token set.
+ *
+ *   cloth     — the default. Àdìrẹ indigo on undyed cotton, ochre for "today".
+ *   colossal  — Locked In. Black, white, one ochre, nothing else.
+ *
+ * Every screen reads these names, never a literal. If a colour is needed that
+ * isn't here, it belongs here first — that is the whole point of the file.
+ */
 
-        // Text - clear and readable
-        textPrimary: '#3a3530',          // Rich dark brown
-        textSecondary: '#7a6f63',        // Warm brown
-        textTertiary: '#9d9388',         // Light brown
-        textMuted: '#b5aca0',            // Subtle brown
+/** Shape every palette must satisfy. Adding a key here forces both styles to answer for it. */
+export interface ThemeColors {
+    // Grounds
+    background: string;
+    backgroundElevated: string;
+    backgroundSubtle: string;
 
-        // Borders - elegant divisions
-        border: '#e8e2d8',               // Warm border
-        borderSubtle: '#f0ebe3',         // Subtle
-        borderStrong: '#d9cfc1',         // Defined
-        borderActive: '#e18f43',         // VIBRANT ORANGE (from logo!)
+    // Text
+    textPrimary: string;
+    textSecondary: string;
+    textTertiary: string;
+    textMuted: string;
+    textInverse: string;
 
-        // Accents - VIBRANT and beautiful
-        accent: '#e18f43',               // VIBRANT ORANGE from logo! 🧡
-        accentDark: '#c97a35',           // Rich orange
-        accentLight: '#eca866',          // Bright orange
+    // Lines
+    border: string;
+    borderSubtle: string;
+    borderStrong: string;
+    borderActive: string;
 
-        // Secondary accent - beautiful dusty rose
-        accentSecondary: '#d4a5a5',      // Dusty rose from logo
-        accentSecondaryDark: '#c28f8f',  // Deeper rose
-        accentSecondaryLight: '#e0b8b8', // Soft rose
+    // Accents
+    accent: string;
+    accentDark: string;
+    accentLight: string;
+    accentSecondary: string;
+    accentSecondaryDark: string;
+    accentSecondaryLight: string;
 
-        // Semantic Colors
-        cardBackground: '#fdfbf7',
-        cardBorder: '#e8e2d8',
-        cardHover: '#f7f3eb',
-        searchBackground: '#f2ede5',
+    // Semantic — the four states that used to be hardcoded iOS hexes
+    success: string;
+    successSurface: string;
+    warning: string;
+    warningSurface: string;
+    danger: string;
+    dangerSurface: string;
+    info: string;
+    infoSurface: string;
 
-        // Buttons - vibrant and inviting
-        buttonPrimary: '#e18f43',        // VIBRANT ORANGE
-        buttonPrimaryText: '#ffffff',
-        buttonSecondary: '#fdfbf7',
-        buttonSecondaryText: '#e18f43',
-        buttonSecondaryBorder: '#d9cfc1',
+    // Surfaces
+    cardBackground: string;
+    cardBorder: string;
+    cardHover: string;
+    searchBackground: string;
 
-        // Status & Indicators - vibrant
-        indicatorActive: '#e18f43',      // Vibrant orange
-        indicatorInactive: '#e8e2d8',
+    // Buttons
+    buttonPrimary: string;
+    buttonPrimaryText: string;
+    buttonSecondary: string;
+    buttonSecondaryText: string;
+    buttonSecondaryBorder: string;
 
-        // Special UI Elements
-        badge: '#faf7f2',
-        badgeBorder: '#e8e2d8',
-        badgeText: '#e18f43',            // Vibrant orange
-        draftBar: '#faf7f2',
-        draftBarBorder: '#e18f43',       // Vibrant orange border
-        draftIconBg: '#f2ede5',
+    // Indicators
+    indicatorActive: string;
+    indicatorInactive: string;
 
-        // Tab Navigation - vibrant accents
-        tabBar: '#fdfbf7',
-        tabIndicator: '#e18f43',         // VIBRANT ORANGE
-        tabLabel: '#7a6f63',
-        tabLabelActive: '#e18f43',       // VIBRANT ORANGE when active
+    // Chrome
+    badge: string;
+    badgeBorder: string;
+    badgeText: string;
+    draftBar: string;
+    draftBarBorder: string;
+    draftIconBg: string;
 
-        // Icons - vibrant presence
-        icon: '#e18f43',                 // VIBRANT ORANGE
-        iconSecondary: '#fdfbf7',
-        iconActive: '#c97a35',
+    tabBar: string;
+    tabIndicator: string;
+    tabLabel: string;
+    tabLabelActive: string;
 
-        // Backward compatibility aliases
-        primary: '#e18f43',
-        card: '#fdfbf7',
-        text: '#3a3530',
-    },
-    dark: {
-        // Backgrounds - elegant dark
-        background: '#1c1a17',           // Rich dark
-        backgroundElevated: '#26241f',   // Elevated
-        backgroundSubtle: '#2d2a24',     // Subtle
+    icon: string;
+    iconSecondary: string;
+    iconActive: string;
 
-        // Text - clear in darkness
-        textPrimary: '#e5e0d8',          // Bright text
-        textSecondary: '#b8b0a5',        // Clear secondary
-        textTertiary: '#8a8278',         // Visible tertiary
-        textMuted: '#6a6560',            // Subtle
+    /** Pattern ink. The motif is drawn in this colour at `patternOpacity`. */
+    patternInk: string;
+    patternOpacity: number;
+    /** Ink for the woven "today / selected / done" mark. */
+    markInk: string;
 
-        // Borders - defined
-        border: '#3a3632',               // Clear border
-        borderSubtle: '#2f2d2a',         // Subtle
-        borderStrong: '#4a4540',         // Strong
-        borderActive: '#e18f43',         // VIBRANT ORANGE
+    // Back-compat aliases. Existing screens still reference these; do not add more.
+    primary: string;
+    card: string;
+    text: string;
+}
 
-        // Accents - VIBRANT in dark mode too!
-        accent: '#e18f43',               // VIBRANT ORANGE (same as light!)
-        accentDark: '#c97a35',           // Rich orange
-        accentLight: '#eca866',          // Bright orange
+/**
+ * Cloth — the default.
+ *
+ * Indigo is the ink, not the furniture: body text is #17263f rather than a
+ * near-black, so the identity is present on every screen without announcing
+ * itself. Ochre means exactly one thing — today — so it always reads as
+ * emphasis rather than decoration.
+ */
+export const cloth: ThemeColors = {
+    background: '#efe6d8',
+    backgroundElevated: '#f4ede1',
+    backgroundSubtle: '#e3d6c1',
 
-        // Secondary accent - beautiful rose
-        accentSecondary: '#d4a5a5',      // Dusty rose
-        accentSecondaryDark: '#c28f8f',  // Deeper
-        accentSecondaryLight: '#e0b8b8', // Lighter
+    textPrimary: '#17263f',
+    textSecondary: '#4e5c70',
+    textTertiary: '#6b7787',
+    textMuted: '#8b8371',
+    textInverse: '#efe6d8',
 
-        // Semantic Colors
-        cardBackground: '#26241f',
-        cardBorder: '#3a3632',
-        cardHover: '#2d2a24',
-        searchBackground: '#2d2a24',
+    border: '#d8cab2',
+    borderSubtle: '#e3d6c1',
+    borderStrong: '#c3b294',
+    borderActive: '#c9762c',
 
-        // Buttons - vibrant
-        buttonPrimary: '#e18f43',        // VIBRANT ORANGE
-        buttonPrimaryText: '#1c1a17',    // Dark text on orange
-        buttonSecondary: '#26241f',
-        buttonSecondaryText: '#e18f43',
-        buttonSecondaryBorder: '#3a3632',
+    accent: '#c9762c',
+    accentDark: '#a85e1d',
+    accentLight: '#dd9750',
 
-        // Status & Indicators - vibrant
-        indicatorActive: '#e18f43',      // Vibrant orange
-        indicatorInactive: '#3a3632',
+    accentSecondary: '#17263f',
+    accentSecondaryDark: '#0f1b2e',
+    accentSecondaryLight: '#22385a',
 
-        // Special UI Elements
-        badge: '#2d2a24',
-        badgeBorder: '#3a3632',
-        badgeText: '#e18f43',            // Vibrant orange
-        draftBar: '#26241f',
-        draftBarBorder: '#e18f43',       // Vibrant orange
-        draftIconBg: '#2d2a24',
+    success: '#3f6b46',
+    successSurface: '#dfe6d9',
+    warning: '#9a6a1c',
+    warningSurface: '#f0e3c8',
+    danger: '#9c3324',
+    dangerSurface: '#f0d9d4',
+    info: '#17263f',
+    infoSurface: '#dbe0e8',
 
-        // Tab Navigation - vibrant
-        tabBar: '#26241f',
-        tabIndicator: '#e18f43',         // VIBRANT ORANGE
-        tabLabel: '#8a8278',
-        tabLabelActive: '#e18f43',       // VIBRANT ORANGE
+    cardBackground: '#e3d6c1',
+    cardBorder: '#d8cab2',
+    cardHover: '#dccfb7',
+    searchBackground: '#e3d6c1',
 
-        // Icons - vibrant
-        icon: '#e18f43',                 // VIBRANT ORANGE
-        iconSecondary: '#1c1a17',
-        iconActive: '#eca866',
+    buttonPrimary: '#17263f',
+    buttonPrimaryText: '#efe6d8',
+    buttonSecondary: 'transparent',
+    buttonSecondaryText: '#4e5c70',
+    buttonSecondaryBorder: '#d8cab2',
 
-        // Backward compatibility aliases
-        primary: '#e18f43',
-        card: '#26241f',
-        text: '#e5e0d8',
-    },
-    // A deliberately stark, high-contrast skin for Locked In Mode — pure black/white
-    // instead of the warm paper tones, so the mode reads differently at a glance,
-    // not just "same app, fewer cards."
-    lockedIn: {
-        background: '#0a0a0a',
-        backgroundElevated: '#141414',
-        backgroundSubtle: '#1a1a1a',
+    indicatorActive: '#c9762c',
+    indicatorInactive: '#d8cab2',
 
-        textPrimary: '#ffffff',
-        textSecondary: '#a3a3a3',
-        textTertiary: '#737373',
-        textMuted: '#525252',
+    badge: '#e3d6c1',
+    badgeBorder: '#d8cab2',
+    badgeText: '#c9762c',
+    draftBar: '#e3d6c1',
+    draftBarBorder: '#c9762c',
+    draftIconBg: '#dccfb7',
 
-        border: '#262626',
-        borderSubtle: '#1a1a1a',
-        borderStrong: '#404040',
-        borderActive: '#e18f43',
+    tabBar: '#17263f',
+    tabIndicator: '#c9762c',
+    tabLabel: '#8fa0b6',
+    tabLabelActive: '#c9762c',
 
-        accent: '#e18f43',
-        accentDark: '#c97a35',
-        accentLight: '#eca866',
+    icon: '#c9762c',
+    iconSecondary: '#efe6d8',
+    iconActive: '#a85e1d',
 
-        accentSecondary: '#d4a5a5',
-        accentSecondaryDark: '#c28f8f',
-        accentSecondaryLight: '#e0b8b8',
+    patternInk: '#c9762c',
+    patternOpacity: 0.16,
+    markInk: '#c9762c',
 
-        cardBackground: '#141414',
-        cardBorder: '#262626',
-        cardHover: '#1a1a1a',
-        searchBackground: '#1a1a1a',
-
-        buttonPrimary: '#e18f43',
-        buttonPrimaryText: '#0a0a0a',
-        buttonSecondary: '#141414',
-        buttonSecondaryText: '#e18f43',
-        buttonSecondaryBorder: '#262626',
-
-        indicatorActive: '#e18f43',
-        indicatorInactive: '#262626',
-
-        badge: '#141414',
-        badgeBorder: '#262626',
-        badgeText: '#e18f43',
-        draftBar: '#141414',
-        draftBarBorder: '#e18f43',
-        draftIconBg: '#1a1a1a',
-
-        tabBar: '#141414',
-        tabIndicator: '#e18f43',
-        tabLabel: '#a3a3a3',
-        tabLabelActive: '#e18f43',
-
-        icon: '#e18f43',
-        iconSecondary: '#0a0a0a',
-        iconActive: '#eca866',
-
-        primary: '#e18f43',
-        card: '#141414',
-        text: '#ffffff',
-    },
+    primary: '#c9762c',
+    card: '#e3d6c1',
+    text: '#17263f',
 };
 
-export type ThemeColors = typeof Colors.light;
+/**
+ * Colossal — Locked In.
+ *
+ * Weight carries the whole hierarchy. One colossal element per screen at most
+ * (Settings, Permissions and the reference picker deliberately use none), and
+ * ochre is held in reserve for today.
+ */
+export const colossal: ThemeColors = {
+    background: '#000000',
+    backgroundElevated: '#101010',
+    backgroundSubtle: '#1e1e1e',
+
+    textPrimary: '#ffffff',
+    textSecondary: '#8a8a8a',
+    textTertiary: '#5c5c5c',
+    textMuted: '#3d3d3d',
+    textInverse: '#000000',
+
+    border: '#1e1e1e',
+    borderSubtle: '#141414',
+    borderStrong: '#333333',
+    borderActive: '#e18f43',
+
+    accent: '#e18f43',
+    accentDark: '#c4762f',
+    accentLight: '#eda869',
+
+    accentSecondary: '#ffffff',
+    accentSecondaryDark: '#cccccc',
+    accentSecondaryLight: '#ffffff',
+
+    success: '#6fbf7f',
+    successSurface: '#12200f',
+    warning: '#e0a44a',
+    warningSurface: '#241a09',
+    danger: '#e2685a',
+    dangerSurface: '#26100d',
+    info: '#8fb6e0',
+    infoSurface: '#0d1620',
+
+    cardBackground: '#101010',
+    cardBorder: '#1e1e1e',
+    cardHover: '#161616',
+    searchBackground: '#101010',
+
+    buttonPrimary: '#ffffff',
+    buttonPrimaryText: '#000000',
+    buttonSecondary: 'transparent',
+    buttonSecondaryText: '#8a8a8a',
+    buttonSecondaryBorder: '#1e1e1e',
+
+    indicatorActive: '#e18f43',
+    indicatorInactive: '#1e1e1e',
+
+    badge: '#101010',
+    badgeBorder: '#1e1e1e',
+    badgeText: '#e18f43',
+    draftBar: '#101010',
+    draftBarBorder: '#e18f43',
+    draftIconBg: '#1e1e1e',
+
+    tabBar: '#000000',
+    tabIndicator: '#ffffff',
+    tabLabel: '#5c5c5c',
+    tabLabelActive: '#ffffff',
+
+    icon: '#e18f43',
+    iconSecondary: '#000000',
+    iconActive: '#eda869',
+
+    // Colossal wears no cloth. The pattern component renders nothing here.
+    patternInk: 'transparent',
+    patternOpacity: 0,
+    markInk: '#e18f43',
+
+    primary: '#e18f43',
+    card: '#101010',
+    text: '#ffffff',
+};
+
+export const Colors = {
+    cloth,
+    colossal,
+
+    /**
+     * Back-compat. `light`/`dark` both resolve to Cloth for now — Cloth's dark
+     * counterpart is the next palette to design, and pointing `dark` at
+     * Colossal would collapse the distinction between dark mode and Locked In.
+     */
+    light: cloth,
+    dark: cloth,
+    lockedIn: colossal,
+};

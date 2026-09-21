@@ -9,9 +9,13 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "verify:ml": "node scripts/verify-tokenizer.mjs && node scripts/verify-theme-matching.mjs"
+    "verify:ml": "node scripts/verify-tokenizer.mjs && node scripts/verify-theme-matching.mjs",
+    "check:glyphs": "node scripts/check-glyphs.mjs"
   },
   "dependencies": {
+    "@expo-google-fonts/archivo": "^0.4.2",
+    "@expo-google-fonts/fraunces": "^0.4.1",
+    "@expo-google-fonts/work-sans": "^0.4.2",
     "@expo/vector-icons": "^15.0.3",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/datetimepicker": "8.4.4",
@@ -42,7 +46,7 @@
     "react-native-reanimated": "~4.1.1",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
-    "react-native-svg": "^15.15.1"
+    "react-native-svg": "^15.15.5"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

@@ -141,7 +141,7 @@ const SettingsGroup = ({ title, children, colors }: { title: string; children: R
 );
 
 export default function Settings() {
-    const { colors, theme, setTheme } = useTheme();
+    const { colors, theme, setTheme, setLockedIn: setThemeLockedIn } = useTheme();
     const router = useRouter();
     const { showAlert } = useAlert();
 
@@ -469,9 +469,9 @@ export default function Settings() {
     const handleToggleLockedInMode = async () => {
         const newValue = !lockedInMode;
         setLockedInMode(newValue);
-        await AsyncStorage.setItem(STORAGE_KEYS.LOCKED_IN_MODE, newValue.toString());
-        // Let the home screen know immediately, in case it's already mounted underneath.
-        DeviceEventEmitter.emit('locked-in-mode-changed', newValue);
+        // The theme owns the flag: it persists it and broadcasts the change, so
+        // every screen restyles at once instead of each reading storage itself.
+        await setThemeLockedIn(newValue);
     };
 
 

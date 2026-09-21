@@ -35,9 +35,15 @@ import { fetchFlashbackData } from '@/src/components/Flashback';
 import { getDailyTitle } from '@/src/data/homeTitles';
 import { Confetti, ConfettiRef } from '@/src/components/Confetti';
 import { formatDateToLocalString } from '@/src/utils/dateUtils';
-import { LockedInHome } from '@/src/components/LockedInHome';
 import { STORAGE_KEYS } from '@/src/storage/storageKeys';
-import { Colors } from '@/src/theme/colors';
+import {
+    Card,
+    ClothMark,
+    Hero,
+    Screen,
+    Text as UIText,
+    ThemedButton,
+} from '@/src/components/ui';
 
 
 const DRAFT_KEY = "reflection_draft";
@@ -52,57 +58,14 @@ interface StatCardProps {
 
 
 const StatCard = React.memo(({ icon, value, label, unit }: StatCardProps) => {
-    const { colors } = useTheme();
-
     return (
-        <View
-            style={[
-                styles.statCard,
-                {
-                    backgroundColor: colors.cardBackground,
-                    borderColor: colors.cardBorder,
-                },
-            ]}
-        >
-            <View style={[styles.statIconContainer, { backgroundColor: colors.accent + '10' }]}>
-                {React.createElement(icon, {
-                    size: 20,
-                    color: colors.accent,
-                    strokeWidth: 2.5
-                })}
+        <Card style={styles.statCard}>
+            <View style={styles.statRow}>
+                <UIText variant="display">{value}</UIText>
+                {unit ? <UIText variant="bodySmall" tone="secondary">{unit}</UIText> : null}
             </View>
-
-            <View style={styles.statInfo}>
-                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
-                    <Text
-                        style={[
-                            styles.statValue,
-                            { color: colors.textPrimary },
-                        ]}
-                    >
-                        {value}
-                    </Text>
-                    {unit && (
-                        <Text
-                            style={[
-                                styles.statUnit,
-                                { color: colors.textSecondary },
-                            ]}
-                        >
-                            {unit}
-                        </Text>
-                    )}
-                </View>
-                <Text
-                    style={[
-                        styles.statLabel,
-                        { color: colors.textTertiary },
-                    ]}
-                >
-                    {label}
-                </Text>
-            </View>
-        </View>
+            <UIText variant="label" tone="secondary">{label}</UIText>
+        </Card>
     );
 });
 
@@ -171,7 +134,6 @@ interface NextReadingProps {
 }
 
 const NextReading = React.memo(({ nextItem, onRefresh }: NextReadingProps) => {
-    const { colors } = useTheme();
     const router = useRouter();
 
     const handlePress = useCallback(() => {
@@ -183,49 +145,32 @@ const NextReading = React.memo(({ nextItem, onRefresh }: NextReadingProps) => {
 
     return (
         <View>
-            <ScalePressable onPress={handlePress}>
-                <View style={[styles.nextReadingCard, { backgroundColor: colors.accent }]}>
-                    <View style={styles.nextReadingHeader}>
-                        <View style={styles.nextReadingLabelContainer}>
-                            <View style={[styles.nextReadingIconWrap, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                                <Book size={12} color={colors.background} />
-                            </View>
-                            <Text style={[styles.nextReadingLabel, { color: colors.background }]}>NEXT CHAPTERS</Text>
-                        </View>
-                        <View style={[styles.nextReadingSectionPill, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
-                            <Text style={[styles.nextReadingSection, { color: colors.background }]} numberOfLines={1}>
-                                {nextItem.section}
-                            </Text>
-                        </View>
-                    </View>
-
-                    <View style={styles.nextReadingContent}>
-                        <View style={{ flex: 1 }}>
-                            <Text style={[styles.nextReadingText, { color: colors.background }]}>
-                                {nextItem.book} {nextItem.chapters}
-                            </Text>
-                        </View>
-                        <View style={[styles.nextReadingGo, { backgroundColor: colors.background, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 }]}>
-                            <ArrowRight size={18} color={colors.accent} />
-                        </View>
-                    </View>
-                </View>
-            </ScalePressable>
+            <UIText variant="label">Today</UIText>
+            <UIText variant="display" style={styles.readingTitle}>
+                {nextItem.book} {nextItem.chapters}
+            </UIText>
+            <UIText variant="bodySmall" tone="secondary">{nextItem.section}</UIText>
+            <ThemedButton
+                label="Begin reflection"
+                onPress={handlePress}
+                block
+                style={styles.readingCta}
+                accessibilityHint={`Opens a reflection for ${nextItem.book} ${nextItem.chapters}`}
+            />
         </View>
     );
 });
 
-const FloatingActionButton = React.memo(({ lockedIn = false }: { lockedIn?: boolean }) => {
-    const { colors, isDark } = useTheme();
+const FloatingActionButton = React.memo(() => {
+    const { colors } = useTheme();
     const router = useRouter();
     const insets = useSafeAreaInsets();
     // Tab bar height (60) + bottom inset + extra spacing
     const bottomPosition = 60 + insets.bottom + Spacing.xl;
 
-    // Locked In Mode always uses the stark palette; otherwise light neutral in
-    // dark mode, dark in light mode.
-    const fabBackground = lockedIn ? Colors.lockedIn.textPrimary : (isDark ? colors.textPrimary : colors.textPrimary);
-    const iconColor = lockedIn ? Colors.lockedIn.background : (isDark ? colors.background : '#FFFFFF');
+    // Both styles want maximum contrast against their own ground.
+    const fabBackground = colors.textPrimary;
+    const iconColor = colors.background;
 
     return (
         <ScalePressable
@@ -237,9 +182,8 @@ const FloatingActionButton = React.memo(({ lockedIn = false }: { lockedIn?: bool
     );
 });
 
-const DraftBar = React.memo(({ lockedIn = false }: { lockedIn?: boolean }) => {
-    const { colors: themeColors } = useTheme();
-    const colors = lockedIn ? Colors.lockedIn : themeColors;
+const DraftBar = React.memo(() => {
+    const { colors } = useTheme();
     const insets = useSafeAreaInsets();
     // Tab bar height (60) + bottom inset + extra spacing
     const bottomPosition = 60 + insets.bottom + Spacing.xl;
@@ -289,7 +233,6 @@ export default function Index() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSharing, setIsSharing] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
-    const [lockedInMode, setLockedInMode] = useState(false);
     const { showAlert } = useAlert();
     const scrollViewRef = useRef<ScrollView>(null);
     const confettiRef = useRef<ConfettiRef>(null);
@@ -390,16 +333,6 @@ export default function Index() {
         return () => subscription.remove();
     }, []);
 
-    // Locked In Mode: read on mount/focus, and stay in sync if toggled in Settings
-    // while this screen is still mounted underneath.
-    useEffect(() => {
-        AsyncStorage.getItem(STORAGE_KEYS.LOCKED_IN_MODE).then(val => setLockedInMode(val === 'true'));
-        const subscription = DeviceEventEmitter.addListener('locked-in-mode-changed', (val: boolean) => {
-            setLockedInMode(val);
-        });
-        return () => subscription.remove();
-    }, []);
-
     const handleEntryPress = useCallback((entry: JournalEntry) => {
         setSelectedEntry(entry);
         setIsDetailModalVisible(true);
@@ -419,7 +352,6 @@ export default function Index() {
         useCallback(() => {
             loadHomeData();
             checkDraft();
-            AsyncStorage.getItem(STORAGE_KEYS.LOCKED_IN_MODE).then(val => setLockedInMode(val === 'true'));
 
             // Simulate initial load if it's very fast
             if (isLoading) {
@@ -479,62 +411,36 @@ export default function Index() {
         });
     };
 
-    if (lockedInMode) {
-        return (
-            <SafeAreaView style={[styles.container, { backgroundColor: Colors.lockedIn.background }]} edges={['top']}>
-                {isLoading ? (
-                    <View style={{ flex: 1, justifyContent: 'center' }}>
-                        <LoadingView size={48} />
-                    </View>
-                ) : (
-                    <LockedInHome
-                        daysCompleted={stats.totalEntries}
-                        dayOfMonth={new Date().getDate()}
-                        nextItem={nextReading}
-                        weekDays={weekDays}
-                        onStatsPress={() => router.push('/stats')}
-                        onNextReadingPress={() => {
-                            if (nextReading) handleNextReadingPress(nextReading, router, loadHomeData);
-                        }}
-                        onSettingsPress={() => router.push('/settings')}
-                    />
-                )}
-
-                <Confetti ref={confettiRef} />
-
-                {!draftExists && <FloatingActionButton lockedIn />}
-                {draftExists && <DraftBar lockedIn />}
-            </SafeAreaView>
-        );
-    }
-
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+        <Screen>
             <ScrollView
                 ref={scrollViewRef}
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
-                <View style={styles.header}>
+                <Hero>
                     <View style={styles.headerTitleRow}>
-                        <Text
-                            style={[styles.title, { color: colors.textPrimary }]}
-                            numberOfLines={1}
-                            adjustsFontSizeToFit
-                            minimumFontScale={0.6}
+                        <UIText
+                            variant="display"
+                            tone="inverse"
+                            style={styles.title}
+                            numberOfLines={2}
                         >
                             {getDailyTitle()}
-                        </Text>
+                        </UIText>
                         <ScalePressable
-                            style={[styles.settingsButton, { backgroundColor: colors.backgroundSubtle }]}
+                            style={styles.settingsButton}
                             onPress={() => router.push('/settings')}
+                            accessibilityRole="button"
+                            accessibilityLabel="Settings"
                         >
-                            <Settings size={18} color={colors.textSecondary} />
+                            <Settings size={19} color={colors.accent} />
                         </ScalePressable>
                     </View>
-                </View>
+                </Hero>
 
+                <View style={styles.body}>
                 {isLoading ? (
                     <View style={{ height: 400, justifyContent: 'center' }}>
                         <LoadingView size={48} />
@@ -553,6 +459,7 @@ export default function Index() {
                         <Flashback flashbackData={flashbackEntry} onEntryPress={handleEntryPress} />
                     </>
                 )}
+                </View>
             </ScrollView>
 
             <Confetti ref={confettiRef} />
@@ -599,7 +506,7 @@ export default function Index() {
                     )}
                 </SafeAreaView>
             </AnimatedModal>
-        </SafeAreaView>
+        </Screen>
     );
 }
 
@@ -607,9 +514,7 @@ const styles = StyleSheet.create({
     container: { flex: 1 },
     scrollView: { flex: 1 },
     scrollContent: {
-        padding: Spacing.layout.screenPadding,
         paddingBottom: 185,
-        gap: Spacing.layout.cardPadding,
     },
     header: {
         marginBottom: Spacing.xs,
@@ -620,16 +525,14 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
     },
     title: {
-        fontSize: 34,
-        fontWeight: '800',
-        letterSpacing: -1.5,
+        flex: 1,
+        paddingRight: Spacing.md,
     },
     settingsButton: {
-        width: 38,
-        height: 38,
-        borderRadius: 12,
+        width: Spacing.touchTarget,
+        height: Spacing.touchTarget,
         justifyContent: 'center',
-        alignItems: 'center',
+        alignItems: 'flex-end',
     },
 
     statsContainer: {
@@ -637,14 +540,24 @@ const styles = StyleSheet.create({
         gap: Spacing.md,
         width: "100%",
     },
+    statRow: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
+        gap: Spacing.xs + 1,
+    },
+    readingTitle: {
+        marginTop: Spacing.sm + 1,
+    },
+    readingCta: {
+        marginTop: Spacing.lg,
+    },
+    body: {
+        padding: Spacing.layout.screenPadding,
+        gap: Spacing.lg,
+    },
     statCard: {
         flex: 1,
-        borderRadius: Spacing.borderRadius.md,
-        padding: Spacing.md,
-        flexDirection: 'row',
-        alignItems: "center",
-        gap: Spacing.md,
-        borderWidth: 1,
+        gap: Spacing.xs,
     },
     statIconContainer: {
         width: 38,

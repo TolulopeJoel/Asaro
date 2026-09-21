@@ -30,6 +30,13 @@ import { Spacing } from '@/src/theme/spacing';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { LoadingView } from '@/src/components/LoadingView';
 import { BibleBook } from '@/src/data/bibleBooks';
+import {
+    Hero,
+    Screen,
+    Segments,
+    Text as UIText,
+    textStyle,
+} from '@/src/components/ui';
 
 // Journal imports
 import { JournalEntryList } from '@/src/components/JournalEntryList';
@@ -73,9 +80,9 @@ function PlanProgressBar({ progress }: { progress: number }) {
             <View style={[styles.planProgressTrack, { backgroundColor: colors.border }]}>
                 <View style={[styles.planProgressFill, { width: `${progress}%`, backgroundColor: colors.accent }]} />
             </View>
-            <Text style={[styles.planProgressPct, { color: colors.accent }]}>
+            <UIText variant="label">
                 {parseFloat(progress.toFixed(2))}%
-            </Text>
+            </UIText>
         </View>
     );
 }
@@ -487,7 +494,7 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: number) => vo
 // ─── Main Library Screen ──────────────────────────────────────────────────────
 
 export default function LibraryScreen() {
-    const { colors } = useTheme();
+    const { colors, style: themeStyle } = useTheme();
     const router = useRouter();
     const params = useLocalSearchParams();
 
@@ -516,63 +523,47 @@ export default function LibraryScreen() {
     }, [params.openEntryId]);
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+        <Screen>
 
             {/* ── Header Zone ───────────────────────────────────────────────── */}
             <View>
-                <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.tabsRow}
-                >
-                    {TABS.map(t => {
-                        const isActive = activeTabKey === t.key;
-                        return (
-                            <ScalePressable
-                                key={t.key}
-                                style={[
-                                    styles.tabPill,
-                                    { backgroundColor: isActive ? colors.accent + '15' : colors.backgroundSubtle },
-                                ]}
-                                onPress={() => handleNavigate(t.key)}
-                            >
-                                {React.createElement(t.icon, {
-                                    size: 16,
-                                    color: isActive ? colors.accent : colors.textTertiary,
-                                })}
-                                <Text
-                                    style={[
-                                        styles.tabLabel,
-                                        { color: isActive ? colors.accent : colors.textSecondary },
-                                    ]}
-                                >
-                                    {t.label}
-                                </Text>
-                            </ScalePressable>
-                        );
-                    })}
-                </ScrollView>
+                <Hero>
+                    <UIText variant="display" tone="inverse">Library</UIText>
+                </Hero>
+
+                <Segments
+                    items={TABS.map(t => ({ key: t.key, label: t.label }))}
+                    value={activeTabKey}
+                    onChange={(key) => handleNavigate(key as Exclude<Tab, 'bookDetail'>)}
+                    scrollable
+                />
 
                 {tab === 'bookDetail' && journalSelectedBook && (
                     <View style={[styles.breadcrumbRow, { borderBottomColor: colors.border }]}>
-                        <ScalePressable onPress={() => handleNavigate('books')}>
-                            <Text style={[styles.breadcrumbText, { color: colors.textSecondary }]}>Books</Text>
+                        <ScalePressable
+                            onPress={() => handleNavigate('books')}
+                            accessibilityRole="button"
+                            accessibilityLabel="Back to books"
+                        >
+                            <UIText variant="label" tone="secondary">Books</UIText>
                         </ScalePressable>
-                        <Text style={[styles.breadcrumbSep, { color: colors.textTertiary }]}> / </Text>
-                        <Text style={[styles.breadcrumbCurrent, { color: colors.textPrimary }]}>
-                            {journalSelectedBook.name}
-                        </Text>
+                        <UIText variant="label" tone="tertiary"> / </UIText>
+                        <UIText variant="label" tone="primary">{journalSelectedBook.name}</UIText>
                     </View>
                 )}
 
                 {showSearch && (
                     <View style={[styles.searchContainer, { borderBottomColor: colors.border, borderTopColor: colors.border }]}>
                         <TextInput
-                            style={[styles.searchInput, {
-                                backgroundColor: colors.searchBackground,
-                                color: colors.textPrimary,
-                                borderColor: colors.border,
-                            }]}
+                            style={[
+                                styles.searchInput,
+                                textStyle(themeStyle, 'body'),
+                                {
+                                    backgroundColor: colors.searchBackground,
+                                    color: colors.textPrimary,
+                                    borderColor: colors.border,
+                                },
+                            ]}
                             placeholder={
                                 tab === 'bookDetail' && journalSelectedBook
                                     ? `Search ${journalSelectedBook.name}...`
@@ -588,7 +579,7 @@ export default function LibraryScreen() {
                         />
                         {journalSearch.length > 0 && (
                             <ScalePressable style={styles.clearSearch} onPress={() => setJournalSearch('')}>
-                                <Text style={[styles.clearSearchText, { color: colors.textSecondary }]}>×</Text>
+                                <UIText variant="title" tone="secondary">×</UIText>
                             </ScalePressable>
                         )}
                     </View>
@@ -613,7 +604,7 @@ export default function LibraryScreen() {
                     onCountChange={setJournalCount}
                 />
             )}
-        </SafeAreaView>
+        </Screen>
     );
 }
 

@@ -20,6 +20,23 @@ import { AlertProvider } from '@/src/context/AlertContext';
 import { RefPickerProvider } from '@/src/context/RefPickerContext';
 import { LoadingView } from '@/src/components/LoadingView';
 import { CustomAlert } from '@/src/components/CustomAlert';
+import { useFonts } from 'expo-font';
+import {
+  Fraunces_700Bold,
+  Fraunces_700Bold_Italic,
+  Fraunces_900Black,
+} from '@expo-google-fonts/fraunces';
+import {
+  WorkSans_400Regular,
+  WorkSans_500Medium,
+  WorkSans_600SemiBold,
+} from '@expo-google-fonts/work-sans';
+import {
+  Archivo_400Regular,
+  Archivo_500Medium,
+  Archivo_700Bold,
+  Archivo_900Black,
+} from '@expo-google-fonts/archivo';
 
 
 function StackNavigator() {
@@ -48,6 +65,19 @@ function StackNavigator() {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts({
+    Fraunces_700Bold,
+    Fraunces_700Bold_Italic,
+    Fraunces_900Black,
+    WorkSans_400Regular,
+    WorkSans_500Medium,
+    WorkSans_600SemiBold,
+    Archivo_400Regular,
+    Archivo_500Medium,
+    Archivo_700Bold,
+    Archivo_900Black,
+  });
+
   const [dbInitialized, setDbInitialized] = useState(false);
   const [dbError, setDbError] = useState(false);
   // null  = not yet checked   |  boolean = checked result
@@ -176,6 +206,17 @@ export default function RootLayout() {
   }, [dbInitialized, isReady, userName, sleepTime, hasPermissions, isBatteryOk, segments]);
 
   if (dbError) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <LoadingView size={48} />
+      </View>
+    );
+  }
+
+  // Both styles are typographic: Cloth is Fraunces over Work Sans, Colossal is
+  // Schibsted Grotesk throughout. Rendering before they load would show a
+  // system-font flash and reflow every screen, so hold the splash until then.
+  if (!fontsLoaded && !fontError) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <LoadingView size={48} />

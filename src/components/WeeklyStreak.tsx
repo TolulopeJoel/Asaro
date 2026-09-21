@@ -72,16 +72,17 @@ export const fetchWeeklyStreakData = async (): Promise<DayStatus[]> => {
 
 export const WeeklyStreak = React.memo(({
     weekDays: weekDaysProp,
-    lockedIn = false,
+    lockedIn: lockedInProp,
     onPress,
 }: {
     weekDays?: DayStatus[];
+    /** Overrides the active style. Normally omit it and let the theme decide. */
     lockedIn?: boolean;
     /** Overrides the default navigate-to-/stats behavior. */
     onPress?: () => void;
 }) => {
-    const { colors: themeColors } = useTheme();
-    const colors = lockedIn ? Colors.lockedIn : themeColors;
+    const { colors, isLockedIn } = useTheme();
+    const lockedIn = lockedInProp ?? isLockedIn;
     const [weekDaysState, setWeekDays] = useState<DayStatus[]>([]);
     const weekDays = weekDaysProp || weekDaysState;
     const hasAnimated = useRef(false);
