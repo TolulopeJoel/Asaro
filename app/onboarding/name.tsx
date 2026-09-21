@@ -13,7 +13,6 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { ScalePressable } from '@/src/components/ScalePressable';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Asaro, Hero, Screen, Text } from '@/src/components/ui';
 
 
@@ -42,7 +41,7 @@ export default function NameScreen() {
     return (
         <Screen>
             <Hero>
-                <Text variant="label" style={styles.heroStep}>Step 1 of 3</Text>
+                <Text variant="label" tone="onHero" style={styles.heroStep}>Step 1 of 3</Text>
                 <Text variant="display" tone="inverse">Hello.</Text>
             </Hero>
             <KeyboardAvoidingView
@@ -138,7 +137,7 @@ const styles = StyleSheet.create({
     introBlock: {
         marginBottom: Spacing.xxxl,
     },
-    heroStep: { color: '#a9b6c9', marginBottom: Spacing.sm },
+    heroStep: { marginBottom: Spacing.sm },
     introText: { opacity: 0.8 },
     nameSection: {
         gap: Spacing.md,

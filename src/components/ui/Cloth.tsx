@@ -27,30 +27,24 @@ export function ClothGround({ style }: { style?: ViewStyle }) {
     const pid = `rings-${useId()}`;
     if (colors.patternOpacity === 0) return null;
 
-    const { tile, centre, radius, strokeWidth } = Motif.rings;
+    const { tile, centre, radius, step, count, strokeWidth } = Motif.rings;
 
     return (
         <View style={[StyleSheet.absoluteFill, { opacity: colors.patternOpacity }, style]} pointerEvents="none">
             <Svg width="100%" height="100%">
                 <Defs>
                     <Pattern id={pid} width={tile} height={tile} patternUnits="userSpaceOnUse">
-                        <Circle
-                            cx={centre}
-                            cy={centre}
-                            r={radius}
-                            fill="none"
-                            stroke={colors.patternInk}
-                            strokeWidth={strokeWidth}
-                        />
-                        {/* the second ring of the tie, half a tile out */}
-                        <Circle
-                            cx={centre}
-                            cy={centre}
-                            r={radius + 7.5}
-                            fill="none"
-                            stroke={colors.patternInk}
-                            strokeWidth={strokeWidth}
-                        />
+                        {Array.from({ length: count }, (_, i) => (
+                            <Circle
+                                key={i}
+                                cx={centre}
+                                cy={centre}
+                                r={radius + i * step}
+                                fill="none"
+                                stroke={colors.patternInk}
+                                strokeWidth={strokeWidth}
+                            />
+                        ))}
                     </Pattern>
                 </Defs>
                 <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${pid})`} />

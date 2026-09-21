@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { X, Pencil } from 'lucide-react-native';
 
 import { useTheme } from '../theme/ThemeContext';
@@ -9,7 +8,7 @@ import { ScalePressable } from './ScalePressable';
 import { HyperlinkedText } from './HyperlinkedText';
 import { Cluster } from '../ml/clustering';
 import { StoredEmbedding, EMBEDDABLE_FIELDS, ACTION_FIELD } from '../data/embeddingRepository';
-import { Text } from './ui';
+import { Screen, Text } from './ui';
 
 const FIELD_LABELS: Record<string, string> = {
     ...Object.fromEntries(EMBEDDABLE_FIELDS.map(f => [f.column, f.label])),
@@ -89,7 +88,7 @@ export function ThemeDetail({ cluster, name, onClose, onRename, onOpenEntry }: P
     }, [cluster]);
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
+        <Screen>
             <View style={styles.header}>
                 <ScalePressable
                     onPress={onRename}
@@ -164,7 +163,7 @@ export function ThemeDetail({ cluster, name, onClose, onRename, onOpenEntry }: P
                     </ScalePressable>
                 ))}
             </ScrollView>
-        </SafeAreaView>
+        </Screen>
     );
 }
 

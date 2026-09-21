@@ -211,11 +211,12 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = React.memo(({
                     ] as StyleProp<ViewStyle>}
                     onPress={() => handleChapterPress(chapter)}
                 >
-                    <Text style={[
-                        styles.chapterButtonText,
-                        { color: isSelected ? colors.textPrimary : colors.textSecondary },
-                        (isSelected || isInDrag) && { fontWeight: '700' }
-                    ]}>
+                    <Text
+                        variant="cell"
+                        style={[
+                            { color: isSelected ? colors.textPrimary : colors.textSecondary },
+                        ]}
+                    >
                         {chapter}
                     </Text>
                 </ScalePressable>
@@ -386,11 +387,6 @@ const styles = StyleSheet.create({
     },
     chapterButtonRangeEnd: {
         // marginLeft: -6,
-    },
-    chapterButtonText: {
-        fontSize: Typography.size.md,
-        fontWeight: Typography.weight.medium,
-        letterSpacing: 0.2,
     },
     verseInputContainer: {
         flexDirection: 'row',

@@ -2,7 +2,6 @@ import React, { useCallback, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, ScrollView, StatusBar, StyleSheet, TextInput, View } from 'react-native';
 import { Button } from './Button';
 import { ScalePressable } from './ScalePressable';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { XCircle, X, Plus, Maximize } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
@@ -10,7 +9,7 @@ import { Typography } from '../theme/typography';
 import { BibleReferencePicker } from './BibleReferencePicker';
 import { getBibleStyledParts } from '../utils/bibleUtils';
 import { useRefPicker } from '../context/RefPickerContext';
-import { Text } from './ui';
+import { Screen, Text } from './ui';
 
 export interface ActionItemPair {
     action: string;
@@ -48,7 +47,7 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
     placeholder,
     disabled = false,
 }) => {
-    const { colors, isDark } = useTheme();
+    const { colors } = useTheme();
     const { showPicker, hidePicker } = useRefPicker();
     const [isExpanded, setIsExpanded] = useState(false);
     const [tempItems, setTempItems] = useState<ActionItemPair[]>([]);
@@ -415,8 +414,8 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                 presentationStyle="fullScreen"
                 statusBarTranslucent={true}
             >
-                <StatusBar backgroundColor={colors.background} barStyle={isDark ? "light-content" : "dark-content"} />
-                <SafeAreaView style={[fullScreenStyles.container, { backgroundColor: colors.background }]}>
+                <StatusBar hidden={true} />
+                <Screen edges={['top', 'bottom', 'left', 'right']} style={fullScreenStyles.container}>
                     <KeyboardAvoidingView
                         style={fullScreenStyles.keyboardView}
                         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -475,7 +474,7 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                             onInteraction={handlePickerInteraction}
                         />
                     </KeyboardAvoidingView>
-                </SafeAreaView>
+                </Screen>
             </Modal>
         </View>
     );

@@ -567,7 +567,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
                     contentContainerStyle={[
                         {
                             paddingHorizontal: 20,
-                            paddingBottom: 120,
+                            paddingBottom: Spacing.xxl,
                             paddingTop: (viewMode === 'recent' || viewMode === 'bookDetail') ? 0 : 20,
                         },
                         getFlatListData.length === 0 && styles.emptyContainer
@@ -690,7 +690,7 @@ const styles = StyleSheet.create({
     scrollContent: {
         paddingHorizontal: 20,
         paddingTop: 20,        // ← was part of padding: 20
-        paddingBottom: 120,
+        paddingBottom: Spacing.xxl,
     },
     emptyContainer: {
         flexGrow: 1,

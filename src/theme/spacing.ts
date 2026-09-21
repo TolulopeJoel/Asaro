@@ -26,18 +26,31 @@ export const Spacing = {
     },
 
     /**
-     * Four values, and `round` only for avatars and true pills.
-     * If a new radius seems necessary, the answer is almost always `none`.
+     * The design has exactly two radii: square, and round for avatars.
+     *
+     * Both Cloth and Colossal are flat and square — every panel, cell, input
+     * and button in design/all-screens.html is `border-radius:0`, and the only
+     * curve in the whole mockup is `.cl-avatar{border-radius:50%}`. The 8px
+     * that screens were reaching for was never in the design; it is the single
+     * biggest reason the built app read as a different product from the
+     * approved one.
+     *
+     * `sm`/`md`/`lg`/`xl` are kept as aliases of `none` so the ~75 existing
+     * call sites land on the real system instead of a radius it doesn't have.
+     * New code should ask the theme — `shape.card`, `shape.button`,
+     * `shape.input`, `shape.chip` — which is the axis a future style can move.
      */
     borderRadius: {
         none: 0,
-        sm: 2,
-        md: 4,
-        lg: 8,
         round: 9999,
-        /** @deprecated was 24px. Aliased to `lg` so unmigrated callers land on
-         *  the real scale instead of keeping a radius the system doesn't have. */
-        xl: 8,
+        /** @deprecated was 2px. Aliased to `none`. Use `shape.chip`. */
+        sm: 0,
+        /** @deprecated was 4px. Aliased to `none`. Use `shape.input`. */
+        md: 0,
+        /** @deprecated was 8px. Aliased to `none`. Use `shape.card`. */
+        lg: 0,
+        /** @deprecated was 24px. Aliased to `none`. Use `shape.card`. */
+        xl: 0,
     },
 
     /** Hairlines carry separation, not shadows. */
@@ -79,7 +92,19 @@ export const Motif = {
     rings: {
         tile: 32,
         centre: 16,
+        /** Innermost ring. Subsequent rings step out by `step`. */
         radius: 4.5,
+        /**
+         * Radial repeat interval.
+         *
+         * The mockup's motif is a repeating-radial-gradient that restarts every
+         * 12px, so rings land at 4.5, 16.5 and 28.5. Deriving them from this
+         * rather than an eyeballed offset is what keeps the app's cloth
+         * identical to the one that was approved.
+         */
+        step: 12,
+        /** How many rings fit before the tile's corner. */
+        count: 3,
         strokeWidth: 1,
     },
     /** Crosshatch — the supporting texture. ~38% ink: presence without weight. */

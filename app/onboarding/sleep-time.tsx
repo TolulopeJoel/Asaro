@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
@@ -154,7 +153,7 @@ export default function SleepTimeScreen() {
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <Screen edges={['top']}>
                 <Hero>
-                    <Text variant="label" style={styles.heroStep}>Step 2 of 3</Text>
+                    <Text variant="label" tone="onHero" style={styles.heroStep}>Step 2 of 3</Text>
                     <Text variant="display" tone="inverse">Noted.</Text>
                 </Hero>
                 <KeyboardAvoidingView
@@ -288,7 +287,7 @@ const styles = StyleSheet.create({
     introBlock: {
         marginBottom: Spacing.xxxl * 1.5,
     },
-    heroStep: { color: '#a9b6c9', marginBottom: Spacing.sm },
+    heroStep: { marginBottom: Spacing.sm },
     introText: { opacity: 0.8 },
     label: { opacity: 0.5, marginBottom: Spacing.xl, textAlign: 'center' },
     timeInputContainer: {

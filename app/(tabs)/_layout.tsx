@@ -1,17 +1,15 @@
 import { useTheme } from '@/src/theme/ThemeContext';
-import { Colors } from '@/src/theme/colors';
-import { Home, Library, Users, Circle } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { DeviceEventEmitter, StyleSheet, View, Text } from 'react-native';
-import { Tabs, useRouter, useFocusEffect } from 'expo-router';
+import { DeviceEventEmitter, StyleSheet, View } from 'react-native';
+import { Text } from '@/src/components/ui/Text';
+import { Tabs, useRouter } from 'expo-router';
 import { ScalePressable } from '@/src/components/ScalePressable';
-import { useRef, useState, useCallback, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { STORAGE_KEYS } from '@/src/storage/storageKeys';
+import { useRef, useEffect } from 'react';
 import { Spacing } from '@/src/theme/spacing';
 
 export default function TabLayout() {
-    const { colors: themeColors, isLockedIn: lockedInMode } = useTheme();
+    const { colors: themeColors, isLockedIn } = useTheme();
+    const lockedInMode = isLockedIn;
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const lastPressTime = useRef<number>(0);
@@ -34,23 +32,24 @@ export default function TabLayout() {
                 animation: 'none',
             }}
             tabBar={(props) => {
-                // The tab bar itself follows whichever screen is actually in view —
-                // only Home is re-skinned for Locked In Mode, so the bar should only
-                // go stark while Home is focused, not globally whenever the setting
-                // is on. That's what kept it mismatched on Library.
-                const focusedRouteName = props.state.routes[props.state.index]?.name;
                 const colors = themeColors;
 
                 return (
                 <View style={[
                     styles.tabBar,
                     {
-                        backgroundColor: colors.cardBackground,
-                        borderColor: colors.border,
-                        bottom: insets.bottom > 0 ? insets.bottom : 24,
-                        // Bottom corners match the phone's screen corner radius
-                        borderBottomLeftRadius: insets.bottom > 0 ? 34 : 20,
-                        borderBottomRightRadius: insets.bottom > 0 ? 34 : 20,
+                        backgroundColor: colors.tabBar,
+                        // Cloth's bar is an indigo band and needs no line; Colossal's
+                        // is black on black, so the hairline is the only thing
+                        // separating it from the screen (.co-tabs border-top).
+                        borderTopWidth: isLockedIn ? StyleSheet.hairlineWidth : 0,
+                        borderTopColor: colors.border,
+                        paddingHorizontal: isLockedIn
+                            ? Spacing.layout.screenPaddingTight
+                            : Spacing.layout.screenPadding,
+                        paddingTop: isLockedIn ? Spacing.lg : 15,
+                        // The mockup's 30px foot, or the home indicator if it is taller.
+                        paddingBottom: Math.max(insets.bottom, Spacing.layout.tabBarPadding),
                     },
                 ]}>
                     {props.state.routes.map((route, index) => {
@@ -92,12 +91,6 @@ export default function TabLayout() {
                             }
                         };
 
-                        const IconComponent =
-                            route.name === 'index' ? Home :
-                                route.name === 'library' ? Library :
-                                    route.name === 'groups' ? Users :
-                                        Circle;
-
                         let label = '';
                         if (route.name === 'index') label = 'Home';
                         else if (route.name === 'library') label = 'Library';
@@ -109,23 +102,16 @@ export default function TabLayout() {
                                 style={styles.tabButton}
                                 onPress={onPress}
                             >
-                                <View style={[
-                                    styles.iconWrap,
-                                    shouldHighlight ? { backgroundColor: colors.background } : null,
-                                ]}>
-                                    <IconComponent
-                                        size={22}
-                                        color={shouldHighlight ? colors.accent : colors.textTertiary}
-                                        strokeWidth={shouldHighlight ? 2.5 : 2}
-                                    />
-                                </View>
-                                <Text style={[
-                                    styles.tabLabel,
-                                    {
-                                        color: shouldHighlight ? colors.accent : colors.textTertiary,
-                                        fontWeight: shouldHighlight ? '600' : '400',
-                                    },
-                                ]}>
+                                {/*
+                                  * The bar is type only. The design carries no icons
+                                  * and no highlight pill: the active tab is the one
+                                  * word in the foreground colour (.co-tab.on), which
+                                  * is the whole mechanism in both styles.
+                                  */}
+                                <Text
+                                    variant="tab"
+                                    style={{ color: shouldHighlight ? colors.tabLabelActive : colors.tabLabel }}
+                                >
                                     {label}
                                 </Text>
                             </ScalePressable>
@@ -144,40 +130,11 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
     tabBar: {
-        position: 'absolute',
-        left: 16,
-        right: 16,
         flexDirection: 'row',
-        paddingTop: 12,
-        paddingBottom: 12,
-        borderTopLeftRadius: 4,
-        borderTopRightRadius: 4,
-        // Bottom radius set dynamically via inline style
-        borderWidth: StyleSheet.hairlineWidth,
-        // Shadow
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-        elevation: 20,
     },
     tabButton: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 4,
-    },
-    iconWrap: {
-        width: 60,
-        height: 34,
-        borderRadius: Spacing.borderRadius.lg,
-        overflow: 'hidden',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 3,
-    },
-    tabLabel: {
-        fontSize: 10,
-        letterSpacing: 0.2,
     },
 });

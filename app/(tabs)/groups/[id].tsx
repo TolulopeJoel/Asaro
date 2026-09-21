@@ -15,7 +15,7 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import { useAlert } from '@/src/context/AlertContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
     X,
     BookOpen,
@@ -1439,7 +1439,7 @@ export default function GroupDetailScreen() {
                 {activeTab === 'accountability' && (
                     <View style={{ marginTop: Spacing.md }}>
                         <View style={styles.sectionHeader}>
-                            <Text variant="label" tone="secondary" style={styles.sectionTitle}>WHAT YOUR PEERS DO</Text>
+                            <Text variant="label" style={styles.sectionTitle}>What your peers do</Text>
                         </View>
 
                         <View style={[styles.accountabilityHero, { backgroundColor: colors.accentSecondaryLight + '20', borderColor: colors.accentSecondaryLight + '40' }]}>
@@ -1560,7 +1560,7 @@ export default function GroupDetailScreen() {
                                 </View>
                                 {member.role === 'admin' && (
                                     <View style={[styles.adminBadge, { backgroundColor: colors.accentSecondaryLight + '30' }]}>
-                                        <Text variant="label">ADMIN</Text>
+                                        <Text variant="label">Admin</Text>
                                     </View>
                                 )}
                                 <ChevronRight size={18} color={colors.textTertiary} />
@@ -1625,7 +1625,7 @@ const getStyles = (colors: any) => StyleSheet.create({
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
         gap: Spacing.xs, paddingVertical: Spacing.xs, paddingHorizontal: Spacing.md,
     },
-    scrollContent: { padding: Spacing.layout.screenPadding, paddingTop: Spacing.sm, paddingBottom: 100 },
+    scrollContent: { padding: Spacing.layout.screenPadding, paddingTop: Spacing.sm, paddingBottom: Spacing.xxl },
     sectionHeader: { marginTop: Spacing.lg, marginBottom: Spacing.md },
     sectionTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: Spacing.sm },
     sectionTitle: { fontSize: Typography.size.xs, fontWeight: Typography.weight.bold, letterSpacing: 2, opacity: 0.6 },

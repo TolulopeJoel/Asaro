@@ -29,16 +29,19 @@ const BookCard = React.memo(({ book, isSelected, colors, onBookSelect }: BookCar
         ]}
         onPress={() => onBookSelect(book)}
     >
-        <Text style={[
-            styles.bookAbbreviation,
-            { color: isSelected ? colors.textPrimary : colors.textSecondary },
-        ]}>
+        <Text
+            variant="cell"
+            style={[
+                styles.bookAbbreviation,
+                { color: isSelected ? colors.textPrimary : colors.textSecondary },
+            ]}
+        >
             {book.abbrv}
         </Text>
-        <Text style={[
-            styles.chapterCount,
-            { color: isSelected ? colors.accent : colors.textTertiary },
-        ]}>
+        <Text
+            variant="caption"
+            style={{ color: isSelected ? colors.accent : colors.textTertiary }}
+        >
             {book.chapters}
         </Text>
     </ScalePressable>
@@ -173,19 +176,11 @@ const styles = StyleSheet.create({
         borderWidth: 1.5,
     },
     bookAbbreviation: {
-        fontSize: 14, // Keeping slightly custom for specific card fit
-        fontWeight: Typography.weight.medium,
         textAlign: 'center',
         marginBottom: 2,
-        letterSpacing: 0.3,
     },
     bookAbbreviationSelected: {
         fontWeight: Typography.weight.semibold,
-    },
-    chapterCount: {
-        fontSize: Typography.size.xs,
-        fontWeight: Typography.weight.regular,
-        letterSpacing: 0.3,
     },
     chapterCountSelected: {
         fontWeight: Typography.weight.medium,

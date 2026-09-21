@@ -59,7 +59,7 @@ const BackPill = ({
         style={[styles.pill, styles.backPill, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '30' }]}
     >
         <ChevronLeft size={14} color={colors.primary} />
-        <Text variant="subtitle" tone="accent">{label}</Text>
+        <Text variant="cell" tone="accent">{label}</Text>
     </TouchableOpacity>
 );
 
@@ -79,7 +79,7 @@ const ActionPill = ({
         onPress={onPress}
         style={[styles.pill, { backgroundColor: colors.background, borderColor: colors.border }]}
     >
-        <Text variant="bodySmall">{label}</Text>
+        <Text variant="cell">{label}</Text>
     </TouchableOpacity>
 );
 
@@ -182,7 +182,7 @@ const ChapterPills = ({
                         onPress={() => onChapterSelect(ch)}
                         style={[styles.pill, { backgroundColor: colors.background, borderColor: colors.border }]}
                     >
-                        <Text variant="bodySmall">{ch}</Text>
+                        <Text variant="cell">{ch}</Text>
                     </TouchableOpacity>
                 ))}
             </>
@@ -492,7 +492,7 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
                             onPress={() => handleBookSelect(b)}
                             style={[styles.pill, { backgroundColor: colors.background, borderColor: colors.border }]}
                         >
-                            <Text variant="bodySmall">{b.name}</Text>
+                            <Text variant="cell">{b.name}</Text>
                         </TouchableOpacity>
                     ));
 

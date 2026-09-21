@@ -10,7 +10,6 @@ import {
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Bell, ArrowRight } from 'lucide-react-native';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { useAlert } from '@/src/context/AlertContext';
@@ -68,7 +67,7 @@ export default function PermissionsScreen() {
     return (
         <Screen>
             <Hero>
-                <Text variant="label" style={styles.heroStep}>Step 3 of 3</Text>
+                <Text variant="label" tone="onHero" style={styles.heroStep}>Step 3 of 3</Text>
                 <Text variant="display" tone="inverse" style={styles.heroTitle}>Stay Connected</Text>
             </Hero>
 
@@ -117,7 +116,7 @@ export default function PermissionsScreen() {
 }
 
 const styles = StyleSheet.create({
-    heroStep: { color: '#a9b6c9', marginBottom: Spacing.sm },
+    heroStep: { marginBottom: Spacing.sm },
     heroTitle: {},
     container: {
         flex: 1,

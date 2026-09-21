@@ -96,7 +96,8 @@ const styles = StyleSheet.create({
 
     },
     padCloth: { paddingVertical: Spacing.md + 1, paddingHorizontal: Spacing.xl - 2 },
-    padColossal: { paddingVertical: Spacing.lg + 1, paddingHorizontal: Spacing.xl - 2 },
+    // co-btn is a uniform 17px box in the mockup, not a wider pill.
+    padColossal: { paddingVertical: Spacing.lg + 1, paddingHorizontal: Spacing.lg + 1 },
     block: { width: '100%', alignSelf: 'stretch' },
     inactive: { opacity: 0.45 },
 });

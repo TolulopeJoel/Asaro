@@ -11,7 +11,6 @@ import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Users, CloudOff, RefreshCw, Plus, ChevronRight, Flame } from 'lucide-react-native';
 import { getFirestore, collection, doc, onSnapshot, getDocs, query, where, documentId } from '@react-native-firebase/firestore';
 import { Button } from '@/src/components/Button';
@@ -96,7 +95,7 @@ export default function GroupsScreen() {
             <Screen>
                 <Hero>
                     <Text variant="display" tone="inverse">Better{'\n'}Together</Text>
-                    <Text variant="bodySmall" style={styles.heroSub}>Consistency is key. Read together!</Text>
+                    <Text variant="body" tone="onHero" style={styles.heroSub}>Consistency is key. Read together!</Text>
                 </Hero>
                 <ScrollView
                     ref={scrollViewRef}
@@ -270,7 +269,7 @@ export default function GroupsScreen() {
 }
 
 const styles = StyleSheet.create({
-    heroSub: { marginTop: Spacing.sm, color: '#a9b6c9' },
+    heroSub: { marginTop: Spacing.sm },
     container: {
         flex: 1,
     },
@@ -393,6 +392,6 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         padding: Spacing.layout.screenPadding,
-        paddingBottom: 120, // Support for tab bar spacing
+        paddingBottom: Spacing.xxl,
     },
 });

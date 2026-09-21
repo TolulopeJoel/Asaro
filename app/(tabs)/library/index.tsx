@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo, useState, useRef, useEffect } from 'react';
 import { StyleSheet, View, FlatList, ScrollView, TouchableOpacity, Platform, LayoutAnimation, TextInput } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import {
     Clock,
@@ -681,7 +680,7 @@ const styles = StyleSheet.create({
     // ── Study ──────────────────────────────────────────────────────
 
     // ── Plan ───────────────────────────────────────────────────────
-    planListContent: { paddingHorizontal: Spacing.layout.screenPadding, paddingTop: 0, paddingBottom: 120 },
+    planListContent: { paddingHorizontal: Spacing.layout.screenPadding, paddingTop: 0, paddingBottom: Spacing.xxl },
     planSectionHeader: {
         marginTop: Spacing.lg, marginBottom: Spacing.sm,
         paddingVertical: 10, paddingHorizontal: 12,

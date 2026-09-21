@@ -11,7 +11,6 @@ import {
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { BatteryCharging, BatteryWarning, ArrowRight } from 'lucide-react-native';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import * as IntentLauncher from 'expo-intent-launcher';
@@ -79,7 +78,7 @@ export default function BatteryOptimizationScreen() {
     return (
         <Screen>
             <Hero>
-                <Text variant="label" style={styles.heroStep}>Almost there</Text>
+                <Text variant="label" tone="onHero" style={styles.heroStep}>Almost there</Text>
                 <Text variant="display" tone="inverse" style={styles.heroTitle}>One last thing</Text>
             </Hero>
 
@@ -125,7 +124,7 @@ export default function BatteryOptimizationScreen() {
 }
 
 const styles = StyleSheet.create({
-    heroStep: { color: '#a9b6c9', marginBottom: Spacing.sm },
+    heroStep: { marginBottom: Spacing.sm },
     heroTitle: {},
     container: {
         flex: 1,

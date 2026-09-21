@@ -17,9 +17,9 @@ import { Typography } from "@/src/theme/typography";
 import { Book, Settings, ArrowRight, Notebook } from "lucide-react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Link, useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { DeviceEventEmitter, ScrollView, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { JournalEntryDetail } from '@/src/components/JournalEntryDetail';
 import { WavyAddIcon } from '@/src/components/WavyAddIcon';
 import { AnimatedModal } from '@/src/components/AnimatedModal';
@@ -34,6 +34,7 @@ import { ActionReminders, fetchActionRemindersData, EnhancedActionItem } from '@
 import { StudyReminders } from '@/src/components/StudyReminders';
 import { fetchFlashbackData } from '@/src/components/Flashback';
 import { getDailyTitle } from '@/src/data/homeTitles';
+import { LockedInHome } from '@/src/components/home/LockedInHome';
 import { Confetti, ConfettiRef } from '@/src/components/Confetti';
 import { formatDateToLocalString } from '@/src/utils/dateUtils';
 import { STORAGE_KEYS } from '@/src/storage/storageKeys';
@@ -59,15 +60,24 @@ interface StatCardProps {
 }
 
 
+/**
+ * The stat on Home is the screen's one enlarged element, so it takes `hero`:
+ * Colossal's 116px giant (.co-giant.n) and Cloth's 34px stat numeral
+ * (.cl-statn). It was set to `display`, which is why Locked In rendered the
+ * count at 40px and lost the whole point of the style.
+ *
+ * The mockup sets it straight on the page ground under its own eyebrow, with
+ * no panel around it (.co-giant + .co-giantl).
+ */
 const StatCard = React.memo(({ icon, value, label, unit }: StatCardProps) => {
     return (
-        <Card style={styles.statCard}>
+        <View style={styles.statCard}>
             <View style={styles.statRow}>
-                <UIText variant="display">{value}</UIText>
+                <UIText variant="hero">{value}</UIText>
                 {unit ? <UIText variant="bodySmall" tone="secondary">{unit}</UIText> : null}
             </View>
-            <UIText variant="label" tone="secondary">{label}</UIText>
-        </Card>
+            <UIText variant="label">{label}</UIText>
+        </View>
     );
 });
 
@@ -239,7 +249,7 @@ export default function Index() {
     const { showAlert } = useAlert();
     const scrollViewRef = useRef<ScrollView>(null);
     const confettiRef = useRef<ConfettiRef>(null);
-    const { colors } = useTheme();
+    const { colors, isLockedIn } = useTheme();
     const router = useRouter();
 
     const loadStats = useCallback(async () => {
@@ -417,6 +427,118 @@ export default function Index() {
         });
     };
 
+
+    /**
+     * Today's reading, opened the same way the Cloth card opens it — the
+     * plan bookkeeping in `handleNextReadingPress` has to run either way.
+     */
+    const handleBeginReflection = useCallback(() => {
+        if (!nextReading) return;
+        handleNextReadingPress(nextReading, router, loadHomeData);
+    }, [nextReading, router, loadHomeData]);
+
+    /**
+     * The flashback, flattened to the three strings the Colossal screen shows.
+     * Cloth's <Flashback> card renders the same entry with its own chrome.
+     */
+    const flashbackForLockedIn = useMemo(() => {
+        if (!flashbackEntry) return null;
+        const { entry, type } = flashbackEntry;
+        const text = [entry.reflection_1, entry.reflection_2, entry.reflection_4, entry.notes]
+            .find((r) => r && r.trim().length > 0)?.trim();
+        if (!text) return null;
+
+        return {
+            text: text.length > 120 ? text.slice(0, 120) + '…' : text,
+            reference: `${entry.book_name} ${entry.chapter_start}${
+                entry.chapter_end && entry.chapter_end !== entry.chapter_start ? `–${entry.chapter_end}` : ''
+            }`,
+            when: type === 'year' ? 'a year ago' : type === 'month' ? 'a month ago' : 'from the archives',
+        };
+    }, [flashbackEntry]);
+
+    /** The entry detail sheet, shared by both compositions. */
+    const HomeDetailModal = () => (
+        <>
+        {/* Detail Modal */}
+        <AnimatedModal
+            visible={isDetailModalVisible}
+            onRequestClose={() => setIsDetailModalVisible(false)}
+        >
+            <Screen edges={['top', 'bottom', 'left', 'right']}>
+                {selectedEntry && (
+                    <>
+                        <JournalEntryDetail
+                            entry={selectedEntry}
+                            onEdit={(entry) => {
+                                setIsDetailModalVisible(false);
+                                router.push({
+                                    pathname: '/addEntry',
+                                    params: { entryId: entry.id!.toString() }
+                                });
+                            }}
+                            onDelete={() => handleDelete(selectedEntry)}
+                            onClose={() => setIsDetailModalVisible(false)}
+                        />
+                        <CardFAB
+                            onShare={() => handleShare(selectedEntry)}
+                            onEdit={() => {
+                                setIsDetailModalVisible(false);
+                                router.push({
+                                    pathname: '/addEntry',
+                                    params: { entryId: selectedEntry.id!.toString() }
+                                });
+                            }}
+                            onDelete={() => handleDelete(selectedEntry)}
+                            isSharing={isSharing}
+                            isDeleting={isDeleting}
+                            bottom={fabBottomPosition}
+                            rounded={true}
+                        />
+                    </>
+                )}
+            </Screen>
+        </AnimatedModal>
+        </>
+    );
+
+    /**
+     * Colossal is a different screen, not a restyle.
+     *
+     * The mockup's Locked In home is five elements on a black ground with no
+     * hero band, no entry count, no reminders and no add button. Branching the
+     * whole composition here — rather than threading `isLockedIn` through eight
+     * shared components — is what keeps each style honest to its own design.
+     */
+    if (isLockedIn) {
+        return (
+            <Screen>
+                {isLoading ? (
+                    <View style={{ flex: 1, justifyContent: 'center' }}>
+                        <LoadingView size={48} />
+                    </View>
+                ) : (
+                    <LockedInHome
+                        greeting={getDailyTitle()}
+                        reading={nextReading}
+                        readingNumber={nextReading?.id}
+                        weekDays={weekDays}
+                        flashback={flashbackForLockedIn}
+                        onBeginReflection={handleBeginReflection}
+                        onSettings={() => router.push('/settings')}
+                        onWeekPress={() => router.push('/stats')}
+                        onFlashbackPress={
+                            flashbackEntry ? () => handleEntryPress(flashbackEntry.entry) : undefined
+                        }
+                    />
+                )}
+                <Confetti ref={confettiRef} />
+                {draftExists && <DraftBar />}
+                <HomeDetailModal />
+            </Screen>
+        );
+    }
+
     return (
         <Screen>
             <ScrollView
@@ -474,45 +596,8 @@ export default function Index() {
             {!draftExists && <FloatingActionButton />}
             {draftExists && <DraftBar />}
 
-            {/* Detail Modal */}
-            <AnimatedModal
-                visible={isDetailModalVisible}
-                onRequestClose={() => setIsDetailModalVisible(false)}
-            >
-                <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-                    {selectedEntry && (
-                        <>
-                            <JournalEntryDetail
-                                entry={selectedEntry}
-                                onEdit={(entry) => {
-                                    setIsDetailModalVisible(false);
-                                    router.push({
-                                        pathname: '/addEntry',
-                                        params: { entryId: entry.id!.toString() }
-                                    });
-                                }}
-                                onDelete={() => handleDelete(selectedEntry)}
-                                onClose={() => setIsDetailModalVisible(false)}
-                            />
-                            <CardFAB
-                                onShare={() => handleShare(selectedEntry)}
-                                onEdit={() => {
-                                    setIsDetailModalVisible(false);
-                                    router.push({
-                                        pathname: '/addEntry',
-                                        params: { entryId: selectedEntry.id!.toString() }
-                                    });
-                                }}
-                                onDelete={() => handleDelete(selectedEntry)}
-                                isSharing={isSharing}
-                                isDeleting={isDeleting}
-                                bottom={fabBottomPosition}
-                                rounded={true}
-                            />
-                        </>
-                    )}
-                </SafeAreaView>
-            </AnimatedModal>
+            <HomeDetailModal />
+
         </Screen>
     );
 }
@@ -521,7 +606,7 @@ const styles = StyleSheet.create({
     container: { flex: 1 },
     scrollView: { flex: 1 },
     scrollContent: {
-        paddingBottom: 185,
+        paddingBottom: Spacing.xxl,
     },
     header: {
         marginBottom: Spacing.xs,

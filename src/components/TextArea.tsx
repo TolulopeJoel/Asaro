@@ -12,13 +12,12 @@ import {
 } from 'react-native';
 import { Maximize, X } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { BibleReferencePicker } from './BibleReferencePicker';
 import { getBibleStyledParts } from '../utils/bibleUtils';
 import { useBibleRefPicker } from '../hooks/useBibleRefPicker';
 import { ScalePressable } from './ScalePressable';
 import { Spacing } from '../theme/spacing';
-import { textStyle } from './ui';
+import { Screen, textStyle } from './ui';
 
 const TextArea: React.FC<{
     label: string;
@@ -36,7 +35,7 @@ const TextArea: React.FC<{
     disabled = false,
     isAnswered = false,
 }) => {
-        const { colors, isDark, style: themeStyle } = useTheme();
+        const { colors, style: themeStyle } = useTheme();
         const [isExpanded, setIsExpanded] = useState(false);
         const [tempValue, setTempValue] = useState('');
         const [contentHeight, setContentHeight] = useState(0);
@@ -149,8 +148,8 @@ const TextArea: React.FC<{
                     presentationStyle="fullScreen"
                     statusBarTranslucent={true}
                 >
-                    <StatusBar backgroundColor={colors.background} barStyle={isDark ? "light-content" : "dark-content"} />
-                    <SafeAreaView style={[fullScreenStyles.container, { backgroundColor: colors.background }]}>
+                    <StatusBar hidden={true} />
+                    <Screen edges={['top', 'bottom', 'left', 'right']} style={fullScreenStyles.container}>
                         <KeyboardAvoidingView
                             style={fullScreenStyles.keyboardView}
                             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -224,7 +223,7 @@ const TextArea: React.FC<{
 
                             <BibleReferencePicker {...modalPicker.pickerProps} />
                         </KeyboardAvoidingView>
-                    </SafeAreaView>
+                    </Screen>
                 </Modal>
             </>
         );

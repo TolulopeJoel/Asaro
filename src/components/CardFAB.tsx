@@ -27,7 +27,7 @@ export const CardFAB: React.FC<CardFABProps> = ({
     bottom,
     rounded = false,
 }) => {
-    const { colors } = useTheme();
+    const { colors, shape } = useTheme();
     const insets = useSafeAreaInsets();
 
     // Default bottom position if not provided:
@@ -42,9 +42,7 @@ export const CardFAB: React.FC<CardFABProps> = ({
                 backgroundColor: colors.cardBackground,
                 borderColor: colors.border,
                 bottom: finalBottom,
-                borderRadius: rounded ? Spacing.borderRadius.lg : Spacing.borderRadius.lg,
-                borderBottomEndRadius: rounded ? Spacing.borderRadius.lg : 4,
-                borderBottomStartRadius: rounded ? Spacing.borderRadius.lg : 4,
+                borderRadius: shape.card,
             }
         ]}>
             <ScalePressable
@@ -94,8 +92,6 @@ const styles = StyleSheet.create({
         marginBottom: 4,
         marginHorizontal: 1.5,
         borderRadius: Spacing.borderRadius.lg,
-        borderBottomEndRadius: 4,
-        borderBottomStartRadius: 4,
         flexDirection: 'row',
         alignItems: 'center',
         paddingVertical: Spacing.md,

@@ -11,7 +11,6 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import { useAlert } from '@/src/context/AlertContext';
 import { Spacing } from '@/src/theme/spacing';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Key } from 'lucide-react-native';
 import { Button } from '@/src/components/Button';
 import { Text } from '@/src/components/ui';

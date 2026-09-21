@@ -10,24 +10,42 @@
  */
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, View, ViewProps, ViewStyle } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useScreenInsets } from '../../hooks/useScreenInsets';
 import { useTheme } from '../../theme/ThemeContext';
 import { Motif, Spacing } from '../../theme/spacing';
 import { ClothGround, ClothStrip } from './Cloth';
 import { Text } from './Text';
 
-/** Full-bleed screen background. Always use this rather than a bare View. */
+/**
+ * Full-bleed screen background. Always use this rather than a bare View.
+ *
+ * The insets are applied here by hand rather than by SafeAreaView, so the top
+ * edge can carry the floor that useScreenInsets puts under it — see that hook
+ * for why a hidden status bar still needs room kept for it. They are applied
+ * after `style` so a caller can never accidentally pad the header back under
+ * the bar.
+ */
 export function Screen({ children, style, edges = ['top'] }: {
     children: React.ReactNode;
     style?: ViewStyle;
     edges?: ('top' | 'bottom' | 'left' | 'right')[];
 }) {
     const { colors } = useTheme();
+    const insets = useScreenInsets();
+
+    // Only the requested edges go in: an undefined entry here would still
+    // flatten over whatever `style` set for that side.
+    const safeArea: ViewStyle = {};
+    if (edges.includes('top')) safeArea.paddingTop = insets.top;
+    if (edges.includes('bottom')) safeArea.paddingBottom = insets.bottom;
+    if (edges.includes('left')) safeArea.paddingLeft = insets.left;
+    if (edges.includes('right')) safeArea.paddingRight = insets.right;
+
     return (
-        <SafeAreaView style={[styles.flex, { backgroundColor: colors.background }, style]} edges={edges}>
+        <View style={[styles.flex, { backgroundColor: colors.background }, style, safeArea]}>
             {children}
-        </SafeAreaView>
+        </View>
     );
 }
 
@@ -149,7 +167,7 @@ export function Segments({ items, value, onChange, scrollable = false }: Segment
                     isCloth && active && { borderBottomColor: colors.accent },
                 ]}
             >
-                <Text variant="label" tone={active ? 'primary' : 'tertiary'}>
+                <Text variant="meta" tone={active ? 'primary' : 'tertiary'}>
                     {item.label}
                 </Text>
             </Pressable>

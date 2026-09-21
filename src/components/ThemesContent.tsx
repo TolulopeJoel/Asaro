@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, FlatList, StyleSheet, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Sparkles, Check, X } from 'lucide-react-native';
 
 import { useTheme } from '../theme/ThemeContext';
@@ -28,7 +27,7 @@ import { AnimatedModal } from './AnimatedModal';
 import { ThemeDetail } from './ThemeDetail';
 import { JournalEntryDetail } from './JournalEntryDetail';
 import { getEntryById, JournalEntry } from '../data/database';
-import { Text as UIText, textStyle } from './ui';
+import { Screen, Text as UIText, textStyle } from './ui';
 
 const FIELD_LABELS: Record<string, string> = {
     ...Object.fromEntries(EMBEDDABLE_FIELDS.map(f => [f.column, f.label])),
@@ -377,7 +376,7 @@ export function ThemesContent() {
 
         <AnimatedModal visible={openEntry !== null} onRequestClose={() => setOpenEntry(null)}>
             {openEntry && (
-                <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+                <Screen edges={['top', 'bottom', 'left', 'right']}>
                     <JournalEntryDetail
                         entry={openEntry}
                         onClose={() => setOpenEntry(null)}
@@ -390,7 +389,7 @@ export function ThemesContent() {
                             });
                         }}
                     />
-                </SafeAreaView>
+                </Screen>
             )}
         </AnimatedModal>
         </>

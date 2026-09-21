@@ -60,37 +60,139 @@ export const Typography = {
     fontFamily: FontFamily,
 
     size: {
+        /**
+         * Every step is a size the mockup actually uses (design/all-screens.html).
+         * The `Half`/`Plus` names are the half-steps that file leans on — Cloth
+         * sets meta at 10.5 and supporting copy at 13.5, and rounding those to
+         * the nearest whole step is what made the built screens read heavier
+         * than the approved cloth. Nothing here is invented: if a size is not
+         * in the mockup, it is not in this scale.
+         */
         xs: 10,
+        /** Cloth's eyebrow and timestamp. */
+        xsHalf: 10.5,
+        /** Segment, tab and stat labels; Cloth's row counts. */
+        xsPlus: 11,
         sm: 12,
+        /** Colossal's row snippet. */
+        smHalf: 12.5,
+        /** Cloth's row snippet and button. */
+        smPlus: 13,
+        /** Supporting line under a heading, both styles. */
+        mdHalf: 13.5,
         md: 14,
+        /** Grid cells, pills, book rows, avatar initials. */
+        mdPlus: 15,
         lg: 16,
+        /** Cloth's verse reference. */
+        lgHalf: 17,
+        /** Shared heading floor: Colossal's small head. */
+        lgPlus: 18,
+        /** Cloth's small head. */
+        xlMinus: 19,
         xl: 20,
-        xxl: 26,
+        /** Cloth's card heading. */
+        xlPlus: 24,
+        /** Colossal's mid heading — deliberately larger than Cloth's. */
+        xl2: 26,
+        /** Cloth's hero title. */
+        xxl: 29,
+        /** Cloth's in-body headline, the one step above the hero band. */
+        xxlPlus: 31,
+        /** The stat numeral. */
         xxxl: 34,
-        display: 46,
-        colossal: 96,
+        /** Colossal's large heading. */
+        display: 40,
+        /** The colossal slot, smaller variant — a question number. */
+        colossalSm: 92,
+        /** The colossal slot — one per screen, at most. */
+        colossal: 116,
+        /**
+         * Home's giant is set in two parts — the book name over the chapter
+         * range — so it carries its own pair of steps rather than `colossal`.
+         * The mockup sets these inline on the Home screen, which is the design
+         * saying they belong to that one composition.
+         */
+        giantBook: 74,
+        giantRef: 108,
     },
 
     lineHeight: {
+        /** Each one is its size times the mockup's multiplier, rounded to 1px. */
         xs: 14,
+        xsHalf: 14,
+        xsPlus: 15,
         sm: 16,
+        smHalf: 18,
+        smPlus: 19,
+        mdHalf: 20,
         md: 20,
+        mdPlus: 20,
         lg: 24,
+        lgHalf: 20,
+        /** .co-h.sm is set at 1.02 — a heading line, not a reading line. */
+        lgPlus: 18,
+        xlMinus: 21,
         xl: 26,
+        xlPlus: 27,
+        xl2: 31,
         xxl: 30,
-        xxxl: 38,
-        display: 48,
-        colossal: 84,
+        xxlPlus: 34,
+        xxxl: 32,
+        display: 41,
+        colossalSm: 72,
+        colossal: 90,
+        /** 0.82 and 0.80 of their sizes — the mockup's own multipliers. */
+        giantBook: 61,
+        giantRef: 86,
+        /** Home's greeting: 15px set at 1.4. */
+        mdPlusLead: 21,
     },
 
     letterSpacing: {
         colossal: -0.07,
         tighter: -0.9,
-        tight: -0.4,
+        tight: -0.7,
         normal: 0,
         wide: 1.2,
         wider: 2.1,
         widest: 2.6,
+    },
+
+    /**
+     * Tracking, in em, exactly as the mockup declares it.
+     *
+     * The mockup sets letter-spacing in em, so it scales with the size; React
+     * Native's `letterSpacing` is absolute px. Keeping the em value here and
+     * multiplying by the role's size at render (see `track()` in ui/Text) is
+     * what makes the built type provably the approved type, rather than a set
+     * of px numbers someone once eyeballed and can no longer justify.
+     *
+     * Each key is a role; the two numbers are [cloth, colossal].
+     */
+    tracking: {
+        hero: [-0.035, -0.07],
+        display: [-0.025, -0.04],
+        headline: [-0.025, -0.04],
+        title: [-0.025, -0.028],
+        subtitle: [-0.025, -0.02],
+        reference: [-0.015, -0.01],
+        /** The grid cells and pills carry no tracking; only the book rows do,
+         *  and at 15px their -.01em is a sixth of a pixel. */
+        cell: [0, 0],
+        label: [0.19, 0.2],
+        meta: [0.1, 0.13],
+        caption: [0.1, 0.13],
+        tab: [0.12, 0.15],
+        button: [0.07, 0.14],
+        /** Home's two-part giant. */
+        giant: [0, -0.06],
+        /** The series line under Home's giant. */
+        series: [0, 0.16],
+        body: [0, 0],
+        bodySmall: [0, 0],
+        sub: [0, 0],
+        quote: [0, 0],
     },
 
     weight: {
@@ -104,13 +206,19 @@ export const Typography = {
 
 /** Semantic roles. Components ask for a role, never a size. */
 export type TextVariant =
-    | 'hero'        // the one colossal element, Colossal only
+    | 'meta'        // uppercase timestamps and "when" columns
+    | 'hero'        // the one colossal element — Colossal's giant, Cloth's stat numeral
     | 'display'     // screen title in the hero band
+    | 'headline'    // the in-body big head, one step above the hero title
     | 'title'       // section / card heading
     | 'subtitle'    // supporting heading
-    | 'body'        // running text
-    | 'bodySmall'
+    | 'reference'   // a verse reference at the head of a row
+    | 'body'        // running text and inputs
+    | 'bodySmall'   // row snippets
+    | 'sub'         // the supporting line under a heading
     | 'label'       // uppercase eyebrow, letterspaced
-    | 'caption'     // meta, timestamps, references
+    | 'caption'     // small meta: counts, references, secondary numbers
+    | 'tab'         // segmented controls and the tab bar
+    | 'cell'        // grid cells, pills, book rows, avatar initials
     | 'quote'       // flashback and scripture, italic in Cloth
     | 'button';

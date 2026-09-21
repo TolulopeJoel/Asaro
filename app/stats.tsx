@@ -149,7 +149,7 @@ export default function StatsScreen() {
         <Screen>
             <Hero>
                 <UIText variant="display" tone="inverse">{headerTitle}</UIText>
-                <UIText variant="bodySmall" style={styles.heroSub}>{currentMonthName} {new Date().getFullYear()}</UIText>
+                <UIText variant="body" tone="onHero" style={styles.heroSub}>{currentMonthName} {new Date().getFullYear()}</UIText>
             </Hero>
 
             {state.isLoading ? (
@@ -189,7 +189,6 @@ const styles = StyleSheet.create({
     monthLabel: {},
     heroSub: {
         marginTop: Spacing.xs,
-        color: '#a9b6c9',
     },
     monthTitleLarge: { marginBottom: Spacing.xl },
     statsRow: {

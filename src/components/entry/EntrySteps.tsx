@@ -25,7 +25,7 @@ export const BookStep = React.memo(({ selectedBook, onBookSelect }: BookStepProp
             <ScrollView key="step-book" style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.stepContent}>
                     <View style={styles.header}>
-                        <Text variant="label" tone="tertiary">PASSAGE</Text>
+                        <Text variant="label">Passage</Text>
                         <Text variant="display">What book?</Text>
                     </View>
                     <View style={styles.contentArea}>
@@ -62,7 +62,7 @@ export const ChapterStep = React.memo(({
             <ScrollView key="step-chapter" style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.stepContent}>
                     <View style={styles.header}>
-                        <Text variant="label" tone="tertiary">PASSAGE</Text>
+                        <Text variant="label">Passage</Text>
                         <Text variant="display">What part?</Text>
                     </View>
                     <View style={styles.contentArea}>
@@ -79,7 +79,7 @@ export const ChapterStep = React.memo(({
                             style={[styles.backButton, { borderColor: colors.border }]}
                             onPress={onBack}
                         >
-                            <Text variant="body" tone="secondary" style={styles.backButtonText}>Change book</Text>
+                            <Text variant="button" tone="secondary" style={styles.backButtonText}>Change book</Text>
                         </ScalePressable>
 
                         <ScalePressable
@@ -129,7 +129,7 @@ export const ReflectionStep = React.memo(({
             <ScrollView key="step-reflection" style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 <View style={styles.stepContent}>
                     <View style={styles.header}>
-                        <Text variant="label" tone="tertiary">REFLECTING ON</Text>
+                        <Text variant="label">Reflecting on</Text>
                         <Text variant="display" numberOfLines={2}>{selectionSummary}</Text>
                     </View>
                     {!isEditMode && (
@@ -222,7 +222,7 @@ export const SummaryStep = React.memo(({
                     <View style={[styles.entryCard, { backgroundColor: colors.cardBackground, borderColor: colors.border + '50' }]}>
                         <View style={[styles.entryCardRule, { backgroundColor: colors.accent + '40' }]} />
                         <View style={styles.entryCardBody}>
-                            <Text variant="label" tone="tertiary">READ</Text>
+                            <Text variant="label">Read</Text>
                             <Text variant="display" style={styles.entryCardPassage}>{selectionSummary}</Text>
                             <View style={[styles.entryCardSeparator, { backgroundColor: colors.border + '60' }]} />
                             <Text variant="bodySmall" tone="secondary" style={styles.entryCardDate}>{formattedDate}</Text>
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.xl,
         gap: 4,
     },
-    stepDescription: { textAlign: 'center', marginBottom: Spacing.md },
+    stepDescription: { marginBottom: Spacing.md },
     contentArea: {
         flex: 1,
         minHeight: 200,
@@ -287,21 +287,16 @@ const styles = StyleSheet.create({
         paddingVertical: Spacing.layout.cardPadding,
         paddingHorizontal: Spacing.layout.screenPadding,
         backgroundColor: 'transparent',
-        borderWidth: 1,
-        borderRadius: Spacing.borderRadius.lg,
+        borderWidth: Spacing.border.hairline,
     },
     backButtonText: { textAlign: 'center' },
     continueButton: {
         flex: 1,
         paddingVertical: Spacing.layout.cardPadding,
         paddingHorizontal: Spacing.layout.screenPadding,
-        borderRadius: Spacing.borderRadius.lg,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
+        ...Spacing.elevation.none,
     },
     continueButtonDisabled: {
-        shadowOpacity: 0,
         display: 'none',
     },
     continueButtonText: { textAlign: 'center' },
@@ -376,7 +371,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: Spacing.sm,
     },
-    entryCardPassage: { textAlign: 'center' },
+    entryCardPassage: {},
     entryCardSeparator: {
         width: 32,
         height: 1,

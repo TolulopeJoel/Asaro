@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { JournalEntryDetail } from '@/src/components/JournalEntryDetail';
 import { JournalEntry, getEntryById, deleteJournalEntry } from '@/src/data/database';
@@ -10,6 +10,7 @@ import { Spacing } from '@/src/theme/spacing';
 import { Share } from 'react-native';
 import { useAlert } from '@/src/context/AlertContext';
 import { CardFAB } from '@/src/components/CardFAB';
+import { Screen } from '@/src/components/ui';
 
 export default function JournalEntryDetailScreen() {
     const { id } = useLocalSearchParams();
@@ -113,7 +114,7 @@ export default function JournalEntryDetailScreen() {
     }
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+        <Screen style={styles.container}>
             <Stack.Screen options={{ headerShown: false }} />
             <JournalEntryDetail
                 entry={entry}
@@ -130,7 +131,7 @@ export default function JournalEntryDetailScreen() {
                 isDeleting={isDeleting}
                 bottom={bottomPosition}
             />
-        </SafeAreaView>
+        </Screen>
     );
 }
 

@@ -19,7 +19,6 @@ import { Stack, useRouter } from 'expo-router';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DeviceEventEmitter, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/src/components/Button';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import {
@@ -137,10 +136,18 @@ const SettingsItem = ({
     </ScalePressable>
 );
 
-const SettingsGroup = ({ title, children, colors }: { title: string; children: React.ReactNode; colors: any }) => (
+/**
+ * A settings section.
+ *
+ * The design sets these as an eyebrow over hairline-separated rows on the page
+ * ground (`.cl-label` + `.cl-row`), not as a bordered card — Settings is the
+ * one screen in the mockup with no panel on it at all. `colors` is still taken
+ * so callers need not change; the section itself no longer paints anything.
+ */
+const SettingsGroup = ({ title, children }: { title: string; children: React.ReactNode; colors?: any }) => (
     <View style={styles.group}>
-        <UIText variant="caption" tone="secondary" style={styles.groupTitle}>{title}</UIText>
-        <View style={[styles.groupContent, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
+        <UIText variant="label" style={styles.groupTitle}>{title}</UIText>
+        <View style={styles.groupContent}>
             {children}
         </View>
     </View>
@@ -507,7 +514,7 @@ export default function Settings() {
                     </SettingsGroup>
                 )}
 
-                {/* Appearance */}
+                {/* Light / dark / follow the system */}
                 <SettingsGroup title="Appearance" colors={colors}>
                     <View style={styles.themeSelector}>
                         {(['light', 'dark', 'system'] as const).map((mode) => (
@@ -532,8 +539,8 @@ export default function Settings() {
                     </View>
                 </SettingsGroup>
 
-                {/* Appearance */}
-                <SettingsGroup title="Appearance" colors={colors}>
+                {/* Cloth or Locked In */}
+                <SettingsGroup title="Style" colors={colors}>
                     <View style={styles.styleChoices}>
                         {THEME_STYLES.map(option => {
                             const active = themeStyle === option.key;
@@ -765,8 +772,6 @@ const styles = StyleSheet.create({
     },
     groupTitle: { marginBottom: Spacing.md, paddingHorizontal: 4 },
     groupContent: {
-        borderRadius: Spacing.borderRadius.lg,
-        borderWidth: 1,
         overflow: 'hidden',
     },
     itemContainer: {

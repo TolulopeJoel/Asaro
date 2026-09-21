@@ -37,6 +37,11 @@ export interface ThemeColors {
     textTertiary: string;
     textMuted: string;
     textInverse: string;
+    /**
+     * Secondary text *on the hero band*, which has its own ground and so needs
+     * its own role — textSecondary is mixed for the page, not for indigo.
+     */
+    textOnHero: string;
 
     // Lines
     border: string;
@@ -139,6 +144,7 @@ export const cloth: ThemeColors = {
     textTertiary: '#6b7787',
     textMuted: '#8b8371',
     textInverse: '#efe6d8',
+    textOnHero: '#a9b6c9',
 
     border: '#d8cab2',
     borderSubtle: '#e3d6c1',
@@ -221,6 +227,7 @@ export const colossal: ThemeColors = {
     textTertiary: '#5c5c5c',
     textMuted: '#3d3d3d',
     textInverse: '#000000',
+    textOnHero: '#8a8a8a',
 
     border: '#1e1e1e',
     borderSubtle: '#141414',

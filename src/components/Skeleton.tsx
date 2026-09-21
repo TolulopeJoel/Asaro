@@ -1,3 +1,4 @@
+import { Spacing } from '../theme/spacing';
 import React, { useEffect } from 'react';
 import { StyleSheet, View, ViewStyle, DimensionValue } from 'react-native';
 import Animated, {
@@ -23,7 +24,7 @@ const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
 export const Skeleton: React.FC<SkeletonProps> = ({
     width = '100%',
     height = 20,
-    borderRadius = 8,
+    borderRadius = Spacing.borderRadius.none,
     style,
     circle = false,
 }) => {
