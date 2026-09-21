@@ -16,6 +16,7 @@ import { useAlert } from '@/src/context/AlertContext';
 import { useAuth } from '@/src/context/AuthContext';
 import { useAutoSave, useStepFade, Step, DraftData, ChapterRange, VerseRange } from '../src/hooks/useEntryHooks';
 import { BookStep, ChapterStep, ReflectionStep, SummaryStep } from '../src/components/entry/EntrySteps';
+import { Screen } from '@/src/components/ui';
 
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -393,14 +394,14 @@ export default function MeditationSessionScreen() {
     }
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+        <Screen>
             <Stack.Screen options={{ headerShown: false }} />
             <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
                 <Animated.View style={[{ flex: 1 }, { opacity }]}>
                     {renderCurrentStep()}
                 </Animated.View>
             </KeyboardAvoidingView>
-        </SafeAreaView>
+        </Screen>
     );
 }
 

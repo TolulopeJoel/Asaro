@@ -54,6 +54,7 @@ import { Button } from '@/src/components/Button';
 import { HyperlinkedText } from '@/src/components/HyperlinkedText';
 import { Avatar } from '@/src/components/Avatar';
 import { Text } from '@/src/components/ui';
+import { Hero, Screen } from '@/src/components/ui';
 
 
 
@@ -1061,7 +1062,38 @@ export default function GroupDetailScreen() {
     const { pinnedMilestone, feedItems } = buildProcessedFeed(activities, today);
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <Screen>
+            <Hero>
+                <View style={styles.heroRow}>
+                    {isLoading ? (
+                        <Skeleton circle height={44} width={44} />
+                    ) : (
+                        <Avatar id={groupId} name={groupData?.name} url={groupData?.photoURL} size={44} />
+                    )}
+                    <View style={styles.heroTitle}>
+                        <Text variant="display" tone="inverse" numberOfLines={2}>
+                            {groupData?.name || 'Loading…'}
+                        </Text>
+                    </View>
+                    <ScalePressable
+                        onPress={() => router.push('/(tabs)/groups/about' as any)}
+                        accessibilityRole="button"
+                        accessibilityLabel="How groups work"
+                    >
+                        <Info size={22} color={colors.textInverse} />
+                    </ScalePressable>
+                    {isAdmin && (
+                        <ScalePressable
+                            onPress={() => setIsEditModalVisible(true)}
+                            accessibilityRole="button"
+                            accessibilityLabel="Group settings"
+                        >
+                            <MoreHorizontal size={22} color={colors.textInverse} />
+                        </ScalePressable>
+                    )}
+                </View>
+            </Hero>
+
             {isOffline && (
                 <View style={[styles.offlineBanner, { backgroundColor: colors.border }]}>
                     <CloudOff size={14} color={colors.textSecondary} />
@@ -1076,33 +1108,6 @@ export default function GroupDetailScreen() {
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
-                <View style={[styles.header, { paddingBottom: Spacing.sm }]}>
-                    <View style={styles.headerLeft}>
-                        {isLoading ? (
-                            <Skeleton circle height={40} width={40} borderRadius={12} />
-                        ) : (
-                            <Avatar id={groupId} name={groupData?.name} url={groupData?.photoURL} size={40} radius={12} />
-                        )}
-                        <View style={styles.titleContainer}>
-                            {isLoading ? (
-                                <Skeleton width={120} height={24} borderRadius={4} style={{ marginLeft: Spacing.sm }} />
-                            ) : (
-                                <Text variant="display">{groupData?.name || 'Loading...'}</Text>
-                            )}
-                        </View>
-                    </View>
-                    <View style={styles.headerRight}>
-                        <ScalePressable onPress={() => router.push('/(tabs)/groups/about' as any)} style={styles.infoButton}>
-                            <Info size={24} color={colors.textSecondary} />
-                        </ScalePressable>
-                        {isAdmin && (
-                            <ScalePressable onPress={() => setIsEditModalVisible(true)} style={styles.editButton}>
-                                <MoreHorizontal size={24} color={colors.textSecondary} />
-                            </ScalePressable>
-                        )}
-                    </View>
-                </View>
-
                 {/* ── Members who read today ── */}
                 <View style={styles.sectionHeader}>
                     <View style={styles.sectionTitleRow}>
@@ -1603,13 +1608,15 @@ export default function GroupDetailScreen() {
                     activities={activities}
                 />
             )}
-        </SafeAreaView>
+        </Screen>
     );
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const getStyles = (colors: any) => StyleSheet.create({
+    heroRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+    heroTitle: { flex: 1, minWidth: 0 },
     container: { flex: 1 },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.lg, paddingHorizontal: 4 },
     headerLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },

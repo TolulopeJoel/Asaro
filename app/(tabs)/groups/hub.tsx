@@ -18,6 +18,7 @@ import { Button } from '@/src/components/Button';
 import { Skeleton } from '@/src/components/Skeleton';
 import { Avatar } from '@/src/components/Avatar';
 import { Text } from '@/src/components/ui';
+import { Hero, Screen } from '@/src/components/ui';
 
 export default function GroupsScreen() {
     const { user, loading, displayName } = useAuth();
@@ -92,7 +93,11 @@ export default function GroupsScreen() {
 
     if (!user) {
         return (
-            <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+            <Screen>
+                <Hero>
+                    <Text variant="display" tone="inverse">Better{'\n'}Together</Text>
+                    <Text variant="bodySmall" style={styles.heroSub}>Consistency is key. Read together!</Text>
+                </Hero>
                 <ScrollView
                     ref={scrollViewRef}
                     contentContainerStyle={styles.authScroll}
@@ -120,14 +125,27 @@ export default function GroupsScreen() {
                         </View>
                     </View>
                 </ScrollView>
-            </SafeAreaView>
+            </Screen>
         );
     }
 
     const isLoading = loading || checkingGroups;
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+        <Screen>
+            <Hero>
+                <View style={styles.headerTitleRow}>
+                    <Text variant="display" tone="inverse">My Groups</Text>
+                    <ScalePressable
+                        onPress={() => router.push('/(tabs)/groups/join' as any)}
+                        accessibilityRole="button"
+                        accessibilityLabel="Join a group"
+                    >
+                        <Plus size={26} color={colors.textInverse} />
+                    </ScalePressable>
+                </View>
+            </Hero>
+
             {(isOffline || isLoading) && (
                 <View style={[styles.offlineBanner, { backgroundColor: colors.border }]}>
                     {isOffline ? (
@@ -145,15 +163,6 @@ export default function GroupsScreen() {
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
-                <View style={styles.header}>
-                    <View style={styles.headerTitleRow}>
-                        <Text variant="display">My Groups</Text>
-                        <ScalePressable onPress={() => router.push('/(tabs)/groups/join' as any)}>
-                            <Plus size={28} color={colors.textSecondary} />
-                        </ScalePressable>
-                    </View>
-                </View>
-
                 {isLoading ? (
                     // ── Skeleton Loader ──
                     [1, 2, 3].map((i) => (
@@ -256,11 +265,12 @@ export default function GroupsScreen() {
                     </>
                 )}
             </ScrollView>
-        </SafeAreaView>
+        </Screen>
     );
 }
 
 const styles = StyleSheet.create({
+    heroSub: { marginTop: Spacing.sm, color: '#a9b6c9' },
     container: {
         flex: 1,
     },

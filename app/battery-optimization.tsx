@@ -16,6 +16,7 @@ import { BatteryCharging, BatteryWarning, ArrowRight } from 'lucide-react-native
 import { ScalePressable } from '@/src/components/ScalePressable';
 import * as IntentLauncher from 'expo-intent-launcher';
 import { Text } from '@/src/components/ui';
+import { Hero, Screen } from '@/src/components/ui';
 
 export default function BatteryOptimizationScreen() {
     const router = useRouter();
@@ -76,7 +77,12 @@ export default function BatteryOptimizationScreen() {
     };
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <Screen>
+            <Hero>
+                <Text variant="label" style={styles.heroStep}>Almost there</Text>
+                <Text variant="display" tone="inverse" style={styles.heroTitle}>One last thing</Text>
+            </Hero>
+
 
             <View style={styles.content}>
                 <View style={styles.header}>
@@ -114,11 +120,13 @@ export default function BatteryOptimizationScreen() {
                     </ScalePressable>
                 </View>
             </View>
-        </SafeAreaView>
+        </Screen>
     );
 }
 
 const styles = StyleSheet.create({
+    heroStep: { color: '#a9b6c9', marginBottom: Spacing.sm },
+    heroTitle: {},
     container: {
         flex: 1,
         overflow: 'hidden',

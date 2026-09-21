@@ -41,8 +41,7 @@ export function Screen({ children, style, edges = ['top'] }: {
 export function Hero({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {
     const { colors, style: themeStyle } = useTheme();
 
-    // Neither Colossal nor Classic wears a band: Colossal marks a screen by
-    // scale, Classic simply put its title on the page.
+    // Colossal wears no band: it marks a screen by scale, not by a colour area.
     if (themeStyle !== 'cloth') {
         return <View style={[styles.heroPlain, style]}>{children}</View>;
     }
@@ -128,38 +127,15 @@ export interface SegmentsProps {
 /**
  * The tab strip.
  *
- * Underline in Cloth, plain weighted text in Colossal, tinted pills in
- * Classic — which is how the original Library row looked.
+ * Underline in Cloth, plain weighted text in Colossal.
  */
 export function Segments({ items, value, onChange, scrollable = false }: SegmentsProps) {
     const { colors, shape, style: themeStyle } = useTheme();
     const isCloth = themeStyle === 'cloth';
-    const isClassic = themeStyle === 'classic';
 
     const buttons = items.map((item) => {
         const active = item.key === value;
 
-        if (isClassic) {
-            return (
-                <Pressable
-                    key={item.key}
-                    onPress={() => onChange(item.key)}
-                    accessibilityRole="tab"
-                    accessibilityState={{ selected: active }}
-                    style={[
-                        styles.segClassic,
-                        {
-                            borderRadius: shape.button,
-                            backgroundColor: active ? colors.accent + '15' : colors.backgroundSubtle,
-                        },
-                    ]}
-                >
-                    <Text variant="label" tone={active ? 'accent' : 'secondary'}>
-                        {item.label}
-                    </Text>
-                </Pressable>
-            );
-        }
 
         return (
             <Pressable
@@ -180,12 +156,12 @@ export function Segments({ items, value, onChange, scrollable = false }: Segment
         );
     });
 
-    const inlineStyle = isCloth ? styles.segsCloth : isClassic ? styles.segsClassic : styles.segsColossal;
-    const scrollStyle = isCloth ? styles.segsScrollCloth : isClassic ? styles.segsClassic : styles.segsColossal;
+    const inlineStyle = isCloth ? styles.segsCloth : styles.segsColossal;
+    const scrollStyle = isCloth ? styles.segsScrollCloth : styles.segsColossal;
 
     if (scrollable) {
         return (
-            <View style={isClassic ? undefined : { borderBottomWidth: Spacing.border.hairline, borderBottomColor: colors.border }}>
+            <View style={{ borderBottomWidth: Spacing.border.hairline, borderBottomColor: colors.border }}>
                 <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
@@ -197,7 +173,7 @@ export function Segments({ items, value, onChange, scrollable = false }: Segment
         );
     }
 
-    return <View style={[inlineStyle, !isClassic && { borderBottomColor: colors.border }]}>{buttons}</View>;
+    return <View style={[inlineStyle, { borderBottomColor: colors.border }]}>{buttons}</View>;
 }
 
 const styles = StyleSheet.create({
@@ -251,20 +227,6 @@ const styles = StyleSheet.create({
         borderBottomWidth: Spacing.border.hairline,
     },
     segColossal: { paddingVertical: Spacing.xs },
-    segsClassic: {
-        flexDirection: 'row',
-        gap: Spacing.sm,
-        paddingHorizontal: Spacing.layout.screenPadding,
-        paddingTop: Spacing.md,
-        paddingBottom: Spacing.sm,
-    },
-    segClassic: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.xs + 2,
-        paddingHorizontal: Spacing.md + 2,
-        paddingVertical: Spacing.sm + 1,
-    },
     segScrollable: { flex: 0, paddingHorizontal: Spacing.lg },
     segsScrollCloth: {
         flexDirection: 'row',

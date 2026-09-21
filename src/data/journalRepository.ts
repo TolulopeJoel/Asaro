@@ -418,6 +418,31 @@ export const getFirstEntryDate = async (): Promise<Date | null> => {
     });
 };
 
+/**
+ * Whole days since the last entry, or null if there has never been one.
+ *
+ * Exists so the app can keep the promise its notifications make — "if I don't
+ * see you, I'll check up on you." Home used to look identical whether you had
+ * been away a day or a month.
+ */
+export const getDaysSinceLastEntry = async (): Promise<number | null> => {
+    return await withDatabase(async (database) => {
+        const result = await database.getFirstAsync<{ created_at: string }>(`
+            SELECT MAX(created_at) as created_at FROM journal_entries
+        `);
+
+        if (!result?.created_at) return null;
+
+        // Compare calendar days, not elapsed hours: an entry written last night
+        // and one written this morning are "yesterday" and "today", not 0.4.
+        const last = new Date(result.created_at);
+        const startOfDay = (d: Date) =>
+            new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+        const diff = startOfDay(new Date()) - startOfDay(last);
+        return Math.max(0, Math.round(diff / 86400000));
+    });
+};
+
 export const getFlashbackEntry = async (excludeIds: number[] = []): Promise<{ entry: JournalEntry, type: 'year' | 'month' | 'random' } | null> => {
     return await withDatabase(async (database) => {
         // 1. Check for 1 year ago

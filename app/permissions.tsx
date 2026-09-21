@@ -15,6 +15,7 @@ import { Bell, ArrowRight } from 'lucide-react-native';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { useAlert } from '@/src/context/AlertContext';
 import { Text } from '@/src/components/ui';
+import { Hero, Screen } from '@/src/components/ui';
 
 export default function PermissionsScreen() {
     const router = useRouter();
@@ -65,7 +66,12 @@ export default function PermissionsScreen() {
     };
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <Screen>
+            <Hero>
+                <Text variant="label" style={styles.heroStep}>Step 3 of 3</Text>
+                <Text variant="display" tone="inverse" style={styles.heroTitle}>Stay Connected</Text>
+            </Hero>
+
 
             <View style={styles.content}>
                 <View style={styles.header}>
@@ -75,9 +81,6 @@ export default function PermissionsScreen() {
                 </View>
 
                 <View style={styles.textContainer}>
-                    <Text variant="display" style={styles.title}>
-                        Stay Connected
-                    </Text>
 
                     <Text variant="body" tone="secondary" style={styles.description}>
                         Àṣàrò helps you stay consistent with your Bible reading through{" "}
@@ -109,11 +112,13 @@ export default function PermissionsScreen() {
                     )}
                 </View>
             </View>
-        </SafeAreaView>
+        </Screen>
     );
 }
 
 const styles = StyleSheet.create({
+    heroStep: { color: '#a9b6c9', marginBottom: Spacing.sm },
+    heroTitle: {},
     container: {
         flex: 1,
         overflow: 'hidden',

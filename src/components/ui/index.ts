@@ -10,6 +10,9 @@ export type { TextProps } from './Text';
 
 export { ClothGround, ClothStrip, ClothMark } from './Cloth';
 
+export { Asaro } from './Asaro';
+export type { AsaroProps, AsaroHandle, AsaroAction, AsaroLook } from './Asaro';
+
 export { Screen, Hero, Card, Row, Segments } from './Surfaces';
 export type { SegmentsProps, SegmentItem } from './Surfaces';
 

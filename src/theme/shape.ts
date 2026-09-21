@@ -1,13 +1,9 @@
 /**
  * Shape, per style.
  *
- * Colour and type were already themed; shape was not, because the first two
- * styles are both flat and square and a shared constant was enough. Restoring
- * Classic changed that — its whole character is rounded cards with soft
- * borders and a little lift, which no palette swap can express.
- *
- * So radius, border weight and elevation move here, and a screen asks the
- * theme for them the same way it asks for a colour.
+ * Both styles are flat and square today, so these values agree — but shape
+ * stays a theme token rather than a constant, because it is the axis a future
+ * style is most likely to move, and a palette swap cannot express it.
  */
 import { Spacing } from './spacing';
 
@@ -52,22 +48,4 @@ export const colossalShape: ThemeShape = {
     cardBorder: false,
     elevation: Spacing.elevation.none,
     stackGap: Spacing.lg,
-};
-
-/**
- * Classic — the original app.
- *
- * Rounded, bordered, lightly lifted. These are the radii the app actually
- * shipped with (12 for cards, 16 for larger panels, 8 for chips) rather than
- * the full set of 23, which were drift rather than intent.
- */
-export const classicShape: ThemeShape = {
-    card: 12,
-    button: 12,
-    input: 12,
-    chip: 8,
-    hairline: Spacing.border.hairline,
-    cardBorder: true,
-    elevation: Spacing.elevation.none,
-    stackGap: Spacing.layout.cardPadding,
 };

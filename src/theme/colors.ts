@@ -3,7 +3,6 @@
  *
  *   cloth     — the default. Àdìrẹ indigo on undyed cotton, ochre for "today".
  *   colossal  — Locked In. Black, white, one ochre, nothing else.
- *   classic   — the original app, kept as a choice rather than a memory.
  *
  * Every screen reads these names, never a literal. If a colour is needed that
  * isn't here, it belongs here first — that is the whole point of the file.
@@ -288,91 +287,9 @@ export const colossal: ThemeColors = {
     text: '#ffffff',
 };
 
-/**
- * Classic — the app as it was.
- *
- * Every value here is lifted verbatim from src/theme/colors.ts at 55ca48b, the
- * last commit before the restyle, so this is the original palette rather than
- * a reconstruction of it. Warm paper grounds, brown ink, the vibrant #e18f43.
- *
- * The keys the original predates — semantic states, the celebration ramp, the
- * avatar series, pattern ink — are filled in below in its own register, since
- * the token interface now requires them and the original answered those needs
- * with hardcoded iOS hues that were never really part of its palette.
- */
-export const classic: ThemeColors = {
-    background: '#f7f4ef',
-    backgroundElevated: '#fdfbf7',
-    backgroundSubtle: '#f2ede5',
-    textPrimary: '#3a3530',
-    textSecondary: '#7a6f63',
-    textTertiary: '#9d9388',
-    textMuted: '#b5aca0',
-    border: '#e8e2d8',
-    borderSubtle: '#f0ebe3',
-    borderStrong: '#d9cfc1',
-    borderActive: '#e18f43',
-    accent: '#e18f43',
-    accentDark: '#c97a35',
-    accentLight: '#eca866',
-    accentSecondary: '#d4a5a5',
-    accentSecondaryDark: '#c28f8f',
-    accentSecondaryLight: '#e0b8b8',
-    cardBackground: '#fdfbf7',
-    cardBorder: '#e8e2d8',
-    cardHover: '#f7f3eb',
-    searchBackground: '#f2ede5',
-    buttonPrimary: '#e18f43',
-    buttonPrimaryText: '#ffffff',
-    buttonSecondary: '#fdfbf7',
-    buttonSecondaryText: '#e18f43',
-    buttonSecondaryBorder: '#d9cfc1',
-    indicatorActive: '#e18f43',
-    indicatorInactive: '#e8e2d8',
-    badge: '#faf7f2',
-    badgeBorder: '#e8e2d8',
-    badgeText: '#e18f43',
-    draftBar: '#faf7f2',
-    draftBarBorder: '#e18f43',
-    draftIconBg: '#f2ede5',
-    tabBar: '#fdfbf7',
-    tabIndicator: '#e18f43',
-    tabLabel: '#7a6f63',
-    tabLabelActive: '#e18f43',
-    icon: '#e18f43',
-    iconSecondary: '#fdfbf7',
-    iconActive: '#c97a35',
-    primary: '#e18f43',
-    card: '#fdfbf7',
-    text: '#3a3530',
-
-    textInverse: '#ffffff',
-
-    // The original reached for iOS system colours here. These are the same
-    // meanings, mixed to sit on warm paper instead of on white.
-    success: '#3f7d4e',
-    successSurface: '#e6efe3',
-    warning: '#b4761f',
-    warningSurface: '#f7eddc',
-    danger: '#b2432f',
-    dangerSurface: '#f6e2dc',
-    info: '#3f6d9c',
-    infoSurface: '#e3ebf3',
-
-    // Where the original used a seven-hue iOS rainbow for a finished week.
-    celebration: ['#e18f43', '#e5a05c', '#d4a5a5', '#c28f8f', '#b98a6a', '#cf9350', '#e18f43'],
-    series: ['#e18f43', '#d4a5a5', '#7a6f63', '#c97a35', '#9d9388', '#c28f8f'],
-
-    // Classic wore no cloth either — it had no motif at all.
-    patternInk: 'transparent',
-    patternOpacity: 0,
-    markInk: '#e18f43',
-};
-
 export const Colors = {
     cloth,
     colossal,
-    classic,
 
     /**
      * Back-compat. `light`/`dark` both resolve to Cloth for now — Cloth's dark

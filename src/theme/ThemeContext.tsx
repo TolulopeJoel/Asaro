@@ -2,27 +2,24 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { DeviceEventEmitter, useColorScheme } from 'react-native';
 import { Colors, ThemeColors } from './colors';
-import { ThemeShape, classicShape, clothShape, colossalShape } from './shape';
+import { ThemeShape, clothShape, colossalShape } from './shape';
 import { STORAGE_KEYS } from '../storage/storageKeys';
 
 type ThemeMode = 'light' | 'dark' | 'system';
 
 /**
- * The three styles.
+ * The two styles.
  *
  *   cloth     — Àdìrẹ indigo on undyed cotton. The default.
  *   colossal  — Locked In. Black, white, one ochre.
- *   classic   — the original app: warm paper, brown ink, rounded cards.
  *
  * Locked In used to be a boolean read straight from AsyncStorage by four
- * separate screens. It is a style, so it lives here with the others — which is
- * also what made adding a third one cheap.
+ * separate screens. It is a style, so it lives here as one.
  */
-export type ThemeStyle = 'cloth' | 'colossal' | 'classic';
+export type ThemeStyle = 'cloth' | 'colossal';
 
 export const THEME_STYLES: { key: ThemeStyle; label: string; blurb: string }[] = [
     { key: 'cloth', label: 'Cloth', blurb: 'Àdìrẹ indigo on undyed cotton' },
-    { key: 'classic', label: 'Original', blurb: 'Warm paper, as the app began' },
     { key: 'colossal', label: 'Locked In', blurb: 'Stark black. One thing at a time' },
 ];
 
@@ -32,13 +29,11 @@ export const LOCKED_IN_EVENT = 'locked-in-mode-changed';
 const PALETTES: Record<ThemeStyle, ThemeColors> = {
     cloth: Colors.cloth,
     colossal: Colors.colossal,
-    classic: Colors.classic,
 };
 
 const SHAPES: Record<ThemeStyle, ThemeShape> = {
     cloth: clothShape,
     colossal: colossalShape,
-    classic: classicShape,
 };
 
 interface ThemeContextType {
@@ -76,7 +71,7 @@ const ThemeContext = createContext<ThemeContextType>({
 const THEME_STORAGE_KEY = 'user_theme_preference';
 
 function isStyle(value: string | null): value is ThemeStyle {
-    return value === 'cloth' || value === 'colossal' || value === 'classic';
+    return value === 'cloth' || value === 'colossal';
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {

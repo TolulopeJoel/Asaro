@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Key } from 'lucide-react-native';
 import { Button } from '@/src/components/Button';
 import { Text } from '@/src/components/ui';
+import { Hero, Screen } from '@/src/components/ui';
 
 // In a real app, this might be a dynamic code or fetched from a config
 
@@ -103,14 +104,16 @@ export default function JoinGroupScreen() {
     };
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <Screen>
+            <Hero>
+                <Text variant="display" tone="inverse">Enter{'\n'}Group Code</Text>
+            </Hero>
             <ScrollView contentContainerStyle={styles.content}>
                 <View style={[styles.card, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
                     <View style={styles.intro}>
                         <View style={[styles.iconContainer, { backgroundColor: colors.accentSecondaryLight + '30' }]}>
                             <Key size={32} color={colors.accentSecondary} />
                         </View>
-                        <Text variant="display" style={styles.title}>Access Code</Text>
                         <Text variant="body" tone="secondary" style={styles.subtitle}>
                             Enter the code to join a group.
                         </Text>
@@ -140,7 +143,7 @@ export default function JoinGroupScreen() {
                     </View>
                 </View>
             </ScrollView>
-        </SafeAreaView>
+        </Screen>
     );
 }
 

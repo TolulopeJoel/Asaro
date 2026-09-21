@@ -16,7 +16,7 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { ScalePressable } from '@/src/components/ScalePressable';
-import { Text } from '@/src/components/ui';
+import { Hero, Screen, Text } from '@/src/components/ui';
 
 export default function SleepTimeScreen() {
     const router = useRouter();
@@ -152,7 +152,11 @@ export default function SleepTimeScreen() {
 
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+            <Screen edges={['top']}>
+                <Hero>
+                    <Text variant="label" style={styles.heroStep}>Step 2 of 3</Text>
+                    <Text variant="display" tone="inverse">Noted.</Text>
+                </Hero>
                 <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     style={styles.keyboardView}
@@ -160,9 +164,6 @@ export default function SleepTimeScreen() {
                     <View style={styles.content}>
                         <View style={styles.textContainer}>
                             <View style={styles.introBlock}>
-                                <Text variant="display" style={styles.greeting}>
-                                    Noted.
-                                </Text>
 
                                 <Text variant="body" style={styles.introText}>
                                     I promise not to disturb your beauty sleep. But once you wake up? No mercy.
@@ -262,7 +263,7 @@ export default function SleepTimeScreen() {
                         </View>
                     </View>
                 </KeyboardAvoidingView>
-            </SafeAreaView>
+            </Screen>
         </TouchableWithoutFeedback>
     );
 }
@@ -287,7 +288,7 @@ const styles = StyleSheet.create({
     introBlock: {
         marginBottom: Spacing.xxxl * 1.5,
     },
-    greeting: { marginBottom: Spacing.sm },
+    heroStep: { color: '#a9b6c9', marginBottom: Spacing.sm },
     introText: { opacity: 0.8 },
     label: { opacity: 0.5, marginBottom: Spacing.xl, textAlign: 'center' },
     timeInputContainer: {

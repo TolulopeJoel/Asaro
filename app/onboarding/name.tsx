@@ -14,7 +14,7 @@ import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Text } from '@/src/components/ui';
+import { Asaro, Hero, Screen, Text } from '@/src/components/ui';
 
 
 export default function NameScreen() {
@@ -40,10 +40,11 @@ export default function NameScreen() {
     };
 
     return (
-        <SafeAreaView
-            style={[styles.container, { backgroundColor: colors.background }]}
-            edges={['top']}
-        >
+        <Screen>
+            <Hero>
+                <Text variant="label" style={styles.heroStep}>Step 1 of 3</Text>
+                <Text variant="display" tone="inverse">Hello.</Text>
+            </Hero>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={styles.keyboardView}
@@ -51,9 +52,9 @@ export default function NameScreen() {
                 <View style={styles.content}>
                     <View style={styles.textContainer}>
                         <View style={styles.introBlock}>
-                            <Text variant="display" style={styles.greeting}>
-                                Hello.
-                            </Text>
+                            {/* Àṣàrò waves hello. The copy already spoke in the
+                                first person; this gives the voice a form. */}
+                            <Asaro size={124} action="wave" />
 
                             <Text variant="body" style={styles.introText}>
                                 I want to help you stay consistent with your reading.
@@ -113,7 +114,7 @@ export default function NameScreen() {
                     </View>
                 </View>
             </KeyboardAvoidingView>
-        </SafeAreaView>
+        </Screen>
     );
 }
 
@@ -137,7 +138,7 @@ const styles = StyleSheet.create({
     introBlock: {
         marginBottom: Spacing.xxxl,
     },
-    greeting: { marginBottom: Spacing.sm },
+    heroStep: { color: '#a9b6c9', marginBottom: Spacing.sm },
     introText: { opacity: 0.8 },
     nameSection: {
         gap: Spacing.md,

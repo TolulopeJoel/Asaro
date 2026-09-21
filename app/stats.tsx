@@ -5,11 +5,10 @@ import { getDailyEntryCounts, getFirstEntryDate } from '@/src/data/database';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { formatDateToLocalString } from '@/src/utils/dateUtils';
-import { useFocusEffect, useNavigation } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Text } from '@/src/components/ui';
+import { Card, Hero, Screen, Text as UIText } from '@/src/components/ui';
 
 interface MonthData {
     year: number;
@@ -29,13 +28,15 @@ interface StatsState {
 
 export default function StatsScreen() {
     const { colors } = useTheme();
-    const navigation = useNavigation();
     const [state, setState] = useState<StatsState>({
         allTimeData: {},
         months: [],
         currentMonthStats: { completed: 0, total: 0 },
         isLoading: true
     });
+    // The title used to live in the navigation bar. The mockup puts it in the
+    // hero band, so it becomes state the screen owns.
+    const [headerTitle, setHeaderTitle] = useState("What you've done");
 
     const loadStats = useCallback(async () => {
         const today = new Date();
@@ -98,10 +99,8 @@ export default function StatsScreen() {
                 missedDays <= 5 ? '😌' : // small misses,
                     missedDays <= 14 ? '😎' : // a few more,
                         '😏'; // higher misses,
-        navigation.setOptions({
-            title: `What you've done ${moodEmoji}`,
-        });
-    }, [navigation]);
+        setHeaderTitle(`What you've done ${moodEmoji}`);
+    }, []);
 
     useFocusEffect(
         useCallback(() => {
@@ -113,22 +112,24 @@ export default function StatsScreen() {
 
     const renderHeader = useCallback(() => (
         <View style={styles.monthHeader}>
-            <Text variant="display" style={styles.monthTitleLarge}>
-                {currentMonthName}
-            </Text>
-            <View style={styles.statsRow}>
-                <StatCard
-                    label="completed"
-                    value={state.currentMonthStats.completed}
-                    color={colors.textPrimary}
-                />
-                <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-                <StatCard
-                    label="total days"
-                    value={state.currentMonthStats.total}
-                    color={colors.textSecondary}
-                />
-            </View>
+            {/* The counts sit on cloth, as two panels — the mockup's Stats
+                screen leads with the figures, not with the grid. */}
+            <Card style={styles.statsCard}>
+                <View style={styles.statsRow}>
+                    <StatCard
+                        label="completed"
+                        value={state.currentMonthStats.completed}
+                        color={colors.textPrimary}
+                    />
+                    <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+                    <StatCard
+                        label="total days"
+                        value={state.currentMonthStats.total}
+                        color={colors.textSecondary}
+                    />
+                </View>
+            </Card>
+            <UIText variant="label" style={styles.monthLabel}>{currentMonthName}</UIText>
         </View>
     ), [colors, currentMonthName, state.currentMonthStats]);
 
@@ -145,7 +146,12 @@ export default function StatsScreen() {
     }, [state.allTimeData]);
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+        <Screen>
+            <Hero>
+                <UIText variant="display" tone="inverse">{headerTitle}</UIText>
+                <UIText variant="bodySmall" style={styles.heroSub}>{currentMonthName} {new Date().getFullYear()}</UIText>
+            </Hero>
+
             {state.isLoading ? (
                 <View style={{ flex: 1, justifyContent: 'center' }}>
                     <LoadingView size={48} />
@@ -163,7 +169,7 @@ export default function StatsScreen() {
                     windowSize={3}
                 />
             )}
-        </SafeAreaView>
+        </Screen>
     );
 }
 
@@ -176,7 +182,14 @@ const styles = StyleSheet.create({
         paddingBottom: 40,
     },
     monthHeader: {
-        marginBottom: Spacing.xxxl,
+        marginBottom: Spacing.xl,
+        gap: Spacing.lg,
+    },
+    statsCard: {},
+    monthLabel: {},
+    heroSub: {
+        marginTop: Spacing.xs,
+        color: '#a9b6c9',
     },
     monthTitleLarge: { marginBottom: Spacing.xl },
     statsRow: {

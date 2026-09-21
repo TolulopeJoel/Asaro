@@ -27,6 +27,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import React from 'react';
 import { Text } from '@/src/components/ui';
+import { Hero, Screen } from '@/src/components/ui';
 
 const GenderOption = ({
     selected,
@@ -163,15 +164,17 @@ export default function AuthScreen() {
     };
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <Screen>
+            <Hero>
+                <Text variant="display" tone="inverse">
+                    {isSignUp ? 'Create\nAccount' : 'Welcome\nBack'}
+                </Text>
+            </Hero>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={{ flex: 1 }}
             >
                 <View style={styles.content}>
-                    <Text variant="display" style={styles.title}>
-                        {isSignUp ? 'Create Account' : 'Welcome Back'}
-                    </Text>
                     <Text variant="body" tone="secondary" style={styles.subtitle}>
                         {isSignUp ? 'Ready to get serious? No more hiding.' : "Welcome back. Let's see what you've been up to."}
                     </Text>
@@ -259,7 +262,7 @@ export default function AuthScreen() {
                     </View>
                 </View>
             </KeyboardAvoidingView>
-        </SafeAreaView>
+        </Screen>
     );
 }
 

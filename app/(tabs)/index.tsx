@@ -8,6 +8,7 @@ import {
     checkEntryCoversChapters,
     toggleReadingItem,
     getRecentStudyTopics,
+    getDaysSinceLastEntry,
 } from "@/src/data/database";
 import { READING_PLAN_DATA, ReadingItem } from "@/src/data/readingPlanData";
 import { useTheme } from "@/src/theme/ThemeContext";
@@ -48,6 +49,7 @@ import {
 
 const DRAFT_KEY = "reflection_draft";
 import { LucideIcon } from "lucide-react-native";
+import { WelcomeBack } from '@/src/components/WelcomeBack';
 
 interface StatCardProps {
     icon: LucideIcon;
@@ -224,6 +226,7 @@ export default function Index() {
     const [stats, setStats] = useState({ totalEntries: 0 });
     const [nextReading, setNextReading] = useState<ReadingItem | null>(null);
     const [topics, setTopics] = useState<JournalEntry[]>([]);
+    const [daysAway, setDaysAway] = useState<number | null>(null);
     const [weekDays, setWeekDays] = useState<DayStatus[]>([]);
     const [actionReminders, setActionReminders] = useState<{ pinned: EnhancedActionItem[], rotating: EnhancedActionItem[] } | null>(null);
     const [flashbackEntry, setFlashbackEntry] = useState<{ entry: JournalEntry, type: 'year' | 'month' | 'random' } | null>(null);
@@ -301,14 +304,16 @@ export default function Index() {
                 newTopics,
                 newWeekDays,
                 newActionReminders,
-                newFlashback
+                newFlashback,
+                newDaysAway
             ] = await Promise.all([
                 loadStats(),
                 loadNextReading(),
                 getRecentStudyTopics(7),
                 fetchWeeklyStreakData(),
                 fetchActionRemindersData(),
-                fetchFlashbackData()
+                fetchFlashbackData(),
+                getDaysSinceLastEntry()
             ]);
 
             setStats(newStats);
@@ -317,6 +322,7 @@ export default function Index() {
             setWeekDays(newWeekDays);
             setActionReminders(newActionReminders);
             setFlashbackEntry(newFlashback);
+            setDaysAway(newDaysAway);
 
             // Check for weekly streak celebration
             checkCelebration(newWeekDays);
@@ -447,6 +453,7 @@ export default function Index() {
                     </View>
                 ) : (
                     <>
+                        <WelcomeBack daysAway={daysAway} />
                         <QuickStats totalEntries={stats.totalEntries} />
                         <NextReading nextItem={nextReading} onRefresh={loadHomeData} />
                         <WeeklyStreak weekDays={weekDays} />

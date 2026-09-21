@@ -7,6 +7,7 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { Text } from '@/src/components/ui';
+import { Hero, Screen } from '@/src/components/ui';
 
 export default function AboutGroupsScreen() {
     const { colors } = useTheme();
@@ -87,19 +88,22 @@ export default function AboutGroupsScreen() {
     ];
 
     return (
-        <SafeAreaView style={styles.container}>
-            <Stack.Screen options={{ title: 'Group Logic', headerTitle: 'Group Logic' }} />
-            <View style={styles.header}>
-                <ScalePressable onPress={() => router.back()} style={styles.backButton}>
-                    <ChevronLeft size={24} color={colors.textPrimary} />
+        <Screen>
+            <Stack.Screen options={{ headerShown: false }} />
+            <Hero>
+                <ScalePressable
+                    onPress={() => router.back()}
+                    style={styles.backButton}
+                    accessibilityRole="button"
+                    accessibilityLabel="Back"
+                >
+                    <ChevronLeft size={22} color={colors.textInverse} />
                 </ScalePressable>
-                <Text variant="subtitle">How Groups Work</Text>
-                <View style={{ width: 44 }} />
-            </View>
+                <Text variant="display" tone="inverse">Group Logic</Text>
+            </Hero>
 
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.introSection}>
-                    <Text variant="display">Group Logic</Text>
                     <Text variant="body" tone="secondary" style={styles.introDesc}>
                         Àṣàrò groups aren't decorative. Every rule, every perk, every reset exists to keep you honest — and keep you growing. Here's how it all works.
                     </Text>
@@ -128,7 +132,7 @@ export default function AboutGroupsScreen() {
                     <Text variant="caption">Every day you read is a day well spent.</Text>
                 </View>
             </ScrollView>
-        </SafeAreaView>
+        </Screen>
     );
 }
 
