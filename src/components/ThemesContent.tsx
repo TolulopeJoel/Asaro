@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'expo-router';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Sparkles, Check, X } from 'lucide-react-native';
 
@@ -22,6 +23,8 @@ import {
     renameTheme,
 } from '../data/embeddingRepository';
 import { downloadModel, isModelDownloaded, unload } from '../ml/embedder';
+import { AnimatedModal } from './AnimatedModal';
+import { ThemeDetail } from './ThemeDetail';
 
 const FIELD_LABELS: Record<string, string> = {
     ...Object.fromEntries(EMBEDDABLE_FIELDS.map(f => [f.column, f.label])),
@@ -47,7 +50,9 @@ function reference(item: StoredEmbedding): string {
 
 export function ThemesContent() {
     const { colors } = useTheme();
+    const router = useRouter();
     const [phase, setPhase] = useState<Phase>('checking');
+    const [openIndex, setOpenIndex] = useState<number | null>(null);
     const [progress, setProgress] = useState(0);
     const [clusters, setClusters] = useState<Cluster<StoredEmbedding>[]>([]);
     const [named, setNamed] = useState<NamedTheme[]>([]);
@@ -219,7 +224,16 @@ export function ThemesContent() {
 
     // ── the themes ───────────────────────────────────────────────────────────
 
+    const openCluster = openIndex !== null ? clusters[openIndex] : null;
+    const openName =
+        openCluster &&
+        matchThemeName(
+            openCluster.members.map(m => ({ entryId: m.entryId, field: m.field })),
+            named,
+        )?.name;
+
     return (
+        <>
         <FlatList
             data={clusters}
             keyExtractor={(_, index) => `cluster-${index}`}
@@ -239,7 +253,8 @@ export function ThemesContent() {
                 );
 
                 return (
-                    <View
+                    <ScalePressable
+                        onPress={() => setOpenIndex(index)}
                         style={[
                             styles.card,
                             { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder },
@@ -327,10 +342,36 @@ export function ThemesContent() {
                                 </Text>
                             </ScalePressable>
                         )}
-                    </View>
+
+                        {item.entryCount > reps.length && (
+                            <Text style={[styles.more, { color: colors.textTertiary }]}>
+                                +{item.entryCount - reps.length} more — tap to read
+                            </Text>
+                        )}
+                    </ScalePressable>
                 );
             }}
         />
+
+        <AnimatedModal visible={openCluster !== null} onRequestClose={() => setOpenIndex(null)}>
+            {openCluster && (
+                <ThemeDetail
+                    cluster={openCluster}
+                    name={openName ?? undefined}
+                    onClose={() => setOpenIndex(null)}
+                    onRename={() => {
+                        setNaming(openIndex);
+                        setDraftName(openName ?? '');
+                        setOpenIndex(null);
+                    }}
+                    onOpenEntry={entryId => {
+                        setOpenIndex(null);
+                        router.push(`/library/${entryId}`);
+                    }}
+                />
+            )}
+        </AnimatedModal>
+        </>
     );
 }
 
@@ -368,6 +409,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     nameCtaText: { fontSize: 13, fontWeight: '700' },
+    more: { fontSize: 12, fontWeight: '600', paddingTop: 4 },
     nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: Spacing.sm },
     nameInput: {
         flex: 1,
