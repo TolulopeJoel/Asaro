@@ -1,11 +1,13 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { JournalEntry } from '../../data/database';
 import { ScalePressable } from '../ScalePressable';
 import { HyperlinkedText } from '../HyperlinkedText';
 import { formatDate, getAnsweredStatus, getChapterText, getDynamicCardStyle, getPreviewText } from './JournalCardHelpers';
+import { Spacing } from '../../theme/spacing';
+import { Text } from '../ui';
 
 interface EntryCardProps {
     entry: JournalEntry;
@@ -25,12 +27,12 @@ export const EntryCard = React.memo(({ entry, onEntryPress }: EntryCardProps) =>
             >
                 <View style={styles.entryHeader}>
                     <View style={styles.entryHeaderLeft}>
-                        <Text style={[styles.entryDate, { color: colors.textTertiary }]}>
+                        <Text variant="bodySmall" tone="tertiary">
                             {formatDate(entry.created_at)}
                         </Text>
                         {entry.book_name && (
                             <View style={[styles.refBadge, { backgroundColor: colors.accent + '15' }]}>
-                                <Text style={[styles.entryScripture, { color: colors.accent + 'A5' }]}>
+                                <Text variant="label" style={{ color: colors.accent + 'A5' }}>
                                     {entry.book_name} {getChapterText(entry)}
                                 </Text>
                             </View>
@@ -74,7 +76,7 @@ export const EntryCard = React.memo(({ entry, onEntryPress }: EntryCardProps) =>
 
 const styles = StyleSheet.create({
     entryCard: {
-        borderRadius: 12,
+        borderRadius: Spacing.borderRadius.lg,
         padding: 16,
         marginBottom: 12,
         borderWidth: 1,
@@ -90,14 +92,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 8,
     },
-    entryDate: {
-        fontSize: 12,
-        fontWeight: '500',
-    },
     refBadge: {
         paddingHorizontal: 8,
         paddingVertical: 2,
-        borderRadius: 8,
+        borderRadius: Spacing.borderRadius.lg,
     },
     entryScripture: {
         fontSize: 10,
@@ -118,6 +116,6 @@ const styles = StyleSheet.create({
     reflectionDot: {
         width: 8,
         height: 8,
-        borderRadius: 4,
+        borderRadius: Spacing.borderRadius.round,
     },
 });

@@ -1,4 +1,11 @@
-import { View, Text, StyleSheet, TextInput, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
+import {
+    View,
+    StyleSheet,
+    TextInput,
+    KeyboardAvoidingView,
+    Platform,
+    TouchableOpacity,
+} from 'react-native';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,6 +26,7 @@ import Animated, {
     useSharedValue
 } from 'react-native-reanimated';
 import React from 'react';
+import { Text } from '@/src/components/ui';
 
 const GenderOption = ({
     selected,
@@ -161,10 +169,10 @@ export default function AuthScreen() {
                 style={{ flex: 1 }}
             >
                 <View style={styles.content}>
-                    <Text style={[styles.title, { color: colors.textPrimary }]}>
+                    <Text variant="display" style={styles.title}>
                         {isSignUp ? 'Create Account' : 'Welcome Back'}
                     </Text>
-                    <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+                    <Text variant="body" tone="secondary" style={styles.subtitle}>
                         {isSignUp ? 'Ready to get serious? No more hiding.' : "Welcome back. Let's see what you've been up to."}
                     </Text>
 
@@ -264,18 +272,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: Spacing.layout.screenPadding,
         paddingTop: Spacing.xxxl,
     },
-    title: {
-        fontSize: 34,
-        fontWeight: '800',
-        letterSpacing: -1.5,
-        marginBottom: Spacing.xs,
-    },
-    subtitle: {
-        fontSize: 16,
-        fontWeight: '500',
-        opacity: 0.6,
-        marginBottom: Spacing.xxxl,
-    },
+    title: { marginBottom: Spacing.xs },
+    subtitle: { opacity: 0.6, marginBottom: Spacing.xxxl },
     form: {
         gap: Spacing.lg,
     },
@@ -314,7 +312,7 @@ const styles = StyleSheet.create({
     genderIconWrapper: {
         width: 64,
         height: 64,
-        borderRadius: 32,
+        borderRadius: Spacing.borderRadius.round,
         justifyContent: 'center',
         alignItems: 'center',
     },

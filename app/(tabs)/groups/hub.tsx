@@ -1,5 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, DeviceEventEmitter } from 'react-native';
+import {
+    View,
+    StyleSheet,
+    ScrollView,
+    DeviceEventEmitter,
+} from 'react-native';
 import { useAuth } from '@/src/context/AuthContext';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
@@ -12,6 +17,7 @@ import { getFirestore, collection, doc, onSnapshot, getDocs, query, where, docum
 import { Button } from '@/src/components/Button';
 import { Skeleton } from '@/src/components/Skeleton';
 import { Avatar } from '@/src/components/Avatar';
+import { Text } from '@/src/components/ui';
 
 export default function GroupsScreen() {
     const { user, loading, displayName } = useAuth();
@@ -98,8 +104,8 @@ export default function GroupsScreen() {
                                 <Users size={34} color={colors.accentSecondary} />
                             </View>
 
-                            <Text style={[styles.authHeroTitle, { color: colors.textPrimary }]}>Better Together</Text>
-                            <Text style={[styles.authHeroSubtitle, { color: colors.textSecondary }]}>
+                            <Text variant="display" style={styles.authHeroTitle}>Better Together</Text>
+                            <Text variant="body" tone="secondary" style={styles.authHeroSubtitle}>
                                 "If you want to go fast, go alone. If you want to go far, go together"
                             </Text>
 
@@ -129,7 +135,7 @@ export default function GroupsScreen() {
                     ) : (
                         <RefreshCw size={14} color={colors.textSecondary} />
                     )}
-                    <Text style={[styles.offlineBannerText, { color: colors.textSecondary }]}>
+                    <Text variant="label" tone="secondary">
                         {isOffline ? "You're offline — showing cached groups" : "Syncing your groups..."}
                     </Text>
                 </View>
@@ -141,7 +147,7 @@ export default function GroupsScreen() {
             >
                 <View style={styles.header}>
                     <View style={styles.headerTitleRow}>
-                        <Text style={[styles.title, { color: colors.textPrimary }]}>My Groups</Text>
+                        <Text variant="display">My Groups</Text>
                         <ScalePressable onPress={() => router.push('/(tabs)/groups/join' as any)}>
                             <Plus size={28} color={colors.textSecondary} />
                         </ScalePressable>
@@ -184,8 +190,8 @@ export default function GroupsScreen() {
                                 <View style={styles.groupCardTop}>
                                     <Avatar id={group.id} name={group.name} url={group.photoURL} size={48} radius={14} />
                                     <View style={styles.groupInfo}>
-                                        <Text style={[styles.groupName, { color: colors.textPrimary }]}>{group.name}</Text>
-                                        <Text style={[styles.groupDesc, { color: colors.textSecondary }]}>
+                                        <Text variant="body">{group.name}</Text>
+                                        <Text variant="bodySmall" tone="secondary" style={styles.groupDesc}>
                                             {group.description || 'Consistency is key. Read together!'}
                                         </Text>
                                     </View>
@@ -199,7 +205,7 @@ export default function GroupsScreen() {
                                         <View style={styles.groupStatItem}>
                                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
                                                 <Flame size={14} color={colors.accent} />
-                                                <Text style={[styles.groupStatValue, { color: colors.accent }]}>{groupStreak}</Text>
+                                                <Text variant="body" tone="accent">{groupStreak}</Text>
                                             </View>
                                         </View>
                                         <View style={[styles.groupStatDivider, { backgroundColor: colors.borderSubtle }]} />
@@ -208,7 +214,7 @@ export default function GroupsScreen() {
                                     {readTodayCount > 0 ? (
                                         <View style={[styles.activeIndicator, { backgroundColor: colors.indicatorActive + '15' }]}>
                                             <View style={[styles.activeDot, { backgroundColor: colors.indicatorActive }]} />
-                                            <Text style={[styles.activeText, { color: colors.indicatorActive }]}>
+                                            <Text variant="caption" tone="accent">
                                                 {readTodayCount}
                                             </Text>
                                         </View>
@@ -225,8 +231,8 @@ export default function GroupsScreen() {
                     // ── Empty State ──
                     <>
                         <View style={styles.welcomeHeader}>
-                            <Text style={[styles.label, { color: colors.accentSecondary }]}>HELLO, {displayName?.toUpperCase() || 'READER'}</Text>
-                            <Text style={[styles.subtitle, { color: colors.textSecondary, textAlign: 'left', paddingHorizontal: 0 }]}>
+                            <Text variant="bodySmall" style={styles.label}>HELLO, {displayName?.toUpperCase() || 'READER'}</Text>
+                            <Text variant="body" tone="secondary" style={{ textAlign: 'left' }}>
                                 Flying solo, I see?
                             </Text>
                         </View>
@@ -235,7 +241,7 @@ export default function GroupsScreen() {
                             <View style={[styles.welcomeIconIconWrap, { backgroundColor: colors.accentSecondaryLight + '20' }]}>
                                 <Plus size={34} color={colors.accentSecondary} />
                             </View>
-                            <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>
+                            <Text variant="body" tone="secondary" style={styles.emptyStateText}>
                                 Accountability is a team sport. Join a group or create one so we can make sure you're actually reading.
                             </Text>
 
@@ -266,11 +272,6 @@ const styles = StyleSheet.create({
         paddingVertical: Spacing.xs,
         paddingHorizontal: Spacing.md,
     },
-    offlineBannerText: {
-        fontSize: Typography.size.xs,
-        fontWeight: Typography.weight.medium,
-        letterSpacing: 0.3,
-    },
     authScroll: {
         flexGrow: 1,
     },
@@ -282,49 +283,31 @@ const styles = StyleSheet.create({
     },
     welcomeCard: {
         padding: Spacing.xxl,
-        borderRadius: 24,
+        borderRadius: Spacing.borderRadius.lg,
         alignItems: 'center',
         borderWidth: 1,
         gap: Spacing.sm,
         marginTop: Spacing.md,
     },
-    authHeroTitle: {
-        fontSize: 34,
-        fontWeight: '800',
-        letterSpacing: -1.5,
-        textAlign: 'center',
-    },
-    authHeroSubtitle: {
-        fontSize: 16,
-        fontWeight: '500',
-        textAlign: 'center',
-        lineHeight: 24,
-        opacity: 0.7,
-        paddingHorizontal: Spacing.md,
-    },
+    authHeroTitle: { textAlign: 'center' },
+    authHeroSubtitle: { textAlign: 'center', opacity: 0.7, paddingHorizontal: Spacing.md },
     welcomeIconIconWrap: {
         width: 72,
         height: 72,
-        borderRadius: 22,
+        borderRadius: Spacing.borderRadius.lg,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: Spacing.md,
     },
     emptyStateTitle: {
-        fontSize: 22,
+        fontSize: 20,
         fontWeight: '800',
         letterSpacing: -0.5,
     },
-    emptyStateText: {
-        fontSize: 16,
-        textAlign: 'center',
-        lineHeight: 24,
-        opacity: 0.6,
-        paddingHorizontal: Spacing.sm,
-    },
+    emptyStateText: { textAlign: 'center', opacity: 0.6, paddingHorizontal: Spacing.sm },
     groupCard: {
         padding: Spacing.lg,
-        borderRadius: 16,
+        borderRadius: Spacing.borderRadius.lg,
         borderWidth: 1,
         marginBottom: Spacing.lg,
     },
@@ -336,7 +319,7 @@ const styles = StyleSheet.create({
     groupIcon: {
         width: 52,
         height: 52,
-        borderRadius: 16,
+        borderRadius: Spacing.borderRadius.lg,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -344,16 +327,7 @@ const styles = StyleSheet.create({
         flex: 1,
         gap: 2,
     },
-    groupName: {
-        fontSize: Typography.size.lg,
-        fontWeight: Typography.weight.bold,
-        letterSpacing: -0.5,
-    },
-    groupDesc: {
-        fontSize: Typography.size.sm,
-        opacity: 0.6,
-        lineHeight: 18,
-    },
+    groupDesc: { opacity: 0.6 },
     groupCardDivider: {
         height: 1,
         marginVertical: Spacing.lg,
@@ -372,10 +346,6 @@ const styles = StyleSheet.create({
         alignItems: 'flex-start',
         gap: 1,
     },
-    groupStatValue: {
-        fontSize: 14,
-        fontWeight: '700',
-    },
     groupStatDivider: {
         width: 1,
         height: 20,
@@ -386,17 +356,13 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 8,
         paddingVertical: 4,
-        borderRadius: 8,
+        borderRadius: Spacing.borderRadius.lg,
         gap: 6,
     },
     activeDot: {
         width: 6,
         height: 6,
-        borderRadius: 3,
-    },
-    activeText: {
-        fontSize: 11,
-        fontWeight: '700',
+        borderRadius: Spacing.borderRadius.round,
     },
     header: {
         marginBottom: Spacing.xl,
@@ -406,17 +372,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
     },
-    title: {
-        fontSize: 34,
-        fontWeight: '800',
-        letterSpacing: -1.5,
-    },
-    label: {
-        fontSize: 12,
-        fontWeight: '800',
-        letterSpacing: 1.5,
-        marginBottom: Spacing.xs,
-    },
+    label: { marginBottom: Spacing.xs },
     subtitle: {
         fontSize: 16,
         lineHeight: 24,

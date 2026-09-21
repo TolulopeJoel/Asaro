@@ -1,5 +1,14 @@
 import { useState, useRef } from 'react';
-import { View, Text, StyleSheet, TextInput, Keyboard, TouchableWithoutFeedback, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
+import {
+    View,
+    StyleSheet,
+    TextInput,
+    Keyboard,
+    TouchableWithoutFeedback,
+    KeyboardAvoidingView,
+    Platform,
+    TouchableOpacity,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,6 +16,7 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { ScalePressable } from '@/src/components/ScalePressable';
+import { Text } from '@/src/components/ui';
 
 export default function SleepTimeScreen() {
     const router = useRouter();
@@ -150,18 +160,18 @@ export default function SleepTimeScreen() {
                     <View style={styles.content}>
                         <View style={styles.textContainer}>
                             <View style={styles.introBlock}>
-                                <Text style={[styles.greeting, { color: colors.textPrimary }]}>
+                                <Text variant="display" style={styles.greeting}>
                                     Noted.
                                 </Text>
 
-                                <Text style={[styles.introText, { color: colors.textPrimary }]}>
+                                <Text variant="body" style={styles.introText}>
                                     I promise not to disturb your beauty sleep. But once you wake up? No mercy.
                                     {'\n\n'}
                                     I need to know when to let you rest.
                                 </Text>
                             </View>
 
-                            <Text style={[styles.label, { color: colors.textPrimary }]}>
+                            <Text variant="label" style={styles.label}>
                                 What time do you usually go to sleep?
                             </Text>
 
@@ -189,7 +199,7 @@ export default function SleepTimeScreen() {
                                     onSubmitEditing={() => minuteInputRef.current?.focus()}
                                 />
 
-                                <Text style={[styles.separator, { color: colors.textPrimary }]}>:</Text>
+                                <Text variant="display" style={styles.separator}>:</Text>
 
                                 {/* Minute Input */}
                                 <TextInput
@@ -215,14 +225,14 @@ export default function SleepTimeScreen() {
 
                                 {/* AM/PM Toggle */}
                                 <TouchableOpacity onPress={togglePeriod} activeOpacity={0.6}>
-                                    <Text style={[styles.periodText, { color: colors.textPrimary }]}>
+                                    <Text variant="display" style={styles.periodText}>
                                         {period}
                                     </Text>
                                 </TouchableOpacity>
                             </View>
 
                             {error && (
-                                <Text style={[styles.errorText, { color: 'red' }]}>
+                                <Text variant="bodySmall" tone="danger">
                                     {error}
                                 </Text>
                             )}
@@ -277,53 +287,26 @@ const styles = StyleSheet.create({
     introBlock: {
         marginBottom: Spacing.xxxl * 1.5,
     },
-    greeting: {
-        fontSize: 34,
-        fontWeight: '800',
-        letterSpacing: -1.5,
-        marginBottom: Spacing.sm,
-    },
-    introText: {
-        fontSize: Typography.size.lg,
-        fontWeight: Typography.weight.medium,
-        lineHeight: Typography.lineHeight.xl,
-        letterSpacing: -0.2,
-        opacity: 0.8,
-    },
-    label: {
-        fontSize: Typography.size.sm,
-        fontWeight: Typography.weight.bold,
-        letterSpacing: Typography.letterSpacing.wider,
-        textTransform: 'uppercase',
-        opacity: 0.5,
-        marginBottom: Spacing.xl,
-        textAlign: 'center',
-    },
+    greeting: { marginBottom: Spacing.sm },
+    introText: { opacity: 0.8 },
+    label: { opacity: 0.5, marginBottom: Spacing.xl, textAlign: 'center' },
     timeInputContainer: {
         flexDirection: 'row',
         alignItems: 'baseline',
         justifyContent: 'center',
         gap: Spacing.sm,
     },
+    // The time is this screen's one large element, so it takes the display
+    // step rather than a size invented here.
     input: {
-        fontSize: 64,
-        fontWeight: Typography.weight.bold,
-        borderBottomWidth: 2,
-        paddingBottom: 4,
-        letterSpacing: -2,
+        fontSize: Typography.size.display,
+        lineHeight: Typography.lineHeight.display,
+        borderBottomWidth: Spacing.border.strong,
+        paddingBottom: Spacing.xs,
+        letterSpacing: Typography.letterSpacing.tighter,
     },
-    separator: {
-        fontSize: 48,
-        fontWeight: Typography.weight.medium,
-        opacity: 0.3,
-        marginHorizontal: 4,
-    },
-    periodText: {
-        fontSize: 24,
-        fontWeight: Typography.weight.bold,
-        marginLeft: Spacing.md,
-        opacity: 0.8,
-    },
+    separator: { opacity: 0.3, marginHorizontal: Spacing.xs },
+    periodText: { marginLeft: Spacing.md, opacity: 0.8 },
     errorText: {
         marginTop: Spacing.md,
         fontSize: Typography.size.md,

@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { X, Pencil } from 'lucide-react-native';
 
@@ -9,6 +9,7 @@ import { ScalePressable } from './ScalePressable';
 import { HyperlinkedText } from './HyperlinkedText';
 import { Cluster } from '../ml/clustering';
 import { StoredEmbedding, EMBEDDABLE_FIELDS, ACTION_FIELD } from '../data/embeddingRepository';
+import { Text } from './ui';
 
 const FIELD_LABELS: Record<string, string> = {
     ...Object.fromEntries(EMBEDDABLE_FIELDS.map(f => [f.column, f.label])),
@@ -105,10 +106,10 @@ export function ThemeDetail({ cluster, name, onClose, onRename, onOpenEntry }: P
             </View>
 
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-                <Text style={[styles.title, { color: colors.textPrimary }]}>
+                <Text variant="display">
                     {name ?? 'Unnamed theme'}
                 </Text>
-                <Text style={[styles.meta, { color: colors.textTertiary }]}>
+                <Text variant="bodySmall" tone="tertiary">
                     {cluster.entryCount} {cluster.entryCount === 1 ? 'entry' : 'entries'}
                     {span ? ` · ${span}` : ''}
                 </Text>
@@ -140,18 +141,18 @@ export function ThemeDetail({ cluster, name, onClose, onRename, onOpenEntry }: P
                     >
                         <View style={styles.cardHeader}>
                             <View style={[styles.refBadge, { backgroundColor: colors.accent + '12' }]}>
-                                <Text style={[styles.refText, { color: colors.accent }]}>
+                                <Text variant="caption" tone="accent">
                                     {chapterRef(group[0])}
                                 </Text>
                             </View>
-                            <Text style={[styles.date, { color: colors.textTertiary }]}>
+                            <Text variant="caption" tone="tertiary">
                                 {formatDate(group[0].createdAt)}
                             </Text>
                         </View>
 
                         {group.map((member, i) => (
                             <View key={`${member.field}-${i}`} style={styles.answer}>
-                                <Text style={[styles.answerLabel, { color: colors.textTertiary }]}>
+                                <Text variant="label" tone="tertiary">
                                     {FIELD_LABELS[member.field] ?? member.field}
                                 </Text>
                                 <HyperlinkedText
@@ -175,19 +176,14 @@ const styles = StyleSheet.create({
         paddingHorizontal: Spacing.layout.screenPadding,
         paddingTop: Spacing.sm,
     },
-    iconBtn: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+    iconBtn: { width: 40, height: 40, borderRadius: Spacing.borderRadius.lg, alignItems: 'center', justifyContent: 'center' },
     content: { padding: Spacing.layout.screenPadding, paddingBottom: 60, gap: Spacing.sm },
-    title: { fontSize: 26, fontWeight: '800', letterSpacing: -0.5 },
-    meta: { fontSize: 13, fontWeight: '600' },
     verseWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingVertical: Spacing.sm },
-    verseChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
+    verseChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: Spacing.borderRadius.lg },
     verseText: { fontSize: 12, fontWeight: '700' },
-    card: { borderWidth: 1, borderRadius: 16, padding: Spacing.lg, gap: Spacing.sm },
+    card: { borderWidth: 1, borderRadius: Spacing.borderRadius.lg, padding: Spacing.lg, gap: Spacing.sm },
     cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    refBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-    refText: { fontSize: 11, fontWeight: '700', letterSpacing: 0.3 },
-    date: { fontSize: 11 },
+    refBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: Spacing.borderRadius.lg },
     answer: { gap: 3 },
-    answerLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 0.4, textTransform: 'uppercase' },
     answerText: { fontSize: 14, lineHeight: 21 },
 });

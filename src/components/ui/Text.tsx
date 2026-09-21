@@ -145,11 +145,9 @@ const colossal: Record<TextVariant, TextStyle> = {
         textTransform: 'uppercase',
     },
     caption: {
-        fontFamily: FontFamily.monoBold,
-        fontSize: size.xs,
-        lineHeight: lineHeight.xs,
-        letterSpacing: letterSpacing.wide,
-        textTransform: 'uppercase',
+        fontFamily: FontFamily.monoMedium,
+        fontSize: size.sm,
+        lineHeight: lineHeight.md,
     },
     quote: {
         fontFamily: FontFamily.mono,

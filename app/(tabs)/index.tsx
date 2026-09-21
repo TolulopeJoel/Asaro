@@ -203,12 +203,12 @@ const DraftBar = React.memo(() => {
             <Link href={{ pathname: "/addEntry", params: { resuming: 'true' } }} asChild>
                 <ScalePressable style={styles.draftContent}>
                     <View style={styles.draftTextContainer}>
-                        <Text style={[styles.draftLabel, { color: colors.textPrimary }]}>
+                        <UIText variant="body" style={styles.draftLabel}>
                             Didn't finish?
-                        </Text>
-                        <Text style={[styles.draftSubtext, { color: colors.textSecondary }]}>
+                        </UIText>
+                        <UIText variant="body" tone="secondary">
                             No worries, pick it up now
-                        </Text>
+                        </UIText>
                     </View>
 
                     <View style={[styles.draftIcon, { backgroundColor: colors.draftIconBg }]}>
@@ -562,7 +562,7 @@ const styles = StyleSheet.create({
     statIconContainer: {
         width: 38,
         height: 38,
-        borderRadius: 12,
+        borderRadius: Spacing.borderRadius.lg,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -658,19 +658,11 @@ const styles = StyleSheet.create({
     draftTextContainer: {
         flex: 1,
     },
-    draftLabel: {
-        fontSize: Typography.size.lg,
-        fontWeight: Typography.weight.semibold,
-        marginBottom: 2,
-    },
-    draftSubtext: {
-        fontSize: Typography.size.md,
-        letterSpacing: Typography.letterSpacing.wide,
-    },
+    draftLabel: { marginBottom: 2 },
     draftIcon: {
         width: 36,
         height: 36,
-        borderRadius: 18,
+        borderRadius: Spacing.borderRadius.round,
         justifyContent: "center",
         alignItems: "center",
     },
@@ -682,7 +674,7 @@ const styles = StyleSheet.create({
         width: 104.5,
         height: 75.8,
         marginBottom: 4,
-        borderRadius: 20,
+        borderRadius: Spacing.borderRadius.lg,
         borderBottomLeftRadius: 0,
         borderBottomRightRadius: 0,
         justifyContent: 'center',
@@ -695,7 +687,7 @@ const styles = StyleSheet.create({
     },
     /* Next Reading */
     nextReadingCard: {
-        borderRadius: 20,
+        borderRadius: Spacing.borderRadius.lg,
         padding: 20,
         gap: Spacing.md,
         shadowColor: '#000',
@@ -718,7 +710,7 @@ const styles = StyleSheet.create({
     nextReadingIconWrap: {
         width: 24,
         height: 24,
-        borderRadius: 8,
+        borderRadius: Spacing.borderRadius.lg,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -746,14 +738,14 @@ const styles = StyleSheet.create({
         marginTop: 2,
     },
     nextReadingText: {
-        fontSize: 28,
+        fontSize: 26,
         fontWeight: '800',
         letterSpacing: -0.5,
     },
     nextReadingGo: {
         width: 44,
         height: 44,
-        borderRadius: 14,
+        borderRadius: Spacing.borderRadius.lg,
         justifyContent: 'center',
         alignItems: 'center',
     },

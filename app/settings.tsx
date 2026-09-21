@@ -1,4 +1,10 @@
 import { useTheme } from '@/src/theme/ThemeContext';
+import {
+    Card,
+    Hero,
+    Screen,
+    Text as UIText,
+} from '@/src/components/ui';
 import { useAlert } from '@/src/context/AlertContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
@@ -12,7 +18,7 @@ import * as Sharing from 'expo-sharing';
 import { Stack, useRouter } from 'expo-router';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { DeviceEventEmitter, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { DeviceEventEmitter, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/src/components/Button';
 import { ScalePressable } from '@/src/components/ScalePressable';
@@ -56,18 +62,18 @@ const ProfilePhotoCard = React.memo(({
             <View style={{ alignItems: 'center', gap: 10 }}>
                 <Avatar id={user?.uid} name={user?.displayName || 'User'} url={draft} size={80} radius={24} />
                 <View style={{ alignItems: 'center', gap: 3 }}>
-                    <Text style={{ fontSize: 17, fontWeight: '700', color: colors.textPrimary }}>{user?.displayName}</Text>
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: colors.accent, letterSpacing: 1 }}>PRIVILEGED ADMIN</Text>
+                    <UIText style={{ fontSize: Typography.size.lg, fontWeight: '700', color: colors.textPrimary }}>{user?.displayName}</UIText>
+                    <UIText style={{ fontSize: 10, fontWeight: '700', color: colors.accent, letterSpacing: 1 }}>PRIVILEGED ADMIN</UIText>
                 </View>
             </View>
 
             <View style={{ width: '100%', gap: 8 }}>
-                <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textTertiary, letterSpacing: 1 }}>PROFILE PHOTO URL</Text>
+                <UIText style={{ fontSize: 10, fontWeight: '700', color: colors.textTertiary, letterSpacing: 1 }}>PROFILE PHOTO URL</UIText>
                 <TextInput
                     style={{
                         backgroundColor: colors.buttonSecondary,
                         padding: 14,
-                        borderRadius: 14,
+                        borderRadius: Spacing.borderRadius.lg,
                         color: colors.textPrimary,
                         fontSize: 14,
                         borderWidth: 1,
@@ -91,7 +97,7 @@ const ProfilePhotoCard = React.memo(({
                 variant="primary"
                 fullWidth
                 size="md"
-                style={{ borderRadius: 14 }}
+                style={{ borderRadius: Spacing.borderRadius.lg }}
             />
         </View>
     );
@@ -120,12 +126,12 @@ const SettingsItem = ({
         style={[styles.itemContainer, { borderBottomColor: colors.border + '50' }]}
         onPress={onPress}
     >
-        <View style={[styles.itemIconWrap, { backgroundColor: destructive ? '#FF3B3010' : colors.accent + '10' }]}>
-            {React.createElement(icon, { size: 18, color: destructive ? '#FF3B30' : colors.accent, strokeWidth: 2 })}
+        <View style={[styles.itemIconWrap, { backgroundColor: destructive ? colors.dangerSurface : colors.backgroundSubtle }]}>
+            {React.createElement(icon, { size: 18, color: destructive ? colors.danger : colors.accent, strokeWidth: 2 })}
         </View>
         <View style={styles.itemContent}>
-            <Text style={[styles.itemLabel, { color: colors.textPrimary }]}>{label}</Text>
-            {value && <Text style={[styles.itemValue, { color: colors.textTertiary }]}>{value}</Text>}
+            <UIText variant="body" tone={destructive ? 'danger' : 'primary'}>{label}</UIText>
+            {value && <UIText variant="caption">{value}</UIText>}
         </View>
         {showChevron && <ChevronRight size={16} color={colors.textMuted} />}
     </ScalePressable>
@@ -133,7 +139,7 @@ const SettingsItem = ({
 
 const SettingsGroup = ({ title, children, colors }: { title: string; children: React.ReactNode; colors: any }) => (
     <View style={styles.group}>
-        <Text style={[styles.groupTitle, { color: colors.textSecondary }]}>{title.toUpperCase()}</Text>
+        <UIText variant="caption" tone="secondary" style={styles.groupTitle}>{title}</UIText>
         <View style={[styles.groupContent, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
             {children}
         </View>
@@ -476,7 +482,7 @@ export default function Settings() {
 
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+        <Screen>
             <Stack.Screen options={{ headerShown: false }} />
             <ScrollView
                 ref={scrollViewRef}
@@ -484,14 +490,19 @@ export default function Settings() {
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
-                <View style={styles.header}>
+                <Hero style={styles.hero}>
                     <View style={styles.headerTitleRow}>
-                        <ScalePressable onPress={() => router.back()} style={{ marginRight: 8 }}>
-                            <ArrowLeft size={24} color={colors.textPrimary} />
+                        <ScalePressable
+                            onPress={() => router.back()}
+                            style={styles.backButton}
+                            accessibilityRole="button"
+                            accessibilityLabel="Back"
+                        >
+                            <ArrowLeft size={22} color={colors.textInverse} />
                         </ScalePressable>
-                        <Text style={[styles.title, { color: colors.textPrimary, flex: 1 }]}>Engine Room</Text>
+                        <UIText variant="display" tone="inverse" style={{ flex: 1 }}>Engine Room</UIText>
                     </View>
-                </View>
+                </Hero>
 
                 {/* Profile Section for Admins */}
                 {isAdmin && (
@@ -563,19 +574,19 @@ export default function Settings() {
                     </View>
                     {lastBackupDate ? (
                         <View>
-                            <Text style={[styles.lastBackupText, { color: colors.textMuted }]}>
+                            <UIText variant="caption" tone="muted" style={styles.lastBackupText}>
                                 Last backup: {new Date(lastBackupDate).toLocaleString()}
-                            </Text>
+                            </UIText>
                             {(new Date().getTime() - new Date(lastBackupDate).getTime() > 7 * 24 * 60 * 60 * 1000) && (
-                                <Text style={[styles.lastBackupText, { color: colors.accentSecondary || '#E67E22', fontStyle: 'italic', marginTop: -8, paddingHorizontal: 20 }]}>
+                                <UIText style={[styles.lastBackupText, { color: colors.warning, fontStyle: 'italic', marginTop: -8, paddingHorizontal: 20 }]}>
                                     It's been a while since your last backup! If your phone crashes, please don't cry to me
-                                </Text>
+                                </UIText>
                             )}
                         </View>
                     ) : (
-                        <Text style={[styles.lastBackupText, { color: colors.accentSecondary || '#E67E22', fontStyle: 'italic', paddingHorizontal: 20 }]}>
+                        <UIText style={[styles.lastBackupText, { color: colors.warning, fontStyle: 'italic', paddingHorizontal: 20 }]}>
                             You haven't backed up your data. If you lose everything, please don't cry to me
-                        </Text>
+                        </UIText>
                     )}
                 </SettingsGroup>
 
@@ -588,20 +599,20 @@ export default function Settings() {
                         onPress={handleUpdateSleepTime}
                         colors={colors}
                     />
-                    <Text style={[styles.lastBackupText, { color: colors.textTertiary, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 16 }]}>
+                    <UIText style={[styles.lastBackupText, { color: colors.textTertiary, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 16 }]}>
                         Notifications won't be sent after this time.
-                    </Text>
+                    </UIText>
                 </SettingsGroup>
 
                 {/* About */}
                 <View style={styles.group}>
-                    <Text style={[styles.groupTitle, { color: colors.textSecondary }]}>ABOUT</Text>
+                    <UIText variant="caption" tone="secondary" style={styles.groupTitle}>ABOUT</UIText>
                     <View style={[styles.row, { paddingHorizontal: 4 }]}>
-                        <Text style={[styles.itemLabel, { color: colors.textPrimary }]}>Version</Text>
+                        <UIText variant="subtitle">Version</UIText>
                         <TouchableOpacity onPress={handleNotificationTitleTap} activeOpacity={0.7}>
-                            <Text style={[styles.itemValue, { color: colors.textTertiary }]}>
+                            <UIText variant="body" tone="tertiary">
                                 {Constants.expoConfig?.version || '1.0.0'}
-                            </Text>
+                            </UIText>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -612,9 +623,9 @@ export default function Settings() {
                         <View style={styles.notificationsHeaderRow}>
                             <View style={styles.headerTitleRow}>
                                 <Bell size={14} color={colors.accent} />
-                                <Text style={[styles.headerTitle, { color: colors.textSecondary }]}>
+                                <UIText variant="caption" tone="secondary">
                                     NOTIFICATIONS
-                                </Text>
+                                </UIText>
                             </View>
                             <View style={styles.headerActions}>
                                 <Button
@@ -637,9 +648,9 @@ export default function Settings() {
 
                         {scheduledNotifications.length > 0 ? (
                             <View style={styles.notificationsList}>
-                                <Text style={[styles.notificationsCount, { color: colors.textSecondary }]}>
+                                <UIText variant="bodySmall" tone="secondary" style={styles.notificationsCount}>
                                     {scheduledNotifications.length} scheduled
-                                </Text>
+                                </UIText>
                                 {scheduledNotifications.map((notif, index) => (
                                     <View
                                         key={notif.identifier || index}
@@ -648,27 +659,27 @@ export default function Settings() {
                                             borderColor: colors.cardBorder,
                                         }]}
                                     >
-                                        <Text style={[styles.notificationTitle, { color: colors.textPrimary }]}>
+                                        <UIText variant="body">
                                             {notif.content.title}
-                                        </Text>
-                                        <Text style={[styles.notificationBody, { color: colors.textSecondary }]}>
+                                        </UIText>
+                                        <UIText variant="bodySmall" tone="secondary">
                                             {notif.content.body}
-                                        </Text>
-                                        <Text style={[styles.notificationTime, { color: colors.textTertiary }]}>
+                                        </UIText>
+                                        <UIText variant="caption" style={styles.notificationTime}>
                                             {formatTrigger(notif.trigger)}
-                                        </Text>
+                                        </UIText>
                                     </View>
                                 ))}
                             </View>
                         ) : (
-                            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                            <UIText variant="bodySmall" tone="secondary" style={styles.emptyText}>
                                 No scheduled notifications
-                            </Text>
+                            </UIText>
                         )}
                     </SettingsGroup>
                 )}
             </ScrollView>
-        </SafeAreaView >
+        </Screen>
     );
 }
 
@@ -678,6 +689,16 @@ const styles = StyleSheet.create({
     },
     scrollView: {
         flex: 1,
+    },
+    hero: {
+        marginHorizontal: -Spacing.layout.screenPadding,
+        marginTop: -Spacing.layout.screenPadding,
+        marginBottom: Spacing.xl,
+    },
+    backButton: {
+        width: Spacing.touchTarget,
+        height: Spacing.touchTarget,
+        justifyContent: 'center',
     },
     scrollContent: {
         padding: Spacing.layout.screenPadding,
@@ -692,11 +713,6 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         gap: 8,
     },
-    headerTitle: {
-        fontSize: 10,
-        fontWeight: '800',
-        letterSpacing: 1.2,
-    },
     title: {
         fontSize: 34,
         fontWeight: '800',
@@ -705,15 +721,9 @@ const styles = StyleSheet.create({
     group: {
         marginBottom: Spacing.xxl,
     },
-    groupTitle: {
-        fontSize: 10,
-        fontWeight: '800',
-        marginBottom: Spacing.md,
-        letterSpacing: 1.5,
-        paddingHorizontal: 4,
-    },
+    groupTitle: { marginBottom: Spacing.md, paddingHorizontal: 4 },
     groupContent: {
-        borderRadius: 20,
+        borderRadius: Spacing.borderRadius.lg,
         borderWidth: 1,
         overflow: 'hidden',
     },
@@ -726,7 +736,7 @@ const styles = StyleSheet.create({
     itemIconWrap: {
         width: 32,
         height: 32,
-        borderRadius: 10,
+        borderRadius: Spacing.borderRadius.lg,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 12,
@@ -737,15 +747,6 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         marginRight: 8,
-    },
-    itemLabel: {
-        fontSize: 16,
-        fontWeight: '600',
-        letterSpacing: -0.2,
-    },
-    itemValue: {
-        fontSize: 14,
-        fontWeight: '500',
     },
     row: {
         flexDirection: 'row',
@@ -763,7 +764,7 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
         alignItems: 'center',
         justifyContent: 'center',
-        borderRadius: 14,
+        borderRadius: Spacing.borderRadius.lg,
         borderWidth: 1,
         aspectRatio: 1,
     },
@@ -772,7 +773,7 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
         alignItems: 'center',
         justifyContent: 'center',
-        borderRadius: 14,
+        borderRadius: Spacing.borderRadius.lg,
         borderWidth: 1,
         aspectRatio: 1.1,
     },
@@ -781,13 +782,7 @@ const styles = StyleSheet.create({
         padding: 12,
         gap: 10,
     },
-    lastBackupText: {
-        fontSize: 11,
-        fontWeight: '500',
-        textAlign: 'center',
-        paddingBottom: 12,
-        letterSpacing: 0.2,
-    },
+    lastBackupText: { textAlign: 'center', paddingBottom: 12 },
     notificationsHeaderRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -805,40 +800,14 @@ const styles = StyleSheet.create({
         gap: Spacing.md,
         padding: 16,
     },
-    notificationsCount: {
-        fontSize: Typography.size.sm,
-        fontWeight: Typography.weight.medium,
-        marginBottom: Spacing.sm,
-        letterSpacing: 0.3,
-    },
+    notificationsCount: { marginBottom: Spacing.sm },
     notificationItem: {
         padding: Spacing.lg,
-        borderRadius: 16,
+        borderRadius: Spacing.borderRadius.lg,
         borderWidth: 1,
         gap: Spacing.xs,
         marginBottom: 12,
     },
-    notificationTitle: {
-        fontSize: Typography.size.md,
-        fontWeight: Typography.weight.semibold,
-        letterSpacing: 0.2,
-    },
-    notificationBody: {
-        fontSize: Typography.size.sm,
-        fontWeight: Typography.weight.regular,
-        letterSpacing: 0.2,
-    },
-    notificationTime: {
-        fontSize: Typography.size.xs,
-        fontWeight: Typography.weight.medium,
-        letterSpacing: 0.2,
-        marginTop: 2,
-    },
-    emptyText: {
-        fontSize: Typography.size.sm,
-        fontWeight: Typography.weight.medium,
-        textAlign: 'center',
-        paddingVertical: Spacing.xl,
-        letterSpacing: 0.2,
-    },
+    notificationTime: { marginTop: 2 },
+    emptyText: { textAlign: 'center', paddingVertical: Spacing.xl },
 });

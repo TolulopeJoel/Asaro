@@ -1,15 +1,5 @@
 import React, { useCallback, useMemo, useState, useRef, useEffect } from 'react';
-import {
-    StyleSheet,
-    Text,
-    View,
-    FlatList,
-    ScrollView,
-    TouchableOpacity,
-    Platform,
-    LayoutAnimation,
-    TextInput,
-} from 'react-native';
+import { StyleSheet, View, FlatList, ScrollView, TouchableOpacity, Platform, LayoutAnimation, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -115,11 +105,11 @@ const PlanSectionHeader = React.memo(({
             ]}
         >
             <View style={styles.planSectionTitleContainer}>
-                <Text style={[styles.planSectionTitle, { color: colors.textPrimary }]}>{title.toUpperCase()}</Text>
+                <UIText variant="bodySmall" style={styles.planSectionTitle}>{title.toUpperCase()}</UIText>
                 <View style={[styles.planSectionBadge, { backgroundColor: isDone ? colors.accent + '20' : colors.border }]}>
-                    <Text style={[styles.planSectionProgress, { color: isDone ? colors.accent : colors.textSecondary }]}>
+                    <UIText style={[styles.planSectionProgress, { color: isDone ? colors.accent : colors.textSecondary }]}>
                         {completedCount}/{totalCount}
-                    </Text>
+                    </UIText>
                 </View>
             </View>
 
@@ -157,10 +147,7 @@ const ReadingCard = React.memo(({
                     backgroundColor: colors.cardBackground,
                     borderColor: isCompleted ? colors.accent + '30' : colors.cardBorder,
                 },
-                item.isKey && !isCompleted && {
-                    borderColor: item.id <= 286 ? '#E53935' + '60' : '#1E88E560',
-                    backgroundColor: item.id <= 286 ? '#E53935' + '05' : '#1E88E505',
-                }
+                item.isKey && !isCompleted && { borderColor: colors.borderActive }
             ]}
             onPress={() => onToggle(item.id, !isCompleted)}
         >
@@ -168,25 +155,22 @@ const ReadingCard = React.memo(({
                 <View style={styles.planBookInfo}>
                     <View style={styles.planBookHeader}>
                         {item.isKey && item.id <= 286 && (
-                            <View style={[styles.redDiamond, { backgroundColor: '#E53935' }]} />
+                            <View style={[styles.keyDiamond, { backgroundColor: colors.accent }]} />
                         )}
                         {item.isKey && item.id > 286 && (
-                            <View style={[styles.blueDot, { backgroundColor: '#1E88E5' }]} />
+                            <View style={[styles.keyDot, { backgroundColor: colors.accentSecondary }]} />
                         )}
-                        <Text style={[
-                            styles.planBookName,
-                            { color: isCompleted ? colors.textTertiary : colors.textPrimary },
-                            isCompleted && { textDecorationLine: 'line-through' }
-                        ]}>
+                        <UIText
+                            variant="subtitle"
+                            tone={isCompleted ? 'tertiary' : 'primary'}
+                            style={isCompleted ? styles.struck : undefined}
+                        >
                             {item.book}
-                        </Text>
+                        </UIText>
                     </View>
-                    <Text style={[
-                        styles.planChapters,
-                        { color: isCompleted ? colors.textMuted : colors.textSecondary }
-                    ]}>
+                    <UIText variant="bodySmall" tone={isCompleted ? 'muted' : 'secondary'}>
                         {item.chapters || "Full Book"}
-                    </Text>
+                    </UIText>
                 </View>
 
                 <View style={[
@@ -415,16 +399,16 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: number) => vo
         return (
             <View style={[styles.planLegendContainer, { backgroundColor: colors.backgroundSubtle, marginBottom: Spacing.md }]}>
                 <View style={styles.planLegendItem}>
-                    <View style={[styles.redDiamond, { backgroundColor: '#E53935', marginTop: 4 }]} />
-                    <Text style={[styles.planLegendText, { color: colors.textSecondary }]}>
+                    <View style={[styles.keyDiamond, { backgroundColor: colors.accent, marginTop: 4 }]} />
+                    <UIText variant="bodySmall" tone="secondary" style={styles.planLegendText}>
                         Historical overview of God's dealings with the Israelites
-                    </Text>
+                    </UIText>
                 </View>
                 <View style={styles.planLegendItem}>
-                    <View style={[styles.blueDot, { backgroundColor: '#1E88E5', marginTop: 4 }]} />
-                    <Text style={[styles.planLegendText, { color: colors.textSecondary }]}>
+                    <View style={[styles.keyDot, { backgroundColor: colors.accentSecondary, marginTop: 4 }]} />
+                    <UIText variant="bodySmall" tone="secondary" style={styles.planLegendText}>
                         Chronological overview of the development of the Christian congregation
-                    </Text>
+                    </UIText>
                 </View>
             </View>
         );
@@ -437,28 +421,28 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: number) => vo
                 {progress > 0 && (
                     <View style={[styles.planLegendContainer, { backgroundColor: colors.backgroundSubtle }]}>
                         <View style={styles.planLegendItem}>
-                            <View style={[styles.redDiamond, { backgroundColor: '#E53935', marginTop: 4 }]} />
-                            <Text style={[styles.planLegendText, { color: colors.textSecondary }]}>
+                            <View style={[styles.keyDiamond, { backgroundColor: colors.accent, marginTop: 4 }]} />
+                            <UIText variant="bodySmall" tone="secondary" style={styles.planLegendText}>
                                 Historical overview of God's dealings with the Israelites
-                            </Text>
+                            </UIText>
                         </View>
                         <View style={styles.planLegendItem}>
-                            <View style={[styles.blueDot, { backgroundColor: '#1E88E5', marginTop: 4 }]} />
-                            <Text style={[styles.planLegendText, { color: colors.textSecondary }]}>
+                            <View style={[styles.keyDot, { backgroundColor: colors.accentSecondary, marginTop: 4 }]} />
+                            <UIText variant="bodySmall" tone="secondary" style={styles.planLegendText}>
                                 Chronological overview of the development of the Christian congregation
-                            </Text>
+                            </UIText>
                         </View>
                     </View>
                 )}
-                <Text style={[styles.planFootnote, { color: colors.textSecondary, marginTop: Spacing.xl }]}>
+                <UIText style={[styles.planFootnote, { color: colors.textSecondary, marginTop: Spacing.xl }]}>
                     * This reading plan was adapted from the Bible Reading Plan found on{' '}
-                    <Text
+                    <UIText
                         style={{ textDecorationLine: 'underline', color: colors.accent }}
                         onPress={() => WebBrowser.openBrowserAsync(url)}
                     >
                         jw.org
-                    </Text>
-                </Text>
+                    </UIText>
+                </UIText>
             </View>
         );
     }, [colors.textSecondary, colors.accent, colors.backgroundSubtle, progress]);
@@ -548,7 +532,7 @@ export default function LibraryScreen() {
                             <UIText variant="label" tone="secondary">Books</UIText>
                         </ScalePressable>
                         <UIText variant="label" tone="tertiary"> / </UIText>
-                        <UIText variant="label" tone="primary">{journalSelectedBook.name}</UIText>
+                        <UIText variant="subtitle">{journalSelectedBook.name}</UIText>
                     </View>
                 )}
 
@@ -628,7 +612,7 @@ const styles = StyleSheet.create({
         gap: 6,
         paddingHorizontal: 14,
         paddingVertical: 9,
-        borderRadius: 14,
+        borderRadius: Spacing.borderRadius.lg,
     },
     tabLabel: {
         fontSize: 14,
@@ -670,17 +654,17 @@ const styles = StyleSheet.create({
     searchInput: {
         flex: 1,
         height: 44,
-        borderRadius: 12,
+        borderRadius: Spacing.borderRadius.lg,
         paddingHorizontal: 16,
-        fontSize: 15,
+        fontSize: 14,
         borderWidth: 1,
         fontWeight: '500',
     },
     clearSearch: {
         marginLeft: 10, width: 32, height: 32,
-        borderRadius: 16, alignItems: 'center', justifyContent: 'center',
+        borderRadius: Spacing.borderRadius.round, alignItems: 'center', justifyContent: 'center',
     },
-    clearSearchText: { fontSize: 18, fontWeight: '300' },
+    clearSearchText: { fontSize: 16, fontWeight: '300' },
 
     // ── Plan progress bar ──────────────────────────────────────────
     planProgressRow: {
@@ -690,9 +674,9 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
         gap: 12,
     },
-    planProgressTrack: { flex: 1, height: 6, borderRadius: 3, overflow: 'hidden' },
-    planProgressFill: { height: '100%', borderRadius: 3 },
-    planProgressPct: { fontSize: 13, fontWeight: '800', letterSpacing: -0.5, minWidth: 46, textAlign: 'right' },
+    planProgressTrack: { flex: 1, height: 6, borderRadius: Spacing.borderRadius.round, overflow: 'hidden' },
+    planProgressFill: { height: '100%', borderRadius: Spacing.borderRadius.sm },
+    planProgressPct: { fontSize: 12, fontWeight: '800', letterSpacing: -0.5, minWidth: 46, textAlign: 'right' },
 
     // ── Study ──────────────────────────────────────────────────────
 
@@ -701,25 +685,29 @@ const styles = StyleSheet.create({
     planSectionHeader: {
         marginTop: Spacing.lg, marginBottom: Spacing.sm,
         paddingVertical: 10, paddingHorizontal: 12,
-        borderRadius: 14, borderWidth: 1,
+        borderRadius: Spacing.borderRadius.lg, borderWidth: 1,
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     },
     planSectionHeaderRight: { flexDirection: 'row', alignItems: 'center' },
     planSectionTitleContainer: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, flex: 1, paddingRight: Spacing.md },
-    planSectionTitle: { fontSize: 12, fontWeight: '800', letterSpacing: 1, flexShrink: 1 },
-    planSectionBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
+    planSectionTitle: { flexShrink: 1 },
+    planSectionBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: Spacing.borderRadius.lg },
     planSectionProgress: { fontSize: 10, fontWeight: '800' },
-    planCard: { borderRadius: 16, borderWidth: 1, marginBottom: Spacing.xs, padding: 16 },
+    planCard: { borderRadius: Spacing.borderRadius.lg, borderWidth: 1, marginBottom: Spacing.xs, padding: 16 },
     planCardContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     planBookInfo: { flex: 1, gap: 2 },
     planBookHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    planBookName: { fontSize: 17, fontWeight: '700', letterSpacing: -0.3 },
+    planBookName: { fontSize: 16, fontWeight: '700', letterSpacing: -0.3 },
     planChapters: { fontSize: 14, letterSpacing: 0.1 },
-    planCheckbox: { width: 26, height: 26, borderRadius: 8, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
-    redDiamond: { width: 8, height: 8, transform: [{ rotate: '45deg' }] },
-    blueDot: { width: 8, height: 8, borderRadius: 4 },
-    planLegendContainer: { marginTop: Spacing.xl, gap: Spacing.md, padding: Spacing.md, borderRadius: 12 },
+    planCheckbox: { width: 26, height: 26, borderRadius: Spacing.borderRadius.lg, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+    // Shape is the signal: a diamond for the first half of the plan, a dot for
+    // the second. Colour only reinforces it, so the pair still reads in Locked
+    // In and for anyone who can't separate the old red from the old blue.
+    keyDiamond: { width: 8, height: 8, transform: [{ rotate: '45deg' }] },
+    keyDot: { width: 8, height: 8, borderRadius: Spacing.borderRadius.round },
+    struck: { textDecorationLine: 'line-through' },
+    planLegendContainer: { marginTop: Spacing.xl, gap: Spacing.md, padding: Spacing.md, borderRadius: Spacing.borderRadius.lg },
     planLegendItem: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.md },
-    planLegendText: { fontSize: 13, flex: 1, lineHeight: 18 },
+    planLegendText: { flex: 1 },
     planFootnote: { fontSize: 10, lineHeight: 14, fontStyle: 'italic' },
 });

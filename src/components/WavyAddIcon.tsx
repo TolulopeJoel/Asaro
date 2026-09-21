@@ -8,7 +8,7 @@ interface WavyAddIconProps {
 
 export const WavyAddIcon: React.FC<WavyAddIconProps> = ({
     size = 64,
-    color = '#3b82f6'
+    color = 'currentColor'
 }) => {
     return (
         <Svg

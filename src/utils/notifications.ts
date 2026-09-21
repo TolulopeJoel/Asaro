@@ -4,6 +4,7 @@ import * as Device from 'expo-device';
 import * as IntentLauncher from 'expo-intent-launcher';
 import * as Battery from 'expo-battery';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BRAND_ACCENT } from '../theme/colors';
 
 let isScheduling = false;
 
@@ -38,7 +39,7 @@ export async function initializeNotificationChannel(): Promise<void> {
         name: 'Àṣàrò Reminders',
         importance: Notifications.AndroidImportance.HIGH,
         vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#E18F43',
+        lightColor: BRAND_ACCENT,
         sound: 'default',
         enableVibrate: true,
         enableLights: true,

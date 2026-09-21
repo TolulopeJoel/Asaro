@@ -8,6 +8,22 @@
  * isn't here, it belongs here first — that is the whole point of the file.
  */
 
+/**
+ * The one colour that exists outside the themes.
+ *
+ * Android notification lights, the adaptive icon ground and the splash screen
+ * are painted by the OS before any React code runs, so they cannot read a
+ * theme. They are set in app.json and mirrored here.
+ *
+ * Note the mismatch this makes explicit: these platform surfaces are still the
+ * original vibrant orange, while Cloth's accent is the deeper, less saturated
+ * #c9762c that reads correctly on ecru. Colossal's accent is #e18f43, so the
+ * icon currently matches Locked In rather than the default. Reconciling that
+ * means regenerating the icon and splash assets, which is a brand decision
+ * rather than a refactor — so it is flagged, not quietly changed.
+ */
+export const BRAND_ACCENT = '#E18F43';
+
 /** Shape every palette must satisfy. Adding a key here forces both styles to answer for it. */
 export interface ThemeColors {
     // Grounds
@@ -79,6 +95,19 @@ export interface ThemeColors {
     icon: string;
     iconSecondary: string;
     iconActive: string;
+
+    /**
+     * Seven steps, Sunday to Saturday, shown when a whole week is complete.
+     *
+     * This replaces a hardcoded iOS rainbow. The celebration was worth keeping
+     * — a finished week should look like something — but seven system hues
+     * belonged to neither palette. Cloth reads as a cloth lowered further into
+     * the vat with each dip; Colossal warms from white to ochre.
+     */
+    celebration: readonly string[];
+
+    /** Identity colours for avatars. Distinguishable, and still in-palette. */
+    series: readonly string[];
 
     /** Pattern ink. The motif is drawn in this colour at `patternOpacity`. */
     patternInk: string;
@@ -163,6 +192,9 @@ export const cloth: ThemeColors = {
     iconSecondary: '#efe6d8',
     iconActive: '#a85e1d',
 
+    celebration: ['#17263f', '#234061', '#35587f', '#5b6f7c', '#8a7a63', '#b3814a', '#c9762c'],
+    series: ['#17263f', '#c9762c', '#4e5c70', '#9c5a3c', '#1f4a4f', '#a5706f'],
+
     patternInk: '#c9762c',
     patternOpacity: 0.16,
     markInk: '#c9762c',
@@ -241,6 +273,9 @@ export const colossal: ThemeColors = {
     icon: '#e18f43',
     iconSecondary: '#000000',
     iconActive: '#eda869',
+
+    celebration: ['#ffffff', '#f0dcc6', '#eec9a0', '#ecb87f', '#e9a862', '#e69a4f', '#e18f43'],
+    series: ['#ffffff', '#e18f43', '#8a8a8a', '#c4762f', '#5c5c5c', '#eda869'],
 
     // Colossal wears no cloth. The pattern component renders nothing here.
     patternInk: 'transparent',

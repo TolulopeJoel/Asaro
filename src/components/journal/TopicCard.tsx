@@ -1,11 +1,14 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Bell, CheckCircle2, Check } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { JournalEntry } from '../../data/database';
 import { ScalePressable } from '../ScalePressable';
 import { HyperlinkedText } from '../HyperlinkedText';
 import { formatDate, getDynamicCardStyle } from './JournalCardHelpers';
+import { Spacing } from '../../theme/spacing';
+import { Typography } from '../../theme/typography';
+import { Text } from '../ui';
 
 interface TopicCardProps {
     item: JournalEntry;
@@ -32,10 +35,10 @@ export const TopicCard = React.memo(({ item, onEntryPress, handleToggleTopic }: 
             ]}>
                 <View style={[styles.entryHeader, { marginBottom: 12 }]}>
                     <View style={styles.entryHeaderLeft}>
-                        <Text style={[styles.entryDate, { color: colors.textTertiary }]}>{formatDate(item.created_at)}</Text>
+                        <Text variant="caption">{formatDate(item.created_at)}</Text>
                         <ScalePressable onPress={() => onEntryPress(item)}>
                             <View style={[styles.refBadge, { backgroundColor: colors.accentSecondary + '15' }]}>
-                                <Text style={[styles.entryScripture, { color: colors.accentSecondary + 'A5' }]}>
+                                <Text variant="label" style={{ color: colors.accentSecondary + 'A5' }}>
                                     {item.book_name} {item.chapter_start}{item.chapter_end && item.chapter_end !== item.chapter_start ? `-${item.chapter_end}` : ''}
                                 </Text>
                             </View>
@@ -64,9 +67,9 @@ export const TopicCard = React.memo(({ item, onEntryPress, handleToggleTopic }: 
                             )}
                         </View>
                         {item.study_further_reminder && new Date(item.study_further_reminder) > new Date() ? (
-                            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, backgroundColor: colors.backgroundSubtle, borderColor: colors.border, alignSelf: 'flex-start', marginTop: 8, gap: 4 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: Spacing.borderRadius.lg, borderWidth: 1, backgroundColor: colors.backgroundSubtle, borderColor: colors.border, alignSelf: 'flex-start', marginTop: 8, gap: 4 }}>
                                 <Bell size={12} color={colors.textSecondary} />
-                                <Text style={{ fontSize: 11, fontWeight: '500', color: colors.textSecondary }}>
+                                <Text style={{ fontSize: 10, fontWeight: '500', color: colors.textSecondary }}>
                                     {new Date(item.study_further_reminder).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
                                 </Text>
                             </View>
@@ -100,7 +103,7 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     entryCard: {
-        borderRadius: 12,
+        borderRadius: Spacing.borderRadius.lg,
         borderWidth: 1,
     },
     entryHeader: {
@@ -113,16 +116,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 12,
     },
-    entryDate: {
-        fontSize: 11,
-        fontWeight: '600',
-        textTransform: 'uppercase',
-        letterSpacing: 1,
-    },
     refBadge: {
         paddingHorizontal: 8,
         paddingVertical: 2,
-        borderRadius: 8,
+        borderRadius: Spacing.borderRadius.lg,
     },
     entryScripture: {
         fontSize: 10,
@@ -130,7 +127,7 @@ const styles = StyleSheet.create({
         letterSpacing: 0.5,
     },
     entryPreview: {
-        fontSize: 16,
+        fontSize: Typography.size.lg,
         lineHeight: 26,
         fontWeight: '500',
         letterSpacing: -0.1,
@@ -145,12 +142,12 @@ const styles = StyleSheet.create({
         right: 0,
         top: '50%',
         height: 1.5,
-        borderRadius: 1,
+        borderRadius: Spacing.borderRadius.round,
     },
     checkCircle: {
         width: 24,
         height: 24,
-        borderRadius: 12,
+        borderRadius: Spacing.borderRadius.round,
         borderWidth: 1,
         justifyContent: 'center',
         alignItems: 'center',

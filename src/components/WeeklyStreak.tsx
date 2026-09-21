@@ -9,6 +9,7 @@ import React, { useCallback, useState, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence } from 'react-native-reanimated';
 import { ScalePressable } from './ScalePressable';
+import { Spacing } from '../theme/spacing';
 
 export interface DayStatus {
     date: Date;
@@ -19,16 +20,10 @@ export interface DayStatus {
     isFuture: boolean;
 }
 
-// One color per day of the week, Sunday → Saturday
-const RAINBOW_COLORS = [
-    '#FF3B30', // Sun — red
-    '#FF9500', // Mon — orange
-    '#FFCC00', // Tue — yellow
-    '#34C759', // Wed — green
-    '#5AC8FA', // Thu — sky blue
-    '#5856D6', // Fri — indigo
-    '#AF52DE', // Sat — purple
-] as const;
+// A completed week is still celebrated — but with the theme's own ramp rather
+// than seven iOS system hues, which belonged to neither palette. Cloth reads as
+// cloth taken deeper into the indigo vat with each dip; Colossal warms from
+// white to ochre. See `celebration` in src/theme/colors.ts.
 
 export const fetchWeeklyStreakData = async (): Promise<DayStatus[]> => {
     const today = new Date();
@@ -132,7 +127,7 @@ export const WeeklyStreak = React.memo(({
 
             <View style={styles.daysContainer}>
                 {weekDays.map((day, index) => {
-                    const dayColor = RAINBOW_COLORS[index];
+                    const dayColor = colors.celebration[index];
 
                     return (
                         <Animated.View
@@ -215,12 +210,12 @@ export const WeeklyStreak = React.memo(({
         </>
     );
 
-    // Full week: wrap in a rainbow gradient border (skipped in locked-in mode — no borders/boxes there)
+    // Full week: wrap in the celebration gradient (skipped in Locked In — no borders or boxes there)
     if (isFullWeek && !lockedIn) {
         return (
             <ScalePressable onPress={() => router.push('/stats')}>
                 <LinearGradient
-                    colors={[...RAINBOW_COLORS]}
+                    colors={colors.celebration as unknown as readonly [string, string, ...string[]]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.gradientBorder}
@@ -259,12 +254,12 @@ WeeklyStreak.displayName = 'WeeklyStreak';
 
 const styles = StyleSheet.create({
     gradientBorder: {
-        borderRadius: 13.5,
+        borderRadius: Spacing.borderRadius.lg,
         padding: 1,
     },
     container: {
         padding: 20,
-        borderRadius: 12,
+        borderRadius: Spacing.borderRadius.lg,
         borderWidth: 1,
     },
     header: {
@@ -288,7 +283,7 @@ const styles = StyleSheet.create({
     dayIndicator: {
         width: 40,
         height: 40,
-        borderRadius: 9,
+        borderRadius: Spacing.borderRadius.lg,
         justifyContent: 'center',
         alignItems: 'center',
         borderColor: 'transparent',
@@ -299,6 +294,6 @@ const styles = StyleSheet.create({
     dot: {
         width: 6,
         height: 6,
-        borderRadius: 3,
+        borderRadius: Spacing.borderRadius.round,
     },
 });

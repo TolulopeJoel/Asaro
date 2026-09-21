@@ -1,4 +1,5 @@
 import React, { useEffect, useImperativeHandle, forwardRef, useState, useCallback } from 'react';
+import { useTheme } from '../theme/ThemeContext';
 import { StyleSheet, View, Dimensions } from 'react-native';
 import Animated, {
     useSharedValue,
@@ -13,17 +14,9 @@ import Svg, { Rect, Ellipse, Polygon } from 'react-native-svg';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-const RAINBOW_COLORS = [
-    '#FF3B30',
-    '#FF9500',
-    '#FFCC00',
-    '#34C759',
-    '#5AC8FA',
-    '#5856D6',
-    '#AF52DE',
-    '#FF2D92', // hot pink for extra pop
-    '#FF6B35', // deep orange
-];
+// Confetti takes the theme's celebration ramp rather than its own rainbow, so
+// a burst in Locked In doesn't arrive in nine colours the rest of that screen
+// doesn't have. See `celebration` in src/theme/colors.ts.
 
 const NUM_PARTICLES = 100;
 
@@ -198,6 +191,7 @@ export interface ConfettiRef {
 }
 
 export const Confetti = forwardRef<ConfettiRef, ConfettiProps>(({ onAnimationEnd }, ref) => {
+    const { colors } = useTheme();
     const [isVisible, setIsVisible] = useState(false);
     const [key, setKey] = useState(0);
 
@@ -219,14 +213,14 @@ export const Confetti = forwardRef<ConfettiRef, ConfettiProps>(({ onAnimationEnd
                 id: i,
                 // Small origin jitter so it doesn't look like 3 laser beams
                 cannonX: cannon.x + rand(-25, 25),
-                color: RAINBOW_COLORS[i % RAINBOW_COLORS.length],
+                color: colors.celebration[i % colors.celebration.length],
                 shape: SHAPES[randInt(0, SHAPES.length)] as Shape,
                 // Tight burst window — feels like an explosion, not a drip
                 delay: rand(0, 80),
                 // Vary sizes for depth
                 size: rand(6, 11),
             };
-        }), [key]
+        }), [key, colors]
     );
 
     if (!isVisible) return null;

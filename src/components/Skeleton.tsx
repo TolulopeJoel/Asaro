@@ -27,7 +27,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
     style,
     circle = false,
 }) => {
-    const { isDark } = useTheme();
+    const { colors } = useTheme();
     const shimmerValue = useSharedValue(0);
 
     useEffect(() => {
@@ -49,8 +49,10 @@ export const Skeleton: React.FC<SkeletonProps> = ({
         };
     });
 
-    const baseColor = isDark ? '#2C2C2E' : '#E1E9EE';
-    const highlightColor = isDark ? '#3A3A3C' : '#F2F8FC';
+    // The shimmer is a surface, so it takes surface tokens — the old pair was
+    // a cool blue-grey that fought Cloth's warm ground on every loading state.
+    const baseColor = colors.backgroundSubtle;
+    const highlightColor = colors.cardHover;
 
     return (
         <View

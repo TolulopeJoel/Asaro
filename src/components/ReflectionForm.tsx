@@ -1,10 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  Platform,
-  StyleSheet,
-  Text,
-  View
-} from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTheme } from '../theme/ThemeContext';
 import { useAlert } from '../context/AlertContext';
@@ -13,6 +8,7 @@ import { Typography } from '../theme/typography';
 import { TextArea } from './TextArea';
 import { ActionItemPair, ActionItemsInput } from './ActionItemsInput';
 import { Button } from './Button';
+import { Text as UIText } from './ui';
 
 export interface ReflectionAnswers {
   reflection1: string;
@@ -118,7 +114,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
         style={styles.questionContainer}
       >
         <View style={styles.questionHeader}>
-          <Text style={[styles.questionTitle, { color: colors.textPrimary }]}>{question}</Text>
+          <UIText variant="title">{question}</UIText>
         </View>
 
         {isActionList ? (
@@ -140,7 +136,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
         )}
         {id === 'studyFurther' && answers.studyFurther && answers.studyFurther.trim().length > 0 && !disabled && (
           <View style={styles.reminderContainer}>
-            <Text style={[styles.reminderLabel, { color: colors.textSecondary }]}>Remind me at:</Text>
+            <UIText variant="bodySmall" tone="secondary">Remind me at:</UIText>
             {Platform.OS === 'ios' ? (
               <DateTimePicker
                 value={answers.studyFurtherReminder ? new Date(answers.studyFurtherReminder) : new Date(Date.now() + 24 * 60 * 60 * 1000)}
@@ -195,7 +191,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
 
         <View style={styles.notesContainer}>
           <View style={styles.notesHeader}>
-            <Text style={[styles.notesTitle, { color: colors.textSecondary }]}>Additional Thoughts</Text>
+            <UIText variant="body" tone="secondary" style={styles.notesTitle}>Additional Thoughts</UIText>
           </View>
           <TextArea
             label=""
@@ -277,12 +273,7 @@ const styles = StyleSheet.create({
   questionHeader: {
     marginBottom: Spacing.sm,
   },
-  questionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 22,
-    letterSpacing: -0.2,
-  },
+
   notesContainer: {
     marginTop: Spacing.xl,
   },
@@ -291,12 +282,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.md,
   },
-  notesTitle: {
-    fontSize: Typography.size.md,
-    fontWeight: Typography.weight.regular,
-    letterSpacing: 0.2,
-    marginRight: Spacing.sm,
-  },
+  notesTitle: { marginRight: Spacing.sm },
   actionsContainer: {
     flexDirection: 'row',
     paddingVertical: Spacing.xxl,
@@ -309,10 +295,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.sm,
   },
-  reminderLabel: {
-    fontSize: Typography.size.md,
-    fontWeight: Typography.weight.medium,
-  },
+
   androidPickerRow: {
     flexDirection: 'row',
     alignItems: 'center',

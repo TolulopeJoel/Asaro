@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Sparkles, Check, X } from 'lucide-react-native';
 
 import { useTheme } from '../theme/ThemeContext';
@@ -25,6 +26,9 @@ import {
 import { downloadModel, isModelDownloaded, unload } from '../ml/embedder';
 import { AnimatedModal } from './AnimatedModal';
 import { ThemeDetail } from './ThemeDetail';
+import { JournalEntryDetail } from './JournalEntryDetail';
+import { getEntryById, JournalEntry } from '../data/database';
+import { Text as UIText, textStyle } from './ui';
 
 const FIELD_LABELS: Record<string, string> = {
     ...Object.fromEntries(EMBEDDABLE_FIELDS.map(f => [f.column, f.label])),
@@ -49,10 +53,14 @@ function reference(item: StoredEmbedding): string {
 }
 
 export function ThemesContent() {
-    const { colors } = useTheme();
+    const { colors, style: themeStyle } = useTheme();
     const router = useRouter();
     const [phase, setPhase] = useState<Phase>('checking');
     const [openIndex, setOpenIndex] = useState<number | null>(null);
+    // Entries open on top of the theme rather than navigating away, so closing
+    // one returns you to the theme you were reading — a theme is meant to be
+    // read through, and pushing a route would eject you on every entry.
+    const [openEntry, setOpenEntry] = useState<JournalEntry | null>(null);
     const [progress, setProgress] = useState(0);
     const [clusters, setClusters] = useState<Cluster<StoredEmbedding>[]>([]);
     const [named, setNamed] = useState<NamedTheme[]>([]);
@@ -160,12 +168,12 @@ export function ThemesContent() {
         return (
             <View style={styles.center}>
                 <Sparkles size={40} color={colors.accent} />
-                <Text style={[styles.title, { color: colors.textPrimary }]}>Find your themes</Text>
-                <Text style={[styles.body, { color: colors.textSecondary }]}>
+                <UIText variant="title" style={styles.centred}>Find your themes</UIText>
+                <UIText variant="body" tone="secondary" style={styles.centred}>
                     Àṣàrò can group your entries by what you keep coming back to. It needs a
                     one-time 23MB download, then it works offline — your reflections are never
                     sent anywhere.
-                </Text>
+                </UIText>
                 <Button label="Download (23MB)" onPress={handleDownload} />
             </View>
         );
@@ -181,7 +189,7 @@ export function ThemesContent() {
         return (
             <View style={styles.center}>
                 <ActivityIndicator color={colors.accent} />
-                <Text style={[styles.body, { color: colors.textSecondary }]}>{label}</Text>
+                <UIText variant="body" tone="secondary" style={styles.centred}>{label}</UIText>
             </View>
         );
     }
@@ -190,12 +198,12 @@ export function ThemesContent() {
         return (
             <View style={styles.center}>
                 <Sparkles size={40} color={colors.textTertiary} />
-                <Text style={[styles.title, { color: colors.textPrimary }]}>Not yet</Text>
-                <Text style={[styles.body, { color: colors.textSecondary }]}>
+                <UIText variant="title" style={styles.centred}>Not yet</UIText>
+                <UIText variant="body" tone="secondary" style={styles.centred}>
                     You have {entryCount} {entryCount === 1 ? 'entry' : 'entries'} with enough
                     written in them. Themes start to mean something around {MIN_ENTRIES} — before
                     that they mostly describe the reading plan rather than you.
-                </Text>
+                </UIText>
             </View>
         );
     }
@@ -203,8 +211,8 @@ export function ThemesContent() {
     if (phase === 'error') {
         return (
             <View style={styles.center}>
-                <Text style={[styles.title, { color: colors.textPrimary }]}>Couldn&apos;t finish</Text>
-                <Text style={[styles.body, { color: colors.textSecondary }]}>{errorText}</Text>
+                <UIText variant="title" style={styles.centred}>Couldn&apos;t finish</UIText>
+                <UIText variant="body" tone="secondary" style={styles.centred}>{errorText}</UIText>
                 <Button label="Try again" onPress={compute} />
             </View>
         );
@@ -213,11 +221,11 @@ export function ThemesContent() {
     if (clusters.length === 0) {
         return (
             <View style={styles.center}>
-                <Text style={[styles.title, { color: colors.textPrimary }]}>No themes yet</Text>
-                <Text style={[styles.body, { color: colors.textSecondary }]}>
+                <UIText variant="title" style={styles.centred}>No themes yet</UIText>
+                <UIText variant="body" tone="secondary" style={styles.centred}>
                     Nothing you&apos;ve written grouped together strongly enough to call a theme.
                     Keep going — this gets sharper as the journal grows.
-                </Text>
+                </UIText>
             </View>
         );
     }
@@ -239,10 +247,10 @@ export function ThemesContent() {
             keyExtractor={(_, index) => `cluster-${index}`}
             contentContainerStyle={styles.list}
             ListHeaderComponent={
-                <Text style={[styles.intro, { color: colors.textTertiary }]}>
+                <UIText variant="bodySmall" tone="tertiary" style={styles.intro}>
                     {clusters.length} {clusters.length === 1 ? 'pattern' : 'patterns'} across your
                     entries. Name the ones you recognise.
-                </Text>
+                </UIText>
             }
             renderItem={({ item, index }) => {
                 const reps = representatives(item, 3);
@@ -261,29 +269,25 @@ export function ThemesContent() {
                         ]}
                     >
                         {savedName && (
-                            <Text style={[styles.themeName, { color: colors.textPrimary }]}>
-                                {savedName.name}
-                            </Text>
+                            <UIText variant="subtitle">{savedName.name}</UIText>
                         )}
 
                         <View style={styles.cardHeader}>
-                            <Text style={[styles.count, { color: colors.accent }]}>
-                                {item.entryCount} entries
-                            </Text>
+                            <UIText variant="label">{item.entryCount} entries</UIText>
                             {books.length > 0 && (
-                                <Text style={[styles.books, { color: colors.textTertiary }]} numberOfLines={1}>
+                                <UIText variant="caption" style={styles.books} numberOfLines={1}>
                                     {books.join(' · ')}
-                                </Text>
+                                </UIText>
                             )}
                         </View>
 
                         {reps.map((member, i) => (
                             <View key={`${member.entryId}-${member.field}-${i}`} style={styles.snippet}>
-                                <Text style={[styles.snippetMeta, { color: colors.textTertiary }]}>
+                                <UIText variant="caption" tone="tertiary">
                                     {reference(member)} · {FIELD_LABELS[member.field] ?? member.field}
-                                </Text>
+                                </UIText>
                                 <HyperlinkedText
-                                    style={[styles.snippetText, { color: colors.textSecondary }]}
+                                    style={[textStyle(themeStyle, 'bodySmall'), { color: colors.textSecondary }]}
                                     numberOfLines={3}
                                     text={member.text}
                                 />
@@ -295,6 +299,7 @@ export function ThemesContent() {
                                 <TextInput
                                     style={[
                                         styles.nameInput,
+                                        textStyle(themeStyle, 'body'),
                                         {
                                             backgroundColor: colors.backgroundSubtle,
                                             color: colors.textPrimary,
@@ -332,21 +337,19 @@ export function ThemesContent() {
                                 }}
                                 style={[styles.nameCta, { borderColor: colors.border }]}
                             >
-                                <Text
-                                    style={[
-                                        styles.nameCtaText,
-                                        { color: savedName ? colors.textTertiary : colors.accent },
-                                    ]}
+                                <UIText
+                                    variant="label"
+                                    tone={savedName ? 'tertiary' : 'accent'}
                                 >
                                     {savedName ? 'Rename' : 'Name this theme'}
-                                </Text>
+                                </UIText>
                             </ScalePressable>
                         )}
 
                         {item.entryCount > reps.length && (
-                            <Text style={[styles.more, { color: colors.textTertiary }]}>
+                            <UIText variant="caption" style={styles.more}>
                                 +{item.entryCount - reps.length} more — tap to read
-                            </Text>
+                            </UIText>
                         )}
                     </ScalePressable>
                 );
@@ -364,11 +367,30 @@ export function ThemesContent() {
                         setDraftName(openName ?? '');
                         setOpenIndex(null);
                     }}
-                    onOpenEntry={entryId => {
-                        setOpenIndex(null);
-                        router.push(`/library/${entryId}`);
+                    onOpenEntry={async entryId => {
+                        const entry = await getEntryById(entryId);
+                        if (entry) setOpenEntry(entry);
                     }}
                 />
+            )}
+        </AnimatedModal>
+
+        <AnimatedModal visible={openEntry !== null} onRequestClose={() => setOpenEntry(null)}>
+            {openEntry && (
+                <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+                    <JournalEntryDetail
+                        entry={openEntry}
+                        onClose={() => setOpenEntry(null)}
+                        onEdit={entry => {
+                            setOpenEntry(null);
+                            setOpenIndex(null);
+                            router.push({
+                                pathname: '/addEntry',
+                                params: { entryId: entry.id!.toString() },
+                            });
+                        }}
+                    />
+                </SafeAreaView>
             )}
         </AnimatedModal>
         </>
@@ -383,41 +405,34 @@ const styles = StyleSheet.create({
         gap: Spacing.md,
         paddingHorizontal: Spacing.xl,
     },
-    title: { fontSize: 20, fontWeight: '700', textAlign: 'center' },
-    body: { fontSize: 14, lineHeight: 21, textAlign: 'center' },
-    intro: { fontSize: 13, lineHeight: 19, paddingBottom: Spacing.md },
+    centred: { textAlign: 'center' },
+    intro: { paddingBottom: Spacing.md },
     list: { padding: Spacing.layout.screenPadding, paddingBottom: 80 },
     card: {
         borderWidth: 1,
-        borderRadius: 18,
+        borderRadius: Spacing.borderRadius.none,
         padding: Spacing.lg,
         marginBottom: Spacing.md,
         gap: Spacing.sm,
     },
     cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    themeName: { fontSize: 17, fontWeight: '700', letterSpacing: -0.2 },
-    count: { fontSize: 13, fontWeight: '700' },
-    books: { flex: 1, fontSize: 12 },
+    books: { flex: 1 },
     snippet: { gap: 2, paddingTop: 6 },
-    snippetMeta: { fontSize: 11, fontWeight: '600', letterSpacing: 0.2 },
-    snippetText: { fontSize: 13, lineHeight: 19 },
     nameCta: {
         marginTop: Spacing.sm,
         borderWidth: 1,
-        borderRadius: 12,
+        borderRadius: Spacing.borderRadius.sm,
         paddingVertical: 10,
         alignItems: 'center',
     },
-    nameCtaText: { fontSize: 13, fontWeight: '700' },
-    more: { fontSize: 12, fontWeight: '600', paddingTop: 4 },
+    more: { paddingTop: Spacing.xs },
     nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: Spacing.sm },
     nameInput: {
         flex: 1,
         borderWidth: 1,
-        borderRadius: 12,
+        borderRadius: Spacing.borderRadius.sm,
         paddingHorizontal: 12,
-        paddingVertical: 10,
-        fontSize: 14,
+        paddingVertical: Spacing.sm + 2,
     },
-    iconBtn: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+    iconBtn: { width: 40, height: 40, borderRadius: Spacing.borderRadius.sm, alignItems: 'center', justifyContent: 'center' },
 });

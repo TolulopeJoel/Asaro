@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useMemo } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, LayoutAnimation } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, LayoutAnimation } from 'react-native';
 import { Zap, ChevronUp, ChevronDown } from 'lucide-react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useFocusEffect } from 'expo-router';
@@ -17,6 +17,7 @@ export type { EnhancedActionItem };
 import { ScalePressable } from './ScalePressable';
 import { HyperlinkedText } from './HyperlinkedText';
 import { getItemsForSlots, SlotKey } from '../utils/actionRemindersRotation';
+import { Text } from './ui';
 
 // ─── Window definitions ──────────────────────────────────────────────────────
 const WINDOWS: { slot: SlotKey; newerDays: number; olderDays: number; label: string }[] = [
@@ -104,9 +105,9 @@ const ActionCard = React.memo(({
 
     const getDynamicStyle = (text: string) => {
         const length = text.length;
-        if (length < 60) return { fontSize: 22, lineHeight: 28, padding: 24 };
-        if (length < 120) return { fontSize: 18, lineHeight: 24, padding: 20 };
-        return { fontSize: 15, lineHeight: 20, padding: 16 };
+        if (length < 60) return { fontSize: 20, lineHeight: 28, padding: 24 };
+        if (length < 120) return { fontSize: 16, lineHeight: 24, padding: 20 };
+        return { fontSize: 14, lineHeight: 20, padding: 16 };
     };
 
     const dynamic = getDynamicStyle(item.action);
@@ -143,10 +144,10 @@ const ActionCard = React.memo(({
                     <View style={styles.headerTitleRow}>
                         <Zap
                             size={14}
-                            color={isDark ? '#f7f4ef' + 'E6' : '#000000' + 'B3'}
+                            color={colors.textSecondary}
                             fill={colors.accentSecondary}
                         />
-                        <Text style={[styles.headerTitle, { color: colors.textSecondary }]}>
+                        <Text variant="caption" tone="secondary" style={styles.headerTitle}>
                             {isTopStacked
                                 ? "WHAT YOU SAID YOU'D DO"
                                 : windowLabel ?? "WHAT YOU SAID YOU'D DO"
@@ -155,7 +156,7 @@ const ActionCard = React.memo(({
                     </View>
 
                     <View style={styles.headerRight}>
-                        <Text style={[styles.dateText, { color: colors.textTertiary }]}>
+                        <Text variant="caption" tone="tertiary" style={styles.dateText}>
                             {formattedDate}
                         </Text>
                         {isPinned && (
@@ -180,7 +181,7 @@ const ActionCard = React.memo(({
                 {/* ── Scripture badge ── */}
                 <View style={styles.cardHeader}>
                     <View style={[styles.refBadge, { backgroundColor: colors.accentSecondary + '15' }]}>
-                        <Text style={[styles.refText, { color: colors.accentSecondary }]}>
+                        <Text variant="caption">
                             {item.book_name}{' '}
                             {item.chapter_start}
                             {item.chapter_end && item.chapter_end !== item.chapter_start
@@ -357,7 +358,7 @@ export const ActionReminders: React.FC<ActionRemindersProps> = React.memo(({ onE
                     onPress={toggleDeck}
                     activeOpacity={0.7}
                 >
-                    <Text style={[styles.expandText, { color: colors.textSecondary }]}>
+                    <Text variant="label" tone="secondary">
                         {isExpanded ? 'Collapse' : `${totalCards} reminders`}
                     </Text>
                     {isExpanded ? (
@@ -404,23 +405,13 @@ const styles = StyleSheet.create({
         gap: 8,
         flex: 1,
     },
-    headerTitle: {
-        fontSize: 10,
-        fontWeight: '600',
-        letterSpacing: 1.5,
-        textTransform: 'uppercase',
-        opacity: 0.7,
-    },
+    headerTitle: { opacity: 0.7 },
     headerRight: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 10,
     },
-    dateText: {
-        fontSize: 10,
-        fontWeight: '600',
-        opacity: 0.8,
-    },
+    dateText: { opacity: 0.8 },
     cardHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -432,13 +423,8 @@ const styles = StyleSheet.create({
         paddingVertical: 2,
         borderRadius: Spacing.borderRadius.sm,
     },
-    refText: {
-        fontSize: Typography.size.xs,
-        fontWeight: Typography.weight.semibold,
-        letterSpacing: 0.5,
-    },
     actionText: {
-        fontSize: 22,
+        fontSize: 20,
         fontWeight: '800',
         lineHeight: 28,
         letterSpacing: -0.3,
@@ -462,11 +448,5 @@ const styles = StyleSheet.create({
         marginTop: Spacing.md,
         gap: 6,
         paddingVertical: Spacing.xs,
-    },
-    expandText: {
-        fontSize: Typography.size.xs,
-        fontWeight: Typography.weight.bold,
-        textTransform: 'uppercase',
-        letterSpacing: 1,
     },
 });

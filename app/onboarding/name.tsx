@@ -1,5 +1,11 @@
 import { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import {
+    View,
+    TextInput,
+    StyleSheet,
+    KeyboardAvoidingView,
+    Platform,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -8,6 +14,7 @@ import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Text } from '@/src/components/ui';
 
 
 export default function NameScreen() {
@@ -44,11 +51,11 @@ export default function NameScreen() {
                 <View style={styles.content}>
                     <View style={styles.textContainer}>
                         <View style={styles.introBlock}>
-                            <Text style={[styles.greeting, { color: colors.textPrimary }]}>
+                            <Text variant="display" style={styles.greeting}>
                                 Hello.
                             </Text>
 
-                            <Text style={[styles.introText, { color: colors.textPrimary }]}>
+                            <Text variant="body" style={styles.introText}>
                                 I want to help you stay consistent with your reading.
                                 But I can&apos;t be friends with a stranger, can I?
                                 {'\n\n'}
@@ -57,7 +64,7 @@ export default function NameScreen() {
                         </View>
 
                         <View style={styles.nameSection}>
-                            <Text style={[styles.label, { color: colors.textSecondary }]}>
+                            <Text variant="label" tone="secondary" style={styles.label}>
                                 What do your friends call you?
                             </Text>
 
@@ -130,30 +137,13 @@ const styles = StyleSheet.create({
     introBlock: {
         marginBottom: Spacing.xxxl,
     },
-    greeting: {
-        fontSize: 34,
-        fontWeight: '800',
-        letterSpacing: -1.5,
-        marginBottom: Spacing.sm,
-    },
-    introText: {
-        fontSize: Typography.size.lg,
-        fontWeight: Typography.weight.medium,
-        lineHeight: Typography.lineHeight.xl,
-        letterSpacing: -0.2,
-        opacity: 0.8,
-    },
+    greeting: { marginBottom: Spacing.sm },
+    introText: { opacity: 0.8 },
     nameSection: {
         gap: Spacing.md,
         marginTop: Spacing.xl,
     },
-    label: {
-        fontSize: Typography.size.sm,
-        fontWeight: Typography.weight.bold,
-        letterSpacing: Typography.letterSpacing.wider,
-        textTransform: 'uppercase',
-        opacity: 0.5,
-    },
+    label: { opacity: 0.5 },
     inputContainer: {
         borderRadius: Spacing.borderRadius.md,
         overflow: 'hidden',

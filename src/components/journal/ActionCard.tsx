@@ -1,11 +1,13 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useTheme } from '../../theme/ThemeContext';
 import { EnhancedActionItem, JournalEntry, getEntryById } from '../../data/database';
 import { ScalePressable } from '../ScalePressable';
 import { HyperlinkedText } from '../HyperlinkedText';
 import { formatDate, getDynamicCardStyle } from './JournalCardHelpers';
+import { Spacing } from '../../theme/spacing';
+import { Text } from '../ui';
 
 interface ActionCardProps {
     item: EnhancedActionItem;
@@ -21,7 +23,7 @@ export const ActionCard = React.memo(({ item, onEntryPress, handleTogglePin }: A
             <View style={[styles.entryCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder, marginBottom: 0, padding: dynamic.padding }]}>
                 <View style={[styles.entryHeader, { marginBottom: 12 }]}>
                     <View style={styles.entryHeaderLeft}>
-                        <Text style={[styles.entryDate, { color: colors.textTertiary }]}>{formatDate(item.created_at)}</Text>
+                        <Text variant="label" tone="tertiary">{formatDate(item.created_at)}</Text>
                         <ScalePressable onPress={async () => {
                             try {
                                 const entry = await getEntryById(item.entry_id!);
@@ -31,7 +33,7 @@ export const ActionCard = React.memo(({ item, onEntryPress, handleTogglePin }: A
                             }
                         }}>
                             <View style={[styles.refBadge, { backgroundColor: colors.accent + '15' }]}>
-                                <Text style={[styles.entryScripture, { color: colors.accent + 'A5' }]}>
+                                <Text variant="label" style={{ color: colors.accent + 'A5' }}>
                                     {item.book_name} {item.chapter_start}{item.chapter_end && item.chapter_end !== item.chapter_start ? `-${item.chapter_end}` : ''}
                                 </Text>
                             </View>
@@ -70,7 +72,7 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     entryCard: {
-        borderRadius: 12,
+        borderRadius: Spacing.borderRadius.lg,
         borderWidth: 1,
     },
     entryHeader: {
@@ -83,16 +85,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 12,
     },
-    entryDate: {
-        fontSize: 11,
-        fontWeight: '600',
-        textTransform: 'uppercase',
-        letterSpacing: 1,
-    },
     refBadge: {
         paddingHorizontal: 8,
         paddingVertical: 2,
-        borderRadius: 8,
+        borderRadius: Spacing.borderRadius.lg,
     },
     entryScripture: {
         fontSize: 10,

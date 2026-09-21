@@ -5,7 +5,6 @@ import {
     Platform,
     ScrollView,
     StyleSheet,
-    Text,
     TextInput,
     TouchableOpacity,
     View,
@@ -15,6 +14,7 @@ import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
 import { ALL_BIBLE_BOOKS, BibleBook } from '../data/bibleBooks';
 import { ChevronLeft, Check, ArrowRight, X } from 'lucide-react-native';
+import { Text } from './ui';
 
 const CHIP_THRESHOLD = 30;
 
@@ -59,7 +59,7 @@ const BackPill = ({
         style={[styles.pill, styles.backPill, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '30' }]}
     >
         <ChevronLeft size={14} color={colors.primary} />
-        <Text style={[styles.pillText, { color: colors.primary, fontWeight: '700' }]}>{label}</Text>
+        <Text variant="subtitle" tone="accent">{label}</Text>
     </TouchableOpacity>
 );
 
@@ -79,7 +79,7 @@ const ActionPill = ({
         onPress={onPress}
         style={[styles.pill, { backgroundColor: colors.background, borderColor: colors.border }]}
     >
-        <Text style={[styles.pillText, { color: colors.text }]}>{label}</Text>
+        <Text variant="bodySmall">{label}</Text>
     </TouchableOpacity>
 );
 
@@ -182,7 +182,7 @@ const ChapterPills = ({
                         onPress={() => onChapterSelect(ch)}
                         style={[styles.pill, { backgroundColor: colors.background, borderColor: colors.border }]}
                     >
-                        <Text style={[styles.pillText, { color: colors.text }]}>{ch}</Text>
+                        <Text variant="bodySmall">{ch}</Text>
                     </TouchableOpacity>
                 ))}
             </>
@@ -484,7 +484,7 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
         switch (phase) {
             case 'book':
                 return filteredBooks.length === 0
-                    ? <Text style={[styles.emptyText, { color: colors.textTertiary }]}>No matching book</Text>
+                    ? <Text variant="body" tone="tertiary" style={styles.emptyText}>No matching book</Text>
                     : filteredBooks.map((b) => (
                         <TouchableOpacity
                             key={b.name}
@@ -492,7 +492,7 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
                             onPress={() => handleBookSelect(b)}
                             style={[styles.pill, { backgroundColor: colors.background, borderColor: colors.border }]}
                         >
-                            <Text style={[styles.pillText, { color: colors.text }]}>{b.name}</Text>
+                            <Text variant="bodySmall">{b.name}</Text>
                         </TouchableOpacity>
                     ));
 
@@ -697,7 +697,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: Spacing.sm,
-        borderRadius: 26,
+        borderRadius: Spacing.borderRadius.lg,
         borderWidth: 1,
         overflow: 'hidden',
         /* High-end subtle glassmorphism */
@@ -724,7 +724,7 @@ const styles = StyleSheet.create({
     pill: {
         paddingHorizontal: 16,
         paddingVertical: 8,
-        borderRadius: 20,
+        borderRadius: Spacing.borderRadius.lg,
         borderWidth: 1,
         justifyContent: 'center',
         alignItems: 'center',
@@ -735,16 +735,7 @@ const styles = StyleSheet.create({
         paddingLeft: 10,
         gap: 2,
     },
-    pillText: {
-        fontSize: Typography.size.sm,
-        fontWeight: '500',
-        letterSpacing: 0.1,
-    },
-    emptyText: {
-        fontSize: Typography.size.xs,
-        fontWeight: '500',
-        paddingHorizontal: Spacing.md,
-    },
+    emptyText: { paddingHorizontal: Spacing.md },
     inputWrapper: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -757,7 +748,7 @@ const styles = StyleSheet.create({
         width: 64,
         height: 36,
         borderWidth: 1,
-        borderRadius: 20,
+        borderRadius: Spacing.borderRadius.lg,
         paddingHorizontal: 14,
         letterSpacing: 0.1,
     },

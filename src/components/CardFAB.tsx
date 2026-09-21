@@ -1,11 +1,12 @@
 import React from 'react';
-import { StyleSheet, View, Text } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Share2, Edit2, Trash2 } from 'lucide-react-native';
+import { Text } from './ui';
 
 interface CardFABProps {
     onShare: () => void;
@@ -53,7 +54,7 @@ export const CardFAB: React.FC<CardFABProps> = ({
             >
                 <View style={styles.buttonContent}>
                     <Share2 size={16} color={colors.textSecondary} strokeWidth={2.5} />
-                    <Text style={[styles.shareFloatingText, { color: colors.textSecondary }]}>
+                    <Text variant="bodySmall" tone="secondary" style={styles.shareFloatingText}>
                         {isSharing ? 'sharing' : 'share'}
                     </Text>
                 </View>
@@ -112,11 +113,7 @@ const styles = StyleSheet.create({
         borderRadius: Spacing.borderRadius.md,
         alignItems: 'center',
     },
-    shareFloatingText: {
-        fontSize: Typography.size.sm + 1,
-        fontWeight: Typography.weight.medium,
-        marginLeft: 6,
-    },
+    shareFloatingText: { marginLeft: 6 },
     buttonContent: {
         flexDirection: 'row',
         alignItems: 'center',

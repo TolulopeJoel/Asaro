@@ -7,8 +7,9 @@ import { Spacing } from '@/src/theme/spacing';
 import { formatDateToLocalString } from '@/src/utils/dateUtils';
 import { useFocusEffect, useNavigation } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Text } from '@/src/components/ui';
 
 interface MonthData {
     year: number;
@@ -112,7 +113,7 @@ export default function StatsScreen() {
 
     const renderHeader = useCallback(() => (
         <View style={styles.monthHeader}>
-            <Text style={[styles.monthTitleLarge, { color: colors.textPrimary }]}>
+            <Text variant="display" style={styles.monthTitleLarge}>
                 {currentMonthName}
             </Text>
             <View style={styles.statsRow}>
@@ -177,12 +178,7 @@ const styles = StyleSheet.create({
     monthHeader: {
         marginBottom: Spacing.xxxl,
     },
-    monthTitleLarge: {
-        fontSize: 34,
-        fontWeight: '800',
-        letterSpacing: -1.5,
-        marginBottom: Spacing.xl,
-    },
+    monthTitleLarge: { marginBottom: Spacing.xl },
     statsRow: {
         flexDirection: 'row',
         alignItems: 'center',

@@ -2,12 +2,7 @@ import { JournalEntry } from '@/src/data/database';
 import { shareReflectionToGroup } from '@/src/services/groupActivityService';
 import { getDaysDifference, getLocalMidnight } from '@/src/utils/dateUtils';
 import React, { useState, useMemo } from 'react';
-import {
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
-} from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { Share2, Bell, X } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { useAlert } from '../context/AlertContext';
@@ -15,6 +10,7 @@ import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
 import { ScalePressable } from './ScalePressable';
 import { HyperlinkedText } from './HyperlinkedText';
+import { Text } from './ui';
 
 interface JournalEntryDetailProps {
     entry: JournalEntry;
@@ -174,7 +170,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
             return (
                 <View key={questionIndex} style={[styles.reflectionCard, { borderLeftColor: colors.accentSecondary }]}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: Spacing.md }}>
-                        <Text style={[styles.questionText, { color: colors.accent, flex: 1, marginBottom: 0 }]}>{REFLECTION_QUESTIONS[questionIndex]}</Text>
+                        <Text variant="label" style={{ flex: 1 }}>{REFLECTION_QUESTIONS[questionIndex]}</Text>
                         <ScalePressable onPress={handleShareActionItems} style={{ padding: Spacing.sm, marginTop: -Spacing.sm, marginRight: -Spacing.sm }}>
                             <Share2 size={20} color={colors.textTertiary} />
                         </ScalePressable>
@@ -217,7 +213,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
             return (
                 <View key={questionIndex} style={[styles.reflectionCard, { borderLeftColor: colors.accentSecondary }]}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: Spacing.md }}>
-                        <Text style={[styles.questionText, { color: colors.accent, flex: 1, marginBottom: 0 }]}>{REFLECTION_QUESTIONS[questionIndex]}</Text>
+                        <Text variant="label" style={{ flex: 1 }}>{REFLECTION_QUESTIONS[questionIndex]}</Text>
                     </View>
                     <View style={styles.answerContainer}>
                         {paragraphs.map((paragraph, pIndex) => (
@@ -231,7 +227,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                     {entry.study_further_reminder && new Date(entry.study_further_reminder) > new Date() && (
                         <View style={[styles.reminderChip, { backgroundColor: colors.backgroundSubtle, borderColor: colors.border }]}>
                             <Bell size={14} color={colors.textSecondary} />
-                            <Text style={[styles.reminderChipText, { color: colors.textSecondary }]}>
+                            <Text variant="label" tone="secondary">
                                 Reminder set for {new Date(entry.study_further_reminder).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
                             </Text>
                         </View>
@@ -248,7 +244,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
         return (
             <View key={questionIndex} style={[styles.reflectionCard, { borderLeftColor: colors.accentSecondary }]}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: Spacing.md }}>
-                    <Text style={[styles.questionText, { color: colors.accent, flex: 1, marginBottom: 0 }]}>{REFLECTION_QUESTIONS[questionIndex]}</Text>
+                    <Text variant="label" style={{ flex: 1 }}>{REFLECTION_QUESTIONS[questionIndex]}</Text>
                     <ScalePressable onPress={() => handleShareReflection(actualReflection, questionIndex)} style={{ padding: Spacing.sm, marginTop: -Spacing.sm, marginRight: -Spacing.sm }}>
                         <Share2 size={20} color={colors.textTertiary} />
                     </ScalePressable>
@@ -291,7 +287,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                 <View style={[styles.heroHeader, { backgroundColor: colors.background }]}>
                     <View style={styles.topRow}>
                         <View style={[styles.dateChip, { backgroundColor: colors.badge, borderColor: colors.badgeBorder }]}>
-                            <Text style={[styles.dateText, { color: colors.badgeText }]}>{formatDate(entry.created_at)}</Text>
+                            <Text variant="caption" tone="accent">{formatDate(entry.created_at)}</Text>
                         </View>
 
                         {onClose && (
@@ -301,9 +297,9 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                         )}
                     </View>
 
-                    <Text style={[styles.reference, { color: colors.textPrimary }]}>
+                    <Text variant="display" style={styles.reference}>
                         {entry.book_name}{' '}
-                        <Text style={[styles.verseReference, { color: colors.textPrimary }]}>
+                        <Text variant="body">
                             {formatChapterAndVerses()}
                         </Text>
                     </Text>
@@ -324,7 +320,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                         </View>
                     ) : (
                         <View style={[styles.emptyState, { borderLeftColor: colors.border }]}>
-                            <Text style={[styles.emptyText, { color: colors.textTertiary }]}>awaiting your reflection</Text>
+                            <Text variant="quote" tone="tertiary">awaiting your reflection</Text>
                         </View>
                     )}
                 </View>
@@ -359,7 +355,7 @@ const styles = StyleSheet.create({
     closeButton: {
         width: 36,
         height: 36,
-        borderRadius: 18,
+        borderRadius: Spacing.borderRadius.round,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -370,22 +366,7 @@ const styles = StyleSheet.create({
         borderRadius: Spacing.borderRadius.sm,
         borderWidth: 1,
     },
-    dateText: {
-        fontSize: Typography.size.xs,
-        fontWeight: Typography.weight.semibold,
-        letterSpacing: Typography.letterSpacing.wider,
-        textTransform: 'uppercase',
-    },
-    reference: {
-        fontSize: Typography.size.xxxl,
-        fontWeight: Typography.weight.semibold,
-        letterSpacing: Typography.letterSpacing.tight,
-        marginBottom: Spacing.xxl,
-    },
-    verseReference: {
-        fontWeight: Typography.weight.medium,
-        letterSpacing: Typography.letterSpacing.normal,
-    },
+    reference: { marginBottom: Spacing.xxl },
     contentSection: {
         paddingHorizontal: Spacing.lg + Spacing.xs,
     },
@@ -448,12 +429,6 @@ const styles = StyleSheet.create({
         paddingLeft: Spacing.lg,
         borderLeftWidth: 3,
     },
-    emptyText: {
-        fontSize: Typography.size.md,
-        fontWeight: Typography.weight.regular,
-        letterSpacing: Typography.letterSpacing.wider,
-        fontStyle: 'italic',
-    },
     bottomSpacer: {
         height: 160, // Increased to account for the floating bar plus some breathing room
     },
@@ -467,9 +442,5 @@ const styles = StyleSheet.create({
         alignSelf: 'flex-start',
         marginTop: Spacing.sm,
         gap: Spacing.xs,
-    },
-    reminderChipText: {
-        fontSize: Typography.size.xs + 1,
-        fontWeight: Typography.weight.medium,
     },
 });

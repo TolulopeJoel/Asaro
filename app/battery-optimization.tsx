@@ -1,7 +1,13 @@
 import { isBatteryOptimizationDisabled } from '@/src/utils/notifications';
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
-import { AppState, Text, View, StyleSheet, Platform, Linking } from 'react-native';
+import {
+    AppState,
+    View,
+    StyleSheet,
+    Platform,
+    Linking,
+} from 'react-native';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
@@ -9,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BatteryCharging, BatteryWarning, ArrowRight } from 'lucide-react-native';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import * as IntentLauncher from 'expo-intent-launcher';
+import { Text } from '@/src/components/ui';
 
 export default function BatteryOptimizationScreen() {
     const router = useRouter();
@@ -79,18 +86,18 @@ export default function BatteryOptimizationScreen() {
                 </View>
 
                 <View style={styles.textContainer}>
-                    <Text style={[styles.title, { color: colors.textPrimary }]}>
+                    <Text variant="display" style={styles.title}>
                         Don't Let Me Sleep
                     </Text>
 
-                    <Text style={[styles.description, { color: colors.textSecondary }]}>
+                    <Text variant="body" tone="secondary" style={styles.description}>
                         To ensure you receive your daily reflections, Àṣàrò needs to run in the background.
                     </Text>
 
                     <View style={[styles.infoBox, { backgroundColor: colors.cardBackground, borderColor: colors.border, flexDirection: 'column', alignItems: 'flex-start', gap: Spacing.md }]}>
                         <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
                             <BatteryWarning size={Typography.size.xl} color={colors.textSecondary} style={{ marginRight: Spacing.sm }} />
-                            <Text style={[styles.infoText, { color: colors.textSecondary, fontStyle: 'italic', opacity: 0.8 }]}>
+                            <Text variant="quote" tone="secondary" style={{ opacity: 0.8 }}>
                                 Your phone will probably lie to you about how bad this is for your battery. But do you think Àṣàrò would ever harm you? 🥹
                             </Text>
                         </View>
@@ -102,7 +109,7 @@ export default function BatteryOptimizationScreen() {
                         style={[styles.button, { backgroundColor: colors.textPrimary }]}
                         onPress={handleFixSettings}
                     >
-                        <Text style={[styles.buttonText, { color: colors.background }]}>Fix Settings</Text>
+                        <Text variant="body" tone="inverse">Fix Settings</Text>
                         <ArrowRight size={Typography.size.lg} color={colors.background} style={{ marginLeft: Spacing.sm }} />
                     </ScalePressable>
                 </View>
@@ -120,7 +127,7 @@ const styles = StyleSheet.create({
         position: 'absolute',
         width: 200,
         height: 200,
-        borderRadius: 100,
+        borderRadius: Spacing.borderRadius.round,
     },
     content: {
         flex: 1,
@@ -136,7 +143,7 @@ const styles = StyleSheet.create({
     iconContainer: {
         width: 100,
         height: 100,
-        borderRadius: 32,
+        borderRadius: Spacing.borderRadius.lg,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -144,21 +151,8 @@ const styles = StyleSheet.create({
         flex: 1,
         alignItems: 'center',
     },
-    title: {
-        fontSize: 34,
-        fontWeight: '800',
-        textAlign: 'center',
-        marginBottom: Spacing.sm,
-        letterSpacing: -1.5,
-    },
-    description: {
-        fontSize: Typography.size.lg,
-        fontWeight: Typography.weight.medium,
-        textAlign: 'center',
-        lineHeight: Typography.lineHeight.xl,
-        opacity: 0.7,
-        letterSpacing: -0.2,
-    },
+    title: { textAlign: 'center', marginBottom: Spacing.sm },
+    description: { textAlign: 'center', opacity: 0.7 },
     infoBox: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -184,10 +178,5 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         width: '100%',
-    },
-    buttonText: {
-        fontSize: Typography.size.lg,
-        fontWeight: Typography.weight.semibold,
-        letterSpacing: 0.3,
     },
 });

@@ -1,9 +1,11 @@
 import { useTheme } from '@/src/theme/ThemeContext';
 import { formatDateToLocalString, getLocalMidnight, isSameDay } from '@/src/utils/dateUtils';
 import React, { useCallback, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Clover } from '../Clover';
 import { useFocusEffect } from 'expo-router';
+import { Spacing } from '../../theme/spacing';
+import { Text } from '../ui';
 
 interface MonthGridProps {
     year: number;
@@ -12,16 +14,10 @@ interface MonthGridProps {
     showTitle?: boolean;
 }
 
-// One color per day of the week, Sunday → Saturday
-const RAINBOW_COLORS = [
-    '#FF3B30', // Sun — red
-    '#FF9500', // Mon — orange
-    '#FFCC00', // Tue — yellow
-    '#34C759', // Wed — green
-    '#5AC8FA', // Thu — sky blue
-    '#5856D6', // Fri — indigo
-    '#AF52DE', // Sat — purple
-];
+// A completed week is still celebrated — but with the theme's own ramp rather
+// than seven iOS system hues, which belonged to neither palette. Cloth reads as
+// cloth taken deeper into the indigo vat with each dip; Colossal warms from
+// white to ochre. See `celebration` in src/theme/colors.ts.
 
 export const MonthGrid = React.memo(({ year, month, data, showTitle = true }: MonthGridProps) => {
     const { colors } = useTheme();
@@ -82,14 +78,14 @@ export const MonthGrid = React.memo(({ year, month, data, showTitle = true }: Mo
     return (
         <View style={styles.monthContainer}>
             {showTitle && (
-                <Text style={[styles.monthTitle, { color: colors.textPrimary }]}>
+                <Text variant="label" style={styles.monthTitle}>
                     {new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                 </Text>
             )}
 
             <View style={styles.weekDaysRow}>
                 {weekDays.map((day, index) => (
-                    <Text key={index} style={[styles.weekDayText, { color: colors.textTertiary }]}>
+                    <Text key={index} variant="label" tone="tertiary" style={styles.weekDayText}>
                         {day}
                     </Text>
                 ))}
@@ -116,7 +112,7 @@ export const MonthGrid = React.memo(({ year, month, data, showTitle = true }: Mo
                     const rowIndex = Math.floor(index / 7);
                     const dayOfWeek = index % 7;
                     const isCompleteWeek = completeWeekRows[rowIndex];
-                    const dayColor = RAINBOW_COLORS[dayOfWeek];
+                    const dayColor = colors.celebration[dayOfWeek];
 
                     return (
                         <View key={day} style={styles.dayCellWrapper}>
@@ -175,26 +171,12 @@ const styles = StyleSheet.create({
         width: '100%',
         marginBottom: 32,
     },
-    monthTitle: {
-        fontSize: 14,
-        fontWeight: '600',
-        marginBottom: 16,
-        letterSpacing: 1,
-        textTransform: 'uppercase',
-    },
+    monthTitle: { marginBottom: 16 },
     weekDaysRow: {
         flexDirection: 'row',
         marginBottom: 12,
     },
-    weekDayText: {
-        flex: 1,
-        textAlign: 'center',
-        fontSize: 10,
-        fontWeight: '600',
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-        opacity: 0.4,
-    },
+    weekDayText: { flex: 1, textAlign: 'center', opacity: 0.4 },
     daysGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
@@ -211,12 +193,12 @@ const styles = StyleSheet.create({
     dayIndicator: {
         flex: 1,
         width: '100%',
-        borderRadius: 10,
+        borderRadius: Spacing.borderRadius.lg,
         justifyContent: 'center',
         alignItems: 'center',
         borderColor: 'transparent',
     },
     dayNumber: {
-        fontSize: 13,
+        fontSize: 12,
     },
 });

@@ -1,7 +1,14 @@
 import React, { useMemo } from 'react';
 import {
-    View, Text, StyleSheet, ScrollView,
-    Modal, Pressable, Dimensions, DeviceEventEmitter, TextInput, Image
+    View,
+    StyleSheet,
+    ScrollView,
+    Modal,
+    Pressable,
+    Dimensions,
+    DeviceEventEmitter,
+    TextInput,
+    Image,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useTheme } from '@/src/theme/ThemeContext';
@@ -45,7 +52,8 @@ import { LoadingView } from '@/src/components/LoadingView';
 import { Skeleton } from '@/src/components/Skeleton';
 import { Button } from '@/src/components/Button';
 import { HyperlinkedText } from '@/src/components/HyperlinkedText';
-import { Avatar, getAvatarColor } from '@/src/components/Avatar';
+import { Avatar } from '@/src/components/Avatar';
+import { Text } from '@/src/components/ui';
 
 
 
@@ -232,7 +240,7 @@ const AccountabilityMemberCard = ({
         <ScalePressable
             style={[
                 styles.accMemberCard,
-                member.isMe && { backgroundColor: colors.accentSecondaryLight + '10', borderRadius: 12 },
+                member.isMe && { backgroundColor: colors.accentSecondaryLight + '10', borderRadius: Spacing.borderRadius.lg },
             ]}
             onPress={onPress}
         >
@@ -248,38 +256,38 @@ const AccountabilityMemberCard = ({
                 <View style={styles.accMemberRow}>
                     {member.readToday ? (
                         <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
-                            <Text style={[styles.accMemberName, { color: colors.textPrimary }]} numberOfLines={1}>
+                            <Text variant="body" numberOfLines={1}>
                                 {member.displayName}{member.isMe ? ' (You)' : ''}
                             </Text>
                             <View style={styles.statusTags}>
                                 {member.isIronMan && (
-                                    <View style={[styles.tag, { backgroundColor: '#5856D6' }]}>
+                                    <View style={[styles.tag, { backgroundColor: colors.info }]}>
                                         <Text style={styles.tagText}>
                                             🛡️ {member.gender === 'f' ? 'IRON WOMAN' : 'IRON MAN'}
                                         </Text>
                                     </View>
                                 )}
                                 {member.isOnFire && !member.isIronMan && (
-                                    <View style={[styles.tag, { backgroundColor: '#FF3B30' }]}>
+                                    <View style={[styles.tag, { backgroundColor: colors.danger }]}>
                                         <Text style={styles.tagText}>🔥 ON FIRE</Text>
                                     </View>
                                 )}
                             </View>
                         </View>
                     ) : (
-                        <Text style={[styles.accMemberName, { color: colors.textSecondary }]}>
+                        <Text variant="body" tone="secondary">
                             {member.displayName}{member.isMe ? ' (You)' : ''}
                         </Text>
                     )}
 
                     {member.readToday ? (
-                        <Text style={[styles.accMemberStreak, { color: colors.accent }]}>
+                        <Text variant="bodySmall" tone="accent">
                             {member.streak} 🔥
                         </Text>
                     ) : (
                         <View style={styles.accNudge}>
                             {member.isMe && (
-                                <Text style={[styles.accNudgeText, { color: colors.accent, fontWeight: '700' }]}>
+                                <Text variant="label">
                                     Read now?
                                 </Text>
                             )}
@@ -294,11 +302,11 @@ const AccountabilityMemberCard = ({
                         ))}
                     </View>
                     {member.readToday ? (
-                        <Text style={[styles.accMemberSubtitle, { color: colors.textTertiary }]}>
+                        <Text variant="caption" tone="tertiary">
                             {member.daysThisWeek}/7 days
                         </Text>
                     ) : isMostConsistent && !member.isMe ? (
-                        <Text style={[styles.gingerText, { color: colors.accentSecondary }]}>
+                        <Text variant="quote">
                             Don't let the streak break! ⚡
                         </Text>
                     ) : null}
@@ -356,18 +364,18 @@ const GroupEditModal = ({
     return (
         <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
             <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: Spacing.xl }}>
-                <View style={{ backgroundColor: colors.background, borderRadius: 24, padding: Spacing.xl, gap: Spacing.lg }}>
+                <View style={{ backgroundColor: colors.background, borderRadius: Spacing.borderRadius.lg, padding: Spacing.xl, gap: Spacing.lg }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.sm }}>
-                        <Text style={{ fontSize: 24, fontWeight: '800', color: colors.textPrimary, letterSpacing: -0.5 }}>Edit Group Deets</Text>
+                        <Text style={{ fontSize: 26, fontWeight: '800', color: colors.textPrimary, letterSpacing: -0.5 }}>Edit Group Deets</Text>
                         <ScalePressable onPress={onClose}>
                             <X size={24} color={colors.textSecondary} />
                         </ScalePressable>
                     </View>
 
                     <View style={{ gap: Spacing.xs }}>
-                        <Text style={{ fontSize: 13, fontWeight: '700', color: colors.textSecondary, letterSpacing: 0.5 }}>NAME</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textSecondary, letterSpacing: 0.5 }}>NAME</Text>
                         <TextInput
-                            style={{ backgroundColor: colors.buttonSecondary, padding: 16, borderRadius: 14, color: colors.textPrimary, fontSize: 16 }}
+                            style={{ backgroundColor: colors.buttonSecondary, padding: 16, borderRadius: Spacing.borderRadius.lg, color: colors.textPrimary, fontSize: Typography.size.lg }}
                             value={name}
                             onChangeText={setName}
                             placeholder="Group Name"
@@ -376,9 +384,9 @@ const GroupEditModal = ({
                     </View>
 
                     <View style={{ gap: Spacing.xs }}>
-                        <Text style={{ fontSize: 13, fontWeight: '700', color: colors.textSecondary, letterSpacing: 0.5 }}>DESCRIPTION</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textSecondary, letterSpacing: 0.5 }}>DESCRIPTION</Text>
                         <TextInput
-                            style={{ backgroundColor: colors.buttonSecondary, padding: 16, borderRadius: 14, color: colors.textPrimary, fontSize: 16, minHeight: 80 }}
+                            style={{ backgroundColor: colors.buttonSecondary, padding: 16, borderRadius: Spacing.borderRadius.lg, color: colors.textPrimary, fontSize: Typography.size.lg, minHeight: 80 }}
                             value={description}
                             onChangeText={setDescription}
                             placeholder="Write whatever is on your mind"
@@ -388,9 +396,9 @@ const GroupEditModal = ({
                     </View>
 
                     <View style={{ gap: Spacing.xs }}>
-                        <Text style={{ fontSize: 13, fontWeight: '700', color: colors.textSecondary, letterSpacing: 0.5 }}>PHOTO URL</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textSecondary, letterSpacing: 0.5 }}>PHOTO URL</Text>
                         <TextInput
-                            style={{ backgroundColor: colors.buttonSecondary, padding: 16, borderRadius: 14, color: colors.textPrimary, fontSize: 16 }}
+                            style={{ backgroundColor: colors.buttonSecondary, padding: 16, borderRadius: Spacing.borderRadius.lg, color: colors.textPrimary, fontSize: Typography.size.lg }}
                             value={photoURL}
                             onChangeText={setPhotoURL}
                             placeholder="https://example.com/image.jpg"
@@ -412,13 +420,13 @@ const GroupEditModal = ({
                         onPress={onClose}
                         style={{
                             paddingVertical: 12,
-                            borderRadius: 16,
+                            borderRadius: Spacing.borderRadius.lg,
                             width: '100%',
                             alignItems: 'center',
                             backgroundColor: colors.backgroundSubtle,
                         }}
                     >
-                        <Text style={{ fontSize: 15, fontWeight: '600', color: colors.textSecondary }}>Cancel</Text>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textSecondary }}>Cancel</Text>
                     </ScalePressable>
                 </View>
             </View>
@@ -818,7 +826,7 @@ const sheetStyles = StyleSheet.create({
         shadowOpacity: 0.12, shadowRadius: 16, elevation: 24,
     },
     handle: { alignItems: 'center', paddingTop: Spacing.md, paddingBottom: Spacing.sm },
-    handleBar: { width: 40, height: 4, borderRadius: 2 },
+    handleBar: { width: 40, height: 4, borderRadius: Spacing.borderRadius.sm },
     header: { alignItems: 'center', paddingVertical: Spacing.lg, gap: Spacing.xs },
     name: { fontSize: Typography.size.xxl, fontWeight: Typography.weight.bold, letterSpacing: -0.3 },
     lastRead: { fontSize: Typography.size.sm, fontWeight: Typography.weight.medium },
@@ -830,7 +838,7 @@ const sheetStyles = StyleSheet.create({
         paddingHorizontal: Spacing.md,
         borderRadius: Spacing.borderRadius.md, borderWidth: 1,
     },
-    insightEmoji: { fontSize: 16 },
+    insightEmoji: { fontSize: Typography.size.lg },
     insightLabel: {
         fontSize: Typography.size.sm,
         fontWeight: Typography.weight.medium,
@@ -838,10 +846,10 @@ const sheetStyles = StyleSheet.create({
     },
     // Heatmap
     section: { marginBottom: Spacing.xl, gap: Spacing.md },
-    sectionTitle: { fontSize: Typography.size.xs, fontWeight: Typography.weight.bold, letterSpacing: 2, opacity: 0.6 },
+    sectionTitle: { opacity: 0.6 },
     heatmapRow: { flexDirection: 'row', justifyContent: 'space-between' },
     heatmapCell: { alignItems: 'center', gap: 5, flex: 1 },
-    heatmapDot: { width: 28, height: 28, borderRadius: 8 },
+    heatmapDot: { width: 28, height: 28, borderRadius: Spacing.borderRadius.lg },
     heatmapLabel: { fontSize: Typography.size.xs, fontWeight: Typography.weight.medium },
     // Badges
     badgeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
@@ -849,8 +857,8 @@ const sheetStyles = StyleSheet.create({
         width: '30%', alignItems: 'center', padding: Spacing.sm,
         borderRadius: Spacing.borderRadius.md, borderWidth: 1, gap: Spacing.xs,
     },
-    badgeEmoji: { fontSize: 24 },
-    badgeLabel: { fontSize: 9, textAlign: 'center', fontWeight: Typography.weight.semibold, letterSpacing: 0.2 },
+    badgeEmoji: { fontSize: 26 },
+    badgeLabel: { fontSize: 10, textAlign: 'center', fontWeight: Typography.weight.semibold, letterSpacing: 0.2 },
     emptyText: { fontSize: Typography.size.sm, fontStyle: 'italic' },
     // Mini tab switcher
     miniTabRow: { flexDirection: 'row', borderBottomWidth: 1, marginBottom: 0 },
@@ -1057,7 +1065,7 @@ export default function GroupDetailScreen() {
             {isOffline && (
                 <View style={[styles.offlineBanner, { backgroundColor: colors.border }]}>
                     <CloudOff size={14} color={colors.textSecondary} />
-                    <Text style={[styles.offlineBannerText, { color: colors.textSecondary }]}>
+                    <Text variant="label" tone="secondary">
                         You're offline — showing cached data
                     </Text>
                 </View>
@@ -1079,7 +1087,7 @@ export default function GroupDetailScreen() {
                             {isLoading ? (
                                 <Skeleton width={120} height={24} borderRadius={4} style={{ marginLeft: Spacing.sm }} />
                             ) : (
-                                <Text style={[styles.title, { color: colors.textPrimary }]}>{groupData?.name || 'Loading...'}</Text>
+                                <Text variant="display">{groupData?.name || 'Loading...'}</Text>
                             )}
                         </View>
                     </View>
@@ -1098,7 +1106,7 @@ export default function GroupDetailScreen() {
                 {/* ── Members who read today ── */}
                 <View style={styles.sectionHeader}>
                     <View style={styles.sectionTitleRow}>
-                        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                        <Text variant="label" tone="secondary" style={styles.sectionTitle}>
                             {memberSectionTitle} THAT READ TODAY.
                         </Text>
                     </View>
@@ -1137,14 +1145,14 @@ export default function GroupDetailScreen() {
                                         }}
                                     />
                                 </View>
-                                <Text style={[styles.memberName, { color: colors.textSecondary }]} numberOfLines={1}>
+                                <Text variant="caption" style={styles.memberName} numberOfLines={1}>
                                     {member.displayName}
                                 </Text>
                             </ScalePressable>
                         ))}
                     </ScrollView>
                 ) : (
-                    <Text style={[styles.emptyFeedText, { color: colors.textTertiary, marginBottom: Spacing.xl }]}>
+                    <Text variant="body" tone="tertiary" style={{ marginBottom: Spacing.xl }}>
                         {isOffline
                             ? 'Member list unavailable offline.'
                             : members.length > 0
@@ -1177,7 +1185,7 @@ export default function GroupDetailScreen() {
                 {activeTab === 'feed' && (
                     <>
                         <View style={[styles.sectionHeader, { marginTop: Spacing.md }]}>
-                            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>WHAT'S BEEN HAPPENING</Text>
+                            <Text variant="label" tone="secondary" style={styles.sectionTitle}>WHAT'S BEEN HAPPENING</Text>
                         </View>
 
                         {pinnedMilestone && (() => {
@@ -1187,16 +1195,16 @@ export default function GroupDetailScreen() {
                                     <View style={styles.milestoneHeroTop}>
                                         <Text style={styles.milestoneHeroBadge}>{pinnedMilestone.badgeEmoji}</Text>
                                         <View style={styles.milestoneHeroConfetti}>
-                                            <Text style={[styles.milestoneHeroLabel, { color: colors.accent }]}>
+                                            <Text variant="title" tone="accent">
                                                 {pinnedMilestone.badgeLabel.toUpperCase()}
                                             </Text>
                                         </View>
                                     </View>
-                                    <Text style={[styles.milestoneHeroDesc, { color: colors.textSecondary }]}>
+                                    <Text variant="body" tone="secondary">
                                         {formatBadgeDesc(members, pinnedMilestone.badgeDesc, pinnedMilestone.userId)}
                                     </Text>
                                     {timeStr && (
-                                        <Text style={[styles.milestoneHeroTime, { color: colors.textTertiary }]}>{timeStr}</Text>
+                                        <Text variant="caption" style={styles.milestoneHeroTime}>{timeStr}</Text>
                                     )}
                                 </View>
                             );
@@ -1225,7 +1233,7 @@ export default function GroupDetailScreen() {
                                     return (
                                         <View key={item.id} style={styles.dateSeparator}>
                                             <View style={[styles.dateSeparatorLine, { backgroundColor: colors.border }]} />
-                                            <Text style={[styles.dateSeparatorLabel, { color: colors.textTertiary, backgroundColor: colors.background }]}>
+                                            <Text variant="label" tone="tertiary" style={{ backgroundColor: colors.background }}>
                                                 {item.label}
                                             </Text>
                                             <View style={[styles.dateSeparatorLine, { backgroundColor: colors.border }]} />
@@ -1256,8 +1264,8 @@ export default function GroupDetailScreen() {
                                                     <BookOpen size={20} color={colors.accent} />
                                                 </View>
                                                 <View style={styles.digestContent}>
-                                                    <Text style={[styles.digestLine, { color: colors.textPrimary }]}>{nameStr}</Text>
-                                                    <Text style={[styles.digestSub, { color: colors.textSecondary }]}>
+                                                    <Text variant="bodySmall">{nameStr}</Text>
+                                                    <Text variant="caption" style={styles.digestSub}>
                                                         {digest.entries.length} people read · {formatRelativeTime(digest.timestamp)}
                                                     </Text>
                                                 </View>
@@ -1282,10 +1290,10 @@ export default function GroupDetailScreen() {
                                                         >
                                                             <Avatar id={entry.userId} name={entry.userName} url={members.find(m => m.userId === entry.userId)?.photoURL} size={28} radius={4} />
                                                             <View style={styles.digestEntryText}>
-                                                                <Text style={[styles.digestEntryName, { color: colors.textPrimary }]}>{entry.userName}</Text>
-                                                                <Text style={[styles.digestEntrySub, { color: colors.textTertiary }]}>{entry.bookName} {entry.chapters}</Text>
+                                                                <Text variant="bodySmall">{entry.userName}</Text>
+                                                                <Text variant="bodySmall" tone="tertiary">{entry.bookName} {entry.chapters}</Text>
                                                             </View>
-                                                            <Text style={[styles.timestamp, { color: colors.textTertiary }]}>
+                                                            <Text variant="caption" style={styles.timestamp}>
                                                                 {formatRelativeTime(entry.timestamp)}
                                                             </Text>
                                                         </View>
@@ -1311,26 +1319,26 @@ export default function GroupDetailScreen() {
                                         <Avatar id={activity.userId} name={activity.userName} url={members.find(m => m.userId === activity.userId)?.photoURL} size={44} />
                                         <View style={styles.activityContent}>
                                             <View style={styles.activityHeader}>
-                                                <Text style={[styles.userName, { color: colors.textPrimary }]}>
+                                                <Text variant="bodySmall">
                                                     {isAbsent ? `Where is ${activity.userName}? 🥹`
                                                         : isJoined ? `Hi, ${activity.userName} 🤭`
                                                             : activity.userName}
                                                 </Text>
-                                                <Text style={[styles.timestamp, { color: colors.textTertiary }]}>
+                                                <Text variant="caption" style={styles.timestamp}>
                                                     {timeStr ?? 'Syncing…'}
                                                 </Text>
                                             </View>
 
                                             {isMilestone && (
                                                 <View style={styles.milestoneRow}>
-                                                    <Text style={[styles.activityText, { color: colors.textSecondary, flex: 1 }]}>
+                                                    <Text variant="bodySmall" tone="secondary" style={{ flex: 1 }}>
                                                         {formatBadgeDesc(members, activity.badgeDesc, activity.userId)}
                                                     </Text>
                                                 </View>
                                             )}
                                             {isJournalEntry && (
                                                 <>
-                                                    <Text style={[styles.activityText, { color: colors.textSecondary }]}>
+                                                    <Text variant="bodySmall" tone="secondary">
                                                         read {activity.bookName} {activity.chapters}
                                                     </Text>
                                                     {activity.preview && (
@@ -1344,10 +1352,10 @@ export default function GroupDetailScreen() {
                                             )}
                                             {isSharedReflection && (
                                                 <>
-                                                    <Text style={[styles.activityText, { color: colors.textSecondary }]}>
+                                                    <Text variant="bodySmall" tone="secondary">
                                                         shared a reflection from {activity.bookName} {activity.chapters}
                                                     </Text>
-                                                    <View style={{ marginTop: Spacing.sm, marginRight: -32, padding: Spacing.md, backgroundColor: colors.accentSecondaryLight + '15', borderRadius: 8, borderWidth: 1, borderColor: colors.accentSecondaryLight + '30' }}>
+                                                    <View style={{ marginTop: Spacing.sm, marginRight: -32, padding: Spacing.md, backgroundColor: colors.accentSecondaryLight + '15', borderRadius: Spacing.borderRadius.lg, borderWidth: 1, borderColor: colors.accentSecondaryLight + '30' }}>
                                                         {activity.sharedQuestionTitle && (
                                                             <Text style={{ fontSize: Typography.size.xs, fontWeight: Typography.weight.bold, color: colors.accent, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                                                                 {activity.sharedQuestionTitle}
@@ -1361,31 +1369,31 @@ export default function GroupDetailScreen() {
                                                 </>
                                             )}
                                             {isJoined && (
-                                                <Text style={[styles.activityText, { color: colors.textSecondary, fontWeight: '500' }]}>
+                                                <Text variant="bodySmall" tone="secondary">
                                                     Welcome! Let's grow together. 🎉
                                                 </Text>
                                             )}
                                             {isAbsent && (
-                                                <Text style={[styles.activityText, { color: colors.textSecondary }]}>
+                                                <Text variant="bodySmall" tone="secondary">
                                                     {activity.threshold === 30
                                                         ? `${getPronoun(members, activity.userId, 'subject').charAt(0).toUpperCase() + getPronoun(members, activity.userId, 'subject').slice(1)} has been away for a month. We miss ${getPronoun(members, activity.userId, 'possessive')} insights! 🫂`
                                                         : `We haven't seen ${getPronoun(members, activity.userId, 'object')} in a week. Drop a message to encourage ${getPronoun(members, activity.userId, 'object')}!`}
                                                 </Text>
                                             )}
                                             {isRemoved && (
-                                                <Text style={[styles.activityText, { color: colors.textTertiary, fontStyle: 'italic' }]}>
+                                                <Text variant="quote" tone="tertiary">
                                                     has left us.
                                                 </Text>
                                             )}
                                             {isAdminPromoted && (
-                                                <Text style={[styles.activityText, { color: colors.textSecondary }]}>
+                                                <Text variant="bodySmall" tone="secondary">
                                                     earned admin status for {activity.monthName}! 👑
                                                 </Text>
                                             )}
                                         </View>
                                         <View style={styles.activityIcon}>
                                             {isMilestone ? (
-                                                <Text style={{ fontSize: 18, marginTop: -2 }}>{activity.badgeEmoji}</Text>
+                                                <Text style={{ fontSize: Typography.size.lg, marginTop: -2 }}>{activity.badgeEmoji}</Text>
                                             ) : (
                                                 isJournalEntry ? (
                                                     <NotebookPen size={20} color={colors.accentSecondary} fill={colors.accentSecondary + '20'} />
@@ -1413,7 +1421,7 @@ export default function GroupDetailScreen() {
                                     ) : (
                                         <Sun size={28} color={colors.textTertiary} />
                                     )}
-                                    <Text style={[styles.emptyFeedText, { color: colors.textTertiary }]}>
+                                    <Text variant="quote" tone="tertiary" style={styles.emptyFeedText}>
                                         {isOffline ? 'Feed unavailable offline. Check back when connected.' : 'No activity yet. Be the first!'}
                                     </Text>
                                 </View>
@@ -1426,7 +1434,7 @@ export default function GroupDetailScreen() {
                 {activeTab === 'accountability' && (
                     <View style={{ marginTop: Spacing.md }}>
                         <View style={styles.sectionHeader}>
-                            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>WHAT YOUR PEERS DO</Text>
+                            <Text variant="label" tone="secondary" style={styles.sectionTitle}>WHAT YOUR PEERS DO</Text>
                         </View>
 
                         <View style={[styles.accountabilityHero, { backgroundColor: colors.accentSecondaryLight + '20', borderColor: colors.accentSecondaryLight + '40' }]}>
@@ -1437,14 +1445,14 @@ export default function GroupDetailScreen() {
                                             <Skeleton width={100} height={34} borderRadius={8} />
                                         ) : (
                                             <>
-                                                <Text style={[styles.heroVal, { color: colors.accentSecondary }]}>
+                                                <Text variant="display">
                                                     {accountabilityData.readTodayCount} / {accountabilityData.totalMembers}
                                                 </Text>
                                                 <Users size={20} color={colors.accentSecondary} />
                                             </>
                                         )}
                                     </View>
-                                    <Text style={[styles.heroLabel, { color: colors.textSecondary }]}>People read today</Text>
+                                    <Text variant="bodySmall" tone="secondary">People read today</Text>
                                 </View>
                                 <View style={styles.heroStats}>
                                     <View style={styles.miniStat}>
@@ -1453,10 +1461,10 @@ export default function GroupDetailScreen() {
                                             {isLoading ? (
                                                 <Skeleton width={20} height={16} borderRadius={4} />
                                             ) : (
-                                                <Text style={[styles.miniStatVal, { color: colors.accent }]}>{groupStreak}</Text>
+                                                <Text variant="bodySmall" tone="accent">{groupStreak}</Text>
                                             )}
                                         </View>
-                                        <Text style={[styles.miniStatLabel, { color: colors.textTertiary }]}>Our streak</Text>
+                                        <Text variant="caption">Our streak</Text>
                                     </View>
                                 </View>
                             </View>
@@ -1470,7 +1478,7 @@ export default function GroupDetailScreen() {
                             {isLoading ? (
                                 <Skeleton width="70%" height={12} borderRadius={4} style={{ marginTop: 8 }} />
                             ) : (
-                                <Text style={[styles.heroHint, { color: colors.textTertiary }]}>
+                                <Text variant="quote" tone="tertiary">
                                     {!accountabilityData.iHaveRead
                                         ? "Read now. Don't hold yourself back."
                                         : accountabilityData.groupProgressPercent === 100
@@ -1483,8 +1491,8 @@ export default function GroupDetailScreen() {
                         {accountabilityData.upToDate.length > 0 && (
                             <View style={styles.accountabilitySection}>
                                 <View style={styles.subHeader}>
-                                    <CheckCircle2 size={16} color="#34C759" />
-                                    <Text style={[styles.subHeaderText, { color: colors.textSecondary }]}>
+                                    <CheckCircle2 size={16} color={colors.success} />
+                                    <Text variant="caption" tone="secondary">
                                         UP TO DATE — {accountabilityData.upToDate.length}
                                     </Text>
                                 </View>
@@ -1504,7 +1512,7 @@ export default function GroupDetailScreen() {
                             <View style={[styles.accountabilitySection, { marginTop: Spacing.xl }]}>
                                 <View style={styles.subHeader}>
                                     <AlertCircle size={16} color={colors.accent} />
-                                    <Text style={[styles.subHeaderText, { color: colors.textSecondary }]}>
+                                    <Text variant="label" tone="secondary">
                                         NEEDS GINGERING — {accountabilityData.needsSupport.length}
                                     </Text>
                                 </View>
@@ -1526,7 +1534,7 @@ export default function GroupDetailScreen() {
                 {activeTab === 'members' && (
                     <View style={{ marginTop: Spacing.md }}>
                         <View style={styles.sectionHeader}>
-                            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>DISTINGUISHED {memberSectionTitle}</Text>
+                            <Text variant="label" tone="secondary" style={styles.sectionTitle}>DISTINGUISHED {memberSectionTitle}</Text>
                         </View>
                         {accountabilityData.membersByConsistency.map((member) => (
                             <ScalePressable
@@ -1536,10 +1544,10 @@ export default function GroupDetailScreen() {
                             >
                                 <Avatar id={member.userId || member.id} name={member.displayName} url={member.photoURL} size={52} radius={16} />
                                 <View style={styles.memberItemContent}>
-                                    <Text style={[styles.memberItemName, { color: colors.textPrimary }]}>
+                                    <Text variant="body">
                                         {member.displayName}{member.isMe ? ' (You)' : ''}
                                     </Text>
-                                    <Text style={[styles.memberItemJoined, { color: colors.textTertiary }]}>
+                                    <Text variant="bodySmall" tone="tertiary" style={styles.memberItemJoined}>
                                         {member.joinedAt
                                             ? `Joined ${new Date(member.joinedAt.toDate ? member.joinedAt.toDate() : member.joinedAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
                                             : 'Member'}
@@ -1547,7 +1555,7 @@ export default function GroupDetailScreen() {
                                 </View>
                                 {member.role === 'admin' && (
                                     <View style={[styles.adminBadge, { backgroundColor: colors.accentSecondaryLight + '30' }]}>
-                                        <Text style={[styles.adminBadgeText, { color: colors.accentSecondary }]}>ADMIN</Text>
+                                        <Text variant="label">ADMIN</Text>
                                     </View>
                                 )}
                                 <ChevronRight size={18} color={colors.textTertiary} />
@@ -1563,8 +1571,8 @@ export default function GroupDetailScreen() {
                                     <Info size={18} color={colors.accent} />
                                 </View>
                                 <View>
-                                    <Text style={[styles.infoLinkTitle, { color: colors.textPrimary }]}>Group Logic & Rules</Text>
-                                    <Text style={[styles.infoLinkSubtitle, { color: colors.textTertiary }]}>Learn about streaks, admins, and removals</Text>
+                                    <Text variant="body">Group Logic & Rules</Text>
+                                    <Text variant="bodySmall" tone="tertiary" style={styles.infoLinkSubtitle}>Learn about streaks, admins, and removals</Text>
                                 </View>
                             </View>
                             <ChevronRight size={18} color={colors.textTertiary} />
@@ -1606,12 +1614,10 @@ const getStyles = (colors: any) => StyleSheet.create({
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.lg, paddingHorizontal: 4 },
     headerLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
     titleContainer: { gap: 2 },
-    title: { fontSize: 24, fontWeight: '800', letterSpacing: -0.5 },
     offlineBanner: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
         gap: Spacing.xs, paddingVertical: Spacing.xs, paddingHorizontal: Spacing.md,
     },
-    offlineBannerText: { fontSize: Typography.size.xs, fontWeight: Typography.weight.medium, letterSpacing: 0.3 },
     scrollContent: { padding: Spacing.layout.screenPadding, paddingTop: Spacing.sm, paddingBottom: 100 },
     sectionHeader: { marginTop: Spacing.lg, marginBottom: Spacing.md },
     sectionTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: Spacing.sm },
@@ -1619,9 +1625,9 @@ const getStyles = (colors: any) => StyleSheet.create({
     memberList: { marginBottom: Spacing.xl },
     memberItem: { alignItems: 'center', marginRight: Spacing.lg, width: 60, paddingBottom: Spacing.sm },
     avatarContainer: { position: 'relative', marginBottom: Spacing.xs },
-    memberAvatar: { width: 52, height: 52, borderRadius: 26, justifyContent: 'center', alignItems: 'center' },
+    memberAvatar: { width: 52, height: 52, borderRadius: Spacing.borderRadius.round, justifyContent: 'center', alignItems: 'center' },
     memberInitial: { fontSize: Typography.size.lg, fontWeight: Typography.weight.bold },
-    memberName: { fontSize: Typography.size.xs, textAlign: 'center', fontFamily: Typography.fontFamily.medium },
+    memberName: { textAlign: 'center' },
     activityCard: {
         flexDirection: 'row', paddingVertical: Spacing.md,
         paddingLeft: 10, paddingRight: Spacing.md,
@@ -1631,14 +1637,12 @@ const getStyles = (colors: any) => StyleSheet.create({
     feedChainLine: { position: 'absolute', left: 32, top: 0, bottom: 0, width: 2, opacity: 0.5 },
     activityContent: { flex: 1, gap: 4 },
     activityHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
-    userName: { fontSize: Typography.size.sm, fontWeight: Typography.weight.bold, letterSpacing: -0.2 },
-    timestamp: { fontSize: Typography.size.xs, opacity: 0.8 },
-    activityText: { fontSize: Typography.size.sm, lineHeight: 22 },
+    timestamp: { opacity: 0.8 },
     reflectionPreview: { fontSize: Typography.size.sm, lineHeight: 20, fontStyle: 'italic', marginTop: Spacing.xs, paddingLeft: Spacing.sm, borderLeftWidth: 2 },
     activityIcon: { marginLeft: Spacing.xs, paddingTop: 4, flexShrink: 0 },
     milestoneRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.xs, marginTop: 2, flexWrap: 'wrap' },
     emptyFeed: { paddingVertical: Spacing.xxl * 2, alignItems: 'center', gap: Spacing.md },
-    emptyFeedText: { fontSize: Typography.size.sm, fontStyle: 'italic', textAlign: 'center' },
+    emptyFeedText: { textAlign: 'center' },
     dateSeparator: { flexDirection: 'row', alignItems: 'center', marginVertical: Spacing.md, gap: Spacing.sm },
     dateSeparatorLine: { flex: 1, height: 1, opacity: 0.4 },
     dateSeparatorLabel: { fontSize: Typography.size.xs, fontWeight: Typography.weight.semibold, letterSpacing: 0.5, paddingHorizontal: Spacing.xs },
@@ -1648,73 +1652,56 @@ const getStyles = (colors: any) => StyleSheet.create({
         borderRadius: Spacing.borderRadius.md, borderWidth: 1, borderColor: colors.borderSubtle + '80',
     },
     digestHeader: { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing.md, paddingLeft: 12, paddingRight: Spacing.lg, gap: Spacing.md },
-    digestIconWrap: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+    digestIconWrap: { width: 44, height: 44, borderRadius: Spacing.borderRadius.lg, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
     digestContent: { flex: 1, gap: 3 },
-    digestLine: { fontSize: Typography.size.sm, fontWeight: Typography.weight.bold, letterSpacing: -0.2 },
-    digestSub: { fontSize: Typography.size.xs, opacity: 0.8 },
+    digestSub: { opacity: 0.8 },
     digestEntries: { borderTopWidth: 1 },
     digestEntry: { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing.xl, paddingHorizontal: Spacing.md, gap: Spacing.sm, marginHorizontal: Spacing.xs },
     digestEntryText: { flex: 1, gap: 1 },
-    digestEntryName: { fontSize: Typography.size.sm, fontWeight: Typography.weight.semibold },
-    digestEntrySub: { fontSize: Typography.size.sm },
-    milestoneHero: { borderRadius: 20, padding: Spacing.xl, marginBottom: Spacing.xl, gap: Spacing.md, borderWidth: 1.5 },
+    milestoneHero: { borderRadius: Spacing.borderRadius.lg, padding: Spacing.xl, marginBottom: Spacing.xl, gap: Spacing.md, borderWidth: 1.5 },
     milestoneHeroTop: { flexDirection: 'row', alignItems: 'center', gap: Spacing.lg },
-    milestoneHeroBadge: { fontSize: 48 },
+    milestoneHeroBadge: { fontSize: Typography.size.xxxl, lineHeight: Typography.lineHeight.xxxl },
     milestoneHeroConfetti: { flex: 1 },
-    milestoneHeroLabel: { fontSize: Typography.size.xl, fontWeight: Typography.weight.bold, letterSpacing: -0.5 },
-    milestoneHeroDesc: { fontSize: Typography.size.md, lineHeight: 24, fontWeight: Typography.weight.medium },
-    milestoneHeroTime: { fontSize: Typography.size.xs, marginTop: 4, fontWeight: Typography.weight.semibold, opacity: 0.6 },
+    milestoneHeroTime: { marginTop: 4, opacity: 0.6 },
     tabContainer: { marginBottom: Spacing.lg },
     tabBackground: { flexDirection: 'row', backgroundColor: 'transparent', position: 'relative', borderBottomWidth: 0.5, borderColor: colors.border },
-    tabIndicator: { position: 'absolute', bottom: 0, height: 2.5, borderRadius: 2 },
+    tabIndicator: { position: 'absolute', bottom: 0, height: 2.5, borderRadius: Spacing.borderRadius.sm },
     tab: { flex: 1, paddingVertical: 14, alignItems: 'center', zIndex: 1 },
-    tabText: { fontSize: 15, fontWeight: '400', letterSpacing: 0.2 },
-    memberListItem: { flexDirection: 'row', alignItems: 'center', padding: Spacing.md, backgroundColor: colors.cardBackground, borderRadius: 16, marginBottom: Spacing.md, borderWidth: 1, borderColor: colors.borderSubtle + '40', gap: Spacing.md },
+    tabText: { fontSize: 14, fontWeight: '400', letterSpacing: 0.2 },
+    memberListItem: { flexDirection: 'row', alignItems: 'center', padding: Spacing.md, backgroundColor: colors.cardBackground, borderRadius: Spacing.borderRadius.lg, marginBottom: Spacing.md, borderWidth: 1, borderColor: colors.borderSubtle + '40', gap: Spacing.md },
     memberItemContent: { flex: 1, gap: 2 },
-    memberItemName: { fontSize: 15, fontWeight: '600' },
-    memberItemJoined: { fontSize: 12, opacity: 0.7 },
-    adminBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginRight: 4 },
-    adminBadgeText: { fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
-    accountabilityHero: { borderRadius: 20, padding: Spacing.xl, marginBottom: Spacing.xl, borderWidth: 1, gap: Spacing.md },
+    memberItemJoined: { opacity: 0.7 },
+    adminBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: Spacing.borderRadius.md, marginRight: 4 },
+    accountabilityHero: { borderRadius: Spacing.borderRadius.lg, padding: Spacing.xl, marginBottom: Spacing.xl, borderWidth: 1, gap: Spacing.md },
     heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     heroMain: { gap: 2 },
     heroValRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
     headerRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-    infoButton: { padding: 8, borderRadius: 12 },
-    editButton: { padding: 8, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.1)' },
-    heroVal: { fontSize: 42, fontWeight: '900', letterSpacing: -1 },
-    heroLabel: { fontSize: Typography.size.sm, fontWeight: '600' },
+    infoButton: { padding: 8, borderRadius: Spacing.borderRadius.lg },
+    editButton: { padding: 8, borderRadius: Spacing.borderRadius.lg, backgroundColor: 'rgba(255,255,255,0.1)' },
     heroStats: { gap: Spacing.sm },
     miniStat: { alignItems: 'flex-end', gap: 1 },
-    miniStatVal: { fontSize: 13, fontWeight: '700' },
-    miniStatLabel: { fontSize: 9, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
-    progressTrack: { height: 8, borderRadius: 4, overflow: 'hidden' },
-    progressBar: { height: '100%', borderRadius: 4 },
-    heroHint: { fontSize: 12, fontStyle: 'italic', lineHeight: 18 },
+    progressTrack: { height: 8, borderRadius: Spacing.borderRadius.round, overflow: 'hidden' },
+    progressBar: { height: '100%', borderRadius: Spacing.borderRadius.md },
     accountabilitySection: { gap: Spacing.md },
     subHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, marginBottom: Spacing.xs },
-    subHeaderText: { fontSize: 10, fontWeight: '800', letterSpacing: 1 },
     accMemberCard: { flexDirection: 'row', alignItems: 'center', padding: Spacing.md, gap: Spacing.md },
     accMemberContent: { flex: 1, gap: 4 },
     accMemberRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     statusTags: { flexDirection: 'row', gap: 4 },
-    tag: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-    tagText: { color: 'white', fontSize: 8, fontWeight: 'bold', letterSpacing: 0.5 },
-    accMemberName: { fontSize: 14, fontWeight: '600' },
-    accMemberStreak: { fontSize: 13, fontWeight: '700' },
+    tag: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: Spacing.borderRadius.md },
+    tagText: { color: 'white', fontSize: 10, fontWeight: 'bold', letterSpacing: 0.5 },
     accMemberSubRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    accMemberSubtitle: { fontSize: 11, fontWeight: '500' },
-    accNudge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+    accNudge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: Spacing.borderRadius.md },
     accNudgeText: { fontSize: 10, fontWeight: '600' },
-    gingerText: { fontSize: 10, fontWeight: '600', fontStyle: 'italic' },
     miniHeatmap: { flexDirection: 'row', gap: 3 },
-    miniDot: { width: 8, height: 8, borderRadius: 2 },
+    miniDot: { width: 8, height: 8, borderRadius: Spacing.borderRadius.sm },
     infoLink: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: Spacing.md,
-        borderRadius: 16,
+        borderRadius: Spacing.borderRadius.lg,
         marginTop: Spacing.xl,
         marginHorizontal: 4,
         marginBottom: Spacing.xxl,
@@ -1727,18 +1714,9 @@ const getStyles = (colors: any) => StyleSheet.create({
     infoIconWrap: {
         width: 36,
         height: 36,
-        borderRadius: 10,
+        borderRadius: Spacing.borderRadius.lg,
         justifyContent: 'center',
         alignItems: 'center',
     },
-    infoLinkTitle: {
-        fontSize: 15,
-        fontWeight: '700',
-        letterSpacing: -0.2,
-    },
-    infoLinkSubtitle: {
-        fontSize: 12,
-        fontWeight: '500',
-        opacity: 0.8,
-    },
+    infoLinkSubtitle: { opacity: 0.8 },
 });

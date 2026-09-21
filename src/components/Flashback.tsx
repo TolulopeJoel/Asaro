@@ -5,8 +5,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { Spacing } from '@/src/theme/spacing';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { ScalePressable } from './ScalePressable';
+import { Text } from './ui';
 
 interface FlashbackProps {
     onEntryPress: (entry: JournalEntry) => void;
@@ -115,12 +116,12 @@ export const Flashback: React.FC<FlashbackProps> = React.memo(({ onEntryPress, f
         >
             <View style={styles.header}>
                 <View style={styles.headerTitleRow}>
-                    <FolderOpen size={14} fill={colors.accentSecondary} color={isDark ? '#f7f4ef' + 'E6' : '#000000' + 'B3'} />
-                    <Text style={[styles.headerTitle, { color: colors.textSecondary }]}>
+                    <FolderOpen size={14} fill={colors.accentSecondary} color={colors.textSecondary} />
+                    <Text variant="label" tone="secondary" style={styles.headerTitle}>
                         {getTitle().toUpperCase()}
                     </Text>
                 </View>
-                <Text style={[styles.date, { color: colors.textTertiary }]}>
+                <Text variant="caption" tone="tertiary" style={styles.date}>
                     {(() => {
                         const date = new Date(flashbackData.entry.created_at || '');
                         const now = new Date();
@@ -133,7 +134,7 @@ export const Flashback: React.FC<FlashbackProps> = React.memo(({ onEntryPress, f
                 </Text>
             </View>
 
-            <Text style={[styles.preview, { color: colors.textPrimary }]}>
+            <Text variant="quote" style={styles.preview}>
                 {getPreviewText()}
             </Text>
         </ScalePressable>
@@ -160,24 +161,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 8,
     },
-    headerTitle: {
-        fontSize: 10,
-        fontWeight: '600',
-        letterSpacing: 1.5,
-        textTransform: 'uppercase',
-        opacity: 0.7,
-    },
-    preview: {
-        fontSize: 18,
-        lineHeight: 26,
-        fontWeight: "500",
-        letterSpacing: -0.2,
-        fontStyle: 'italic',
-        opacity: 0.9,
-    },
-    date: {
-        fontSize: 10,
-        fontWeight: '600',
-        opacity: 0.8,
-    },
+    headerTitle: { opacity: 0.7 },
+    preview: { opacity: 0.9 },
+    date: { opacity: 0.8 },
 });

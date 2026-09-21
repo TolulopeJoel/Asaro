@@ -1,13 +1,14 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ChevronDown, ChevronUp } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
+import { Text } from '../ui';
 
 export const DateGroupHeader = React.memo(({ title }: { title: string }) => {
     const { colors } = useTheme();
     return (
         <View style={styles.dateGroup}>
-            <Text style={[styles.dateGroupTitle, { color: colors.textTertiary }]}>{title}</Text>
+            <Text variant="label" tone="tertiary">{title}</Text>
         </View>
     );
 });
@@ -31,7 +32,7 @@ export const TopicHeader = React.memo(({
             style={[styles.archiveHeader, { borderTopColor: colors.border }]}
         >
             <View style={styles.archiveHeaderContent}>
-                <Text style={[styles.archiveHeaderText, { color: colors.textTertiary }]}>
+                <Text variant="label" tone="tertiary">
                     {title} ({count})
                 </Text>
                 {isArchiveCollapsed ? (
@@ -50,12 +51,6 @@ const styles = StyleSheet.create({
         marginBottom: 10,
         paddingHorizontal: 4,
     },
-    dateGroupTitle: {
-        fontSize: 11,
-        fontWeight: '700',
-        letterSpacing: 1,
-        textTransform: 'uppercase',
-    },
     archiveHeader: {
         marginTop: 24,
         paddingTop: 16,
@@ -67,11 +62,5 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 4,
-    },
-    archiveHeaderText: {
-        fontSize: 12,
-        fontWeight: '600',
-        letterSpacing: 1,
-        textTransform: 'uppercase',
     },
 });

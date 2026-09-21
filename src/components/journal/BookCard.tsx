@@ -1,9 +1,11 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { BibleBook } from '../../data/bibleBooks';
 import { ScalePressable } from '../ScalePressable';
+import { Spacing } from '../../theme/spacing';
+import { Text } from '../ui';
 
 export interface BookWithCount extends BibleBook {
     entryCount: number;
@@ -24,10 +26,10 @@ export const BookCard = React.memo(({ book, onNavigate }: BookCardProps) => {
             >
                 <View style={styles.bookCardContent}>
                     <View style={styles.bookCardTextContainer}>
-                        <Text style={[styles.bookCardName, { color: colors.textPrimary }]}>{book.name}</Text>
+                        <Text variant="subtitle">{book.name}</Text>
                     </View>
                     <View style={[styles.entryCountBadge, { backgroundColor: colors.accent + '15' }]}>
-                        <Text style={[styles.entryCountText, { color: colors.accent }]}>
+                        <Text variant="label" tone="accent">
                             {book.entryCount} {book.entryCount === 1 ? 'entry' : 'entries'}
                         </Text>
                     </View>
@@ -43,7 +45,7 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     bookCard: {
-        borderRadius: 8,
+        borderRadius: Spacing.borderRadius.lg,
         padding: 20,
         borderWidth: 1,
         flexDirection: 'row',
@@ -61,20 +63,9 @@ const styles = StyleSheet.create({
         alignItems: 'baseline',
         gap: 8,
     },
-    bookCardName: {
-        fontSize: 17,
-        fontWeight: '700',
-        letterSpacing: -0.3,
-    },
     entryCountBadge: {
         paddingHorizontal: 10,
         paddingVertical: 4,
-        borderRadius: 12,
-    },
-    entryCountText: {
-        fontSize: 11,
-        fontWeight: '700',
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
+        borderRadius: Spacing.borderRadius.lg,
     },
 });

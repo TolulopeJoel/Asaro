@@ -1,15 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
-import {
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
-} from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, ScrollView, StatusBar, StyleSheet, TextInput, View } from 'react-native';
 import { Button } from './Button';
 import { ScalePressable } from './ScalePressable';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,6 +10,7 @@ import { Typography } from '../theme/typography';
 import { BibleReferencePicker } from './BibleReferencePicker';
 import { getBibleStyledParts } from '../utils/bibleUtils';
 import { useRefPicker } from '../context/RefPickerContext';
+import { Text } from './ui';
 
 export interface ActionItemPair {
     action: string;
@@ -285,7 +276,7 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                     {/* Action field */}
                     <View style={styles.fieldContainer}>
                         <View style={styles.fieldHeader}>
-                            <Text style={[styles.fieldLabel, { color: colors.textTertiary }]}>action</Text>
+                            <Text variant="label" tone="tertiary" style={styles.fieldLabel}>action</Text>
                             {!disabled && item.action.length > 0 && (
                                 <ScalePressable
                                     onPress={() => clearField(index, 'action', isModal)}
@@ -338,7 +329,7 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                     {/* Motivation field */}
                     <View style={styles.fieldContainer}>
                         <View style={styles.fieldHeader}>
-                            <Text style={[styles.fieldLabel, { color: colors.textTertiary }]}>motivated by</Text>
+                            <Text variant="label" tone="tertiary" style={styles.fieldLabel}>motivated by</Text>
                             {!disabled && item.motivation.length > 0 && (
                                 <ScalePressable
                                     onPress={() => clearField(index, 'motivation', isModal)}
@@ -509,13 +500,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: Spacing.lg,
         paddingVertical: Spacing.sm,
     },
-    fieldLabel: {
-        fontSize: Typography.size.xs,
-        fontWeight: Typography.weight.medium,
-        letterSpacing: Typography.letterSpacing.wider,
-        textTransform: 'uppercase',
-        marginBottom: Spacing.xs,
-    },
+    fieldLabel: { marginBottom: Spacing.xs },
     fieldInput: {
         fontSize: Typography.size.md,
         fontWeight: Typography.weight.regular,
@@ -543,7 +528,7 @@ const styles = StyleSheet.create({
         height: 32,
         justifyContent: 'center',
         alignItems: 'center',
-        borderRadius: 12,
+        borderRadius: Spacing.borderRadius.lg,
         zIndex: 20,
     },
     addButton: {
@@ -578,7 +563,7 @@ const fullScreenStyles = StyleSheet.create({
     headerLeft: { flex: 1 },
     headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     iconBtn: {
-        width: 36, height: 36, borderRadius: 18,
+        width: 36, height: 36, borderRadius: Spacing.borderRadius.round,
         justifyContent: 'center', alignItems: 'center',
     },
     labelContainer: {
@@ -601,7 +586,7 @@ const fullScreenStyles = StyleSheet.create({
     },
     saveButton: {
         paddingVertical: 14,
-        borderRadius: 16,
+        borderRadius: Spacing.borderRadius.lg,
         width: '100%',
         alignItems: 'center',
     },

@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Bell } from 'lucide-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
@@ -9,6 +9,7 @@ import { Typography } from '../theme/typography';
 import { getRecentStudyTopics, JournalEntry } from '../data/database';
 import { ScalePressable } from './ScalePressable';
 import { HyperlinkedText } from './HyperlinkedText';
+import { Text } from './ui';
 
 interface StudyRemindersProps {
     onEntryPress: (entry: JournalEntry) => void;
@@ -36,12 +37,12 @@ const BookmarkCard = React.memo(({ item, onEntryPress }: { item: JournalEntry, o
                 <View style={styles.bookmarkContent}>
                     <View style={styles.bookmarkHeader}>
                         <View style={[styles.refBadge, { backgroundColor: colors.accent + '15' }]}>
-                            <Text style={[styles.refText, { color: colors.accent + 'A5' }]}>
+                            <Text variant="caption" style={{ color: colors.accent + 'A5' }}>
                                 {item.book_name} {item.chapter_start}
                                 {item.chapter_end && item.chapter_end !== item.chapter_start ? `–${item.chapter_end}` : ''}
                             </Text>
                         </View>
-                        <Text style={[styles.dateText, { color: colors.textTertiary }]}>
+                        <Text variant="caption" tone="tertiary" style={styles.dateText}>
                             {formattedDate}
                         </Text>
                     </View>
@@ -55,7 +56,7 @@ const BookmarkCard = React.memo(({ item, onEntryPress }: { item: JournalEntry, o
                     {item.study_further_reminder && new Date(item.study_further_reminder) > new Date() && (
                         <View style={[styles.reminderContainer, { backgroundColor: colors.backgroundSubtle + '40', borderColor: colors.border + '30' }]}>
                             <Bell size={12} color={colors.textTertiary} />
-                            <Text style={[styles.reminderText, { color: colors.textSecondary }]}>
+                            <Text variant="caption" tone="secondary" style={styles.reminderText}>
                                 {new Date(item.study_further_reminder).toLocaleString('en-US', {
                                     month: 'short',
                                     day: 'numeric',
@@ -95,7 +96,7 @@ export const StudyReminders: React.FC<StudyRemindersProps> = React.memo(({ onEnt
         <View style={styles.container}>
             <View style={styles.sectionHeaderRow}>
                 <Ionicons name="bookmarks" size={14} color={colors.accent} />
-                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                <Text variant="label" tone="secondary" style={styles.sectionTitle}>
                     TOPICS TO STUDY FURTHER
                 </Text>
             </View>
@@ -127,14 +128,7 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.md,
         paddingHorizontal: Spacing.xs,
     },
-    sectionTitle: {
-        fontSize: 11,
-        fontWeight: '600',
-        letterSpacing: 1.5,
-        textTransform: 'uppercase',
-        opacity: 0.7,
-
-    },
+    sectionTitle: { opacity: 0.7 },
     listContainer: {
         gap: Spacing.md,
     },
@@ -171,11 +165,7 @@ const styles = StyleSheet.create({
         fontWeight: Typography.weight.semibold,
         letterSpacing: 0.5,
     },
-    dateText: {
-        fontSize: 10,
-        fontWeight: '600',
-        opacity: 0.8,
-    },
+    dateText: { opacity: 0.8 },
     bookmarkTopic: {
         fontSize: 16,
         fontWeight: '600',
@@ -193,9 +183,5 @@ const styles = StyleSheet.create({
         marginTop: 4,
         gap: 4,
     },
-    reminderText: {
-        fontSize: 10,
-        fontWeight: Typography.weight.medium,
-        opacity: 0.8,
-    },
+    reminderText: { opacity: 0.8 },
 });

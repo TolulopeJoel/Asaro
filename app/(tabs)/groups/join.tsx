@@ -1,5 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, ScrollView } from 'react-native';
+import {
+    View,
+    StyleSheet,
+    TextInput,
+    ScrollView,
+} from 'react-native';
 import { getFirestore, doc, collection, getDoc, getDocs, setDoc, query, where, limit, increment, arrayUnion, serverTimestamp, addDoc } from '@react-native-firebase/firestore';
 import { useAuth } from '@/src/context/AuthContext';
 import { useTheme } from '@/src/theme/ThemeContext';
@@ -9,6 +14,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Key } from 'lucide-react-native';
 import { Button } from '@/src/components/Button';
+import { Text } from '@/src/components/ui';
 
 // In a real app, this might be a dynamic code or fetched from a config
 
@@ -104,8 +110,8 @@ export default function JoinGroupScreen() {
                         <View style={[styles.iconContainer, { backgroundColor: colors.accentSecondaryLight + '30' }]}>
                             <Key size={32} color={colors.accentSecondary} />
                         </View>
-                        <Text style={[styles.title, { color: colors.textPrimary }]}>Access Code</Text>
-                        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+                        <Text variant="display" style={styles.title}>Access Code</Text>
+                        <Text variant="body" tone="secondary" style={styles.subtitle}>
                             Enter the code to join a group.
                         </Text>
                     </View>
@@ -159,31 +165,19 @@ const styles = StyleSheet.create({
     iconContainer: {
         width: 84,
         height: 84,
-        borderRadius: 28,
+        borderRadius: Spacing.borderRadius.lg,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: Spacing.xl,
     },
-    title: {
-        fontSize: 34,
-        fontWeight: '800',
-        letterSpacing: -1.5,
-        marginBottom: Spacing.xs,
-    },
-    subtitle: {
-        fontSize: 16,
-        fontWeight: '500',
-        textAlign: 'center',
-        lineHeight: 24,
-        opacity: 0.6,
-        paddingHorizontal: Spacing.md,
-    },
+    title: { marginBottom: Spacing.xs },
+    subtitle: { textAlign: 'center', opacity: 0.6, paddingHorizontal: Spacing.md },
     form: {
         width: '100%',
         gap: Spacing.lg,
     },
     input: {
-        fontSize: 32,
+        fontSize: 34,
         textAlign: 'center',
         height: 72,
         borderRadius: Spacing.borderRadius.lg,

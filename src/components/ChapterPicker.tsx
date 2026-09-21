@@ -5,13 +5,13 @@ import React, { useEffect, useState } from 'react';
 import {
     StyleProp,
     StyleSheet,
-    Text,
     TextInput,
     View,
-    ViewStyle
+    ViewStyle,
 } from 'react-native';
 import { ScalePressable } from './ScalePressable';
 import { BibleBook, getChapterNumbers } from '../data/bibleBooks';
+import { Text } from './ui';
 
 interface ChapterRange {
     start: number;
@@ -191,7 +191,7 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = React.memo(({
             };
         } else if (isMiddle) {
             borderRadiusStyle = {
-                borderRadius: 2,
+                borderRadius: Spacing.borderRadius.sm,
             };
         }
 
@@ -231,7 +231,7 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = React.memo(({
                             placeholder="1"
                             placeholderTextColor={colors.textTertiary}
                         />
-                        <Text style={[styles.verseColon, { color: colors.textTertiary }]}>-</Text>
+                        <Text variant="body" tone="tertiary" style={styles.verseColon}>-</Text>
                         <TextInput
                             style={[styles.verseInput, { backgroundColor: colors.cardHover, borderColor: colors.border, color: colors.textPrimary }]}
                             value={endVerse}
@@ -246,7 +246,7 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = React.memo(({
                 {/* Range start verse input */}
                 {isRangeStart && showVerseInputsForRange && (
                     <>
-                        <Text style={[styles.verseColon, { color: colors.textTertiary }]}>:</Text>
+                        <Text variant="body" tone="tertiary" style={styles.verseColon}>:</Text>
                         <TextInput
                             style={[styles.verseInput, styles.verseInputRange, { backgroundColor: colors.cardHover, borderColor: colors.border, color: colors.textPrimary }]}
                             value={startVerse}
@@ -261,7 +261,7 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = React.memo(({
                 {/* Range end verse input */}
                 {isRangeEnd && showVerseInputsForRange && (
                     <>
-                        <Text style={[styles.verseColon, { color: colors.textTertiary }]}>:</Text>
+                        <Text variant="body" tone="tertiary" style={styles.verseColon}>:</Text>
                         <TextInput
                             style={[styles.verseInput, styles.verseInputRange, { backgroundColor: colors.cardHover, borderColor: colors.border, color: colors.textPrimary }]}
                             value={endVerse}
@@ -279,17 +279,17 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = React.memo(({
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={[styles.bookTitle, { color: colors.text }]}>{selectedBook?.name}</Text>
+                <Text variant="title" style={styles.bookTitle}>{selectedBook?.name}</Text>
             </View>
 
             {selectedChapters && selectedChapters.start > 0 && (
                 <View style={[styles.selectionContainer, { backgroundColor: colors.cardHover, borderColor: colors.border }]}>
-                    <Text style={[styles.selectionText, { color: colors.textSecondary }]}>{getSelectionText()}</Text>
+                    <Text variant="body" tone="secondary">{getSelectionText()}</Text>
                     <ScalePressable
                         style={[styles.clearButton, { backgroundColor: colors.cardBackground, borderColor: colors.border + '50' }]}
                         onPress={() => onChapterSelect({ start: 0 })}
                     >
-                        <Text style={[styles.clearButtonText, { color: colors.textSecondary }]}>Clear</Text>
+                        <Text variant="bodySmall" tone="secondary">Clear</Text>
                     </ScalePressable>
                 </View>
             )}
@@ -307,10 +307,10 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = React.memo(({
                     readVerses && [styles.checkboxChecked, { backgroundColor: colors.accent, borderColor: colors.accent }]
                 ]}>
                     {readVerses && (
-                        <Text style={[styles.checkmark, { color: colors.buttonPrimaryText }]}>✓</Text>
+                        <Text variant="bodySmall" tone="inverse">✓</Text>
                     )}
                 </View>
-                <Text style={[styles.checkboxLabel, { color: colors.textSecondary }]}>I read verses</Text>
+                <Text variant="body" tone="secondary">I read verses</Text>
             </ScalePressable>
         </View>
     );
@@ -326,12 +326,7 @@ const styles = StyleSheet.create({
     header: {
         marginBottom: Spacing.lg,
     },
-    bookTitle: {
-        fontSize: Typography.size.xl,
-        fontWeight: Typography.weight.semibold,
-        marginBottom: Spacing.xs,
-        letterSpacing: 0.2,
-    },
+    bookTitle: { marginBottom: Spacing.xs },
     selectionContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -340,11 +335,6 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.xl,
         borderRadius: Spacing.borderRadius.md,
         borderWidth: 1,
-    },
-    selectionText: {
-        fontSize: Typography.size.md,
-        fontWeight: Typography.weight.medium,
-        letterSpacing: 0.2,
     },
     checkboxContainer: {
         flexDirection: 'row',
@@ -365,25 +355,11 @@ const styles = StyleSheet.create({
     checkboxChecked: {
         // Colors handled in component
     },
-    checkmark: {
-        fontSize: Typography.size.sm,
-        fontWeight: Typography.weight.semibold,
-    },
-    checkboxLabel: {
-        fontSize: Typography.size.md,
-        fontWeight: Typography.weight.regular,
-        letterSpacing: 0.2,
-    },
     clearButton: {
         paddingHorizontal: Spacing.md,
         paddingVertical: Spacing.sm,
         borderRadius: Spacing.borderRadius.xl,
         borderWidth: 1,
-    },
-    clearButtonText: {
-        fontSize: Typography.size.sm,
-        fontWeight: Typography.weight.medium,
-        letterSpacing: 0.3,
     },
     chaptersGrid: {
         flexDirection: 'row',
@@ -437,9 +413,5 @@ const styles = StyleSheet.create({
         marginLeft: 4,
         marginRight: 4,
     },
-    verseColon: {
-        fontSize: Typography.size.md,
-        fontWeight: Typography.weight.semibold,
-        marginHorizontal: 2,
-    },
+    verseColon: { marginHorizontal: 2 },
 });

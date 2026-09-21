@@ -1,15 +1,11 @@
 import React from 'react';
-import {
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
-} from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { BibleBook, GREEK_BOOKS, HEBREW_BOOKS } from '../data/bibleBooks';
 import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
 import { ScalePressable } from './ScalePressable';
+import { Text } from './ui';
 
 interface BookPickerProps {
     selectedBook?: BibleBook;
@@ -61,8 +57,8 @@ export const BookPicker: React.FC<BookPickerProps> = React.memo(({
 
     const renderSectionHeader = (title: string, subtitle: string) => (
         <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{title}</Text>
-            <Text style={[styles.sectionSubtitle, { color: colors.textTertiary }]}>{subtitle}</Text>
+            <Text variant="label" tone="secondary" style={styles.sectionTitle}>{title}</Text>
+            <Text variant="caption" style={styles.sectionSubtitle}>{subtitle}</Text>
             <View style={[styles.sectionLine, { backgroundColor: colors.border }]} />
         </View>
     );
@@ -144,23 +140,12 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.lg,
         marginTop: Spacing.sm,
     },
-    sectionTitle: {
-        fontSize: Typography.size.sm,
-        fontWeight: Typography.weight.semibold,
-        marginBottom: Spacing.xs,
-        letterSpacing: 1,
-        textTransform: 'uppercase',
-    },
-    sectionSubtitle: {
-        fontSize: Typography.size.xs,
-        fontWeight: Typography.weight.regular,
-        letterSpacing: 0.5,
-        marginBottom: Spacing.sm,
-    },
+    sectionTitle: { marginBottom: Spacing.xs },
+    sectionSubtitle: { marginBottom: Spacing.sm },
     sectionLine: {
         height: 1,
         width: 40,
-        borderRadius: 1,
+        borderRadius: Spacing.borderRadius.none,
     },
     booksGrid: {
         flexDirection: 'row',
@@ -188,7 +173,7 @@ const styles = StyleSheet.create({
         borderWidth: 1.5,
     },
     bookAbbreviation: {
-        fontSize: 15, // Keeping slightly custom for specific card fit
+        fontSize: 14, // Keeping slightly custom for specific card fit
         fontWeight: Typography.weight.medium,
         textAlign: 'center',
         marginBottom: 2,
@@ -211,6 +196,6 @@ const styles = StyleSheet.create({
         right: Spacing.sm,
         width: 6,
         height: 6,
-        borderRadius: 3,
+        borderRadius: Spacing.borderRadius.round,
     },
 });

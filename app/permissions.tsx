@@ -1,7 +1,12 @@
 import { requestNotificationPermissions, openNotificationSettings, hasNotificationPermissions } from '@/src/utils/notifications';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { AppState, Text, View, StyleSheet, TouchableOpacity } from 'react-native';
+import {
+    AppState,
+    View,
+    StyleSheet,
+    TouchableOpacity,
+} from 'react-native';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
@@ -9,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Bell, ArrowRight } from 'lucide-react-native';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { useAlert } from '@/src/context/AlertContext';
+import { Text } from '@/src/components/ui';
 
 export default function PermissionsScreen() {
     const router = useRouter();
@@ -69,11 +75,11 @@ export default function PermissionsScreen() {
                 </View>
 
                 <View style={styles.textContainer}>
-                    <Text style={[styles.title, { color: colors.textPrimary }]}>
+                    <Text variant="display" style={styles.title}>
                         Stay Connected
                     </Text>
 
-                    <Text style={[styles.description, { color: colors.textSecondary }]}>
+                    <Text variant="body" tone="secondary" style={styles.description}>
                         Àṣàrò helps you stay consistent with your Bible reading through{" "}
                         <Text style={{ textDecorationLine: 'line-through' }}>
                             friendly
@@ -87,7 +93,7 @@ export default function PermissionsScreen() {
                         style={[styles.button, { backgroundColor: colors.textPrimary }]}
                         onPress={handleRequestPermission}
                     >
-                        <Text style={[styles.buttonText, { color: colors.background }]}>Allow Notifications</Text>
+                        <Text variant="body" tone="inverse">Allow Notifications</Text>
                         <ArrowRight size={Typography.size.lg} color={colors.background} style={{ marginLeft: Spacing.sm }} />
                     </ScalePressable>
 
@@ -96,7 +102,7 @@ export default function PermissionsScreen() {
                             style={styles.secondaryButton}
                             onPress={handleOpenSettings}
                         >
-                            <Text style={[styles.secondaryButtonText, { color: colors.textSecondary }]}>
+                            <Text variant="body" tone="secondary">
                                 Open Settings
                             </Text>
                         </TouchableOpacity>
@@ -116,7 +122,7 @@ const styles = StyleSheet.create({
         position: 'absolute',
         width: 200,
         height: 200,
-        borderRadius: 100,
+        borderRadius: Spacing.borderRadius.round,
     },
     content: {
         flex: 1,
@@ -132,7 +138,7 @@ const styles = StyleSheet.create({
     iconContainer: {
         width: 100,
         height: 100,
-        borderRadius: 32,
+        borderRadius: Spacing.borderRadius.lg,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -140,21 +146,8 @@ const styles = StyleSheet.create({
         flex: 1,
         alignItems: 'center',
     },
-    title: {
-        fontSize: 34,
-        fontWeight: '800',
-        textAlign: 'center',
-        marginBottom: Spacing.sm,
-        letterSpacing: -1.5,
-    },
-    description: {
-        fontSize: Typography.size.lg,
-        fontWeight: Typography.weight.medium,
-        textAlign: 'center',
-        lineHeight: Typography.lineHeight.xl,
-        opacity: 0.7,
-        letterSpacing: -0.2,
-    },
+    title: { textAlign: 'center', marginBottom: Spacing.sm },
+    description: { textAlign: 'center', opacity: 0.7 },
     footer: {
         paddingTop: Spacing.xxl,
         gap: Spacing.lg,
@@ -167,19 +160,9 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         width: '100%',
     },
-    buttonText: {
-        fontSize: Typography.size.lg,
-        fontWeight: Typography.weight.semibold,
-        letterSpacing: 0.3,
-    },
     secondaryButton: {
         paddingVertical: Spacing.lg,
         alignItems: 'center',
         width: '100%',
-    },
-    secondaryButtonText: {
-        fontSize: Typography.size.md,
-        fontWeight: Typography.weight.medium,
-        letterSpacing: 0.3,
     },
 });

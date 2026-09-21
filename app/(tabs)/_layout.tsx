@@ -8,6 +8,7 @@ import { ScalePressable } from '@/src/components/ScalePressable';
 import { useRef, useState, useCallback, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '@/src/storage/storageKeys';
+import { Spacing } from '@/src/theme/spacing';
 
 export default function TabLayout() {
     const { colors: themeColors, isLockedIn: lockedInMode } = useTheme();
@@ -169,14 +170,14 @@ const styles = StyleSheet.create({
     iconWrap: {
         width: 60,
         height: 34,
-        borderRadius: 17,
+        borderRadius: Spacing.borderRadius.lg,
         overflow: 'hidden',
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 3,
     },
     tabLabel: {
-        fontSize: 11,
+        fontSize: 10,
         letterSpacing: 0.2,
     },
 });

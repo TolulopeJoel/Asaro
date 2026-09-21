@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { ChevronLeft, Trash2, Check, Share2 } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { Spacing } from '../../theme/spacing';
@@ -11,6 +11,7 @@ import { ScalePressable } from '../ScalePressable';
 import { BookPicker } from '../BookPicker';
 import { ChapterPicker } from '../ChapterPicker';
 import { Confetti, ConfettiRef } from '../Confetti';
+import { Text } from '../ui';
 
 interface BookStepProps {
     selectedBook?: BibleBook;
@@ -24,8 +25,8 @@ export const BookStep = React.memo(({ selectedBook, onBookSelect }: BookStepProp
             <ScrollView key="step-book" style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.stepContent}>
                     <View style={styles.header}>
-                        <Text style={[styles.stepLabel, { color: colors.textTertiary }]}>PASSAGE</Text>
-                        <Text style={[styles.title, { color: colors.textPrimary }]}>What book?</Text>
+                        <Text variant="label" tone="tertiary">PASSAGE</Text>
+                        <Text variant="display">What book?</Text>
                     </View>
                     <View style={styles.contentArea}>
                         <BookPicker selectedBook={selectedBook} onBookSelect={onBookSelect} />
@@ -61,8 +62,8 @@ export const ChapterStep = React.memo(({
             <ScrollView key="step-chapter" style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.stepContent}>
                     <View style={styles.header}>
-                        <Text style={[styles.stepLabel, { color: colors.textTertiary }]}>PASSAGE</Text>
-                        <Text style={[styles.title, { color: colors.textPrimary }]}>What part?</Text>
+                        <Text variant="label" tone="tertiary">PASSAGE</Text>
+                        <Text variant="display">What part?</Text>
                     </View>
                     <View style={styles.contentArea}>
                         <ChapterPicker
@@ -78,7 +79,7 @@ export const ChapterStep = React.memo(({
                             style={[styles.backButton, { borderColor: colors.border }]}
                             onPress={onBack}
                         >
-                            <Text style={[styles.backButtonText, { color: colors.textSecondary }]}>Change book</Text>
+                            <Text variant="body" tone="secondary" style={styles.backButtonText}>Change book</Text>
                         </ScalePressable>
 
                         <ScalePressable
@@ -90,7 +91,7 @@ export const ChapterStep = React.memo(({
                             onPress={onContinue}
                             disabled={!canContinue}
                         >
-                            <Text style={[styles.continueButtonText, { color: colors.buttonPrimaryText }]}>Reflect</Text>
+                            <Text variant="body" tone="inverse" style={styles.continueButtonText}>Reflect</Text>
                         </ScalePressable>
                     </View>
                 </View>
@@ -128,11 +129,11 @@ export const ReflectionStep = React.memo(({
             <ScrollView key="step-reflection" style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 <View style={styles.stepContent}>
                     <View style={styles.header}>
-                        <Text style={[styles.stepLabel, { color: colors.textTertiary }]}>REFLECTING ON</Text>
-                        <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={2}>{selectionSummary}</Text>
+                        <Text variant="label" tone="tertiary">REFLECTING ON</Text>
+                        <Text variant="display" numberOfLines={2}>{selectionSummary}</Text>
                     </View>
                     {!isEditMode && (
-                        <Text style={[styles.stepDescription, { color: colors.textSecondary }]}>
+                        <Text variant="body" tone="secondary" style={styles.stepDescription}>
                             Consider these questions to get the most out of your reading:
                         </Text>
                     )}
@@ -152,7 +153,7 @@ export const ReflectionStep = React.memo(({
                             onPress={onBack}
                         >
                             <ChevronLeft size={14} color={colors.textTertiary} />
-                            <Text style={[styles.footerNavText, { color: colors.textTertiary }]}>
+                            <Text variant="bodySmall" tone="tertiary">
                                 {`Change chapter${selectedChapters?.end && selectedChapters.end !== selectedChapters.start ? 's' : ''}`}
                             </Text>
                         </ScalePressable>
@@ -164,8 +165,8 @@ export const ReflectionStep = React.memo(({
                                     style={styles.footerDiscardButton}
                                     onPress={onDiscard}
                                 >
-                                    <Trash2 size={13} color={'#C0392B'} />
-                                    <Text style={[styles.footerDiscardText, { color: '#C0392B' }]}>
+                                    <Trash2 size={13} color={colors.danger} />
+                                    <Text variant="bodySmall" tone="danger">
                                         Discard draft
                                     </Text>
                                 </ScalePressable>
@@ -212,8 +213,8 @@ export const SummaryStep = React.memo(({
                                 <Check size={38} color={colors.accent} />
                             </View>
                         </View>
-                        <Text style={[styles.successTitle, { color: colors.textPrimary }]}>Recorded</Text>
-                        <Text style={[styles.successSubtitle, { color: colors.textSecondary }]}>
+                        <Text variant="display">Recorded</Text>
+                        <Text variant="body" tone="secondary" style={styles.successSubtitle}>
                             Your reflection has been saved.
                         </Text>
                     </View>
@@ -221,10 +222,10 @@ export const SummaryStep = React.memo(({
                     <View style={[styles.entryCard, { backgroundColor: colors.cardBackground, borderColor: colors.border + '50' }]}>
                         <View style={[styles.entryCardRule, { backgroundColor: colors.accent + '40' }]} />
                         <View style={styles.entryCardBody}>
-                            <Text style={[styles.entryCardLabel, { color: colors.textTertiary }]}>READ</Text>
-                            <Text style={[styles.entryCardPassage, { color: colors.textPrimary }]}>{selectionSummary}</Text>
+                            <Text variant="label" tone="tertiary">READ</Text>
+                            <Text variant="display" style={styles.entryCardPassage}>{selectionSummary}</Text>
                             <View style={[styles.entryCardSeparator, { backgroundColor: colors.border + '60' }]} />
-                            <Text style={[styles.entryCardDate, { color: colors.textSecondary }]}>{formattedDate}</Text>
+                            <Text variant="bodySmall" tone="secondary" style={styles.entryCardDate}>{formattedDate}</Text>
                         </View>
                         <View style={[styles.entryCardRule, { backgroundColor: colors.accent + '40' }]} />
                     </View>
@@ -234,14 +235,14 @@ export const SummaryStep = React.memo(({
                             style={[styles.primaryButton, { backgroundColor: colors.accent }]}
                             onPress={onDone}
                         >
-                            <Text style={[styles.primaryButtonText, { color: colors.buttonPrimaryText }]}>Check in Library</Text>
+                            <Text variant="body" tone="inverse" style={styles.primaryButtonText}>Check in Library</Text>
                         </ScalePressable>
 
                         <ScalePressable
                             style={styles.shareLink}
                             onPress={onShare}
                         >
-                            <Text style={[styles.shareLinkText, { color: colors.textTertiary }]}>Share this reflection</Text>
+                            <Text variant="bodySmall" tone="tertiary">Share this reflection</Text>
                         </ScalePressable>
                     </View>
                 </View>
@@ -270,24 +271,7 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.xl,
         gap: 4,
     },
-    stepLabel: {
-        fontSize: 10,
-        fontWeight: '700',
-        letterSpacing: 2,
-    },
-    title: {
-        fontSize: 34,
-        fontWeight: '800',
-        letterSpacing: -1,
-    },
-    stepDescription: {
-        fontSize: Typography.size.lg,
-        fontWeight: Typography.weight.regular,
-        textAlign: 'center',
-        marginBottom: Spacing.md,
-        lineHeight: Typography.lineHeight.xl,
-        letterSpacing: Typography.letterSpacing.wide,
-    },
+    stepDescription: { textAlign: 'center', marginBottom: Spacing.md },
     contentArea: {
         flex: 1,
         minHeight: 200,
@@ -306,12 +290,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderRadius: Spacing.borderRadius.lg,
     },
-    backButtonText: {
-        fontSize: Typography.size.lg,
-        fontWeight: Typography.weight.medium,
-        textAlign: 'center',
-        letterSpacing: 0.3,
-    },
+    backButtonText: { textAlign: 'center' },
     continueButton: {
         flex: 1,
         paddingVertical: Spacing.layout.cardPadding,
@@ -325,12 +304,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0,
         display: 'none',
     },
-    continueButtonText: {
-        fontSize: Typography.size.lg,
-        fontWeight: Typography.weight.semibold,
-        textAlign: 'center',
-        letterSpacing: 0.3,
-    },
+    continueButtonText: { textAlign: 'center' },
     reflectionFooter: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -346,11 +320,6 @@ const styles = StyleSheet.create({
         gap: 4,
         paddingVertical: Spacing.sm,
     },
-    footerNavText: {
-        fontSize: Typography.size.sm,
-        fontWeight: Typography.weight.medium,
-        letterSpacing: 0.2,
-    },
     footerDivider: {
         width: 1,
         height: 14,
@@ -361,11 +330,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 4,
         paddingVertical: Spacing.sm,
-    },
-    footerDiscardText: {
-        fontSize: Typography.size.sm,
-        fontWeight: Typography.weight.medium,
-        letterSpacing: 0.2,
     },
     summaryContent: {
         justifyContent: 'center',
@@ -383,7 +347,7 @@ const styles = StyleSheet.create({
     successRing: {
         width: 112,
         height: 112,
-        borderRadius: 56,
+        borderRadius: Spacing.borderRadius.round,
         borderWidth: 1,
         justifyContent: 'center',
         alignItems: 'center',
@@ -392,22 +356,13 @@ const styles = StyleSheet.create({
     successIconOuter: {
         width: 80,
         height: 80,
-        borderRadius: 40,
+        borderRadius: Spacing.borderRadius.round,
         justifyContent: 'center',
         alignItems: 'center',
     },
-    successTitle: {
-        fontSize: 34,
-        fontWeight: '800',
-        letterSpacing: -1.5,
-    },
-    successSubtitle: {
-        fontSize: 15,
-        fontWeight: '400',
-        opacity: 0.6,
-    },
+    successSubtitle: { opacity: 0.6 },
     entryCard: {
-        borderRadius: 16,
+        borderRadius: Spacing.borderRadius.lg,
         borderWidth: 1,
         overflow: 'hidden',
     },
@@ -421,47 +376,23 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: Spacing.sm,
     },
-    entryCardLabel: {
-        fontSize: 10,
-        fontWeight: '700',
-        letterSpacing: 2,
-    },
-    entryCardPassage: {
-        fontSize: 24,
-        fontWeight: '800',
-        letterSpacing: -0.5,
-        textAlign: 'center',
-    },
+    entryCardPassage: { textAlign: 'center' },
     entryCardSeparator: {
         width: 32,
         height: 1,
         marginVertical: Spacing.xs,
         opacity: 0.5,
     },
-    entryCardDate: {
-        fontSize: 13,
-        fontWeight: '400',
-        opacity: 0.55,
-    },
+    entryCardDate: { opacity: 0.55 },
     primaryButton: {
         width: '100%',
         paddingVertical: 20,
         paddingHorizontal: Spacing.xxl,
         borderRadius: Spacing.borderRadius.lg,
     },
-    primaryButtonText: {
-        fontSize: Typography.size.lg,
-        fontWeight: Typography.weight.semibold,
-        textAlign: 'center',
-        letterSpacing: 0.3,
-    },
+    primaryButtonText: { textAlign: 'center' },
     shareLink: {
         paddingVertical: Spacing.sm,
         paddingHorizontal: Spacing.md,
-    },
-    shareLinkText: {
-        fontSize: Typography.size.sm,
-        fontWeight: Typography.weight.medium,
-        letterSpacing: 0.2,
     },
 });

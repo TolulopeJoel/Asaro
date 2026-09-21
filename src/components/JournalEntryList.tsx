@@ -2,12 +2,7 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import { getLocalMidnight, isSameDay } from '@/src/utils/dateUtils';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-    Platform,
-    StyleSheet,
-    Text,
-    View,
-} from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import {
     BookCopy,
     Bookmark,
@@ -37,6 +32,8 @@ import {
 } from '../data/database';
 import { LoadingView } from './LoadingView';
 import Animated from 'react-native-reanimated';
+import { Spacing } from '../theme/spacing';
+import { Text } from './ui';
 
 type ViewMode = 'recent' | 'books' | 'bookDetail' | 'actions' | 'topics';
 
@@ -521,8 +518,8 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
                 <View style={[styles.emptyIconContainer, { backgroundColor: colors.backgroundSubtle }]}>
                     {React.createElement(iconName, { size: 32, color: colors.textTertiary })}
                 </View>
-                <Text style={[styles.emptyStateText, { color: colors.textPrimary }]}>{title}</Text>
-                <Text style={[styles.emptyStateSubtext, { color: colors.textSecondary }]}>{subtext}</Text>
+                <Text variant="subtitle" style={styles.emptyStateText}>{title}</Text>
+                <Text variant="body" tone="secondary" style={styles.emptyStateSubtext}>{subtext}</Text>
             </View>
         );
     }, [viewMode, debouncedSearchQuery, colors]);
@@ -626,7 +623,7 @@ const styles = StyleSheet.create({
         left: 0,
         width: '25%',
         height: 3,
-        borderRadius: 1.5,
+        borderRadius: Spacing.borderRadius.round,
     },
     tab: {
         flex: 1,
@@ -635,7 +632,7 @@ const styles = StyleSheet.create({
         zIndex: 1,
     },
     tabText: {
-        fontSize: 15,
+        fontSize: 14,
         fontWeight: '400',
         letterSpacing: 0.2,
     },
@@ -669,7 +666,7 @@ const styles = StyleSheet.create({
     searchInput: {
         flex: 1,
         height: 52,
-        borderRadius: 12,
+        borderRadius: Spacing.borderRadius.lg,
         paddingHorizontal: 16,
         fontSize: 16,
         borderWidth: 1,
@@ -679,12 +676,12 @@ const styles = StyleSheet.create({
         marginLeft: 12,
         width: 32,
         height: 32,
-        borderRadius: 16,
+        borderRadius: Spacing.borderRadius.round,
         alignItems: 'center',
         justifyContent: 'center',
     },
     clearSearchText: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: '300',
     },
     scrollView: {
@@ -716,22 +713,11 @@ const styles = StyleSheet.create({
     emptyIconContainer: {
         width: 84,
         height: 84,
-        borderRadius: 28,
+        borderRadius: Spacing.borderRadius.lg,
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 24,
     },
-    emptyStateText: {
-        fontSize: 18,
-        fontWeight: '700',
-        textAlign: 'center',
-        marginBottom: 12,
-        letterSpacing: -0.2,
-    },
-    emptyStateSubtext: {
-        fontSize: 15,
-        textAlign: 'center',
-        lineHeight: 24,
-        fontWeight: '400',
-    },
+    emptyStateText: { textAlign: 'center', marginBottom: 12 },
+    emptyStateSubtext: { textAlign: 'center' },
 });

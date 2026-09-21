@@ -17,6 +17,8 @@ import { BibleReferencePicker } from './BibleReferencePicker';
 import { getBibleStyledParts } from '../utils/bibleUtils';
 import { useBibleRefPicker } from '../hooks/useBibleRefPicker';
 import { ScalePressable } from './ScalePressable';
+import { Spacing } from '../theme/spacing';
+import { textStyle } from './ui';
 
 const TextArea: React.FC<{
     label: string;
@@ -34,7 +36,7 @@ const TextArea: React.FC<{
     disabled = false,
     isAnswered = false,
 }) => {
-        const { colors, isDark } = useTheme();
+        const { colors, isDark, style: themeStyle } = useTheme();
         const [isExpanded, setIsExpanded] = useState(false);
         const [tempValue, setTempValue] = useState('');
         const [contentHeight, setContentHeight] = useState(0);
@@ -99,7 +101,8 @@ const TextArea: React.FC<{
                             inputAccessoryViewID="bible-picker"
                             style={[
                                 textAreaStyles.input,
-                                { color: colors.text, minHeight: Math.max(250) },
+                                textStyle(themeStyle, 'body'),
+                                { color: colors.text, minHeight: 250 },
                                 disabled && { color: colors.textSecondary },
                             ]}
                             placeholder={placeholder}
@@ -181,6 +184,7 @@ const TextArea: React.FC<{
                                         ref={expandedTextInputRef}
                                         style={[
                                             fullScreenStyles.textInput,
+                                            textStyle(themeStyle, 'body'),
                                             { color: colors.text, minHeight: Math.max(220, contentHeightModal) }
                                         ]}
                                         placeholder={placeholder || "..."}
@@ -232,18 +236,14 @@ const textAreaStyles = StyleSheet.create({
         position: 'relative',
     },
     inputContainer: {
-        borderRadius: 10,
+        borderRadius: Spacing.borderRadius.lg,
         borderWidth: 1,
         position: 'relative',
         paddingBottom: 4,
     },
     input: {
-        padding: 20,
-        paddingBottom: 4,
-        fontSize: 16,
-        fontWeight: '400',
-        lineHeight: 24,
-        letterSpacing: 0.1,
+        padding: Spacing.xl - 4,
+        paddingBottom: Spacing.xs,
     },
     answeredIndicator: {
         position: 'absolute',
@@ -251,7 +251,7 @@ const textAreaStyles = StyleSheet.create({
         right: 48,
         width: 8,
         height: 8,
-        borderRadius: 4,
+        borderRadius: Spacing.borderRadius.round,
     },
     expandButton: {
         position: 'absolute',
@@ -261,7 +261,7 @@ const textAreaStyles = StyleSheet.create({
         height: 32,
         justifyContent: 'center',
         alignItems: 'center',
-        borderRadius: 12,
+        borderRadius: Spacing.borderRadius.lg,
     },
 });
 
@@ -284,12 +284,12 @@ const fullScreenStyles = StyleSheet.create({
     headerLeft: { flex: 1 },
     headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     iconBtn: {
-        width: 36, height: 36, borderRadius: 18,
+        width: 36, height: 36, borderRadius: Spacing.borderRadius.round,
         justifyContent: 'center', alignItems: 'center',
     },
     saveButton: {
         paddingVertical: 14,
-        borderRadius: 16,
+        borderRadius: Spacing.borderRadius.lg,
         width: '100%',
         alignItems: 'center',
         marginTop: 8,
@@ -310,13 +310,9 @@ const fullScreenStyles = StyleSheet.create({
         gap: 8,
     },
     textInput: {
-        fontSize: 16,
-        fontWeight: '400',
-        lineHeight: 28,
-        letterSpacing: 0.1,
         backgroundColor: 'transparent',
         textAlignVertical: 'top',
-        paddingTop: 8,
+        paddingTop: Spacing.sm,
     },
 });
 

@@ -53,7 +53,7 @@ export const getPreviewText = (entry: JournalEntry): string => {
 
 export const getDynamicCardStyle = (text: string) => {
     const length = text.length;
-    if (length < 60) return { fontSize: 18, lineHeight: 28, padding: 24 };
+    if (length < 60) return { fontSize: 16, lineHeight: 26, padding: 24 };
     if (length < 120) return { fontSize: 16, lineHeight: 24, padding: 20 };
     return { fontSize: 14, lineHeight: 22, padding: 16 };
 };

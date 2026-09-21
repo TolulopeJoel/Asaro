@@ -74,7 +74,7 @@ export const Button: React.FC<ButtonProps> = ({
                 };
             case 'danger':
                 return {
-                    backgroundColor: '#ef4444', // Red-500
+                    backgroundColor: colors.danger,
                     borderColor: 'transparent',
                 };
             default:

@@ -1,16 +1,11 @@
 import React from 'react';
-import {
-    StyleSheet,
-    View,
-    Text,
-    Modal,
-    Pressable,
-} from 'react-native';
+import { StyleSheet, View, Modal, Pressable } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { useAlert } from '../context/AlertContext';
 import { ScalePressable } from './ScalePressable';
 import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
+import { Text } from './ui';
 
 export const CustomAlert: React.FC = () => {
     const { colors } = useTheme();
@@ -50,8 +45,8 @@ export const CustomAlert: React.FC = () => {
                         </View>
                     )}
 
-                    <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
-                    <Text style={[styles.message, { color: colors.textSecondary }]}>{message}</Text>
+                    <Text variant="display" style={styles.title}>{title}</Text>
+                    <Text variant="body" tone="secondary" style={styles.message}>{message}</Text>
 
                     <View style={styles.buttonContainer}>
                         {buttons && buttons.length > 0 ? (
@@ -59,7 +54,7 @@ export const CustomAlert: React.FC = () => {
                                 const isCancel = btn.style === 'cancel';
                                 const isDestructive = btn.style === 'destructive';
                                 const bgColor = isDestructive
-                                    ? '#FF3B30'
+                                    ? colors.danger
                                     : isCancel
                                         ? colors.backgroundSubtle
                                         : colors.accent;
@@ -78,7 +73,7 @@ export const CustomAlert: React.FC = () => {
                                         {btn.icon && (
                                             React.createElement(btn.icon, { size: 18, color: textColor })
                                         )}
-                                        <Text style={[styles.pillText, { color: textColor, fontWeight: isCancel ? '600' : '700' }]}>
+                                        <Text variant="button" style={{ color: textColor }}>
                                             {btn.text}
                                         </Text>
                                     </ScalePressable>
@@ -89,7 +84,7 @@ export const CustomAlert: React.FC = () => {
                                 style={[styles.pillButton, { backgroundColor: colors.accent }]}
                                 onPress={hideAlert}
                             >
-                                <Text style={[styles.pillText, { color: colors.buttonPrimaryText, fontWeight: '700' }]}>OK</Text>
+                                <Text variant="button" tone="inverse">OK</Text>
                             </ScalePressable>
                         )}
                     </View>
@@ -110,7 +105,7 @@ const styles = StyleSheet.create({
     alertCard: {
         width: '100%',
         maxWidth: 340,
-        borderRadius: 28,
+        borderRadius: Spacing.borderRadius.lg,
         padding: Spacing.xl,
         borderWidth: 1,
         alignItems: 'center',
@@ -123,24 +118,13 @@ const styles = StyleSheet.create({
     iconWrap: {
         width: 64,
         height: 64,
-        borderRadius: 32,
+        borderRadius: Spacing.borderRadius.round,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 4,
     },
-    title: {
-        fontSize: Typography.size.xxl,
-        fontWeight: '800',
-        textAlign: 'center',
-        letterSpacing: -0.5,
-    },
-    message: {
-        fontSize: Typography.size.md,
-        lineHeight: 22,
-        textAlign: 'center',
-        opacity: 0.85,
-        marginBottom: 6,
-    },
+    title: { textAlign: 'center' },
+    message: { textAlign: 'center', opacity: 0.85, marginBottom: 6 },
     buttonContainer: {
         gap: Spacing.sm,
         width: '100%',
@@ -151,11 +135,11 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         gap: 8,
         paddingVertical: 14,
-        borderRadius: 16,
+        borderRadius: Spacing.borderRadius.lg,
         width: '100%',
     },
     pillText: {
-        fontSize: 16,
+        fontSize: Typography.size.lg,
         letterSpacing: 0.1,
     },
 });
