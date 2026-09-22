@@ -503,8 +503,8 @@ export const checkInactiveMembers = async (groupId: string): Promise<void> => {
 
         const today = new Date();
 
-        for (const doc of membersSnapshot.docs) {
-            const member = doc.data();
+        for (const memberDoc of membersSnapshot.docs) {
+            const member = memberDoc.data();
             if (!member.lastReadDate) continue;
 
             const diff = getDaysDifference(parseLocalDateString(member.lastReadDate), today);
@@ -514,7 +514,7 @@ export const checkInactiveMembers = async (groupId: string): Promise<void> => {
 
             const q = query(
                 activitiesRef,
-                where('userId', '==', doc.id),
+                where('userId', '==', memberDoc.id),
                 where('type', '==', 'member_absent'),
                 orderBy('timestamp', 'desc'),
                 limit(1)
@@ -527,7 +527,7 @@ export const checkInactiveMembers = async (groupId: string): Promise<void> => {
             }
 
             await addDoc(activitiesRef, {
-                userId: doc.id,
+                userId: memberDoc.id,
                 userName: member.displayName || 'Reader',
                 type: 'member_absent',
                 timestamp: serverTimestamp(),
@@ -583,16 +583,16 @@ export const evaluateGroupAdminRoles = async (groupId: string): Promise<void> =>
 
         // Collect members that need evaluation this month
         const toEvaluate = membersSnapshot.docs.filter(
-            (doc: any) => doc.data().adminRoleMonth !== currentMonth
+            (memberDoc: any) => memberDoc.data().adminRoleMonth !== currentMonth
         );
 
         if (toEvaluate.length === 0) return;
 
         const batch = writeBatch(db);
 
-        for (const doc of toEvaluate) {
-            const data = doc.data();
-            const memberRef = doc(collection(groupRef, 'members'), doc.id);
+        for (const memberDoc of toEvaluate) {
+            const data = memberDoc.data();
+            const memberRef = doc(collection(groupRef, 'members'), memberDoc.id);
 
             if (data.adminRoleMonth === undefined) {
                 // First-contact grace period — stamp the month, leave role as-is
@@ -612,7 +612,7 @@ export const evaluateGroupAdminRoles = async (groupId: string): Promise<void> =>
                 if (currentRole !== 'admin') {
                     // New promotion!
                     batch.set(doc(activitiesRef), {
-                        userId: doc.id,
+                        userId: memberDoc.id,
                         userName: data.displayName || 'Reader',
                         type: 'admin_promoted',
                         monthName,
