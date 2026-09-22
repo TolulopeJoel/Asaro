@@ -16,10 +16,10 @@
  */
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Settings } from 'lucide-react-native';
 
 import { ScalePressable } from '../ScalePressable';
 import { ClothMark } from '../ui/Cloth';
+import { SettingsGlyph } from '../ui/SettingsGlyph';
 import { Hero } from '../ui/Surfaces';
 import { Text } from '../ui/Text';
 import { ThemedButton } from '../ui/ThemedButton';
@@ -124,7 +124,7 @@ export function ClothHome({
                         accessibilityLabel="Settings"
                         hitSlop={Spacing.md}
                     >
-                        <Settings size={19} color={colors.accent} />
+                        <SettingsGlyph color={colors.accent} />
                     </ScalePressable>
                 </View>
                 <Text variant="sub" tone="onHero" style={styles.heroSub}>{dateLine}</Text>
