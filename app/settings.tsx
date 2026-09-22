@@ -610,7 +610,7 @@ export default function Settings() {
                         />
                     )}
 
-                    <UIText variant="label" style={styles.sectionLabel}>Reminders</UIText>
+                    <UIText variant="label" style={isLockedIn ? styles.sectionLabel : styles.clothSectionLabel}>Reminders</UIText>
                     <SettingsItem
                         isLockedIn={isLockedIn}
                         label="Sleep time"
@@ -636,9 +636,9 @@ export default function Settings() {
                         colors={colors}
                     />
 
-                    <View style={[styles.rule, { backgroundColor: colors.border }]} />
+                    {isLockedIn && <View style={[styles.rule, { backgroundColor: colors.border }]} />}
 
-                    <UIText variant="label" style={styles.sectionLabel}>Your data</UIText>
+                    <UIText variant="label" style={isLockedIn ? styles.sectionLabel : styles.clothSectionLabel}>Your data</UIText>
                     <SettingsItem
                         isLockedIn={isLockedIn}
                         label="Share entries backup"
@@ -656,11 +656,11 @@ export default function Settings() {
                         colors={colors}
                     />
 
-                    <View style={[styles.rule, { backgroundColor: colors.border }]} />
+                    {isLockedIn && <View style={[styles.rule, { backgroundColor: colors.border }]} />}
 
                     {/* Both mockups show these plainly rather than behind the
                         five-tap easter egg they used to hide under. */}
-                    <UIText variant="label" style={styles.sectionLabel}>Engine Room</UIText>
+                    <UIText variant="label" style={isLockedIn ? styles.sectionLabel : styles.clothSectionLabel}>Engine Room</UIText>
                     <SettingsItem
                         isLockedIn={isLockedIn}
                         label="Reschedule notifications"
@@ -677,13 +677,15 @@ export default function Settings() {
                         colors={colors}
                     />
 
-                    {/* Cloth gives Version its own "About"; Colossal folds it
-                        into Engine Room. Both are what their mockup draws. */}
+                    {/*
+                      * Cloth gives Version its own "About"; Colossal folds it
+                      * into Engine Room. Both are what their mockup draws. No
+                      * rule here — Cloth's mockup never draws `.cl-hr`
+                      * anywhere on this screen; only the label's own
+                      * margin-top:20 (clothSectionLabel) separates sections.
+                      */}
                     {!isLockedIn && (
-                        <>
-                            <View style={[styles.rule, { backgroundColor: colors.border }]} />
-                            <UIText variant="label" style={styles.sectionLabel}>About</UIText>
-                        </>
+                        <UIText variant="label" style={styles.clothSectionLabel}>About</UIText>
                     )}
                     <SettingsItem
                         isLockedIn={isLockedIn}
@@ -751,12 +753,14 @@ const styles = StyleSheet.create({
     colossalProfileSub: { marginTop: 4 },
     /** `.co-hr{height:1px; background:var(--hair); margin:26px 0}` */
     rule: { height: Spacing.border.hairline, marginVertical: Spacing.xl + 2 },
-    /** `.cl-label{margin:20px 0 4px}` / `.co-label{margin:0 0 10px}` */
+    /** `.co-label{margin:0 0 10px}` */
     sectionLabel: { marginBottom: 10 },
-    /** Cloth's body runs in its own 24px gutter. */
+    /** `.cl-label{margin:20px 0 4px}` */
+    clothSectionLabel: { marginTop: 20, marginBottom: 4 },
+    /** Cloth's body runs in its own 24px gutter, no top padding of its own —
+     *  every .cl-label supplies its own 20px lead-in (clothSectionLabel). */
     clothBody: {
         paddingHorizontal: Spacing.layout.screenPadding,
-        paddingTop: Spacing.lg,
     },
     clothFooter: { paddingHorizontal: Spacing.layout.screenPadding },
     colossalFooter: {
@@ -781,10 +785,16 @@ const styles = StyleSheet.create({
     scrollView: {
         flex: 1,
     },
+    /*
+     * marginBottom used to sit at Spacing.xl here. Hero applies this style
+     * directly to the indigo band View, and ClothStrip renders as the very
+     * next sibling — so that margin pushed 24px of ecru between the band and
+     * the strip instead of letting them abut, as `.cl-strip` (no margin of
+     * its own) assumes.
+     */
     hero: {
         marginHorizontal: -Spacing.layout.screenPadding,
         marginTop: -Spacing.layout.screenPadding,
-        marginBottom: Spacing.xl,
     },
     backButton: {
         width: Spacing.touchTarget,

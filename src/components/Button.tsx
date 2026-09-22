@@ -13,6 +13,7 @@ import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
 import { ScalePressable } from './ScalePressable';
 import { BouncingDots } from './BouncingDots';
+import { textStyle } from './ui/Text';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
 export type ButtonSize = 'sm' | 'md' | 'lg';
@@ -46,7 +47,7 @@ export const Button: React.FC<ButtonProps> = ({
     labelStyle,
     children,
 }) => {
-    const { colors } = useTheme();
+    const { colors, style: themeStyle } = useTheme();
 
     const getVariantStyles = (): StyleProp<ViewStyle> => {
         switch (variant) {
@@ -143,8 +144,19 @@ export const Button: React.FC<ButtonProps> = ({
         style,
     ];
 
+    /*
+     * This label used to render in react-native's bare Text with only a size
+     * and a fixed 0.3px tracking — the platform system face in both styles,
+     * never Work Sans or Archivo, and never Colossal's uppercase. Reading the
+     * fontFamily/textTransform/letterSpacing off the design system's `button`
+     * role (`.cl-btn` / `.co-btn`) is what ThemedButton already does; this
+     * legacy component still has call sites, so it needs the same face.
+     */
+    const designLabelStyle = textStyle(themeStyle, 'button');
+
     const combinedLabelStyle = [
         styles.labelBase,
+        { fontFamily: designLabelStyle.fontFamily, textTransform: designLabelStyle.textTransform },
         getVariantLabelStyles(),
         getSizeLabelStyles(),
         disabled && styles.disabledLabel,

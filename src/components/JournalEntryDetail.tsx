@@ -10,7 +10,7 @@ import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
 import { ScalePressable } from './ScalePressable';
 import { HyperlinkedText } from './HyperlinkedText';
-import { Text } from './ui';
+import { Text, textStyle } from './ui';
 
 interface JournalEntryDetailProps {
     entry: JournalEntry;
@@ -37,7 +37,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
     onDelete,
     onClose,
 }) => {
-    const { colors } = useTheme();
+    const { colors, style: themeStyle } = useTheme();
     const { showAlert } = useAlert();
     const [isSharing, setIsSharing] = useState(false);
 
@@ -156,6 +156,17 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
         }
     };
 
+    /*
+     * The answer, action and motivation copy used to render in raw
+     * react-native Text with only a size and weight — the platform system
+     * face in both styles, since HyperlinkedText's own Text never set one
+     * either. Reading the family off the design system's `body` role (Work
+     * Sans in Cloth, Archivo in Colossal) is what this line supplies; the
+     * custom sizes/weights below it are kept, since neither mockup declares
+     * an entry-detail screen for this copy to match against exactly.
+     */
+    const bodyFace = { fontFamily: textStyle(themeStyle, 'body').fontFamily };
+
     const renderReflection = (reflection: string | undefined, questionIndex: number) => {
         if (questionIndex === ACTION_QUESTION_INDEX) {
             if (!entry.action_items || entry.action_items.length === 0) return null;
@@ -186,14 +197,14 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                             >
                                 {item.action.trim() ? (
                                     <HyperlinkedText
-                                        style={[styles.actionText, { color: colors.textPrimary }]}
+                                        style={[styles.actionText, bodyFace, { color: colors.textPrimary }]}
                                         text={item.action.trim()}
                                     />
                                 ) : null}
                                 {item.motivation.trim() ? (
                                     <View style={styles.motivationRow}>
                                         <HyperlinkedText
-                                            style={[styles.motivationText, { color: colors.textSecondary }]}
+                                            style={[styles.motivationText, bodyFace, { color: colors.textSecondary }]}
                                             text={item.motivation.trim()}
                                         />
                                     </View>
@@ -219,6 +230,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                         {paragraphs.map((paragraph, pIndex) => (
                             <HyperlinkedText key={pIndex} style={[
                                 styles.answerText,
+                                bodyFace,
                                 { color: colors.textPrimary },
                                 pIndex > 0 && styles.answerParagraph
                             ]} text={paragraph.trim()} />
@@ -253,6 +265,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                     {paragraphs.map((paragraph, pIndex) => (
                         <HyperlinkedText key={pIndex} style={[
                             styles.answerText,
+                            bodyFace,
                             { color: colors.textPrimary },
                             pIndex > 0 && styles.answerParagraph
                         ]} text={paragraph.trim()} />

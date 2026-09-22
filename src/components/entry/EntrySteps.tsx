@@ -116,6 +116,8 @@ interface ChapterStepProps {
     onChapterSelect: (chapters: ChapterRange) => void;
     onVerseRangeChange: (verses: VerseRange | null) => void;
     onBack: () => void;
+    /** Leave the entry entirely — Cloth's `.cl-top` close button. */
+    onExit: () => void;
     onContinue: () => void;
     canContinue: boolean;
 }
@@ -123,9 +125,12 @@ interface ChapterStepProps {
 /**
  * Which chapters.
  *
- * design/all-screens.html #chapters: the range you have picked is the screen's
- * colossal element, the grid sits under it, and the one action at the foot
- * names what it will do — "Use Genesis 12–15" rather than "Continue".
+ * design/all-screens.html #chapters. The two slots diverge past the grid:
+ * Colossal's live selection IS the screen's colossal element, set directly
+ * under a bare `.co-top`; Cloth has no colossal slot to spend, so it puts the
+ * book itself on a full `.cl-hero` band (with a Back AND a Close button, since
+ * the mockup draws both) and states the current selection as a `.cl-panel`
+ * summary with a Clear button, ahead of the grid rather than above it.
  */
 export const ChapterStep = React.memo(({
     selectedBook,
@@ -133,6 +138,7 @@ export const ChapterStep = React.memo(({
     onChapterSelect,
     onVerseRangeChange,
     onBack,
+    onExit,
     onContinue,
     canContinue
 }: ChapterStepProps) => {
@@ -144,6 +150,83 @@ export const ChapterStep = React.memo(({
     const picked = start > 0;
     const range = end !== start ? formatRange(`${start}-${end}`) : `${start}`;
     const count = picked ? end - start + 1 : 0;
+    const clearSelection = () => onChapterSelect({ start: 0 });
+
+    if (!isLockedIn) {
+        return (
+            <View style={styles.stepContainer}>
+                <Hero>
+                    <View style={styles.clothChapterTop}>
+                        <ScalePressable
+                            onPress={onBack}
+                            accessibilityRole="button"
+                            accessibilityLabel="Back to books"
+                            hitSlop={Spacing.md}
+                            style={styles.backArrow}
+                        >
+                            <ChevronLeft size={20} color={colors.accent} strokeWidth={1.9} />
+                        </ScalePressable>
+                        <ScalePressable
+                            onPress={onExit}
+                            accessibilityRole="button"
+                            accessibilityLabel="Close"
+                            hitSlop={Spacing.md}
+                        >
+                            <X size={19} color={colors.accent} strokeWidth={1.9} />
+                        </ScalePressable>
+                    </View>
+                    <Text variant="display" tone="onBand" style={styles.clothHeroTitle}>
+                        {selectedBook?.name ?? 'Chapters'}
+                    </Text>
+                    {selectedBook && (
+                        <Text variant="sub" tone="onHero">
+                            {`${selectedBook.chapters} chapters`}
+                        </Text>
+                    )}
+                </Hero>
+
+                <View style={[styles.clothBody, { paddingHorizontal: gutter }]}>
+                    {picked && selectedBook && (
+                        <View style={[styles.clothSummary, { backgroundColor: colors.backgroundSubtle }]}>
+                            <Text variant="title" numberOfLines={1} style={styles.clothSummaryText}>
+                                {`${count === 1 ? 'Chapter' : 'Chapters'} ${range}`}
+                            </Text>
+                            <ThemedButton
+                                label="Clear"
+                                variant="secondary"
+                                style={styles.clothClearButton}
+                                onPress={clearSelection}
+                            />
+                        </View>
+                    )}
+
+                    <ScrollView
+                        style={styles.list}
+                        showsVerticalScrollIndicator={false}
+                        keyboardShouldPersistTaps="handled"
+                    >
+                        <ChapterPicker
+                            selectedBook={selectedBook}
+                            selectedChapters={selectedChapters}
+                            onChapterSelect={onChapterSelect}
+                            onVerseRangeChange={onVerseRangeChange}
+                            allowRange={true}
+                        />
+                    </ScrollView>
+                </View>
+
+                <View style={[styles.stepFooter, { paddingHorizontal: gutter }]}>
+                    <ThemedButton
+                        label={picked && selectedBook ? `Use ${selectedBook.name} ${range}` : 'Pick a chapter'}
+                        variant="primary"
+                        block
+                        disabled={!canContinue}
+                        onPress={onContinue}
+                    />
+                </View>
+            </View>
+        );
+    }
 
     return (
         <View style={styles.stepContainer}>
@@ -352,6 +435,30 @@ const styles = StyleSheet.create({
         paddingTop: Spacing.md + 2,
         paddingBottom: Spacing.layout.tabBarPadding,
     },
+    /*
+     * `.cl-top{display:flex; justify-content:space-between}` — ChapterStep's
+     * band carries two bare icon buttons with nothing between them, so (unlike
+     * BookStep's title+close, which spreads via the title's own flex:1) this
+     * needs the justification stated explicitly.
+     */
+    clothChapterTop: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    /** `.cl-htitle{margin-top:8px}` on this screen. */
+    clothHeroTitle: { marginTop: Spacing.sm },
+    clothBody: { flex: 1, paddingTop: Spacing.layout.cardPadding },
+    /** `.cl-panel` summary: background block, name left, Clear pinned right. */
+    clothSummary: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.md,
+        padding: Spacing.md + 3,
+        marginBottom: Spacing.lg,
+    },
+    clothSummaryText: { flex: 1 },
+    clothClearButton: { marginLeft: 'auto' },
     scrollView: {
         flex: 1,
     },

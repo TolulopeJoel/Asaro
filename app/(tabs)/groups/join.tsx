@@ -11,8 +11,7 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import { useAlert } from '@/src/context/AlertContext';
 import { Spacing } from '@/src/theme/spacing';
 import { useRouter } from 'expo-router';
-import { ChevronLeft, Key } from 'lucide-react-native';
-import { Button } from '@/src/components/Button';
+import { ChevronLeft } from 'lucide-react-native';
 import { Hero, Screen, Text, ThemedButton, textStyle } from '@/src/components/ui';
 import { ScalePressable } from '@/src/components/ScalePressable';
 
@@ -181,44 +180,82 @@ export default function JoinGroupScreen() {
         );
     }
 
+    /*
+     * design/all-screens.html #join, the `.cl` slot.
+     *
+     * A near-empty screen, which the design's own note says is "where a style
+     * has nowhere to hide" — so it stays plain: a back arrow and the title on
+     * the band, then the sub-line, the labelled field, the primary button
+     * (plain `.cl-btn`, not the ochre `.ochre` variant), and finally the
+     * "No code?" panel with its own ghost button. This used to be a centred
+     * card with an 84px icon well and "Continue to Group" — neither the icon,
+     * the card, nor that copy exist anywhere in the mockup, and the panel that
+     * offers the sign-in path (the only way Cloth can reach auth.tsx) had no
+     * rendering at all.
+     */
     return (
         <Screen>
             <Hero>
-                <Text variant="display" tone="onBand">Enter{'\n'}Group Code</Text>
+                <View style={styles.clothTop}>
+                    <ScalePressable
+                        onPress={() => router.back()}
+                        accessibilityRole="button"
+                        accessibilityLabel="Back"
+                        hitSlop={Spacing.md}
+                        style={styles.backArrow}
+                    >
+                        <ChevronLeft size={20} color={colors.accent} strokeWidth={1.9} />
+                    </ScalePressable>
+                </View>
+                <Text variant="display" tone="onBand" style={styles.clothHeroTitle}>
+                    Enter{'\n'}Group Code
+                </Text>
             </Hero>
-            <ScrollView contentContainerStyle={styles.content}>
-                <View style={[styles.card, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
-                    <View style={styles.intro}>
-                        <View style={[styles.iconContainer, { backgroundColor: colors.accentSecondaryLight + '30' }]}>
-                            <Key size={32} color={colors.accentSecondary} />
-                        </View>
-                        <Text variant="body" tone="secondary" style={styles.subtitle}>
-                            Enter the code to join a group.
-                        </Text>
-                    </View>
 
-                    <View style={styles.form}>
-                        <TextInput
-                            style={[styles.input, { color: colors.textPrimary, backgroundColor: colors.cardBackground, borderColor: colors.borderSubtle }]}
-                            placeholder="X X X X X X"
-                            placeholderTextColor={colors.textMuted}
-                            value={code}
-                            onChangeText={setCode}
-                            autoCapitalize="characters"
-                            autoCorrect={false}
-                            maxLength={10}
-                        />
+            <ScrollView contentContainerStyle={styles.clothBody} keyboardShouldPersistTaps="handled">
+                <Text variant="sub">
+                    Ask whoever set up the circle for its six-character code.
+                </Text>
 
-                        <Button
-                            label={loading ? 'Joining Group...' : 'Continue to Group'}
-                            variant="primary"
-                            size="lg"
-                            onPress={handleJoin}
-                            disabled={loading || !code.trim()}
-                            loading={loading}
-                            fullWidth
-                        />
-                    </View>
+                <View>
+                    <Text variant="label" style={styles.clothFieldLabel}>Group code</Text>
+                    <TextInput
+                        style={[
+                            styles.clothInput,
+                            textStyle(themeStyle, 'headline'),
+                            { color: colors.textPrimary, backgroundColor: colors.backgroundSubtle, letterSpacing: 6.6 },
+                        ]}
+                        placeholder="XXXXXX"
+                        placeholderTextColor={colors.textMuted}
+                        value={code}
+                        onChangeText={setCode}
+                        autoCapitalize="characters"
+                        autoCorrect={false}
+                        maxLength={10}
+                        accessibilityLabel="Group code"
+                    />
+                </View>
+
+                <ThemedButton
+                    label={loading ? 'Joining…' : 'Join this circle'}
+                    block
+                    loading={loading}
+                    disabled={loading || !code.trim()}
+                    onPress={handleJoin}
+                />
+
+                <View style={[styles.clothPanel, { backgroundColor: colors.backgroundSubtle }]}>
+                    <Text variant="label" style={styles.clothPanelLabel}>No code?</Text>
+                    <Text variant="body" tone="secondary">
+                        Groups sync through your account, so you&apos;ll need to sign in before
+                        joining one.
+                    </Text>
+                    <ThemedButton
+                        label="Sign in to Join Them"
+                        variant="secondary"
+                        style={styles.clothSignIn}
+                        onPress={() => router.push('/(tabs)/groups/auth' as any)}
+                    />
                 </View>
             </ScrollView>
         </Screen>
@@ -254,42 +291,32 @@ const styles = StyleSheet.create({
     /** `.co-hr` */
     rule: { height: Spacing.border.hairline, marginVertical: Spacing.xl + 2 },
     signIn: { marginTop: Spacing.layout.cardPadding },
-    content: {
-        paddingHorizontal: Spacing.xl,
-        paddingTop: Spacing.xl,
+
+    // ── Cloth ─────────────────────────────────────────────────────────────
+    /** `.cl-top` — just the back arrow on this screen. */
+    clothTop: { flexDirection: 'row', alignItems: 'center' },
+    /** `.cl-htitle{margin-top:10px}` */
+    clothHeroTitle: { marginTop: 10 },
+    /** `.cl-body{padding:22px 24px 0; gap:18px}` */
+    clothBody: {
+        paddingHorizontal: Spacing.layout.screenPadding,
+        paddingTop: Spacing.layout.cardPadding + 4,
+        paddingBottom: Spacing.xxl,
+        gap: Spacing.layout.cardPadding,
     },
-    card: {
-        padding: Spacing.xl,
-        borderRadius: Spacing.borderRadius.lg,
-        borderWidth: 1,
-        alignItems: 'center',
-    },
-    intro: {
-        alignItems: 'center',
-        marginBottom: Spacing.xxxl,
-    },
-    iconContainer: {
-        width: 84,
-        height: 84,
-        borderRadius: Spacing.borderRadius.lg,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: Spacing.xl,
-    },
-    title: { marginBottom: Spacing.xs },
-    subtitle: { textAlign: 'center', opacity: 0.6, paddingHorizontal: Spacing.md },
-    form: {
-        width: '100%',
-        gap: Spacing.lg,
-    },
-    input: {
-        fontSize: 34,
+    /** `.cl-label{display:block}` above the field. */
+    clothFieldLabel: { marginBottom: Spacing.sm },
+    /** `.cl-input{padding:20px}`, Fraunces at 30/700/.22em, centred. */
+    clothInput: {
         textAlign: 'center',
-        height: 72,
-        borderRadius: Spacing.borderRadius.lg,
-        borderWidth: 1,
-        letterSpacing: 6,
-        fontWeight: '800',
-        marginBottom: Spacing.lg,
+        padding: 20,
     },
+    /** `.cl-panel` — the only panel on this screen. */
+    clothPanel: {
+        padding: Spacing.layout.cardPadding,
+        gap: Spacing.xs,
+    },
+    clothPanelLabel: { marginBottom: 7 },
+    /** `.cl-btn.ghost{margin-top:14px}` — not full width, unlike Colossal's. */
+    clothSignIn: { marginTop: Spacing.md + 2, alignSelf: 'flex-start' },
 });

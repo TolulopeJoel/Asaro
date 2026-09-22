@@ -351,6 +351,7 @@ export default function MeditationSessionScreen() {
                         onChapterSelect={handleChapterSelect}
                         onVerseRangeChange={handleVerseRangeChange}
                         onBack={() => setCurrentStep('book')}
+                        onExit={() => router.back()}
                         onContinue={handleContinueToReflection}
                         canContinue={!!(selectedChapters && selectedChapters.start > 0)}
                     />

@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo, useState, useRef, useEffect } from 'react';
 import { StyleSheet, View, FlatList, ScrollView, TouchableOpacity, Platform, LayoutAnimation, TextInput } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import {
     Clock,
     Library,
@@ -112,10 +111,7 @@ function PlanProgressBar({ progress }: { progress: number }) {
 
 const PlanSectionHeader = React.memo(({
     title,
-    isCollapsed,
     onToggle,
-    completedCount,
-    totalCount
 }: {
     title: string;
     isCollapsed: boolean;
@@ -123,50 +119,22 @@ const PlanSectionHeader = React.memo(({
     completedCount: number;
     totalCount: number;
 }) => {
-    const { colors, isLockedIn } = useTheme();
-    const isDone = completedCount === totalCount && totalCount > 0;
+    const { isLockedIn } = useTheme();
 
     /*
-     * Colossal sets a section as a bare `.co-label` over its rows — no panel,
-     * no count badge and no chevron. It still collapses on press; the design
-     * simply doesn't draw an affordance for it, the way the rest of the style
-     * carries no chrome.
+     * design/all-screens.html #plan: `.cl-label{margin:18px 0 10px}` and
+     * `.co-label{margin:18px 0 12px}` are both a BARE section name — no panel,
+     * no completion badge, no chevron, no checkmark. Cloth used to draw all
+     * four; it still collapses on press, the design just carries no affordance
+     * for that interaction in either style.
      */
-    if (isLockedIn) {
-        return (
-            <TouchableOpacity activeOpacity={0.8} onPress={onToggle} style={styles.colossalSection}>
-                <UIText variant="label">{title}</UIText>
-            </TouchableOpacity>
-        );
-    }
-
     return (
         <TouchableOpacity
             activeOpacity={0.8}
             onPress={onToggle}
-            style={[
-                styles.planSectionHeader,
-                { backgroundColor: colors.backgroundSubtle, borderColor: colors.border }
-            ]}
+            style={isLockedIn ? styles.colossalSection : styles.clothPlanSectionHeader}
         >
-            <View style={styles.planSectionTitleContainer}>
-                <UIText variant="bodySmall" style={styles.planSectionTitle}>{title.toUpperCase()}</UIText>
-                <View style={[styles.planSectionBadge, { backgroundColor: isDone ? colors.accent + '20' : colors.border }]}>
-                    <UIText style={[styles.planSectionProgress, { color: isDone ? colors.accent : colors.textSecondary }]}>
-                        {completedCount}/{totalCount}
-                    </UIText>
-                </View>
-            </View>
-
-            <View style={styles.planSectionHeaderRight}>
-                {isDone && <Ionicons name="checkmark-circle" size={16} color={colors.accent} />}
-                <Ionicons
-                    name={isCollapsed ? "chevron-forward" : "chevron-down"}
-                    size={16}
-                    color={colors.textTertiary}
-                    style={{ marginLeft: 8 }}
-                />
-            </View>
+            <UIText variant="label">{title}</UIText>
         </TouchableOpacity>
     );
 });
@@ -846,12 +814,21 @@ export default function LibraryScreen() {
 
                 {tab === 'plan' && <PlanProgressBar progress={planProgress.percent} />}
 
-                <Segments
-                    items={TABS.map(t => ({ key: t.key, label: t.label }))}
-                    value={activeTabKey}
-                    onChange={(key) => handleNavigate(key as Exclude<Tab, 'bookDetail'>)}
-                    scrollable
-                />
+                {/*
+                  * Neither mockup draws `.cl-segs` / `.co-segs` on Book detail
+                  * — its `.cl-hero` runs straight into `.cl-strip` then
+                  * `.cl-body tight`, and Colossal's early return above already
+                  * skips this block entirely. Cloth fell through to here and
+                  * drew the six-tab strip under its own book band.
+                  */}
+                {tab !== 'bookDetail' && (
+                    <Segments
+                        items={TABS.map(t => ({ key: t.key, label: t.label }))}
+                        value={activeTabKey}
+                        onChange={(key) => handleNavigate(key as Exclude<Tab, 'bookDetail'>)}
+                        scrollable
+                    />
+                )}
             </View>
             )}
 
@@ -892,10 +869,15 @@ export default function LibraryScreen() {
 const HEBREW_SCRIPTURES_END = 286;
 
 const styles = StyleSheet.create({
-    // .co-label over a run of rows
+    // .co-label over a run of rows: margin:18px 0 12px
     colossalSection: {
         paddingTop: Spacing.lg + 2,
         paddingBottom: Spacing.md,
+    },
+    // .cl-label over a run of rows: margin:18px 0 10px
+    clothPlanSectionHeader: {
+        paddingTop: Spacing.lg + 2,
+        paddingBottom: Spacing.sm + 2,
     },
     // .co-row, centred rather than baseline — these rows carry a marker.
     colossalRow: {
@@ -1058,17 +1040,6 @@ const styles = StyleSheet.create({
 
     // ── Plan ───────────────────────────────────────────────────────
     planListContent: { paddingTop: 0, paddingBottom: Spacing.xxl },
-    planSectionHeader: {
-        marginTop: Spacing.lg, marginBottom: Spacing.sm,
-        paddingVertical: 10, paddingHorizontal: 12,
-        borderRadius: Spacing.borderRadius.lg, borderWidth: 1,
-        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    },
-    planSectionHeaderRight: { flexDirection: 'row', alignItems: 'center' },
-    planSectionTitleContainer: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, flex: 1, paddingRight: Spacing.md },
-    planSectionTitle: { flexShrink: 1 },
-    planSectionBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: Spacing.borderRadius.lg },
-    planSectionProgress: { fontSize: 10, fontWeight: '800' },
     planCard: { borderRadius: Spacing.borderRadius.lg, borderWidth: 1, marginBottom: Spacing.xs, padding: 16 },
     planCardContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     planBookInfo: { flex: 1, gap: 2 },

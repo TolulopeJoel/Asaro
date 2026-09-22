@@ -2,13 +2,11 @@ import React, { useMemo } from 'react';
 import {
     View,
     StyleSheet,
-    ScrollView,
     Modal,
     Pressable,
     Dimensions,
     DeviceEventEmitter,
     TextInput,
-    Image,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useTheme } from '@/src/theme/ThemeContext';
@@ -29,15 +27,11 @@ import {
     Award,
     CheckCircle2,
     Sun,
-    Users,
-    Flame,
-    AlertCircle,
-    ChevronRight,
     Info,
     MoreHorizontal,
     CloudOff,
 } from 'lucide-react-native';
-import { getFirestore, collection, doc, onSnapshot, getDoc, updateDoc, query, where, orderBy, limit } from '@react-native-firebase/firestore';
+import { getFirestore, collection, doc, onSnapshot, updateDoc, query, where, orderBy, limit } from '@react-native-firebase/firestore';
 import { useAuth } from '@/src/context/AuthContext';
 import { checkInactiveMembers, getISOWeekString, evaluateGroupAdminRoles } from '@/src/utils/syncActivities';
 import { getTodayDateString } from '@/src/utils/dateUtils';
@@ -269,6 +263,46 @@ const ColossalMemberRow = ({ member, colors, onPress }: { member: any; colors: a
 };
 
 /**
+ * One member's status, in Cloth.
+ *
+ * design/all-screens.html #group, `.cl-row`: an avatar, the name in the serif,
+ * and a single `.cl-snip` line folding the read status and how long ago into
+ * one sentence — there is no separate right-aligned column the way Colossal's
+ * `.co-when` gives it. `formatLastRead` already produces the mockup's exact
+ * "Read today 😌" / "Never read" strings from the one field every member
+ * carries (`lastReadDate`); the mockup's reading-pace clause ("Usually reads
+ * in the evening") is sample copy for data this app has never recorded, so
+ * this substitutes the one real thing available instead — how much of the
+ * week they've covered.
+ */
+const ClothMemberRow = ({ member, colors, today, onPress }: { member: any; colors: any; today: string; onPress: () => void }) => {
+    const status = formatLastRead(member.lastReadDate, today);
+    const snippet = status !== 'Never read' && member.daysThisWeek > 0
+        ? `${status} · ${member.daysThisWeek} of 7 this week`
+        : status;
+
+    return (
+        <ScalePressable
+            onPress={onPress}
+            style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: Spacing.md + 2,
+                paddingVertical: Spacing.lg - 1,
+                borderBottomWidth: Spacing.border.hairline,
+                borderBottomColor: colors.border,
+            }}
+        >
+            <Avatar id={member.userId || member.id} name={member.displayName} url={member.photoURL} size={38} radius={19} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+                <Text variant="reference">{member.displayName}{member.isMe ? ' (You)' : ''}</Text>
+                <Text variant="bodySmall" tone="secondary" style={{ marginTop: 4 }}>{snippet}</Text>
+            </View>
+        </ScalePressable>
+    );
+};
+
+/**
  * One line of the group's activity, in Colossal.
  *
  * The Cloth feed is a chain of illustrated cards; Colossal keeps the same
@@ -317,98 +351,6 @@ const ColossalFeedRow = ({ item, colors, members }: { item: FeedItem; colors: an
         </View>
     );
 };
-
-const AccountabilityMemberCard = ({
-    member, colors, styles, onPress, isLockedIn,
-}: {
-    member: any; colors: any; styles: ReturnType<typeof getStyles>; onPress: () => void; isLockedIn?: boolean;
-}) => {
-    const isMostConsistent = !member.readToday && member.daysThisWeek >= 5;
-
-    if (isLockedIn) {
-        return <ColossalMemberRow member={member} colors={colors} onPress={onPress} />;
-    }
-
-    return (
-        <ScalePressable
-            style={[
-                styles.accMemberCard,
-                member.isMe && { backgroundColor: colors.accentSecondaryLight + '10', borderRadius: Spacing.borderRadius.lg },
-            ]}
-            onPress={onPress}
-        >
-            <Avatar
-                id={member.userId || member.id}
-                name={member.displayName}
-                url={member.photoURL}
-                size={44}
-                radius={12}
-                opacity={member.readToday ? 1 : 0.7}
-            />
-            <View style={styles.accMemberContent}>
-                <View style={styles.accMemberRow}>
-                    {member.readToday ? (
-                        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
-                            <Text variant="body" numberOfLines={1}>
-                                {member.displayName}{member.isMe ? ' (You)' : ''}
-                            </Text>
-                            <View style={styles.statusTags}>
-                                {member.isIronMan && (
-                                    <View style={[styles.tag, { backgroundColor: colors.info }]}>
-                                        <Text style={styles.tagText}>
-                                            🛡️ {member.gender === 'f' ? 'IRON WOMAN' : 'IRON MAN'}
-                                        </Text>
-                                    </View>
-                                )}
-                                {member.isOnFire && !member.isIronMan && (
-                                    <View style={[styles.tag, { backgroundColor: colors.danger }]}>
-                                        <Text style={styles.tagText}>🔥 ON FIRE</Text>
-                                    </View>
-                                )}
-                            </View>
-                        </View>
-                    ) : (
-                        <Text variant="body" tone="secondary">
-                            {member.displayName}{member.isMe ? ' (You)' : ''}
-                        </Text>
-                    )}
-
-                    {member.readToday ? (
-                        <Text variant="bodySmall" tone="accent">
-                            {member.streak} 🔥
-                        </Text>
-                    ) : (
-                        <View style={styles.accNudge}>
-                            {member.isMe && (
-                                <Text variant="label">
-                                    Read now?
-                                </Text>
-                            )}
-                        </View>
-                    )}
-                </View>
-
-                <View style={styles.accMemberSubRow}>
-                    <View style={styles.miniHeatmap}>
-                        {member.dots.map((active: boolean, i: number) => (
-                            <View key={i} style={[styles.miniDot, { backgroundColor: active ? colors.accent : colors.border }]} />
-                        ))}
-                    </View>
-                    {member.readToday ? (
-                        <Text variant="caption" tone="tertiary">
-                            {member.daysThisWeek}/7 days
-                        </Text>
-                    ) : isMostConsistent && !member.isMe ? (
-                        <Text variant="quote">
-                            Don't let the streak break! ⚡
-                        </Text>
-                    ) : null}
-                </View>
-            </View>
-        </ScalePressable>
-    );
-};
-
 
 // ─── Group Edit Modal ──────────────────────────────────────────────────────────
 
@@ -1010,16 +952,6 @@ export default function GroupDetailScreen() {
 
     const today = useMemo(() => getTodayDateString(), []);
 
-    const tabOffset = useSharedValue(0);
-    React.useEffect(() => {
-        const target = activeTab === 'feed' ? 0 : activeTab === 'accountability' ? 1 : 2;
-        tabOffset.value = withSpring(target, { damping: 20, stiffness: 150 });
-    }, [activeTab]);
-
-    const animatedIndicatorStyle = useAnimatedStyle(() => ({
-        left: `${tabOffset.value * 33.33}%`,
-    }));
-
     const styles = useMemo(() => getStyles(colors), [colors]);
 
     const pendingCount = React.useRef(3);
@@ -1087,14 +1019,6 @@ export default function GroupDetailScreen() {
         };
     }, [groupId]);
 
-    const memberSectionTitle = useMemo(() => {
-        const hasLadies = members.some(m => m.gender === 'f');
-        const hasGentlemen = members.some(m => m.gender === 'm' || !m.gender);
-        if (hasLadies && hasGentlemen) return 'LADIES & GENTLEMEN';
-        if (hasLadies) return 'LADIES';
-        return 'GENTLEMEN';
-    }, [members]);
-
     const accountabilityData = useMemo(() => {
         const currentWeek = getISOWeekString(new Date());
         const currentMonth = today.substring(0, 7);
@@ -1140,17 +1064,6 @@ export default function GroupDetailScreen() {
     // We no longer return early for loading, to keep the UI stable.
     const isLoading = loading;
 
-    const sortedMembers = members
-        .filter(m => m.lastReadDate === today)
-        .sort((a, b) => {
-            const aIsLady = a.gender === 'f';
-            const bIsLady = b.gender === 'f';
-            if (aIsLady && !bIsLady) return -1;
-            if (!aIsLady && bIsLady) return 1;
-            return (b.streak || 0) - (a.streak || 0);
-        });
-
-    const groupStreak: number = groupData?.groupStreak || 0;
     const { pinnedMilestone, feedItems } = buildProcessedFeed(activities, today);
 
     if (isLockedIn) {
@@ -1244,7 +1157,16 @@ export default function GroupDetailScreen() {
                         </>
                     )}
 
-                    {activeTab === 'members' && sortedMembers.map(member => (
+                    {/*
+                      * design/all-screens.html #group: the Members segment
+                      * lists the WHOLE circle, including people who have never
+                      * read ("Femi … Never"). This used to reuse a list
+                      * filtered to today's readers, which silently dropped
+                      * anyone who hadn't read today.
+                      * `accountabilityData.membersByConsistency` already
+                      * computes readToday/streak/daysThisWeek for everyone.
+                      */}
+                    {activeTab === 'members' && accountabilityData.membersByConsistency.map(member => (
                         <ColossalMemberRow
                             key={member.id}
                             member={member}
@@ -1292,35 +1214,56 @@ export default function GroupDetailScreen() {
 
     return (
         <Screen>
+            {/*
+              * design/all-screens.html #group, the `.cl` slot: `.cl-top`
+              * carries a bare back arrow, then `.cl-htitle` (margin-top:10)
+              * and `.cl-hsub` state the group and how many have read today.
+              * No avatar in the band — Colossal's own `.co-top` for this
+              * screen carries none either, so Info/MoreHorizontal (real
+              * functionality neither mockup draws explicitly, kept here for
+              * the same reason the FAB stays on Home) sit alongside the back
+              * arrow rather than beside a group photo.
+              */}
             <Hero>
-                <View style={styles.heroRow}>
-                    {isLoading ? (
-                        <Skeleton circle height={44} width={44} />
-                    ) : (
-                        <Avatar id={groupId} name={groupData?.name} url={groupData?.photoURL} size={44} />
-                    )}
-                    <View style={styles.heroTitle}>
-                        <Text variant="display" tone="onBand" numberOfLines={2}>
-                            {groupData?.name || 'Loading…'}
-                        </Text>
-                    </View>
+                <View style={styles.clothTopRow}>
+                    <ScalePressable
+                        onPress={() => router.back()}
+                        accessibilityRole="button"
+                        accessibilityLabel="Back to groups"
+                        hitSlop={Spacing.md}
+                        style={styles.backArrow}
+                    >
+                        <ChevronLeft size={20} color={colors.accent} strokeWidth={1.9} />
+                    </ScalePressable>
+                    <View style={{ flex: 1 }} />
                     <ScalePressable
                         onPress={() => router.push('/(tabs)/groups/about' as any)}
                         accessibilityRole="button"
                         accessibilityLabel="How groups work"
+                        hitSlop={Spacing.md}
                     >
-                        <Info size={22} color={colors.textInverse} />
+                        <Info size={19} color={colors.accent} />
                     </ScalePressable>
                     {isAdmin && (
                         <ScalePressable
                             onPress={() => setIsEditModalVisible(true)}
                             accessibilityRole="button"
                             accessibilityLabel="Group settings"
+                            hitSlop={Spacing.md}
+                            style={styles.clothEditButton}
                         >
-                            <MoreHorizontal size={22} color={colors.textInverse} />
+                            <MoreHorizontal size={19} color={colors.accent} />
                         </ScalePressable>
                     )}
                 </View>
+                <Text variant="display" tone="onBand" numberOfLines={2} style={styles.clothGroupTitle}>
+                    {groupData?.name || 'Loading…'}
+                </Text>
+                {!isLoading && (
+                    <Text variant="sub" tone="onHero">
+                        {`${accountabilityData.totalMembers} ${accountabilityData.totalMembers === 1 ? 'member' : 'members'} · ${accountabilityData.readTodayCount} read today`}
+                    </Text>
+                )}
             </Hero>
 
             {isOffline && (
@@ -1337,83 +1280,27 @@ export default function GroupDetailScreen() {
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
-                {/* ── Members who read today ── */}
-                <View style={styles.sectionHeader}>
-                    <View style={styles.sectionTitleRow}>
-                        <Text variant="label" tone="secondary" style={styles.sectionTitle}>
-                            {memberSectionTitle} THAT READ TODAY.
-                        </Text>
-                    </View>
-                </View>
-
-                {isLoading ? (
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.memberList}>
-                        {[1, 2, 3, 4].map(i => (
-                            <View key={i} style={[styles.memberItem, { opacity: 0.5 }]}>
-                                <Skeleton circle height={52} width={52} />
-                                <View style={{ height: 8 }} />
-                                <Skeleton width={40} height={12} borderRadius={4} />
-                            </View>
-                        ))}
-                    </ScrollView>
-                ) : sortedMembers.length > 0 ? (
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.memberList}>
-                        {sortedMembers.map((member) => (
-                            <ScalePressable
-                                key={member.id}
-                                style={styles.memberItem}
-                                onPress={() => setSelectedMember(member)}
-                                activeOpacity={0.75}
-                            >
-                                <View style={styles.avatarContainer}>
-                                    <Avatar
-                                        id={member.userId || member.id}
-                                        name={member.displayName}
-                                        url={member.photoURL}
-                                        size={52}
-                                        borderWidth={1.25}
-                                        borderColor={colors.indicatorActive}
-                                        style={{
-                                            shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-                                            shadowOpacity: 0.1, shadowRadius: 4, elevation: 2,
-                                        }}
-                                    />
-                                </View>
-                                <Text variant="caption" style={styles.memberName} numberOfLines={1}>
-                                    {member.displayName}
-                                </Text>
-                            </ScalePressable>
-                        ))}
-                    </ScrollView>
-                ) : (
-                    <Text variant="body" tone="tertiary" style={{ marginBottom: Spacing.xl }}>
-                        {isOffline
-                            ? 'Member list unavailable offline.'
-                            : members.length > 0
-                                ? 'No one has read today yet. Be the first!'
-                                : 'No members yet.'}
-                    </Text>
-                )}
-
-                {/* ── Tabs ── */}
-                <View style={styles.tabContainer}>
-                    <View style={styles.tabBackground}>
-                        <Animated.View style={[styles.tabIndicator, { backgroundColor: colors.accent, width: '33.33%' }, animatedIndicatorStyle]} />
-                        {(['feed', 'accountability', 'members'] as const).map((tab) => {
-                            const label = tab === 'feed' ? 'Updates' : tab === 'accountability' ? 'Progress' : 'Circle';
-                            return (
-                                <ScalePressable key={tab} style={styles.tab} onPress={() => setActiveTab(tab)}>
-                                    <Text style={[
-                                        styles.tabText, { color: colors.textSecondary },
-                                        activeTab === tab && { color: colors.textPrimary, fontWeight: '600' },
-                                    ]}>
-                                        {label}
-                                    </Text>
-                                </ScalePressable>
-                            );
-                        })}
-                    </View>
-                </View>
+                {/*
+                  * design/all-screens.html #group, the `.cl` slot:
+                  * `.cl-segs{Progress, Updates, Members}`, in that order — no
+                  * horizontal avatar strip above it. Colossal's own comment on
+                  * this screen already explains why: the strip restates what
+                  * the tab content itself lists, and "one colossal element,
+                  * not one plus a decorative repeat of it" is the rule Cloth
+                  * follows too, even without a colossal slot of its own to
+                  * protect. The old tab strip also mislabeled Members as
+                  * "Circle" and ran the segments feed-first instead of
+                  * Progress-first.
+                  */}
+                <Segments
+                    items={[
+                        { key: 'accountability', label: 'Progress' },
+                        { key: 'feed', label: 'Updates' },
+                        { key: 'members', label: 'Members' },
+                    ]}
+                    value={activeTab}
+                    onChange={key => setActiveTab(key as typeof activeTab)}
+                />
 
                 {/* ── Feed Tab ── */}
                 {activeTab === 'feed' && (
@@ -1664,155 +1551,46 @@ export default function GroupDetailScreen() {
                     </>
                 )}
 
-                {/* ── Progress Tab ── */}
+                {/*
+                  * design/all-screens.html #group, the `.cl` slot: Progress is
+                  * a flat run of `.cl-row`s — no hero card, no progress bar,
+                  * no "UP TO DATE" / "NEEDS GINGERING" split. Every member
+                  * appears once, read-today first, same shape as Members.
+                  */}
                 {activeTab === 'accountability' && (
                     <View style={{ marginTop: Spacing.md }}>
-                        <View style={styles.sectionHeader}>
-                            <Text variant="label" style={styles.sectionTitle}>What your peers do</Text>
-                        </View>
-
-                        <View style={[styles.accountabilityHero, { backgroundColor: colors.accentSecondaryLight + '20', borderColor: colors.accentSecondaryLight + '40' }]}>
-                            <View style={styles.heroTop}>
-                                <View style={styles.heroMain}>
-                                    <View style={styles.heroValRow}>
-                                        {isLoading ? (
-                                            <Skeleton width={100} height={34} borderRadius={8} />
-                                        ) : (
-                                            <>
-                                                <Text variant="display">
-                                                    {accountabilityData.readTodayCount} / {accountabilityData.totalMembers}
-                                                </Text>
-                                                <Users size={20} color={colors.accentSecondary} />
-                                            </>
-                                        )}
-                                    </View>
-                                    <Text variant="bodySmall" tone="secondary">People read today</Text>
-                                </View>
-                                <View style={styles.heroStats}>
-                                    <View style={styles.miniStat}>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-                                            <Flame size={14} color={colors.accent} />
-                                            {isLoading ? (
-                                                <Skeleton width={20} height={16} borderRadius={4} />
-                                            ) : (
-                                                <Text variant="bodySmall" tone="accent">{groupStreak}</Text>
-                                            )}
-                                        </View>
-                                        <Text variant="caption">Our streak</Text>
-                                    </View>
-                                </View>
-                            </View>
-                            <View style={[styles.progressTrack, { backgroundColor: colors.borderSubtle }]}>
-                                {isLoading ? (
-                                    <View style={[styles.progressBar, { width: '30%', backgroundColor: colors.accentSecondary, opacity: 0.3 }]} />
-                                ) : (
-                                    <Animated.View style={[styles.progressBar, { width: `${accountabilityData.groupProgressPercent}%`, backgroundColor: colors.accentSecondary }]} />
-                                )}
-                            </View>
-                            {isLoading ? (
-                                <Skeleton width="70%" height={12} borderRadius={4} style={{ marginTop: 8 }} />
-                            ) : (
-                                <Text variant="quote" tone="tertiary">
-                                    {!accountabilityData.iHaveRead
-                                        ? "Read now. Don't hold yourself back."
-                                        : accountabilityData.groupProgressPercent === 100
-                                            ? 'A beautiful day! Everyone is glowing and up to date. 🎉'
-                                            : `Almost there! Encourage the remaining ${accountabilityData.totalMembers - accountabilityData.readTodayCount}`}
-                                </Text>
-                            )}
-                        </View>
-
-                        {accountabilityData.upToDate.length > 0 && (
-                            <View style={styles.accountabilitySection}>
-                                <View style={styles.subHeader}>
-                                    <CheckCircle2 size={16} color={colors.success} />
-                                    <Text variant="caption" tone="secondary">
-                                        UP TO DATE — {accountabilityData.upToDate.length}
-                                    </Text>
-                                </View>
-                                {accountabilityData.upToDate.map((member) => (
-                                    <AccountabilityMemberCard
-                                        key={member.id}
-                                        member={member}
-                                        colors={colors}
-                                        styles={styles}
-                                        isLockedIn={isLockedIn}
-                                        onPress={() => setSelectedMember(member)}
-                                    />
-                                ))}
-                            </View>
-                        )}
-
-                        {accountabilityData.needsSupport.length > 0 && (
-                            <View style={[styles.accountabilitySection, { marginTop: Spacing.xl }]}>
-                                <View style={styles.subHeader}>
-                                    <AlertCircle size={16} color={colors.accent} />
-                                    <Text variant="label" tone="secondary">
-                                        NEEDS GINGERING — {accountabilityData.needsSupport.length}
-                                    </Text>
-                                </View>
-                                {accountabilityData.needsSupport.map((member) => (
-                                    <AccountabilityMemberCard
-                                        key={member.id}
-                                        member={member}
-                                        colors={colors}
-                                        styles={styles}
-                                        isLockedIn={isLockedIn}
-                                        onPress={() => setSelectedMember(member)}
-                                    />
-                                ))}
-                            </View>
+                        {accountabilityData.upToDate.concat(accountabilityData.needsSupport).map((member) => (
+                            <ClothMemberRow
+                                key={member.id}
+                                member={member}
+                                colors={colors}
+                                today={today}
+                                onPress={() => setSelectedMember(member)}
+                            />
+                        ))}
+                        {accountabilityData.totalMembers === 0 && (
+                            <Text variant="sub">No members yet.</Text>
                         )}
                     </View>
                 )}
 
-                {/* ── Circle Tab ── */}
+                {/*
+                  * design/all-screens.html #group, the `.cl` slot: Members is
+                  * the same flat `.cl-row` list as Progress — no admin badges,
+                  * no "joined" dates, no separate info link. Both tabs list
+                  * the whole circle; only the status line differs per row.
+                  */}
                 {activeTab === 'members' && (
                     <View style={{ marginTop: Spacing.md }}>
-                        <View style={styles.sectionHeader}>
-                            <Text variant="label" tone="secondary" style={styles.sectionTitle}>DISTINGUISHED {memberSectionTitle}</Text>
-                        </View>
                         {accountabilityData.membersByConsistency.map((member) => (
-                            <ScalePressable
+                            <ClothMemberRow
                                 key={member.id}
-                                style={styles.memberListItem}
+                                member={member}
+                                colors={colors}
+                                today={today}
                                 onPress={() => setSelectedMember(member)}
-                            >
-                                <Avatar id={member.userId || member.id} name={member.displayName} url={member.photoURL} size={52} radius={16} />
-                                <View style={styles.memberItemContent}>
-                                    <Text variant="body">
-                                        {member.displayName}{member.isMe ? ' (You)' : ''}
-                                    </Text>
-                                    <Text variant="bodySmall" tone="tertiary" style={styles.memberItemJoined}>
-                                        {member.joinedAt
-                                            ? `Joined ${new Date(member.joinedAt.toDate ? member.joinedAt.toDate() : member.joinedAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
-                                            : 'Member'}
-                                    </Text>
-                                </View>
-                                {member.role === 'admin' && (
-                                    <View style={[styles.adminBadge, { backgroundColor: colors.accentSecondaryLight + '30' }]}>
-                                        <Text variant="label">Admin</Text>
-                                    </View>
-                                )}
-                                <ChevronRight size={18} color={colors.textTertiary} />
-                            </ScalePressable>
+                            />
                         ))}
-
-                        <ScalePressable
-                            style={[styles.infoLink, { backgroundColor: colors.backgroundElevated }]}
-                            onPress={() => router.push('/groups/about')}
-                        >
-                            <View style={styles.infoLinkContent}>
-                                <View style={[styles.infoIconWrap, { backgroundColor: colors.accent + '15' }]}>
-                                    <Info size={18} color={colors.accent} />
-                                </View>
-                                <View>
-                                    <Text variant="body">Group Logic & Rules</Text>
-                                    <Text variant="bodySmall" tone="tertiary" style={styles.infoLinkSubtitle}>Learn about streaks, admins, and removals</Text>
-                                </View>
-                            </View>
-                            <ChevronRight size={18} color={colors.textTertiary} />
-                        </ScalePressable>
                     </View>
                 )}
 
@@ -1870,6 +1648,11 @@ const getStyles = (colors: any) => StyleSheet.create({
         paddingBottom: Spacing.xxl,
     },
 
+    /** `.cl-top` — a bare back arrow, matching Colossal's own top row. */
+    clothTopRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+    clothEditButton: { marginLeft: Spacing.md },
+    /** `.cl-htitle{margin-top:10px}` on this screen. */
+    clothGroupTitle: { marginTop: 10 },
     heroRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
     heroTitle: { flex: 1, minWidth: 0 },
     container: { flex: 1 },

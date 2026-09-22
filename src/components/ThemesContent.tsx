@@ -423,68 +423,89 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
                     );
                 }
 
+                /*
+                 * design/all-screens.html #themes, the `.cl` slot: an unnamed
+                 * theme's panel shows the field DIRECTLY — an ochre-labelled
+                 * input plus Save/Cancel — never a separate "Name this theme"
+                 * button. That button only ever appears once a theme already
+                 * has a name, as "Rename". Same rule Colossal already follows.
+                 */
+                const naming = !savedName || namingIndex === index;
+
                 return (
-                    <ScalePressable
-                        onPress={() => setOpenIndex(index)}
-                        style={[styles.card, { backgroundColor: colors.backgroundSubtle }]}
-                    >
-                        {savedName && (
-                            <UIText variant="subtitle" style={styles.clothName}>{savedName.name}</UIText>
-                        )}
-
-                        <View style={styles.cardHeader}>
-                            <UIText variant="label">{item.entryCount} entries</UIText>
-                            {books.length > 0 && (
-                                <UIText variant="caption" style={styles.books} numberOfLines={1}>
-                                    {books.join(' · ')}
-                                </UIText>
+                    <View style={[styles.card, { backgroundColor: colors.backgroundSubtle }]}>
+                        <ScalePressable onPress={() => setOpenIndex(index)}>
+                            {savedName && (
+                                <UIText variant="subtitle" style={styles.clothName}>{savedName.name}</UIText>
                             )}
-                        </View>
 
-                        {reps.map((member, i) => (
-                            <View key={`${member.entryId}-${member.field}-${i}`} style={styles.snippet}>
-                                <UIText variant="caption" tone="tertiary">
-                                    {reference(member)} · {FIELD_LABELS[member.field] ?? member.field}
-                                </UIText>
-                                <HyperlinkedText
-                                    style={[textStyle(themeStyle, 'bodySmall'), { color: colors.textSecondary }]}
-                                    numberOfLines={3}
-                                    text={member.text}
-                                />
+                            <View style={styles.cardHeader}>
+                                <UIText variant="label">{item.entryCount} entries</UIText>
+                                {books.length > 0 && (
+                                    <UIText variant="caption" style={styles.books} numberOfLines={1}>
+                                        {books.join(' · ')}
+                                    </UIText>
+                                )}
                             </View>
-                        ))}
 
-                        {namingIndex === index ? (
+                            {reps.map((member, i) => (
+                                <View key={`${member.entryId}-${member.field}-${i}`} style={styles.snippet}>
+                                    <UIText variant="caption" tone="tertiary">
+                                        {reference(member)} · {FIELD_LABELS[member.field] ?? member.field}
+                                    </UIText>
+                                    <HyperlinkedText
+                                        style={[textStyle(themeStyle, 'bodySmall'), { color: colors.textSecondary }]}
+                                        numberOfLines={3}
+                                        text={member.text}
+                                    />
+                                </View>
+                            ))}
+                        </ScalePressable>
+
+                        {naming ? (
                             <View style={styles.nameRow}>
                                 <TextInput
                                     style={[
                                         styles.nameInput,
                                         textStyle(themeStyle, 'body'),
                                         {
-                                            backgroundColor: colors.backgroundSubtle,
+                                            backgroundColor: colors.background,
                                             color: colors.textPrimary,
                                             borderColor: colors.border,
                                         },
                                     ]}
                                     placeholder="What is this really about?"
                                     placeholderTextColor={colors.textTertiary}
-                                    value={draftName}
+                                    value={namingIndex === index ? draftName : ''}
+                                    onFocus={() => {
+                                        setNaming(index);
+                                        setDraftName(savedName?.name ?? '');
+                                    }}
                                     onChangeText={setDraftName}
-                                    autoFocus
                                     onSubmitEditing={() => handleSaveName(index)}
                                 />
                                 <ScalePressable
                                     onPress={() => handleSaveName(index)}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Save name"
                                     style={[styles.iconBtn, { backgroundColor: colors.accent }]}
                                 >
                                     <Check size={18} color={colors.buttonPrimaryText} />
                                 </ScalePressable>
+                                {/*
+                                  * `.cl-btn.ghost{aria-label="Cancel"}` is drawn
+                                  * alongside Save on BOTH the named and unnamed
+                                  * panel in the mockup — unlike Colossal, which
+                                  * carries only Save. So this is unconditional.
+                                  */}
                                 <ScalePressable
                                     onPress={() => {
                                         setNaming(null);
                                         setDraftName('');
                                     }}
-                                    style={[styles.iconBtn, { backgroundColor: colors.backgroundSubtle }]}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Cancel"
+                                    style={[styles.iconBtn, { backgroundColor: 'transparent', borderWidth: Spacing.border.hairline, borderColor: colors.border }]}
                                 >
                                     <X size={18} color={colors.textSecondary} />
                                 </ScalePressable>
@@ -497,12 +518,7 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
                                 }}
                                 style={[styles.nameCta, { borderColor: colors.border }]}
                             >
-                                <UIText
-                                    variant="label"
-                                    tone={savedName ? 'tertiary' : 'accent'}
-                                >
-                                    {savedName ? 'Rename' : 'Name this theme'}
-                                </UIText>
+                                <UIText variant="label" tone="tertiary">Rename</UIText>
                             </ScalePressable>
                         )}
 
@@ -511,7 +527,7 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
                                 +{item.entryCount - reps.length} more — tap to read
                             </UIText>
                         )}
-                    </ScalePressable>
+                    </View>
                 );
             }}
         />

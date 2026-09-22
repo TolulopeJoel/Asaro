@@ -178,46 +178,56 @@ const ChapterPills = ({
     colors: any;
     placeholder?: string;
 }) => {
-    if (book.chapters <= CHIP_THRESHOLD) {
-        const allChapters = Array.from({ length: book.chapters }, (_, i) => i + 1);
-        const chaptersToShow = min ? allChapters.filter(ch => ch > min) : allChapters;
-        return (
-            <>
-                {chaptersToShow.map((ch) => (
-                    <TouchableOpacity
-                        key={ch}
-                        onPressIn={() => onInteraction?.()}
-                        onPress={() => onChapterSelect(ch)}
-                        style={[styles.pill, { backgroundColor: colors.backgroundElevated, borderColor: colors.border }]}
-                    >
-                        <Text variant="cell">{ch}</Text>
-                    </TouchableOpacity>
-                ))}
-            </>
-        );
-    }
+    /*
+     * design/all-screens.html #refpicker, lines 1081-1090: the chapter phase
+     * for Genesis (50 chapters, past CHIP_THRESHOLD) shows the field AND the
+     * pills together — `.cl-pill.field` ("Ch?") followed by pills 1 2 3 4 5,
+     * with "Genesis has 50 chapters — type a number OR keep scrolling." That
+     * "or" is the point: past the threshold you get a fast path to type a
+     * number, but the pills stay, scrollable, for anyone who'd rather tap.
+     *
+     * This used to branch — pills below the threshold, the field instead of
+     * them above it — which silently dropped the field on a short book and
+     * dropped the pills on every long one.
+     */
+    const allChapters = Array.from({ length: book.chapters }, (_, i) => i + 1);
+    const chaptersToShow = min ? allChapters.filter(ch => ch > min) : allChapters;
+    const isLongBook = book.chapters > CHIP_THRESHOLD;
 
-    // Long book (Psalms etc.) — number input
     return (
-        <LiveNumberInput
-            inputRef={chapterInputRef}
-            value={chapterInput}
-            onChange={setChapterInput}
-            placeholder={min ? `${min + 1}–${book.chapters}` : `1–${book.chapters}`}
-            onSubmit={() => {
-                const ch = parseInt(chapterInput, 10);
-                if (ch >= (min || 1) && ch <= book.chapters) {
-                    onChapterSelect(ch);
-                } else {
-                    onInvalid?.();
-                }
-            }}
-            min={min}
-            confirmIcon={ArrowRight}
-            onInteraction={onInteraction}
-            onInvalid={onInvalid}
-            colors={colors}
-        />
+        <>
+            {isLongBook && (
+                <LiveNumberInput
+                    inputRef={chapterInputRef}
+                    value={chapterInput}
+                    onChange={setChapterInput}
+                    placeholder={placeholder ?? 'Ch?'}
+                    onSubmit={() => {
+                        const ch = parseInt(chapterInput, 10);
+                        if (ch >= (min || 1) && ch <= book.chapters) {
+                            onChapterSelect(ch);
+                        } else {
+                            onInvalid?.();
+                        }
+                    }}
+                    min={min}
+                    confirmIcon={ArrowRight}
+                    onInteraction={onInteraction}
+                    onInvalid={onInvalid}
+                    colors={colors}
+                />
+            )}
+            {chaptersToShow.map((ch) => (
+                <TouchableOpacity
+                    key={ch}
+                    onPressIn={() => onInteraction?.()}
+                    onPress={() => onChapterSelect(ch)}
+                    style={[styles.pill, { backgroundColor: colors.backgroundElevated, borderColor: colors.border }]}
+                >
+                    <Text variant="cell">{ch}</Text>
+                </TouchableOpacity>
+            ))}
+        </>
     );
 };
 
