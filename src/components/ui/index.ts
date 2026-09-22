@@ -8,7 +8,7 @@
 export { Text, textStyle } from './Text';
 export type { TextProps } from './Text';
 
-export { ClothGround, ClothStrip, ClothMark } from './Cloth';
+export { ClothGround, ClothStrip, ClothMark, ClothZigzag } from './Cloth';
 export { SettingsGlyph } from './SettingsGlyph';
 
 export { Asaro } from './Asaro';

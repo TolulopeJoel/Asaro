@@ -22,6 +22,7 @@ import { ScalePressable } from '@/src/components/ScalePressable';
 import { LoadingView } from '@/src/components/LoadingView';
 import { BibleBook } from '@/src/data/bibleBooks';
 import {
+    ClothZigzag,
     Hero,
     Screen,
     Segments,
@@ -74,38 +75,6 @@ const MARK: Partial<Record<Tab, string>> = {
     topics: 'Library · Follow-ups',
     themes: 'Library · Themes',
 };
-
-// ─── Plan Progress Bar ────────────────────────────────────────────────────────
-
-function PlanProgressBar({ progress }: { progress: number }) {
-    const { colors, isLockedIn } = useTheme();
-    if (progress === 0) return null;
-
-    return (
-        <View style={[
-            styles.planProgressRow,
-            /*
-             * The mockup breathes between the bar and the filters — it sets the
-             * gap as `.co-segs{padding-top:22px}` on this screen. Carrying it
-             * here instead keeps the shared Segments component on its base rule.
-             */
-            isLockedIn && {
-                paddingHorizontal: Spacing.layout.screenPaddingTight,
-                paddingTop: Spacing.xl - 4,
-                paddingBottom: Spacing.xl - 2,
-            },
-        ]}>
-            <View style={[styles.planProgressTrack, { backgroundColor: colors.border }]}>
-                <View style={[styles.planProgressFill, { width: `${progress}%`, backgroundColor: colors.accent }]} />
-            </View>
-            {!isLockedIn && (
-                <UIText variant="label">
-                    {parseFloat(progress.toFixed(2))}%
-                </UIText>
-            )}
-        </View>
-    );
-}
 
 // ─── Plan Section Header ──────────────────────────────────────────────────────
 
@@ -614,9 +583,18 @@ export default function LibraryScreen() {
 
     // Books drills into bookDetail, so that view keeps the Books tab lit.
     const activeTabKey = tab === 'bookDetail' ? 'books' : tab;
-    const showSearch = tab === 'recent' || (tab === 'bookDetail' && !isLockedIn);
 
     const handleNavigate = useCallback((next: Tab) => {
+        /*
+         * Not a mockup rule — the mockup never puts two tabs side by side, so
+         * it never has to say what happens between them. But the header's
+         * height genuinely varies by tab (Recent alone carries the onhero
+         * search field, Plan alone carries its progress bar, Colossal's giant
+         * appears or not per tab), and snapping between those heights on every
+         * tap reads as the screen jolting rather than the tab changing. This
+         * animates the resize instead of jumping it.
+         */
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setTab(next);
         setJournalSearch('');
         if (next !== 'bookDetail') setJournalSelectedBook(undefined);
@@ -801,18 +779,63 @@ export default function LibraryScreen() {
                                   * indigo band, not under it, so the header
                                   * reads as one block of cloth rather than a
                                   * title with a field beneath.
+                                  *
+                                  * The wrapper is always mounted, at the same
+                                  * height, on every tab: only Recent has a
+                                  * search to do, but the other five still need
+                                  * something occupying that height or the band
+                                  * changes size when you switch tabs. Plan
+                                  * fills it with its own progress instead of
+                                  * the zigzag — it already has a number worth
+                                  * putting there, so a decorative stand-in
+                                  * would be filler where real content fits.
                                   */}
-                                {showSearch && <View style={styles.heroSearch}>{searchField}</View>}
+                                <View style={styles.heroSearch}>
+                                    {tab === 'recent' ? (
+                                        searchField
+                                    ) : tab === 'plan' ? (
+                                        <View style={styles.heroProgress}>
+                                            <View style={[styles.heroProgressTrack, { backgroundColor: colors.textInverse + '33' }]}>
+                                                <View style={[styles.heroProgressFill, { width: `${planProgress.percent}%`, backgroundColor: colors.accent }]} />
+                                            </View>
+                                            <UIText variant="label" tone="onHero">
+                                                {`${parseFloat(planProgress.percent.toFixed(2))}%`}
+                                            </UIText>
+                                        </View>
+                                    ) : (
+                                        <ClothZigzag />
+                                    )}
+                                </View>
                             </>
                         )}
                     </Hero>
                 )}
 
-                {showSearch && isLockedIn && (
-                    <View style={styles.searchContainer}>{searchField}</View>
+                {/*
+                  * Same slot, same reasoning as Cloth's band above: mounted
+                  * on every tab so this row is one height throughout, not
+                  * only appearing (and changing the header's height) on
+                  * Recent and Plan. Search on Recent, progress on Plan, and
+                  * the same zigzag ribbon Cloth uses everywhere else — drawn
+                  * with `force` since Colossal otherwise shows no patterns,
+                  * but this is a small ochre accent, the same weight as the
+                  * other marks Colossal already draws, not a wallpaper.
+                  */}
+                {isLockedIn && tab !== 'bookDetail' && (
+                    <View style={styles.searchContainer}>
+                        {tab === 'recent' ? (
+                            searchField
+                        ) : tab === 'plan' ? (
+                            <View style={[styles.colossalSlot, { flexDirection: 'row', alignItems: 'center' }]}>
+                                <View style={[styles.planProgressTrack, { backgroundColor: colors.border }]}>
+                                    <View style={[styles.planProgressFill, { width: `${planProgress.percent}%`, backgroundColor: colors.accent }]} />
+                                </View>
+                            </View>
+                        ) : (
+                            <ClothZigzag force style={styles.colossalSlot} />
+                        )}
+                    </View>
                 )}
-
-                {tab === 'plan' && <PlanProgressBar progress={planProgress.percent} />}
 
                 {/*
                   * Neither mockup draws `.cl-segs` / `.co-segs` on Book detail
@@ -937,10 +960,29 @@ const styles = StyleSheet.create({
     // .co-top — a mark, not a screen title.
     /** `.cl-input.onhero{margin-top:18px}` */
     heroSearch: { flexDirection: 'row', alignItems: 'center', marginTop: Spacing.layout.cardPadding },
+    /*
+     * Fills the same slot as the search field, on Plan only. `height: 54`
+     * matches the search field's own rendered height (and ClothZigzag's) —
+     * the track and label are much shorter, so without an explicit height
+     * here the row would shrink to fit them and the band would resize
+     * switching onto and off Plan, the exact jump this slot exists to avoid.
+     */
+    heroProgress: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.md, height: 54 },
+    heroProgressTrack: { flex: 1, height: 6, overflow: 'hidden' },
+    heroProgressFill: { height: 6 },
     /** The arrow hangs into the gutter so the glyph lines up with the name. */
     heroBack: { marginLeft: -6, alignSelf: 'flex-start' },
     heroCrumb: { marginTop: 10 },
     heroBookName: { marginTop: Spacing.sm },
+    /*
+     * The Colossal search row's fixed-height inner slot — see the comment
+     * above its call site. `flex: 1`: it's the sole child of `searchContainer`
+     * (a row), and without it collapses to its own intrinsic width instead of
+     * filling the row — the Plan branch's progress track is flex:1 inside
+     * this, so a width-less parent squeezed the track (and its fill) to
+     * nothing rather than just holding the reserved height.
+     */
+    colossalSlot: { flex: 1, height: 54, justifyContent: 'center' },
     colossalTop: {
         paddingHorizontal: Spacing.layout.screenPaddingTight,
         paddingTop: Spacing.lg,

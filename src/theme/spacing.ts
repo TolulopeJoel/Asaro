@@ -118,6 +118,17 @@ export const Motif = {
         spacing: 6,
         strokeWidth: 1.5,
     },
+    /**
+     * The zigzag — a small decorative stand-in, not a resist pattern of its
+     * own. Fills the space a hero band's search field would take on tabs that
+     * have no field, so the band is the same height everywhere without
+     * leaving a blank gap where the field would have been.
+     */
+    zigzag: {
+        wavelength: 14,
+        amplitude: 5,
+        strokeWidth: 1.5,
+    },
     /** Height of the divider strip under a hero band. */
     stripHeight: 14,
 } as const;

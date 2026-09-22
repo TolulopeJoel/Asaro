@@ -11,7 +11,7 @@
  */
 import React, { useCallback, useId, useState } from 'react';
 import { LayoutChangeEvent, StyleSheet, View, ViewStyle } from 'react-native';
-import Svg, { Circle, Defs, Line, Pattern, Rect } from 'react-native-svg';
+import Svg, { Circle, Defs, Line, Path, Pattern, Rect } from 'react-native-svg';
 
 import { useTheme } from '../../theme/ThemeContext';
 import { Motif } from '../../theme/spacing';
@@ -116,6 +116,49 @@ export function ClothStrip({ style }: { style?: ViewStyle }) {
 }
 
 /**
+ * A zigzag ribbon, standing in for a search field that isn't there.
+ *
+ * Sits at a fixed height so a tab without a search box still gives the hero
+ * band the same footprint one with a field would — the alternative is a
+ * blank gap, which reads as a layout bug rather than a design choice. It has
+ * no meaning of its own the way the rings or the weave do; it exists only to
+ * be the same height.
+ *
+ * Colossal's own header has the identical problem — its search row only
+ * appears on Recent — so `force` lets Library reuse this there too. It draws
+ * with `markInk`, the same ochre accent Colossal already uses for its other
+ * small marks, rather than the wallpaper-style patterns (`patternOpacity`)
+ * Colossal otherwise carries none of.
+ */
+export function ClothZigzag({ style, force = false }: { style?: ViewStyle; force?: boolean }) {
+    const { colors } = useTheme();
+    const pid = `zigzag-${useId()}`;
+    if (colors.patternOpacity === 0 && !force) return null;
+
+    const { wavelength, amplitude, strokeWidth } = Motif.zigzag;
+    const h = amplitude * 2;
+
+    return (
+        <View style={[styles.zigzag, style]} pointerEvents="none">
+            <Svg width="100%" height={h}>
+                <Defs>
+                    <Pattern id={pid} width={wavelength} height={h} patternUnits="userSpaceOnUse">
+                        <Path
+                            d={`M0 ${h} L${wavelength / 2} 0 L${wavelength} ${h}`}
+                            fill="none"
+                            stroke={colors.markInk}
+                            strokeWidth={strokeWidth}
+                            strokeLinejoin="round"
+                        />
+                    </Pattern>
+                </Defs>
+                <Rect x="0" y="0" width="100%" height={h} fill={`url(#${pid})`} />
+            </Svg>
+        </View>
+    );
+}
+
+/**
  * The woven mark — today, a selected chapter, a completed day.
  *
  * Fills its parent, so give the parent a size and `overflow: 'hidden'`.
@@ -146,3 +189,19 @@ export function ClothMark({ style }: { style?: ViewStyle }) {
         </View>
     );
 }
+
+const styles = StyleSheet.create({
+    /*
+     * Matches `.cl-input`'s own rendered height — `Spacing.md+2` padding
+     * top and bottom, `lineHeight.lg` of text, one hairline border each
+     * side — so the ribbon fills exactly the box a search field would.
+     */
+    /*
+     * `flex: 1` matters here: this sits as the sole child of `heroSearch`, a
+     * row flex container that otherwise held the search field's own
+     * `flex: 1` TextInput. Without it the ribbon collapses to its intrinsic
+     * (near-zero) width instead of filling the row — the space is still
+     * reserved, but nothing draws across it.
+     */
+    zigzag: { flex: 1, height: 54, justifyContent: 'center' },
+});
