@@ -21,7 +21,7 @@ import { Screen } from '@/src/components/ui';
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function MeditationSessionScreen() {
-    const { colors } = useTheme();
+    const { colors, isLockedIn } = useTheme();
     const { showAlert } = useAlert();
     const router = useRouter();
     const params = useLocalSearchParams();
@@ -393,8 +393,17 @@ export default function MeditationSessionScreen() {
         );
     }
 
+    /*
+     * Only the Cloth Book and Chapter steps wear a band, and a band takes the
+     * top inset into itself (<Hero ownsTopInset>) so the cloth runs to the top
+     * of the screen. Every other step — Colossal throughout, and Cloth's
+     * reflection wizard — draws its own top bar and still needs Screen to
+     * reserve that space.
+     */
+    const bandOwnsTop = !isLockedIn && (currentStep === 'book' || currentStep === 'chapter');
+
     return (
-        <Screen>
+        <Screen edges={bandOwnsTop ? [] : ['top']}>
             <Stack.Screen options={{ headerShown: false }} />
             <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
                 <Animated.View style={[{ flex: 1 }, { opacity }]}>

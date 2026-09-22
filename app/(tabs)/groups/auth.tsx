@@ -163,8 +163,8 @@ export default function AuthScreen() {
     };
 
     return (
-        <Screen>
-            <Hero>
+        <Screen edges={[]}>
+            <Hero ownsTopInset>
                 <Text variant="display" tone="onBand">
                     {isSignUp ? 'Create\nAccount' : 'Welcome\nBack'}
                 </Text>

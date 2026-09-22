@@ -1213,7 +1213,7 @@ export default function GroupDetailScreen() {
     }
 
     return (
-        <Screen>
+        <Screen edges={[]}>
             {/*
               * design/all-screens.html #group, the `.cl` slot: `.cl-top`
               * carries a bare back arrow, then `.cl-htitle` (margin-top:10)
@@ -1224,7 +1224,7 @@ export default function GroupDetailScreen() {
               * the same reason the FAB stays on Home) sit alongside the back
               * arrow rather than beside a group photo.
               */}
-            <Hero>
+            <Hero ownsTopInset>
                 <View style={styles.clothTopRow}>
                     <ScalePressable
                         onPress={() => router.back()}

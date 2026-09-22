@@ -234,7 +234,7 @@ export default function StatsScreen() {
     }, [state.allTimeData]);
 
     return (
-        <Screen>
+        <Screen edges={isLockedIn ? ['top'] : []}>
             {isLockedIn ? (
                 /*
                  * design/all-screens.html #stats, the `.co` slot. The month is
@@ -265,7 +265,7 @@ export default function StatsScreen() {
                     </View>
                 </>
             ) : (
-                <Hero>
+                <Hero ownsTopInset>
                     <ScalePressable
                         onPress={() => router.back()}
                         accessibilityRole="button"

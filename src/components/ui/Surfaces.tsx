@@ -55,18 +55,53 @@ export function Screen({ children, style, edges = ['top'] }: {
  * Cloth: indigo ground carrying the rings motif, followed by the crosshatch
  * strip. Colossal: no band at all — the title sits on the page as a small
  * eyebrow, because that style marks a screen by scale, not by a coloured area.
+ *
+ * `topPadding` overrides the default distance from the top of the band to its
+ * content (`Spacing.layout.heroPaddingTop`) for a screen whose own mockup asks
+ * for more room, e.g. `.cl-hero{padding-top:64px}`. Pass a number, not a style
+ * override — see the bleed comment below for why.
  */
-export function Hero({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {
+export function Hero({ children, style, topPadding = Spacing.layout.heroPaddingTop, ownsTopInset = false }: {
+    children: React.ReactNode;
+    style?: ViewStyle;
+    topPadding?: number;
+    /**
+     * Take the screen's top safe-area inset into this band's own padding.
+     *
+     * By default <Screen> pads its top edge by insets.top, so a transient
+     * status bar never lands on a header (see useScreenInsets — the app hides
+     * the bar, but Android can bring it back without reporting real insets).
+     * That padding sits on Screen's own background ABOVE the band, which is
+     * invisible on Colossal's black ground but shows on Cloth as a strip of
+     * ecru above the indigo — the band stopping short of the top of the screen
+     * instead of reaching it the way every mockup draws it.
+     *
+     * A screen fixes that by dropping 'top' from <Screen edges> and setting
+     * this, which moves the same reserved space inside the band: the indigo
+     * now runs to the true top of the screen and the content inside sits
+     * exactly where it did. It is opt-in per screen because the two have to
+     * change together — doing one without the other either doubles the gap or
+     * puts the header back under the bar.
+     *
+     * A negative margin on the band would look like it does the same job, but
+     * a band inside a ScrollView is clipped to the scroll bounds, so it draws
+     * nothing above them.
+     */
+    ownsTopInset?: boolean;
+}) {
     const { colors, style: themeStyle } = useTheme();
+    const insets = useScreenInsets();
+
+    const top: ViewStyle = { paddingTop: (ownsTopInset ? insets.top : 0) + topPadding };
 
     // Colossal wears no band: it marks a screen by scale, not by a colour area.
     if (themeStyle !== 'cloth') {
-        return <View style={[styles.heroPlain, style]}>{children}</View>;
+        return <View style={[styles.heroPlain, style, top]}>{children}</View>;
     }
 
     return (
         <>
-            <View style={[styles.heroCloth, { backgroundColor: colors.textPrimary }, style]}>
+            <View style={[styles.heroCloth, { backgroundColor: colors.textPrimary }, style, top]}>
                 <ClothGround />
                 <View style={styles.heroContent}>{children}</View>
             </View>

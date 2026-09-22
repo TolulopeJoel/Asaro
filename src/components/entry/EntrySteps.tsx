@@ -65,7 +65,7 @@ export const BookStep = React.memo(({ selectedBook, onBookSelect, onExit }: Book
          */
         return (
             <View style={styles.stepContainer}>
-                <Hero>
+                <Hero ownsTopInset>
                     <View style={styles.clothHeroTop}>
                         <Text variant="display" tone="onBand" style={styles.mark}>Choose a book</Text>
                         <ScalePressable onPress={onExit} accessibilityRole="button" accessibilityLabel="Close" hitSlop={Spacing.md}>
@@ -155,7 +155,7 @@ export const ChapterStep = React.memo(({
     if (!isLockedIn) {
         return (
             <View style={styles.stepContainer}>
-                <Hero>
+                <Hero ownsTopInset>
                     <View style={styles.clothChapterTop}>
                         <ScalePressable
                             onPress={onBack}

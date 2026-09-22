@@ -475,7 +475,7 @@ export default function Settings() {
 
 
     return (
-        <Screen>
+        <Screen edges={isLockedIn ? ['top'] : []}>
             <Stack.Screen options={{ headerShown: false }} />
             <ScrollView
                 ref={scrollViewRef}
@@ -519,7 +519,8 @@ export default function Settings() {
                      * have been reading underneath. No screen title: the band
                      * is about you, not about the word "Settings".
                      */
-                    <Hero style={styles.hero}>
+                    <View style={styles.heroBleed}>
+                    <Hero ownsTopInset>
                         <ScalePressable
                             onPress={() => router.back()}
                             style={styles.clothBack}
@@ -553,6 +554,7 @@ export default function Settings() {
                             </View>
                         </ScalePressable>
                     </Hero>
+                    </View>
                 )}
 
                 {/*
@@ -792,7 +794,14 @@ const styles = StyleSheet.create({
      * the strip instead of letting them abut, as `.cl-strip` (no margin of
      * its own) assumes.
      */
-    hero: {
+    /*
+     * Cancels the scroll view's own padding so the band reaches the screen's
+     * edges. This is a wrapper rather than a `style` on <Hero> because Hero
+     * now owns its own negative top margin — the one that pulls the band up
+     * under the safe-area inset — and two margins on one node don't add, the
+     * later one just wins.
+     */
+    heroBleed: {
         marginHorizontal: -Spacing.layout.screenPadding,
         marginTop: -Spacing.layout.screenPadding,
     },

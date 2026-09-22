@@ -194,8 +194,8 @@ export default function JoinGroupScreen() {
      * rendering at all.
      */
     return (
-        <Screen>
-            <Hero>
+        <Screen edges={[]}>
+            <Hero ownsTopInset>
                 <View style={styles.clothTop}>
                     <ScalePressable
                         onPress={() => router.back()}

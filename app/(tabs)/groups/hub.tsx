@@ -129,8 +129,8 @@ export default function GroupsScreen() {
         }
 
         return (
-            <Screen>
-                <Hero>
+            <Screen edges={[]}>
+                <Hero ownsTopInset>
                     <Text variant="display" tone="onBand">Better{'\n'}Together</Text>
                     <Text variant="body" tone="onHero" style={styles.heroSub}>Consistency is key. Read together!</Text>
                 </Hero>
@@ -259,8 +259,8 @@ export default function GroupsScreen() {
     }
 
     return (
-        <Screen>
-            <Hero>
+        <Screen edges={[]}>
+            <Hero ownsTopInset>
                 <View style={styles.headerTitleRow}>
                     <Text variant="display" tone="onBand">My Groups</Text>
                     <ScalePressable

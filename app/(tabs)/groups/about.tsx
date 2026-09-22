@@ -87,9 +87,9 @@ export default function AboutGroupsScreen() {
     ];
 
     return (
-        <Screen>
+        <Screen edges={[]}>
             <Stack.Screen options={{ headerShown: false }} />
-            <Hero>
+            <Hero ownsTopInset>
                 <ScalePressable
                     onPress={() => router.back()}
                     style={styles.backButton}

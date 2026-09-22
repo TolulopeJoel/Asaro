@@ -110,8 +110,8 @@ export default function PermissionsScreen() {
      * hairlines — the same three lines Colossal sets as bare rows.
      */
     return (
-        <Screen>
-            <Hero style={styles.clothHero}>
+        <Screen edges={[]}>
+            <Hero ownsTopInset topPadding={64}>
                 <Text variant="label" tone="onHero" style={styles.heroStep}>Step 3 of 3</Text>
                 <Text variant="display" tone="onBand">Can I Check{'\n'}Up On You? 😏</Text>
             </Hero>
@@ -144,8 +144,6 @@ const styles = StyleSheet.create({
     heroStep: { marginBottom: Spacing.sm },
 
     // ── Colossal ──────────────────────────────────────────────────────────
-    /** `.cl-hero{padding-top:64px}` on this screen. */
-    clothHero: { paddingTop: 64 },
     /** `.cl-body{padding-top:30px; gap:18px}` */
     clothBody: {
         flex: 1,

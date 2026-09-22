@@ -113,7 +113,7 @@ export function ClothHome({
 
     return (
         <>
-            <Hero>
+            <Hero ownsTopInset>
                 <View style={styles.heroTop}>
                     <Text variant="display" tone="onBand" numberOfLines={2} style={styles.heroTitle}>
                         {greeting}

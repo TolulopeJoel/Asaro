@@ -716,7 +716,7 @@ export default function LibraryScreen() {
     );
 
     return (
-        <Screen>
+        <Screen edges={isLockedIn ? ['top'] : []}>
 
             {/* ── Header Zone ───────────────────────────────────────────────── */}
             {isLockedIn && tab === 'bookDetail' ? (
@@ -764,7 +764,7 @@ export default function LibraryScreen() {
                         )}
                     </>
                 ) : (
-                    <Hero>
+                    <Hero ownsTopInset>
                         {tab === 'bookDetail' && journalSelectedBook ? (
                             /*
                              * design/all-screens.html #book, the `.cl` slot: a

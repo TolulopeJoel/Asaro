@@ -118,8 +118,8 @@ export default function BatteryOptimizationScreen() {
      * Permissions builds: band, one panel of reasons, one button.
      */
     return (
-        <Screen>
-            <Hero style={styles.clothHero}>
+        <Screen edges={[]}>
+            <Hero ownsTopInset topPadding={64}>
                 <Text variant="label" tone="onHero" style={styles.heroStep}>Almost there</Text>
                 <Text variant="display" tone="onBand">Don&apos;t Let{'\n'}Me Sleep</Text>
             </Hero>
@@ -150,7 +150,6 @@ const styles = StyleSheet.create({
     heroStep: { marginBottom: Spacing.sm },
 
     // ── Cloth ─────────────────────────────────────────────────────────────
-    clothHero: { paddingTop: 64 },
     clothBody: {
         flex: 1,
         paddingTop: Spacing.xxl - 2,

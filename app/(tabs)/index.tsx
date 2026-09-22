@@ -448,7 +448,12 @@ export default function Index() {
     }
 
     return (
-        <Screen>
+        /*
+         * No top inset here: ClothHome's <Hero ownsTopInset> takes that space
+         * into the indigo band itself, so the cloth runs to the top of the
+         * screen rather than sitting under a strip of bare ecru.
+         */
+        <Screen edges={[]}>
             <ScrollView
                 ref={scrollViewRef}
                 style={styles.scrollView}

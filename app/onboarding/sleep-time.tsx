@@ -239,8 +239,8 @@ export default function SleepTimeScreen() {
      */
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <Screen edges={['top']}>
-                <Hero style={styles.clothHero}>
+            <Screen edges={[]}>
+                <Hero ownsTopInset topPadding={64}>
                     <Text variant="label" tone="onHero" style={styles.heroStep}>Step 2 of 3</Text>
                     <Text variant="display" tone="onBand">When do you{'\n'}turn in?</Text>
                 </Hero>
@@ -315,8 +315,6 @@ const styles = StyleSheet.create({
         flex: 1,
     },
 
-    /** `.cl-hero{padding-top:64px}` on this screen. */
-    clothHero: { paddingTop: 64 },
     /** `.cl-body{padding-top:30px; gap:18px}` */
     clothBody: {
         flex: 1,
