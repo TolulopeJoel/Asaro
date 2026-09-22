@@ -57,3 +57,27 @@ export const getDynamicCardStyle = (text: string) => {
     if (length < 120) return { fontSize: 16, lineHeight: 24, padding: 20 };
     return { fontSize: 14, lineHeight: 22, padding: 16 };
 };
+
+/**
+ * The `.co-when` column: Today, then a weekday for the last week, then a date.
+ *
+ * The mockup's Colossal library reads "Today · Sat · Fri · Wed · Tue · Mon"
+ * down the right edge rather than "Sep 21 · Jun 26". At 10px uppercase a
+ * three-letter day is legible where a full date is not, and it is what makes
+ * the column scan as a rhythm instead of a list of numbers. Anything older
+ * than a week falls back to the short date, since a weekday would then be
+ * ambiguous.
+ */
+export const formatWhen = (dateString?: string): string => {
+    if (!dateString) return '';
+    const date = new Date(dateString.replace(' ', 'T'));
+    if (isNaN(date.getTime())) return '';
+
+    const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const days = Math.round((startOfDay(new Date()) - startOfDay(date)) / 86400000);
+
+    if (days <= 0) return 'Today';
+    if (days === 1) return 'Yesterday';
+    if (days < 7) return date.toLocaleDateString('en-US', { weekday: 'short' });
+    return formatDate(dateString);
+};

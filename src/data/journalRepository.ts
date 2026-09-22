@@ -605,3 +605,20 @@ export const getAllActionItems = async (limit: number = 200, offset: number = 0)
         return await database.getAllAsync<EnhancedActionItem>(query, [limit, offset]);
     });
 };
+
+/**
+ * Tick an action off, or put it back.
+ *
+ * `is_completed` has been on the table since the migration that added it, but
+ * nothing ever wrote to it — the column existed and the UI didn't. Both styles
+ * in design/all-screens.html draw the checkbox (#actions), so the control is
+ * part of the design rather than an addition to it.
+ */
+export const toggleActionItemCompletion = async (id: number, completed: boolean): Promise<void> => {
+    await withDatabase(async (database) => {
+        await database.runAsync(
+            `UPDATE action_items SET is_completed = ? WHERE id = ?`,
+            [completed ? 1 : 0, id]
+        );
+    });
+};

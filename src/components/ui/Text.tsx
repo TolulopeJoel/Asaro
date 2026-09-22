@@ -78,6 +78,18 @@ const cloth: Record<TextVariant, TextStyle> = {
         lineHeight: lineHeight.xxxl,
         letterSpacing: track(size.xxxl, 'hero', CLOTH),
     },
+    /**
+     * Cloth has no second giant either: `.cl-statn` is the largest thing it
+     * draws, so `heroSmall` answers with the same value `hero` does. Colossal
+     * is where the two steps differ.
+     */
+    // .cl-statn
+    heroSmall: {
+        fontFamily: FontFamily.displayHeavy,
+        fontSize: size.xxxl,
+        lineHeight: lineHeight.xxxl,
+        letterSpacing: track(size.xxxl, 'heroSmall', CLOTH),
+    },
     // .cl-htitle — the hero band title.
     display: {
         fontFamily: FontFamily.displayHeavy,
@@ -196,6 +208,13 @@ const colossal: Record<TextVariant, TextStyle> = {
         fontSize: size.colossal,
         lineHeight: lineHeight.colossal,
         letterSpacing: track(size.colossal, 'hero', COLOSSAL),
+    },
+    // .co-giant.sm — the giant one step down, for a question number.
+    heroSmall: {
+        fontFamily: FontFamily.monoBlack,
+        fontSize: size.colossalSm,
+        lineHeight: lineHeight.colossalSm,
+        letterSpacing: track(size.colossalSm, 'heroSmall', COLOSSAL),
     },
     // .co-h.lg
     display: {

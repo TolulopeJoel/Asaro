@@ -27,7 +27,7 @@ import { AnimatedModal } from './AnimatedModal';
 import { ThemeDetail } from './ThemeDetail';
 import { JournalEntryDetail } from './JournalEntryDetail';
 import { getEntryById, JournalEntry } from '../data/database';
-import { Screen, Text as UIText, textStyle } from './ui';
+import { Screen, Text as UIText, ThemedButton, textStyle } from './ui';
 
 const FIELD_LABELS: Record<string, string> = {
     ...Object.fromEntries(EMBEDDABLE_FIELDS.map(f => [f.column, f.label])),
@@ -51,8 +51,8 @@ function reference(item: StoredEmbedding): string {
     return `${item.bookName} ${range}`;
 }
 
-export function ThemesContent() {
-    const { colors, style: themeStyle } = useTheme();
+export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?: (count: number | null) => void } = {}) {
+    const { colors, style: themeStyle, isLockedIn } = useTheme();
     const router = useRouter();
     const [phase, setPhase] = useState<Phase>('checking');
     const [openIndex, setOpenIndex] = useState<number | null>(null);
@@ -64,7 +64,7 @@ export function ThemesContent() {
     const [clusters, setClusters] = useState<Cluster<StoredEmbedding>[]>([]);
     const [named, setNamed] = useState<NamedTheme[]>([]);
     const [entryCount, setEntryCount] = useState(0);
-    const [naming, setNaming] = useState<number | null>(null);
+    const [namingIndex, setNaming] = useState<number | null>(null);
     const [draftName, setDraftName] = useState('');
     const [errorText, setErrorText] = useState('');
     const mounted = useRef(true);
@@ -94,27 +94,33 @@ export function ThemesContent() {
             setEntryCount(entries.size);
 
             if (entries.size < MIN_ENTRIES) {
+                onPatternCountChange?.(null);
                 setPhase('tooEarly');
                 return;
             }
 
             const found = clusterThemes(centerWithinFields(items), { grain: 85, minEntries: 3 });
             setClusters(found);
+            onPatternCountChange?.(found.length);
             setNamed(await getNamedThemes());
             setPhase('ready');
         } catch (error: any) {
             if (!mounted.current) return;
+            onPatternCountChange?.(null);
             setErrorText(error?.message ?? 'Something went wrong');
             setPhase('error');
         }
-    }, []);
+    }, [onPatternCountChange]);
 
     useEffect(() => {
         (async () => {
             const ready = await isModelDownloaded();
             if (!mounted.current) return;
             if (ready) compute();
-            else setPhase('needsModel');
+            else {
+                onPatternCountChange?.(null);
+                setPhase('needsModel');
+            }
         })();
     }, [compute]);
 
@@ -164,6 +170,32 @@ export function ThemesContent() {
     }
 
     if (phase === 'needsModel') {
+        /*
+         * design/all-screens.html #themesintro, the `.co` slot. Colossal takes
+         * no colossal element here — there is nothing yet to count — so the
+         * screen is a centred column, and the privacy line is set apart
+         * between two rules rather than folded into the paragraph. Cloth runs
+         * them together; Colossal makes it the one thing you can't skim past.
+         */
+        if (isLockedIn) {
+            return (
+                <View style={styles.colossalCentre}>
+                    <Sparkles size={34} color={colors.accent} strokeWidth={1.6} />
+                    <UIText variant="display">Find your themes</UIText>
+                    <UIText variant="sub">
+                        Àṣàrò can group your entries by what you keep coming back to. It needs a
+                        one-time 23MB download, then it works offline.
+                    </UIText>
+                    <View style={[styles.pledge, { borderColor: colors.border }]}>
+                        <UIText variant="bodySmall" tone="primary" style={styles.pledgeText}>
+                            Your reflections are never sent anywhere.
+                        </UIText>
+                    </View>
+                    <ThemedButton label="Download (23MB)" variant="accent" block onPress={handleDownload} />
+                </View>
+            );
+        }
+
         return (
             <View style={styles.center}>
                 <Sparkles size={40} color={colors.accent} />
@@ -194,6 +226,37 @@ export function ThemesContent() {
     }
 
     if (phase === 'tooEarly') {
+        /*
+         * design/all-screens.html #themesearly, the `.co` slot. The colossal
+         * slot goes to how many entries you have, because that is the number
+         * the screen is actually about, and the two-part bar underneath says
+         * the same thing a second way without a second number.
+         */
+        if (isLockedIn) {
+            return (
+                <View style={styles.colossalCentrePlain}>
+                    <View>
+                        <UIText variant="hero">{entryCount}</UIText>
+                        <UIText variant="label" style={styles.giantLabel}>
+                            {`of ${MIN_ENTRIES} entries needed`}
+                        </UIText>
+                    </View>
+                    <View style={[styles.rule, { backgroundColor: colors.border }]} />
+                    <View>
+                        <UIText variant="title">Not yet</UIText>
+                        <UIText variant="sub" style={styles.afterHeading}>
+                            Themes start to mean something around fifteen substantial entries.
+                            Before that they mostly describe the reading plan rather than you.
+                        </UIText>
+                    </View>
+                    <View style={styles.progressBar}>
+                        <View style={{ flex: Math.max(entryCount, 0.001), height: 6, backgroundColor: colors.accent }} />
+                        <View style={{ flex: Math.max(MIN_ENTRIES - entryCount, 0.001), height: 6, backgroundColor: colors.border }} />
+                    </View>
+                </View>
+            );
+        }
+
         return (
             <View style={styles.center}>
                 <Sparkles size={40} color={colors.textTertiary} />
@@ -244,12 +307,19 @@ export function ThemesContent() {
         <FlatList
             data={clusters}
             keyExtractor={(_, index) => `cluster-${index}`}
-            contentContainerStyle={styles.list}
+            contentContainerStyle={isLockedIn ? styles.colossalList : styles.list}
             ListHeaderComponent={
-                <UIText variant="bodySmall" tone="tertiary" style={styles.intro}>
-                    {clusters.length} {clusters.length === 1 ? 'pattern' : 'patterns'} across your
-                    entries. Name the ones you recognise.
-                </UIText>
+                isLockedIn ? (
+                    /* The count itself is the screen's colossal element, set in
+                     * the header above this list, so all that is left to say
+                     * here is what to do with it. */
+                    <UIText variant="sub" style={styles.colossalIntro}>Name the ones you recognise.</UIText>
+                ) : (
+                    <UIText variant="bodySmall" tone="tertiary" style={styles.intro}>
+                        {clusters.length} {clusters.length === 1 ? 'pattern' : 'patterns'} across your
+                        entries. Name the ones you recognise.
+                    </UIText>
+                )
             }
             renderItem={({ item, index }) => {
                 const reps = representatives(item, 3);
@@ -258,6 +328,80 @@ export function ThemesContent() {
                     item.members.map(m => ({ entryId: m.entryId, field: m.field })),
                     named,
                 );
+
+                if (isLockedIn) {
+                    /*
+                     * design/all-screens.html #themes, the `.co` slot: a run of
+                     * hairline-separated blocks rather than cards. A theme that
+                     * has a name leads with it; one that hasn't leads with what
+                     * it is made of and offers the field, which is why there is
+                     * no separate "Name this theme" button in this style.
+                     */
+                    const meta = [`${item.entryCount} ${item.entryCount === 1 ? 'entry' : 'entries'}`, ...books].join(' · ');
+                    const naming = savedName === undefined || namingIndex === index;
+
+                    return (
+                        <View style={[styles.colossalTheme, { borderBottomColor: colors.border }]}>
+                            <ScalePressable onPress={() => setOpenIndex(index)}>
+                                {savedName && (
+                                    <UIText variant="subtitle" style={styles.colossalName}>{savedName.name}</UIText>
+                                )}
+                                <UIText variant="label" tone="accent" style={styles.colossalMeta} numberOfLines={1}>
+                                    {meta}
+                                </UIText>
+                                {reps.map((member, i) => (
+                                    <View key={`${member.entryId}-${member.field}-${i}`}>
+                                        <UIText variant="meta">
+                                            {reference(member)} · {FIELD_LABELS[member.field] ?? member.field}
+                                        </UIText>
+                                        <HyperlinkedText
+                                            style={[
+                                                textStyle(themeStyle, 'bodySmall'),
+                                                styles.colossalSnippet,
+                                                { color: colors.textSecondary },
+                                            ]}
+                                            numberOfLines={2}
+                                            text={member.text}
+                                        />
+                                    </View>
+                                ))}
+                            </ScalePressable>
+
+                            {naming && (
+                                <View style={styles.colossalNameRow}>
+                                    <TextInput
+                                        style={[
+                                            styles.colossalInput,
+                                            textStyle(themeStyle, 'bodySmall'),
+                                            {
+                                                backgroundColor: colors.backgroundElevated,
+                                                color: colors.textPrimary,
+                                                borderColor: colors.border,
+                                            },
+                                        ]}
+                                        placeholder="What is this really about?"
+                                        placeholderTextColor={colors.textTertiary}
+                                        value={namingIndex === index ? draftName : ''}
+                                        onFocus={() => {
+                                            setNaming(index);
+                                            setDraftName(savedName?.name ?? '');
+                                        }}
+                                        onChangeText={setDraftName}
+                                        onSubmitEditing={() => handleSaveName(index)}
+                                    />
+                                    <ScalePressable
+                                        onPress={() => handleSaveName(index)}
+                                        accessibilityRole="button"
+                                        accessibilityLabel="Save name"
+                                        style={[styles.colossalSave, { backgroundColor: colors.buttonPrimary }]}
+                                    >
+                                        <Check size={15} color={colors.buttonPrimaryText} strokeWidth={3} />
+                                    </ScalePressable>
+                                </View>
+                            )}
+                        </View>
+                    );
+                }
 
                 return (
                     <ScalePressable
@@ -293,7 +437,7 @@ export function ThemesContent() {
                             </View>
                         ))}
 
-                        {naming === index ? (
+                        {namingIndex === index ? (
                             <View style={styles.nameRow}>
                                 <TextInput
                                     style={[
@@ -397,6 +541,63 @@ export function ThemesContent() {
 }
 
 const styles = StyleSheet.create({
+    // ── Colossal ──────────────────────────────────────────────────────────
+    /** The first-run column: `flex:1; justify-content:center; gap:18`. */
+    colossalCentre: {
+        flex: 1,
+        justifyContent: 'center',
+        gap: Spacing.lg + 2,
+        paddingHorizontal: Spacing.layout.screenPaddingTight,
+    },
+    /** The same column where the mockup sets its own spacing between blocks. */
+    colossalCentrePlain: {
+        flex: 1,
+        justifyContent: 'center',
+        paddingHorizontal: Spacing.layout.screenPaddingTight,
+    },
+    /** `.co-giantl` sits 10px under its numeral. */
+    giantLabel: { marginTop: 10 },
+    /** `.co-hr` */
+    rule: { height: Spacing.border.hairline, marginVertical: Spacing.xl + 2 },
+    afterHeading: { marginTop: 14 },
+    progressBar: { flexDirection: 'row', gap: 3, marginTop: Spacing.xl - 2 },
+    /** The privacy line, held between two rules so it can't be skimmed past. */
+    pledge: {
+        borderTopWidth: Spacing.border.hairline,
+        borderBottomWidth: Spacing.border.hairline,
+        paddingVertical: 13,
+    },
+    pledgeText: { fontWeight: '700' },
+
+    /** The results list runs in Colossal's own 22px gutter. */
+    colossalList: {
+        paddingHorizontal: Spacing.layout.screenPaddingTight,
+        paddingTop: Spacing.lg + 2,
+        paddingBottom: 80,
+    },
+    colossalIntro: { marginBottom: Spacing.lg + 2 },
+    colossalTheme: {
+        paddingBottom: Spacing.lg,
+        marginBottom: Spacing.lg,
+        borderBottomWidth: Spacing.border.hairline,
+    },
+    colossalName: { marginBottom: 6 },
+    colossalMeta: { marginBottom: 10 },
+    colossalSnippet: { marginTop: 2, marginBottom: 9 },
+    colossalNameRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 3 },
+    colossalInput: {
+        flex: 1,
+        borderWidth: Spacing.border.hairline,
+        paddingHorizontal: Spacing.md,
+        paddingVertical: 11,
+    },
+    colossalSave: {
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+
     center: {
         flex: 1,
         alignItems: 'center',

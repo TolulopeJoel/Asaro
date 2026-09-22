@@ -16,8 +16,30 @@ interface BookCardProps {
     onNavigate: (book: BibleBook) => void;
 }
 
+/**
+ * A book in the library's Books list.
+ *
+ * Colossal draws the design's own book row (`.co-book`): the name, the count
+ * pushed to the right edge, a hairline under it. No panel, no ochre badge and
+ * no chevron — the row is the affordance, as everywhere else in the style.
+ */
 export const BookCard = React.memo(({ book, onNavigate }: BookCardProps) => {
-    const { colors } = useTheme();
+    const { colors, isLockedIn } = useTheme();
+
+    if (isLockedIn) {
+        return (
+            <ScalePressable
+                style={[styles.bookRow, { borderBottomColor: colors.border }]}
+                onPress={() => onNavigate(book)}
+            >
+                <Text variant="cell">{book.name}</Text>
+                <Text variant="meta" style={styles.bookRowCount}>
+                    {book.entryCount} {book.entryCount === 1 ? 'entry' : 'entries'}
+                </Text>
+            </ScalePressable>
+        );
+    }
+
     return (
         <View style={styles.bookCardWrapper}>
             <ScalePressable
@@ -41,6 +63,18 @@ export const BookCard = React.memo(({ book, onNavigate }: BookCardProps) => {
 });
 
 const styles = StyleSheet.create({
+    // .co-book — a 46px row, baseline-aligned, count pushed right.
+    bookRow: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
+        gap: Spacing.sm + 2,
+        height: Spacing.touchTarget + 2,
+        borderBottomWidth: Spacing.border.hairline,
+    },
+    // .co-bookc
+    bookRowCount: {
+        marginLeft: 'auto',
+    },
     bookCardWrapper: {
         marginBottom: 12,
     },

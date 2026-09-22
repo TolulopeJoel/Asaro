@@ -13,5 +13,5 @@
 const BETWEEN_DIGITS = /(\d)\s*-\s*(\d)/g;
 
 export function formatRange(reference: string): string {
-    return reference.replace(BETWEEN_DIGITS, '$1–$2');
+    return reference.replace(BETWEEN_DIGITS, '$1 – $2');
 }

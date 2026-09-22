@@ -167,7 +167,7 @@ export function Segments({ items, value, onChange, scrollable = false }: Segment
                     isCloth && active && { borderBottomColor: colors.accent },
                 ]}
             >
-                <Text variant="meta" tone={active ? 'primary' : 'tertiary'}>
+                <Text variant="tab" tone={active ? 'primary' : 'tertiary'}>
                     {item.label}
                 </Text>
             </Pressable>
@@ -175,7 +175,9 @@ export function Segments({ items, value, onChange, scrollable = false }: Segment
     });
 
     const inlineStyle = isCloth ? styles.segsCloth : styles.segsColossal;
-    const scrollStyle = isCloth ? styles.segsScrollCloth : styles.segsColossal;
+    // Scrollable draws its hairline on the wrapper, so the content must not
+    // repeat it — a second line inside the ScrollView slides with the labels.
+    const scrollStyle = isCloth ? styles.segsScrollCloth : styles.segsScrollColossal;
 
     if (scrollable) {
         return (
@@ -243,6 +245,12 @@ const styles = StyleSheet.create({
         paddingHorizontal: Spacing.layout.screenPaddingTight,
         paddingBottom: Spacing.md + 2,
         borderBottomWidth: Spacing.border.hairline,
+    },
+    segsScrollColossal: {
+        flexDirection: 'row',
+        gap: Spacing.lg + 2,
+        paddingHorizontal: Spacing.layout.screenPaddingTight,
+        paddingBottom: Spacing.md + 2,
     },
     segColossal: { paddingVertical: Spacing.xs },
     segScrollable: { flex: 0, paddingHorizontal: Spacing.lg },

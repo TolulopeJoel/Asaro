@@ -5,19 +5,58 @@ import { useTheme } from '../../theme/ThemeContext';
 import { JournalEntry } from '../../data/database';
 import { ScalePressable } from '../ScalePressable';
 import { HyperlinkedText } from '../HyperlinkedText';
-import { formatDate, getAnsweredStatus, getChapterText, getDynamicCardStyle, getPreviewText } from './JournalCardHelpers';
+import { formatDate, formatWhen, getAnsweredStatus, getChapterText, getDynamicCardStyle, getPreviewText } from './JournalCardHelpers';
 import { Spacing } from '../../theme/spacing';
 import { Text } from '../ui';
 
 interface EntryCardProps {
     entry: JournalEntry;
+    /**
+     * On a book's own screen the header already names the book, so the row
+     * reads "Chapters 12–15" rather than repeating "Genesis" down the list.
+     */
+    omitBookName?: boolean;
     onEntryPress: (entry: JournalEntry) => void;
 }
 
-export const EntryCard = React.memo(({ entry, onEntryPress }: EntryCardProps) => {
-    const { colors } = useTheme();
+/**
+ * One entry in the library list.
+ *
+ * Colossal draws `.co-row`: the reference, a one-line snippet under it and
+ * how long ago on the right, separated by a hairline. It carries no card, no
+ * reference badge, no chevron and no reflection dots — the mockup's Locked In
+ * library is six rows of type on a black ground and nothing else, and adding
+ * the card chrome back is what made it read as a different screen.
+ *
+ * Cloth keeps its card, which is what its own mockup draws.
+ */
+export const EntryCard = React.memo(({ entry, omitBookName = false, onEntryPress }: EntryCardProps) => {
+    const { colors, isLockedIn } = useTheme();
     const previewText = getPreviewText(entry);
     const dynamic = getDynamicCardStyle(previewText);
+
+    if (isLockedIn) {
+        return (
+            <ScalePressable
+                style={[styles.row, { borderBottomColor: colors.border }]}
+                onPress={() => onEntryPress(entry)}
+            >
+                <View style={styles.rowMain}>
+                    {entry.book_name ? (
+                        <Text variant="reference">
+                            {omitBookName
+                                ? `${entry.chapter_end && entry.chapter_end !== entry.chapter_start ? 'Chapters' : 'Chapter'} ${getChapterText(entry)}`
+                                : `${entry.book_name} ${getChapterText(entry)}`}
+                        </Text>
+                    ) : null}
+                    <Text variant="bodySmall" numberOfLines={1} style={styles.rowSnippet}>
+                        {previewText}
+                    </Text>
+                </View>
+                <Text variant="meta">{formatWhen(entry.created_at)}</Text>
+            </ScalePressable>
+        );
+    }
 
     return (
         <View>
@@ -75,6 +114,23 @@ export const EntryCard = React.memo(({ entry, onEntryPress }: EntryCardProps) =>
 });
 
 const styles = StyleSheet.create({
+    // .co-row
+    row: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
+        gap: Spacing.md,
+        paddingVertical: Spacing.lg - 1,
+        borderBottomWidth: Spacing.border.hairline,
+    },
+    // .co-rmain
+    rowMain: {
+        flex: 1,
+        minWidth: 0,
+    },
+    // .co-snip
+    rowSnippet: {
+        marginTop: 3,
+    },
     entryCard: {
         borderRadius: Spacing.borderRadius.lg,
         padding: 16,

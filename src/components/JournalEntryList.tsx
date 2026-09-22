@@ -15,7 +15,11 @@ import { EntryCard } from './journal/EntryCard';
 import { ActionCard } from './journal/ActionCard';
 import { TopicCard } from './journal/TopicCard';
 import { BookCard, BookWithCount } from './journal/BookCard';
-import { DateGroupHeader, TopicHeader } from './journal/JournalHeaders';
+import { ActionSectionHeader, DateGroupHeader, TopicHeader } from './journal/JournalHeaders';
+import { BookDetailHeader, StillAhead, coveredChapters } from './journal/BookDetailHeader';
+import { READING_PLAN_DATA } from '../data/readingPlanData';
+import { getReadingProgress } from '../data/database';
+import { formatRange } from '../utils/reference';
 
 import {
     JournalEntry,
@@ -28,6 +32,7 @@ import {
     EnhancedActionItem,
     toggleStudyTopicCompletion,
     toggleActionItemPin,
+    toggleActionItemCompletion,
     getBookEntryCounts,
 } from '../data/database';
 import { LoadingView } from './LoadingView';
@@ -48,6 +53,7 @@ type ListItem =
     | { type: 'bookHeader'; bookName: string; entryCount: number; id: string }
     | { type: 'book'; book: BookWithCount; id: string }
     | { type: 'action'; action: EnhancedActionItem; id: string }
+    | { type: 'actionHeader'; title: string; accent: boolean; id: string }
     | { type: 'topic'; topic: JournalEntry; id: string }
     | { type: 'topicHeader'; title: string; count: number; id: string }
     | { type: 'emptyState'; id: string }
@@ -63,6 +69,10 @@ interface JournalEntryListProps {
     onSearchChange: (query: string) => void;
     onSelectedBookChange: (book?: BibleBook) => void;
     onCountChange?: (count: number) => void;
+    /** Actions not yet ticked off — Colossal's giant on the Actions tab. */
+    onOpenActionCountChange?: (count: number) => void;
+    /** Follow-ups not yet closed — the same, on the Follow-ups tab. */
+    onOpenTopicCountChange?: (count: number) => void;
 }
 
 
@@ -76,8 +86,10 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
     onSearchChange,
     onSelectedBookChange,
     onCountChange,
+    onOpenActionCountChange,
+    onOpenTopicCountChange,
 }) => {
-    const { colors } = useTheme();
+    const { colors, isLockedIn } = useTheme();
     const [entries, setEntries] = useState<JournalEntry[]>([]);
     const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
     const [bookEntries, setBookEntries] = useState<JournalEntry[]>([]);
@@ -153,19 +165,21 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
         try {
             const data = await getAllActionItems(200);
             setActionsList(data);
+            onOpenActionCountChange?.(data.filter(a => !a.is_completed).length);
         } catch (error) {
             console.error('Error loading actions:', error);
         }
-    }, []);
+    }, [onOpenActionCountChange]);
 
     const loadTopics = useCallback(async () => {
         try {
             const data = await getAllStudyTopics();
             setTopicsList(data);
+            onOpenTopicCountChange?.(data.filter(t => !t.study_completed).length);
         } catch (error) {
             console.error('Error loading topics:', error);
         }
-    }, []);
+    }, [onOpenTopicCountChange]);
 
     const handleToggleTopic = useCallback(async (item: JournalEntry) => {
         try {
@@ -176,6 +190,15 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
             console.error('Error toggling study topic:', error);
         }
     }, [loadTopics]);
+
+    const handleToggleAction = useCallback(async (item: EnhancedActionItem) => {
+        try {
+            await toggleActionItemCompletion(item.id!, !item.is_completed);
+            loadActions();
+        } catch (error) {
+            console.error('Error toggling action:', error);
+        }
+    }, [loadActions]);
 
     const handleTogglePin = useCallback(async (item: EnhancedActionItem) => {
         try {
@@ -373,7 +396,30 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
             if (sortedActions.length === 0) {
                 return [{ type: 'emptyState' as const, id: 'empty-actions' }];
             }
-            return sortedActions.map(action => ({ type: 'action' as const, action, id: `action-${action.id}` }));
+
+            /*
+             * "Pinned" over the pinned run, "All actions" over the rest — the
+             * headings both styles use in design/all-screens.html #actions.
+             * With nothing pinned there is one run and so no heading to draw;
+             * a lone "All actions" label over the whole list would be naming
+             * a distinction the screen isn't making.
+             */
+            const pinned = sortedActions.filter(a => !!a.is_pinned);
+            const rest = sortedActions.filter(a => !a.is_pinned);
+            const row = (action: EnhancedActionItem) =>
+                ({ type: 'action' as const, action, id: `action-${action.id}` });
+
+            if (pinned.length === 0) return rest.map(row);
+
+            const items: ListItem[] = [
+                { type: 'actionHeader', title: 'Pinned', accent: true, id: 'actions-pinned' },
+                ...pinned.map(row),
+            ];
+            if (rest.length > 0) {
+                items.push({ type: 'actionHeader', title: 'All actions', accent: false, id: 'actions-all' });
+                items.push(...rest.map(row));
+            }
+            return items;
         }
 
         if (viewMode === 'topics') {
@@ -524,14 +570,49 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
         );
     }, [viewMode, debouncedSearchQuery, colors]);
 
+    const [completedPlanIds, setCompletedPlanIds] = useState<Set<number>>(new Set());
+
+    useEffect(() => {
+        if (viewMode !== 'bookDetail') return;
+        let active = true;
+        getReadingProgress().then(ids => {
+            if (active) setCompletedPlanIds(new Set(ids));
+        });
+        return () => { active = false; };
+    }, [viewMode, selectedBook]);
+
+    /** The plan's outstanding readings for the book on screen. */
+    const stillAhead = React.useMemo(() => {
+        if (viewMode !== 'bookDetail' || !selectedBook) return [];
+        return READING_PLAN_DATA
+            .filter(item => item.book === selectedBook.name && !completedPlanIds.has(item.id))
+            .map(item => formatRange(item.chapters))
+            .filter(Boolean);
+    }, [viewMode, selectedBook, completedPlanIds]);
+
     const renderListItem = useCallback(({ item }: { item: ListItem }) => {
         switch (item.type) {
             case 'header':
                 return <DateGroupHeader title={item.title} />;
             case 'entry':
-                return <EntryCard entry={item.entry} onEntryPress={onEntryPress} />;
+                return (
+                    <EntryCard
+                        entry={item.entry}
+                        omitBookName={viewMode === 'bookDetail'}
+                        onEntryPress={onEntryPress}
+                    />
+                );
             case 'action':
-                return <ActionCard item={item.action} onEntryPress={onEntryPress} handleTogglePin={handleTogglePin} />;
+                return (
+                    <ActionCard
+                        item={item.action}
+                        onEntryPress={onEntryPress}
+                        handleTogglePin={handleTogglePin}
+                        handleToggleAction={handleToggleAction}
+                    />
+                );
+            case 'actionHeader':
+                return <ActionSectionHeader title={item.title} accent={item.accent} />;
             case 'topic':
                 return <TopicCard item={item.topic} onEntryPress={onEntryPress} handleToggleTopic={handleToggleTopic} />;
             case 'topicHeader':
@@ -541,13 +622,20 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
             case 'searchSpacer':
                 return <View style={[styles.bookDetailHeader, { borderBottomColor: colors.border }]} />;
             case 'bookHeader':
-                return <View style={[styles.bookDetailHeader, { borderBottomColor: colors.border, }]}></View>;
+                return (
+                    <BookDetailHeader
+                        bookName={item.bookName}
+                        totalChapters={selectedBook?.chapters}
+                        coveredCount={coveredChapters(bookEntries)}
+                        entryCount={item.entryCount}
+                    />
+                );
             case 'book':
                 return <BookCard book={item.book} onNavigate={navigateToBookDetail} />;
             default:
                 return null;
         }
-    }, [colors, isArchiveCollapsed, onEntryPress, handleTogglePin, handleToggleTopic, navigateToBookDetail, renderEmptyState]);
+    }, [colors, isArchiveCollapsed, viewMode, selectedBook, bookEntries, onEntryPress, handleTogglePin, handleToggleAction, handleToggleTopic, navigateToBookDetail, renderEmptyState]);
 
     // Memoize the header element so FlatList receives a stable reference.
     // Passing renderListHeader() (a call) would produce a new element every render
@@ -566,12 +654,19 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
                     keyExtractor={(item) => item.id.toString()}
                     contentContainerStyle={[
                         {
-                            paddingHorizontal: 20,
+                            // The list runs in the screen's own gutter — 22 in
+                            // Colossal, 24 in Cloth — not a third value.
+                            paddingHorizontal: isLockedIn
+                                ? Spacing.layout.screenPaddingTight
+                                : Spacing.layout.screenPadding,
                             paddingBottom: Spacing.xxl,
                             paddingTop: (viewMode === 'recent' || viewMode === 'bookDetail') ? 0 : 20,
                         },
                         getFlatListData.length === 0 && styles.emptyContainer
                     ]}
+                    ListFooterComponent={
+                        viewMode === 'bookDetail' ? <StillAhead ranges={stillAhead} /> : null
+                    }
                     showsVerticalScrollIndicator={false}
                     initialNumToRender={10}
                     maxToRenderPerBatch={10}

@@ -27,6 +27,15 @@ const TextArea: React.FC<{
     multiline?: boolean;
     disabled?: boolean;
     isAnswered?: boolean;
+    /**
+     * Drop the box.
+     *
+     * The writing step in design/all-screens.html #entry sets the answer
+     * between two hairlines on the page's own ground, not inside a card — the
+     * surface people spend the most time on gets the least furniture. The
+     * boxed form is still what an entry's other fields use.
+     */
+    bare?: boolean;
 }> = ({
     label,
     value,
@@ -34,6 +43,7 @@ const TextArea: React.FC<{
     placeholder,
     disabled = false,
     isAnswered = false,
+    bare = false,
 }) => {
         const { colors, style: themeStyle } = useTheme();
         const [isExpanded, setIsExpanded] = useState(false);
@@ -88,8 +98,11 @@ const TextArea: React.FC<{
         return (
             <>
                 {/* ── Inline compact view ── */}
-                <View style={textAreaStyles.container}>
-                    <View style={[
+                <View style={bare ? textAreaStyles.containerBare : textAreaStyles.container}>
+                    <View style={bare ? [
+                        textAreaStyles.inputContainerBare,
+                        { borderColor: colors.border },
+                    ] : [
                         textAreaStyles.inputContainer,
                         { backgroundColor: colors.cardBackground, borderColor: colors.border },
                         isAnswered && { borderColor: colors.border, backgroundColor: colors.background },
@@ -99,9 +112,9 @@ const TextArea: React.FC<{
                             ref={regularTextInputRef}
                             inputAccessoryViewID="bible-picker"
                             style={[
-                                textAreaStyles.input,
+                                bare ? textAreaStyles.inputBare : textAreaStyles.input,
                                 textStyle(themeStyle, 'body'),
-                                { color: colors.text, minHeight: 250 },
+                                { color: colors.text, minHeight: bare ? 230 : 250 },
                                 disabled && { color: colors.textSecondary },
                             ]}
                             placeholder={placeholder}
@@ -233,6 +246,20 @@ const textAreaStyles = StyleSheet.create({
     container: {
         marginBottom: 8,
         position: 'relative',
+    },
+    containerBare: {
+        flex: 1,
+        position: 'relative',
+    },
+    /** Two hairlines and nothing else — the mockup's writing band. */
+    inputContainerBare: {
+        flex: 1,
+        borderTopWidth: Spacing.border.hairline,
+        borderBottomWidth: Spacing.border.hairline,
+        position: 'relative',
+    },
+    inputBare: {
+        paddingVertical: Spacing.layout.cardPadding,
     },
     inputContainer: {
         borderRadius: Spacing.borderRadius.lg,

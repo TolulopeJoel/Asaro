@@ -115,6 +115,11 @@ export const Typography = {
          */
         giantBook: 74,
         giantRef: 108,
+        /**
+         * A book's name on its own screen. There is no single number worth
+         * enlarging on Book detail, so the design enlarges the name instead.
+         */
+        giantName: 72,
     },
 
     lineHeight: {
@@ -145,6 +150,8 @@ export const Typography = {
         /** 0.82 and 0.80 of their sizes — the mockup's own multipliers. */
         giantBook: 61,
         giantRef: 86,
+        /** 0.85 of its size. */
+        giantName: 61,
         /** Home's greeting: 15px set at 1.4. */
         mdPlusLead: 21,
     },
@@ -172,6 +179,8 @@ export const Typography = {
      */
     tracking: {
         hero: [-0.035, -0.07],
+        /** `.co-giant` sets the tracking; `.sm` only changes the size. */
+        heroSmall: [-0.035, -0.07],
         display: [-0.025, -0.04],
         headline: [-0.025, -0.04],
         title: [-0.025, -0.028],
@@ -208,6 +217,7 @@ export const Typography = {
 export type TextVariant =
     | 'meta'        // uppercase timestamps and "when" columns
     | 'hero'        // the one colossal element — Colossal's giant, Cloth's stat numeral
+    | 'heroSmall'   // the giant at its smaller step — a question number
     | 'display'     // screen title in the hero band
     | 'headline'    // the in-body big head, one step above the hero title
     | 'title'       // section / card heading
