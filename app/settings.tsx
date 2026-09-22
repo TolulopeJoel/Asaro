@@ -482,10 +482,14 @@ export default function Settings() {
                 style={styles.scrollView}
                 contentContainerStyle={[
                     styles.scrollContent,
-                    // Colossal's header and body carry their own 22px gutter, so
-                    // the scroll view must not add Cloth's 24 on top of it — the
-                    // screen was sitting 46px in from the edge.
-                    isLockedIn && styles.scrollContentColossal,
+                    /*
+                     * Both bodies carry their own gutter — clothBody at 24,
+                     * colossalBody at 22 — so the scroll view must never add
+                     * scrollContent's 24 on top. Cloth used to double up here:
+                     * 24 (scrollContent) + 24 (clothBody) sat the screen 48px
+                     * in from the edge instead of the mockup's 24.
+                     */
+                    styles.scrollContentNoGutter,
                 ]}
                 showsVerticalScrollIndicator={false}
             >
@@ -813,7 +817,8 @@ const styles = StyleSheet.create({
         padding: Spacing.layout.screenPadding,
         paddingBottom: 60,
     },
-    scrollContentColossal: {
+    /** Cancels scrollContent's gutter — the header/body own it per style. */
+    scrollContentNoGutter: {
         paddingHorizontal: 0,
         paddingTop: 0,
     },

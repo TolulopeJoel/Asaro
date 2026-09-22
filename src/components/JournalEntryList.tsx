@@ -75,6 +75,8 @@ interface JournalEntryListProps {
     onOpenTopicCountChange?: (count: number) => void;
     /** Distinct chapters of the open book that entries cover — Cloth's hero line. */
     onCoveredChange?: (covered: number) => void;
+    /** Entries against the open book — Cloth's hero band, Colossal's .co-giantl. */
+    onBookEntryCountChange?: (count: number) => void;
 }
 
 
@@ -91,6 +93,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
     onOpenActionCountChange,
     onOpenTopicCountChange,
     onCoveredChange,
+    onBookEntryCountChange,
 }) => {
     const { colors, isLockedIn } = useTheme();
     const [entries, setEntries] = useState<JournalEntry[]>([]);
@@ -147,7 +150,8 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
 
     useEffect(() => {
         onCoveredChange?.(coveredChapters(bookEntries));
-    }, [bookEntries, onCoveredChange]);
+        onBookEntryCountChange?.(bookEntries.length);
+    }, [bookEntries, onCoveredChange, onBookEntryCountChange]);
 
     const loadBookEntries = useCallback(async () => {
         if (!selectedBook) return;

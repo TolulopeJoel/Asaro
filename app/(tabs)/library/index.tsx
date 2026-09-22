@@ -54,7 +54,7 @@ type PlanListDataItem =
 // ─── Tab Config ───────────────────────────────────────────────────────────────
 
 const TABS: { key: Exclude<Tab, 'bookDetail'>; label: string; icon: LucideIcon }[] = [
-    { key: 'recent', label: 'Entries', icon: Clock },
+    { key: 'recent', label: 'Recent', icon: Clock },
     { key: 'books', label: 'Books', icon: BookCopy },
     { key: 'actions', label: 'Actions', icon: Zap },
     { key: 'topics', label: 'Follow-ups', icon: Bookmark },
@@ -308,6 +308,7 @@ interface JournalContentProps {
     onOpenActionCountChange: (count: number) => void;
     onOpenTopicCountChange: (count: number) => void;
     onCoveredChange: (covered: number) => void;
+    onBookEntryCountChange: (count: number) => void;
 }
 
 function JournalContent({
@@ -321,6 +322,7 @@ function JournalContent({
     onOpenActionCountChange,
     onOpenTopicCountChange,
     onCoveredChange,
+    onBookEntryCountChange,
 }: JournalContentProps) {
     const router = useRouter();
     const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -345,6 +347,7 @@ function JournalContent({
                 onOpenActionCountChange={onOpenActionCountChange}
                 onOpenTopicCountChange={onOpenTopicCountChange}
                 onCoveredChange={onCoveredChange}
+                onBookEntryCountChange={onBookEntryCountChange}
             />
         </View>
     );
@@ -636,6 +639,8 @@ export default function LibraryScreen() {
     const [openActionCount, setOpenActionCount] = useState(0);
     const [openTopicCount, setOpenTopicCount] = useState(0);
     const [coveredCount, setCoveredCount] = useState(0);
+    /** Entries against the open book — not the app-wide journalCount. */
+    const [bookEntryCount, setBookEntryCount] = useState(0);
     const [themeCount, setThemeCount] = useState<number | null>(null);
     const [planProgress, setPlanProgress] = useState<PlanProgress>({ completed: 0, total: READING_PLAN_DATA.length, percent: 0 });
 
@@ -817,7 +822,7 @@ export default function LibraryScreen() {
                                     {journalSelectedBook.name}
                                 </UIText>
                                 <UIText variant="sub" tone="onHero">
-                                    {`${bookCoverage} · ${journalCount} ${journalCount === 1 ? 'entry' : 'entries'}`}
+                                    {`${bookCoverage} · ${bookEntryCount} ${bookEntryCount === 1 ? 'entry' : 'entries'}`}
                                 </UIText>
                             </>
                         ) : (
@@ -867,6 +872,7 @@ export default function LibraryScreen() {
                     onOpenActionCountChange={setOpenActionCount}
                     onOpenTopicCountChange={setOpenTopicCount}
                     onCoveredChange={setCoveredCount}
+                    onBookEntryCountChange={setBookEntryCount}
                 />
             )}
         </Screen>
