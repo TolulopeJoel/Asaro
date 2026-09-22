@@ -1,25 +1,24 @@
 import { isBatteryOptimizationDisabled } from '@/src/utils/notifications';
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
-import {
-    AppState,
-    View,
-    StyleSheet,
-    Platform,
-    Linking,
-} from 'react-native';
+import { AppState, Platform, Linking, View, StyleSheet } from 'react-native';
+import * as IntentLauncher from 'expo-intent-launcher';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
-import { Typography } from '@/src/theme/typography';
-import { BatteryCharging, BatteryWarning, ArrowRight } from 'lucide-react-native';
-import { ScalePressable } from '@/src/components/ScalePressable';
-import * as IntentLauncher from 'expo-intent-launcher';
-import { Text } from '@/src/components/ui';
-import { Hero, Screen } from '@/src/components/ui';
+import { Hero, Screen, Text, ThemedButton } from '@/src/components/ui';
 
+/**
+ * The Android battery-optimisation follow-up.
+ *
+ * design/all-screens.html #perms names this route alongside permissions.tsx —
+ * one mockup slot, two screens in the same asking-for-something family. It
+ * carries no copy of its own for battery, so this reuses the same composition
+ * permissions.tsx builds (a band, one panel of reasons, a single button) with
+ * battery-specific text rather than inventing a different layout.
+ */
 export default function BatteryOptimizationScreen() {
     const router = useRouter();
-    const { colors } = useTheme();
+    const { colors, isLockedIn } = useTheme();
 
     const checkBatteryOptimization = async () => {
         if (Platform.OS !== 'android') {
@@ -59,14 +58,11 @@ export default function BatteryOptimizationScreen() {
                     }
                 );
             } catch (error) {
-
-
                 try {
                     await IntentLauncher.startActivityAsync(
                         'android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS'
                     );
                 } catch (error2) {
-
                     Linking.openSettings();
                 }
             }
@@ -75,49 +71,76 @@ export default function BatteryOptimizationScreen() {
         }
     };
 
+    /** Why the OS should leave the app alone — the mockup's row of reasons. */
+    const REASONS = [
+        'Your daily reading reminder, on time',
+        'Follow-up nudges for the actions you set',
+        'Nothing else runs in the background',
+    ];
+
+    if (isLockedIn) {
+        /*
+         * design/all-screens.html #perms, the `.co` slot. One giant per screen,
+         * not always one — this ask carries none, same as Permissions.
+         */
+        return (
+            <Screen>
+                <View style={styles.colossalTop}>
+                    <Text variant="tab">Battery</Text>
+                </View>
+
+                <View style={styles.colossalBody}>
+                    <Text variant="display">Don&apos;t Let Me Sleep</Text>
+                    <Text variant="sub" style={styles.colossalSub}>
+                        Your phone will probably lie to you about how bad this is for the
+                        battery. Àṣàrò needs to run in the background to keep its word.
+                    </Text>
+
+                    <View style={[styles.rule, { backgroundColor: colors.border }]} />
+
+                    <Text variant="label">What this is for</Text>
+                    {REASONS.map(reason => (
+                        <View key={reason} style={[styles.colossalRow, { borderBottomColor: colors.border }]}>
+                            <Text variant="reference" style={styles.reason}>{reason}</Text>
+                        </View>
+                    ))}
+                </View>
+
+                <View style={styles.colossalFooter}>
+                    <ThemedButton label="Fix Settings" variant="accent" block onPress={handleFixSettings} />
+                </View>
+            </Screen>
+        );
+    }
+
+    /*
+     * design/all-screens.html #perms, the `.cl` slot — the same composition
+     * Permissions builds: band, one panel of reasons, one button.
+     */
     return (
         <Screen>
-            <Hero>
+            <Hero style={styles.clothHero}>
                 <Text variant="label" tone="onHero" style={styles.heroStep}>Almost there</Text>
-                <Text variant="display" tone="onBand" style={styles.heroTitle}>One last thing</Text>
+                <Text variant="display" tone="onBand">Don&apos;t Let{'\n'}Me Sleep</Text>
             </Hero>
 
+            <View style={styles.clothBody}>
+                <Text variant="sub">
+                    Your phone will probably lie to you about how bad this is for the
+                    battery. Àṣàrò needs to run in the background to keep its word.
+                </Text>
 
-            <View style={styles.content}>
-                <View style={styles.header}>
-                    <View style={[styles.iconContainer, { backgroundColor: 'rgba(225, 143, 67, 0.1)' }]}>
-                        <BatteryCharging size={Typography.size.display} color={colors.primary} />
-                    </View>
-                </View>
-
-                <View style={styles.textContainer}>
-                    <Text variant="display" style={styles.title}>
-                        Don't Let Me Sleep
-                    </Text>
-
-                    <Text variant="body" tone="secondary" style={styles.description}>
-                        To ensure you receive your daily reflections, Àṣàrò needs to run in the background.
-                    </Text>
-
-                    <View style={[styles.infoBox, { backgroundColor: colors.cardBackground, borderColor: colors.border, flexDirection: 'column', alignItems: 'flex-start', gap: Spacing.md }]}>
-                        <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-                            <BatteryWarning size={Typography.size.xl} color={colors.textSecondary} style={{ marginRight: Spacing.sm }} />
-                            <Text variant="quote" tone="secondary" style={{ opacity: 0.8 }}>
-                                Your phone will probably lie to you about how bad this is for your battery. But do you think Àṣàrò would ever harm you? 🥹
-                            </Text>
+                <View style={[styles.clothPanel, { backgroundColor: colors.backgroundSubtle }]}>
+                    <Text variant="label" style={styles.clothPanelLabel}>What this is for</Text>
+                    {REASONS.map((reason, i) => (
+                        <View key={reason}>
+                            {i > 0 && <View style={[styles.clothHr, { backgroundColor: colors.border }]} />}
+                            <Text variant="body">{reason}</Text>
                         </View>
-                    </View>
+                    ))}
                 </View>
 
-                <View style={styles.footer}>
-                    <ScalePressable
-                        style={[styles.button, { backgroundColor: colors.textPrimary }]}
-                        onPress={handleFixSettings}
-                    >
-                        <Text variant="body" tone="inverse">Fix Settings</Text>
-                        <ArrowRight size={Typography.size.lg} color={colors.background} style={{ marginLeft: Spacing.sm }} />
-                    </ScalePressable>
-                </View>
+                <ThemedButton label="Fix Settings" variant="accent" block onPress={handleFixSettings} />
             </View>
         </Screen>
     );
@@ -125,65 +148,42 @@ export default function BatteryOptimizationScreen() {
 
 const styles = StyleSheet.create({
     heroStep: { marginBottom: Spacing.sm },
-    heroTitle: {},
-    container: {
+
+    // ── Cloth ─────────────────────────────────────────────────────────────
+    clothHero: { paddingTop: 64 },
+    clothBody: {
         flex: 1,
-        overflow: 'hidden',
+        paddingTop: Spacing.xxl - 2,
+        paddingHorizontal: Spacing.layout.screenPadding,
+        gap: Spacing.layout.cardPadding,
     },
-    circle: {
-        position: 'absolute',
-        width: 200,
-        height: 200,
-        borderRadius: Spacing.borderRadius.round,
-    },
-    content: {
-        flex: 1,
-        padding: Spacing.layout.screenPadding,
+    clothPanel: { padding: Spacing.layout.cardPadding },
+    clothPanelLabel: { marginBottom: 7 },
+    clothHr: { height: Spacing.border.hairline, marginVertical: 9 },
+
+    // ── Colossal ──────────────────────────────────────────────────────────
+    colossalTop: {
+        flexDirection: 'row',
         justifyContent: 'space-between',
-        paddingTop: Spacing.layout.screenPadding,
+        alignItems: 'center',
+        paddingHorizontal: Spacing.layout.screenPaddingTight,
+        paddingTop: Spacing.lg,
     },
-    header: {
+    colossalBody: {
         flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
+        paddingHorizontal: Spacing.layout.screenPaddingTight,
+        paddingTop: Spacing.xxl + 12,
     },
-    iconContainer: {
-        width: 100,
-        height: 100,
-        borderRadius: Spacing.borderRadius.lg,
-        justifyContent: 'center',
-        alignItems: 'center',
+    colossalSub: { marginTop: Spacing.layout.cardPadding },
+    rule: { height: Spacing.border.hairline, marginVertical: Spacing.xl + 2 },
+    colossalRow: {
+        paddingVertical: Spacing.md + 3,
+        borderBottomWidth: Spacing.border.hairline,
     },
-    textContainer: {
-        flex: 1,
-        alignItems: 'center',
-    },
-    title: { textAlign: 'center', marginBottom: Spacing.sm },
-    description: { textAlign: 'center', opacity: 0.7 },
-    infoBox: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: Spacing.lg,
-        borderRadius: Spacing.borderRadius.md,
-        borderWidth: 1,
-        width: '100%',
-        marginTop: Spacing.xl,
-    },
-    infoText: {
-        fontSize: Typography.size.md,
-        flex: 1,
-        lineHeight: Typography.lineHeight.md,
-        fontWeight: Typography.weight.medium,
-    },
-    footer: {
-        paddingTop: Spacing.xxl,
-    },
-    button: {
-        flexDirection: 'row',
-        paddingVertical: 20,
-        borderRadius: Spacing.borderRadius.lg,
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: '100%',
+    reason: { fontWeight: '500' },
+    colossalFooter: {
+        paddingHorizontal: Spacing.layout.screenPaddingTight,
+        paddingBottom: Spacing.layout.tabBarPadding,
+        gap: 10,
     },
 });
