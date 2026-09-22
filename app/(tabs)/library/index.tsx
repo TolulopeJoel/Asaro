@@ -936,7 +936,7 @@ const styles = StyleSheet.create({
     },
     // .co-top — a mark, not a screen title.
     /** `.cl-input.onhero{margin-top:18px}` */
-    heroSearch: { marginTop: Spacing.layout.cardPadding, position: 'relative' },
+    heroSearch: { flexDirection: 'row', alignItems: 'center', marginTop: Spacing.layout.cardPadding },
     /** The arrow hangs into the gutter so the glyph lines up with the name. */
     heroBack: { marginLeft: -6, alignSelf: 'flex-start' },
     heroCrumb: { marginTop: 10 },
