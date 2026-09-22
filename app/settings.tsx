@@ -25,6 +25,7 @@ import {
     Bed,
     Bell,
     RefreshCw,
+    ChevronLeft,
     ChevronRight,
     ArrowLeft,
     Sun,
@@ -111,7 +112,8 @@ const SettingsItem = ({
     icon,
     destructive,
     showChevron = true,
-    colors
+    colors,
+    isLockedIn,
 }: {
     label: string;
     value?: string;
@@ -120,21 +122,52 @@ const SettingsItem = ({
     destructive?: boolean;
     showChevron?: boolean;
     colors: any;
-}) => (
-    <ScalePressable
-        style={[styles.itemContainer, { borderBottomColor: colors.border + '50' }]}
-        onPress={onPress}
-    >
-        <View style={[styles.itemIconWrap, { backgroundColor: destructive ? colors.dangerSurface : colors.backgroundSubtle }]}>
-            {React.createElement(icon, { size: 18, color: destructive ? colors.danger : colors.accent, strokeWidth: 2 })}
-        </View>
-        <View style={styles.itemContent}>
-            <UIText variant="body" tone={destructive ? 'danger' : 'primary'}>{label}</UIText>
-            {value && <UIText variant="caption">{value}</UIText>}
-        </View>
-        {showChevron && <ChevronRight size={16} color={colors.textMuted} />}
-    </ScalePressable>
-);
+    isLockedIn?: boolean;
+}) => {
+    if (isLockedIn) {
+        /*
+         * design/all-screens.html #settings, the `.co` slot: the label on the
+         * left and its value on the right, and nothing else. No icon chip and
+         * no chevron — a list where every row carries both reads as texture
+         * rather than as information, and this is the longest list in the app.
+         * A value of "On" is the one thing here worth the accent.
+         */
+        return (
+            <ScalePressable
+                style={[styles.colossalRow, { borderBottomColor: colors.border }]}
+                onPress={onPress}
+                accessibilityRole="button"
+            >
+                <UIText
+                    variant="reference"
+                    tone={destructive ? 'danger' : 'primary'}
+                    style={styles.colossalRowLabel}
+                >
+                    {label}
+                </UIText>
+                {value && (
+                    <UIText variant="meta" tone={value === 'On' ? 'accent' : 'tertiary'}>{value}</UIText>
+                )}
+            </ScalePressable>
+        );
+    }
+
+    return (
+        <ScalePressable
+            style={[styles.itemContainer, { borderBottomColor: colors.border + '50' }]}
+            onPress={onPress}
+        >
+            <View style={[styles.itemIconWrap, { backgroundColor: destructive ? colors.dangerSurface : colors.backgroundSubtle }]}>
+                {React.createElement(icon, { size: 18, color: destructive ? colors.danger : colors.accent, strokeWidth: 2 })}
+            </View>
+            <View style={styles.itemContent}>
+                <UIText variant="body" tone={destructive ? 'danger' : 'primary'}>{label}</UIText>
+                {value && <UIText variant="caption">{value}</UIText>}
+            </View>
+            {showChevron && <ChevronRight size={16} color={colors.textMuted} />}
+        </ScalePressable>
+    );
+};
 
 /**
  * A settings section.
@@ -154,7 +187,7 @@ const SettingsGroup = ({ title, children }: { title: string; children: React.Rea
 );
 
 export default function Settings() {
-    const { colors, shape, theme, setTheme, style: themeStyle, setStyle: setThemeStyle } = useTheme();
+    const { colors, shape, theme, setTheme, style: themeStyle, setStyle: setThemeStyle, isLockedIn } = useTheme();
     const router = useRouter();
     const { showAlert } = useAlert();
 
@@ -487,19 +520,39 @@ export default function Settings() {
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
-                <Hero style={styles.hero}>
-                    <View style={styles.headerTitleRow}>
+                {isLockedIn ? (
+                    /*
+                     * Settings is the one screen with nothing worth enlarging,
+                     * so Colossal uses no colossal element at all — the design's
+                     * rule is at most one per screen, never always one.
+                     */
+                    <View style={styles.colossalTop}>
                         <ScalePressable
                             onPress={() => router.back()}
-                            style={styles.backButton}
+                            style={styles.colossalBack}
                             accessibilityRole="button"
                             accessibilityLabel="Back"
+                            hitSlop={Spacing.md}
                         >
-                            <ArrowLeft size={22} color={colors.textInverse} />
+                            <ChevronLeft size={20} color={colors.textTertiary} strokeWidth={2} />
                         </ScalePressable>
-                        <UIText variant="display" tone="inverse" style={{ flex: 1 }}>Engine Room</UIText>
+                        <UIText variant="tab">Settings</UIText>
                     </View>
-                </Hero>
+                ) : (
+                    <Hero style={styles.hero}>
+                        <View style={styles.headerTitleRow}>
+                            <ScalePressable
+                                onPress={() => router.back()}
+                                style={styles.backButton}
+                                accessibilityRole="button"
+                                accessibilityLabel="Back"
+                            >
+                                <ArrowLeft size={22} color={colors.textInverse} />
+                            </ScalePressable>
+                            <UIText variant="display" tone="inverse" style={{ flex: 1 }}>Engine Room</UIText>
+                        </View>
+                    </Hero>
+                )}
 
                 {/* Profile Section for Admins */}
                 {isAdmin && (
@@ -582,7 +635,34 @@ export default function Settings() {
                 </SettingsGroup>
 
                 {/* Data Management */}
-                <SettingsGroup title="Backup & Restore" colors={colors}>
+                <SettingsGroup title={isLockedIn ? 'Your data' : 'Backup & Restore'} colors={colors}>
+                    {isLockedIn ? (
+                        /*
+                         * The mockup names these rather than drawing them as two
+                         * unlabelled icon buttons — "Share entries backup" and
+                         * "Import entries" are the strings it uses, and on the
+                         * longest list in the app a row you can read beats a
+                         * glyph you have to recognise.
+                         */
+                        <>
+                            <SettingsItem
+                                isLockedIn
+                                label="Share entries backup"
+                                value={isExporting ? 'Working…' : undefined}
+                                icon={Archive}
+                                onPress={handleExport}
+                                colors={colors}
+                            />
+                            <SettingsItem
+                                isLockedIn
+                                label="Import entries"
+                                value={isImporting ? 'Working…' : undefined}
+                                icon={Download}
+                                onPress={handleImport}
+                                colors={colors}
+                            />
+                        </>
+                    ) : (
                     <View style={styles.buttonGroup}>
                         <ScalePressable
                             onPress={handleExport}
@@ -599,6 +679,7 @@ export default function Settings() {
                             {isImporting ? <LoadingView size={20} /> : <Download size={20} color={colors.textSecondary} />}
                         </ScalePressable>
                     </View>
+                    )}
                     {lastBackupDate ? (
                         <View>
                             <UIText variant="caption" tone="muted" style={styles.lastBackupText}>
@@ -620,6 +701,7 @@ export default function Settings() {
                 {/* Accountability */}
                 <SettingsGroup title="Accountability" colors={colors}>
                     <SettingsItem
+                        isLockedIn={isLockedIn}
                         label="Sleep Time"
                         value={formatSleepTime(sleepTime)}
                         icon={Bed}
@@ -634,14 +716,23 @@ export default function Settings() {
                 {/* About */}
                 <View style={styles.group}>
                     <UIText variant="caption" tone="secondary" style={styles.groupTitle}>ABOUT</UIText>
-                    <View style={[styles.row, { paddingHorizontal: 4 }]}>
-                        <UIText variant="subtitle">Version</UIText>
-                        <TouchableOpacity onPress={handleNotificationTitleTap} activeOpacity={0.7}>
-                            <UIText variant="body" tone="tertiary">
-                                {Constants.expoConfig?.version || '1.0.0'}
-                            </UIText>
-                        </TouchableOpacity>
-                    </View>
+                    <TouchableOpacity
+                        onPress={handleNotificationTitleTap}
+                        activeOpacity={0.7}
+                        style={isLockedIn
+                            ? [styles.colossalRow, { borderBottomColor: colors.border }]
+                            : [styles.row, { paddingHorizontal: 4 }]}
+                    >
+                        <UIText
+                            variant={isLockedIn ? 'reference' : 'subtitle'}
+                            style={isLockedIn ? styles.colossalRowLabel : undefined}
+                        >
+                            Version
+                        </UIText>
+                        <UIText variant={isLockedIn ? 'meta' : 'body'} tone="tertiary">
+                            {Constants.expoConfig?.version || '1.0.0'}
+                        </UIText>
+                    </TouchableOpacity>
                 </View>
 
                 {/* Notifications - Easter Egg */}
@@ -711,6 +802,26 @@ export default function Settings() {
 }
 
 const styles = StyleSheet.create({
+    // ── Colossal ──────────────────────────────────────────────────────────
+    colossalTop: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.md,
+        paddingHorizontal: Spacing.layout.screenPaddingTight,
+        paddingTop: Spacing.lg,
+        paddingBottom: Spacing.xl - 2,
+    },
+    colossalBack: { marginLeft: -6 },
+    colossalRow: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
+        gap: Spacing.md,
+        paddingVertical: Spacing.md + 3,
+        borderBottomWidth: Spacing.border.hairline,
+    },
+    /** The mockup lightens a settings label: it names a thing, not a heading. */
+    colossalRowLabel: { flex: 1, fontWeight: '500' },
+
     container: {
         flex: 1,
     },

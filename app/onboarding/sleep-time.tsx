@@ -15,11 +15,11 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { ScalePressable } from '@/src/components/ScalePressable';
-import { Hero, Screen, Text } from '@/src/components/ui';
+import { Hero, Screen, Text, ThemedButton, textStyle } from '@/src/components/ui';
 
 export default function SleepTimeScreen() {
     const router = useRouter();
-    const { colors } = useTheme();
+    const { colors, style: themeStyle, isLockedIn } = useTheme();
 
     const [hour, setHour] = useState('');
     const [minute, setMinute] = useState('');
@@ -149,6 +149,89 @@ export default function SleepTimeScreen() {
 
     const isFormValid = hour.length > 0 && minute.length > 0;
 
+    if (isLockedIn) {
+        /*
+         * design/all-screens.html #sleep, the `.co` slot.
+         *
+         * The time itself is the colossal element — two fields set at the
+         * giant's smaller step with an ochre colon between them — so the
+         * screen's question can live in the mark rather than in a heading.
+         */
+        return (
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                <Screen edges={['top']}>
+                    <View style={styles.colossalTop}>
+                        <Text variant="tab">When do you turn in?</Text>
+                        <Text variant="tab">2 of 3</Text>
+                    </View>
+
+                    <KeyboardAvoidingView
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        style={styles.keyboardView}
+                    >
+                        <View style={styles.colossalBody}>
+                            <View style={styles.colossalTimeRow}>
+                                <TextInput
+                                    style={[
+                                        styles.colossalTimeInput,
+                                        textStyle(themeStyle, 'heroSmall'),
+                                        { color: error ? colors.danger : colors.textPrimary },
+                                    ]}
+                                    placeholder="10"
+                                    placeholderTextColor={colors.textMuted}
+                                    value={hour}
+                                    onChangeText={handleHourChange}
+                                    onBlur={handleBlurHour}
+                                    keyboardType="number-pad"
+                                    returnKeyType="next"
+                                    maxLength={2}
+                                    autoFocus
+                                    onSubmitEditing={() => minuteInputRef.current?.focus()}
+                                    accessibilityLabel="Hour"
+                                />
+                                <Text variant="heroSmall" tone="accent">:</Text>
+                                <TextInput
+                                    ref={minuteInputRef}
+                                    style={[
+                                        styles.colossalTimeInput,
+                                        textStyle(themeStyle, 'heroSmall'),
+                                        { color: error ? colors.danger : colors.textPrimary },
+                                    ]}
+                                    placeholder="00"
+                                    placeholderTextColor={colors.textMuted}
+                                    value={minute}
+                                    onChangeText={handleMinuteChange}
+                                    onBlur={handleBlurMinute}
+                                    keyboardType="number-pad"
+                                    returnKeyType="done"
+                                    maxLength={2}
+                                    accessibilityLabel="Minute"
+                                />
+                                <TouchableOpacity onPress={togglePeriod} activeOpacity={0.6} accessibilityRole="button">
+                                    <Text variant="subtitle" tone="secondary">{period}</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            <Text variant="label" style={styles.colossalGiantLabel}>
+                                reminders stop at this hour
+                            </Text>
+
+                            <View style={[styles.rule, { backgroundColor: colors.border }]} />
+
+                            <Text variant="sub" tone={error ? 'danger' : undefined}>
+                                {error ?? 'Hour must be 1–12, minute 00–59.'}
+                            </Text>
+                        </View>
+
+                        <View style={styles.colossalFooter}>
+                            <ThemedButton label="Continue" block disabled={!isFormValid} onPress={handleContinue} />
+                        </View>
+                    </KeyboardAvoidingView>
+                </Screen>
+            </TouchableWithoutFeedback>
+        );
+    }
+
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <Screen edges={['top']}>
@@ -270,6 +353,40 @@ export default function SleepTimeScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+    },
+
+    // ── Colossal ──────────────────────────────────────────────────────────
+    colossalTop: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: Spacing.md,
+        paddingHorizontal: Spacing.layout.screenPaddingTight,
+        paddingTop: Spacing.lg,
+    },
+    colossalBody: {
+        flex: 1,
+        paddingHorizontal: Spacing.layout.screenPaddingTight,
+        paddingTop: Spacing.xxl + Spacing.md,
+    },
+    colossalTimeRow: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
+        gap: 6,
+    },
+    /** Fixed-width so the digits don't shift the colon as you type. */
+    colossalTimeInput: {
+        width: 120,
+        textAlign: 'center',
+        padding: 0,
+    },
+    /** `.co-giantl` under the time. */
+    colossalGiantLabel: { marginTop: Spacing.lg },
+    /** `.co-hr` */
+    rule: { height: Spacing.border.hairline, marginVertical: Spacing.xl + 2 },
+    colossalFooter: {
+        paddingHorizontal: Spacing.layout.screenPaddingTight,
+        paddingBottom: Spacing.layout.tabBarPadding,
     },
     keyboardView: {
         flex: 1,

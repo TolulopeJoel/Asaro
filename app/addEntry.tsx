@@ -342,7 +342,7 @@ export default function MeditationSessionScreen() {
     const renderCurrentStep = () => {
         switch (currentStep) {
             case 'book':
-                return <BookStep selectedBook={selectedBook} onBookSelect={handleBookSelect} />;
+                return <BookStep selectedBook={selectedBook} onBookSelect={handleBookSelect} onExit={() => router.back()} />;
             case 'chapter':
                 return (
                     <ChapterStep
@@ -365,7 +365,7 @@ export default function MeditationSessionScreen() {
                         isEditMode={isEditMode}
                         onBack={() => setCurrentStep('chapter')}
                         onDiscard={handleDiscardDraft}
-                        selectedChapters={selectedChapters}
+                        onExit={() => router.back()}
                         saveButtonText={savedEntryId ? 'Update entry' : undefined}
                     />
                 );

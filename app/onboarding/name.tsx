@@ -13,12 +13,12 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { ScalePressable } from '@/src/components/ScalePressable';
-import { Asaro, Hero, Screen, Text } from '@/src/components/ui';
+import { Asaro, Hero, Screen, Text, ThemedButton, textStyle } from '@/src/components/ui';
 
 
 export default function NameScreen() {
     const router = useRouter();
-    const { colors } = useTheme();
+    const { colors, style: themeStyle, isLockedIn } = useTheme();
     const [name, setName] = useState('');
     const [isValid, setIsValid] = useState(false);
 
@@ -37,6 +37,61 @@ export default function NameScreen() {
         setName(text);
         setIsValid(text.trim().length > 0);
     };
+
+    if (isLockedIn) {
+        /*
+         * design/all-screens.html #name, the `.co` slot.
+         *
+         * The field is the screen: underlined in ochre, set large, with the
+         * heading above it and one line of reassurance below. Àṣàrò's wave and
+         * the two paragraphs of introduction belong to Cloth — Colossal asks
+         * the question and gets out of the way.
+         */
+        return (
+            <Screen>
+                <View style={styles.colossalTop}>
+                    <Text variant="tab">Àṣàrò</Text>
+                    <Text variant="tab">1 of 3</Text>
+                </View>
+
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    style={styles.keyboardView}
+                >
+                    <View style={styles.colossalBody}>
+                        <Text variant="display">Let&apos;s make this official 😏</Text>
+
+                        <View style={[styles.rule, { backgroundColor: colors.border }]} />
+
+                        <Text variant="label">What should I call you?</Text>
+                        <TextInput
+                            style={[
+                                styles.colossalInput,
+                                textStyle(themeStyle, 'display'),
+                                { color: colors.textPrimary, borderBottomColor: colors.accent },
+                            ]}
+                            placeholder=""
+                            placeholderTextColor={colors.textMuted}
+                            value={name}
+                            onChangeText={handleTextChange}
+                            autoCorrect={false}
+                            returnKeyType="next"
+                            autoFocus
+                            onSubmitEditing={handleContinue}
+                            accessibilityLabel="Your name"
+                        />
+                        <Text variant="sub" style={styles.colossalHint}>
+                            Only used to greet you. It never leaves the device.
+                        </Text>
+                    </View>
+
+                    <View style={styles.colossalFooter}>
+                        <ThemedButton label="Continue" block disabled={!isValid} onPress={handleContinue} />
+                    </View>
+                </KeyboardAvoidingView>
+            </Screen>
+        );
+    }
 
     return (
         <Screen>
@@ -120,6 +175,32 @@ export default function NameScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+    },
+
+    // ── Colossal ──────────────────────────────────────────────────────────
+    colossalTop: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: Spacing.layout.screenPaddingTight,
+        paddingTop: Spacing.lg,
+    },
+    colossalBody: {
+        flex: 1,
+        paddingHorizontal: Spacing.layout.screenPaddingTight,
+        paddingTop: Spacing.xxl + Spacing.xxl,
+    },
+    /** `.co-hr` */
+    rule: { height: Spacing.border.hairline, marginVertical: Spacing.xl + 2 },
+    /** Underlined, not boxed. */
+    colossalInput: {
+        paddingVertical: Spacing.layout.cardPadding,
+        borderBottomWidth: Spacing.border.strong,
+    },
+    colossalHint: { marginTop: Spacing.xl - 2 },
+    colossalFooter: {
+        paddingHorizontal: Spacing.layout.screenPaddingTight,
+        paddingBottom: Spacing.layout.tabBarPadding,
     },
     keyboardView: {
         flex: 1,

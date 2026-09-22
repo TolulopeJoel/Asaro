@@ -13,12 +13,11 @@ import { Typography } from '@/src/theme/typography';
 import { Bell, ArrowRight } from 'lucide-react-native';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { useAlert } from '@/src/context/AlertContext';
-import { Text } from '@/src/components/ui';
-import { Hero, Screen } from '@/src/components/ui';
+import { Hero, Screen, Text, ThemedButton } from '@/src/components/ui';
 
 export default function PermissionsScreen() {
     const router = useRouter();
-    const { colors } = useTheme();
+    const { colors, isLockedIn } = useTheme();
     const { showAlert } = useAlert();
     const [permissionStatus, setPermissionStatus] = useState<'undetermined' | 'denied'>('undetermined');
 
@@ -63,6 +62,55 @@ export default function PermissionsScreen() {
     const handleOpenSettings = () => {
         openNotificationSettings();
     };
+
+    /** What a reminder will and won't be — the mockup's three rows. */
+    const PROMISES = [
+        'A reminder for the day\u2019s reading',
+        'Follow-ups for actions you set yourself',
+        'Nothing else. No marketing, ever.',
+    ];
+
+    if (isLockedIn) {
+        /*
+         * design/all-screens.html #perms, the `.co` slot.
+         *
+         * No colossal element here — the design's own note says a permission
+         * ask should not shout, so the button carries the weight. This is the
+         * third screen in the set to use none, which is the "at most one, not
+         * always one" rule working rather than failing.
+         */
+        return (
+            <Screen>
+                <View style={styles.colossalTop}>
+                    <Text variant="tab">Permissions</Text>
+                    <Text variant="tab">3 of 3</Text>
+                </View>
+
+                <View style={styles.colossalBody}>
+                    <Text variant="display">Can I Check Up On You? 😏</Text>
+                    <Text variant="sub" style={styles.colossalSub}>
+                        One nudge a day, at a time you choose, and nothing after your sleep hour.
+                    </Text>
+
+                    <View style={[styles.rule, { backgroundColor: colors.border }]} />
+
+                    <Text variant="label">What you&apos;ll get</Text>
+                    {PROMISES.map(promise => (
+                        <View key={promise} style={[styles.colossalRow, { borderBottomColor: colors.border }]}>
+                            <Text variant="reference" style={styles.promise}>{promise}</Text>
+                        </View>
+                    ))}
+                </View>
+
+                <View style={styles.colossalFooter}>
+                    <ThemedButton label="Allow Notifications" variant="accent" block onPress={handleRequestPermission} />
+                    {permissionStatus === 'denied' && (
+                        <ThemedButton label="Open Settings" variant="secondary" block onPress={handleOpenSettings} />
+                    )}
+                </View>
+            </Screen>
+        );
+    }
 
     return (
         <Screen>
@@ -117,6 +165,34 @@ export default function PermissionsScreen() {
 
 const styles = StyleSheet.create({
     heroStep: { marginBottom: Spacing.sm },
+
+    // ── Colossal ──────────────────────────────────────────────────────────
+    colossalTop: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: Spacing.layout.screenPaddingTight,
+        paddingTop: Spacing.lg,
+    },
+    colossalBody: {
+        flex: 1,
+        paddingHorizontal: Spacing.layout.screenPaddingTight,
+        paddingTop: Spacing.xxl + 12,
+    },
+    colossalSub: { marginTop: Spacing.layout.cardPadding },
+    /** `.co-hr` */
+    rule: { height: Spacing.border.hairline, marginVertical: Spacing.xl + 2 },
+    colossalRow: {
+        paddingVertical: Spacing.md + 3,
+        borderBottomWidth: Spacing.border.hairline,
+    },
+    /** The mockup lightens these rows' weight: a promise, not a heading. */
+    promise: { fontWeight: '500' },
+    colossalFooter: {
+        paddingHorizontal: Spacing.layout.screenPaddingTight,
+        paddingBottom: Spacing.layout.tabBarPadding,
+        gap: 10,
+    },
     heroTitle: {},
     container: {
         flex: 1,

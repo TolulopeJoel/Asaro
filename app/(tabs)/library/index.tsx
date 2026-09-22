@@ -11,11 +11,14 @@ import {
     Notebook,
     LucideIcon,
     BookCopy,
-    Sparkles
+    Sparkles,
+    ChevronLeft
 } from 'lucide-react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
+import { formatRange } from '@/src/utils/reference';
+import { scheduleLabel } from '@/src/data/planSchedule';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { LoadingView } from '@/src/components/LoadingView';
 import { BibleBook } from '@/src/data/bibleBooks';
@@ -59,19 +62,48 @@ const TABS: { key: Exclude<Tab, 'bookDetail'>; label: string; icon: LucideIcon }
     { key: 'plan', label: 'Plan', icon: Library },
 ];
 
+/**
+ * The `.co-mark` over each tab — the small caps line the mockup puts where
+ * Cloth puts its hero band. Books drills into a screen with its own header, so
+ * it never reads this.
+ */
+const MARK: Partial<Record<Tab, string>> = {
+    recent: 'Library',
+    books: 'Library',
+    plan: 'Library · Plan',
+    actions: 'Library · Actions',
+    topics: 'Library · Follow-ups',
+    themes: 'Library · Themes',
+};
+
 // ─── Plan Progress Bar ────────────────────────────────────────────────────────
 
 function PlanProgressBar({ progress }: { progress: number }) {
-    const { colors } = useTheme();
+    const { colors, isLockedIn } = useTheme();
     if (progress === 0) return null;
+
     return (
-        <View style={styles.planProgressRow}>
+        <View style={[
+            styles.planProgressRow,
+            /*
+             * The mockup breathes between the bar and the filters — it sets the
+             * gap as `.co-segs{padding-top:22px}` on this screen. Carrying it
+             * here instead keeps the shared Segments component on its base rule.
+             */
+            isLockedIn && {
+                paddingHorizontal: Spacing.layout.screenPaddingTight,
+                paddingTop: Spacing.xl - 4,
+                paddingBottom: Spacing.xl - 2,
+            },
+        ]}>
             <View style={[styles.planProgressTrack, { backgroundColor: colors.border }]}>
                 <View style={[styles.planProgressFill, { width: `${progress}%`, backgroundColor: colors.accent }]} />
             </View>
-            <UIText variant="label">
-                {parseFloat(progress.toFixed(2))}%
-            </UIText>
+            {!isLockedIn && (
+                <UIText variant="label">
+                    {parseFloat(progress.toFixed(2))}%
+                </UIText>
+            )}
         </View>
     );
 }
@@ -91,8 +123,22 @@ const PlanSectionHeader = React.memo(({
     completedCount: number;
     totalCount: number;
 }) => {
-    const { colors } = useTheme();
+    const { colors, isLockedIn } = useTheme();
     const isDone = completedCount === totalCount && totalCount > 0;
+
+    /*
+     * Colossal sets a section as a bare `.co-label` over its rows — no panel,
+     * no count badge and no chevron. It still collapses on press; the design
+     * simply doesn't draw an affordance for it, the way the rest of the style
+     * carries no chrome.
+     */
+    if (isLockedIn) {
+        return (
+            <TouchableOpacity activeOpacity={0.8} onPress={onToggle} style={styles.colossalSection}>
+                <UIText variant="label">{title}</UIText>
+            </TouchableOpacity>
+        );
+    }
 
     return (
         <TouchableOpacity
@@ -130,13 +176,66 @@ const PlanSectionHeader = React.memo(({
 const ReadingCard = React.memo(({
     item,
     isCompleted,
+    queueIndex,
     onToggle
 }: {
     item: ReadingItem;
     isCompleted: boolean;
+    /**
+     * Where this reading sits in the queue of readings still to do — 0 is the
+     * next one up. Undefined for a completed reading, which has no next date.
+     */
+    queueIndex?: number;
     onToggle: (id: number, completed: boolean) => void;
 }) => {
-    const { colors } = useTheme();
+    const { colors, isLockedIn } = useTheme();
+
+    /*
+     * Colossal draws `.co-row`: a marker, the reference on one line, and the
+     * state on the right — "Done" in grey, "Today" in ochre. Completed rows
+     * strike through and drop to 45%, which is the whole completion signal;
+     * the filled checkbox the card used is chrome the design doesn't have.
+     */
+    // "Today", "Tomorrow", "Thu", "Oct 12" — counted from today down the
+    // readings still left, so falling behind moves the dates rather than
+    // stacking up overdue ones.
+    const schedule = !isCompleted && queueIndex !== undefined ? scheduleLabel(queueIndex) : null;
+
+    if (isLockedIn) {
+        const marker = item.id <= HEBREW_SCRIPTURES_END ? styles.markerDiamond : styles.markerDot;
+        const markerInk = item.id <= HEBREW_SCRIPTURES_END ? colors.accent : colors.textPrimary;
+
+        return (
+            <ScalePressable
+                style={[styles.colossalRow, { borderBottomColor: colors.border }, isCompleted && styles.rowDone]}
+                onPress={() => onToggle(item.id, !isCompleted)}
+            >
+                <View style={[marker, { backgroundColor: markerInk }]} />
+                <View style={styles.colossalRowMain}>
+                    {/*
+                      * A finished reading drops to the same ink as its "Done"
+                      * tag, so the whole row reads as one settled thing rather
+                      * than a bright reference with a quiet label beside it.
+                      */}
+                    <UIText
+                        variant="reference"
+                        tone={isCompleted ? 'tertiary' : undefined}
+                        style={isCompleted ? styles.struck : undefined}
+                    >
+                        {`${item.book}${item.chapters ? ` ${formatRange(item.chapters)}` : ''}`}
+                    </UIText>
+                    {!item.chapters && <UIText variant="bodySmall">Full Book</UIText>}
+                </View>
+                {isCompleted ? (
+                    <UIText variant="meta">Done</UIText>
+                ) : schedule ? (
+                    <UIText variant="meta" tone={schedule.urgent ? 'accent' : undefined}>
+                        {schedule.text}
+                    </UIText>
+                ) : null}
+            </ScalePressable>
+        );
+    }
 
     return (
         <ScalePressable
@@ -196,6 +295,8 @@ interface JournalContentProps {
     onSearchChange: (q: string) => void;
     onSelectedBookChange: (book: BibleBook | undefined) => void;
     onCountChange: (count: number) => void;
+    onOpenActionCountChange: (count: number) => void;
+    onOpenTopicCountChange: (count: number) => void;
 }
 
 function JournalContent({
@@ -206,6 +307,8 @@ function JournalContent({
     onSearchChange,
     onSelectedBookChange,
     onCountChange,
+    onOpenActionCountChange,
+    onOpenTopicCountChange,
 }: JournalContentProps) {
     const router = useRouter();
     const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -227,6 +330,8 @@ function JournalContent({
                 onSearchChange={onSearchChange}
                 onSelectedBookChange={onSelectedBookChange}
                 onCountChange={onCountChange}
+                onOpenActionCountChange={onOpenActionCountChange}
+                onOpenTopicCountChange={onOpenTopicCountChange}
             />
         </View>
     );
@@ -234,8 +339,14 @@ function JournalContent({
 
 // ─── Plan Content ─────────────────────────────────────────────────────────────
 
-function PlanContent({ onProgressChange }: { onProgressChange: (p: number) => void }) {
-    const { colors } = useTheme();
+export interface PlanProgress {
+    completed: number;
+    total: number;
+    percent: number;
+}
+
+function PlanContent({ onProgressChange }: { onProgressChange: (p: PlanProgress) => void }) {
+    const { colors, isLockedIn } = useTheme();
     const router = useRouter();
     const [completedItems, setCompletedItems] = useState<Set<number>>(new Set());
     const [progress, setProgress] = useState(0);
@@ -243,6 +354,18 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: number) => vo
     const [isInitialLoad, setIsInitialLoad] = useState(true);
     const { showAlert } = useAlert();
     const flatListRef = useRef<FlatList>(null);
+
+    /**
+     * Each outstanding reading's place in the queue — 0 is the next one up.
+     * Rebuilt whenever a reading is ticked, so the dates shuffle forward with
+     * you rather than being pinned to when you started.
+     */
+    const queueIndexById = React.useMemo(() => {
+        const queue = new Map<number, number>();
+        READING_PLAN_DATA.filter(item => !completedItems.has(item.id))
+            .forEach((item, index) => queue.set(item.id, index));
+        return queue;
+    }, [completedItems]);
 
     const sectionData = React.useMemo(() => {
         const counts: Record<string, { completed: number; total: number }> = {};
@@ -257,7 +380,11 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: number) => vo
     const updateProgress = useCallback((newCompleted: Set<number>) => {
         const p = parseFloat(((newCompleted.size / READING_PLAN_DATA.length) * 100).toFixed(2));
         setProgress(p);
-        onProgressChange(p);
+        onProgressChange({
+            completed: newCompleted.size,
+            total: READING_PLAN_DATA.length,
+            percent: p,
+        });
     }, [onProgressChange]);
 
     const loadProgress = useCallback(async () => {
@@ -387,10 +514,11 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: number) => vo
             <ReadingCard
                 item={item.item}
                 isCompleted={completedItems.has(item.item.id)}
+                queueIndex={queueIndexById.get(item.item.id)}
                 onToggle={handleToggle}
             />
         );
-    }, [sectionData, collapsedSections, completedItems, handleToggle, toggleSection]);
+    }, [sectionData, collapsedSections, completedItems, queueIndexById, handleToggle, toggleSection]);
 
     const renderHeader = useCallback(() => {
         if (progress > 0) return null;
@@ -460,7 +588,14 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: number) => vo
                     data={flatListData}
                     renderItem={renderItem}
                     keyExtractor={keyExtractor}
-                    contentContainerStyle={styles.planListContent}
+                    contentContainerStyle={[
+                        styles.planListContent,
+                        {
+                            paddingHorizontal: isLockedIn
+                                ? Spacing.layout.screenPaddingTight
+                                : Spacing.layout.screenPadding,
+                        },
+                    ]}
                     ListHeaderComponent={renderHeader}
                     ListFooterComponent={renderFooter}
                     showsVerticalScrollIndicator={false}
@@ -477,7 +612,7 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: number) => vo
 // ─── Main Library Screen ──────────────────────────────────────────────────────
 
 export default function LibraryScreen() {
-    const { colors, style: themeStyle } = useTheme();
+    const { colors, style: themeStyle, isLockedIn } = useTheme();
     const router = useRouter();
     const params = useLocalSearchParams();
 
@@ -485,11 +620,14 @@ export default function LibraryScreen() {
     const [journalSearch, setJournalSearch] = useState('');
     const [journalSelectedBook, setJournalSelectedBook] = useState<BibleBook | undefined>();
     const [journalCount, setJournalCount] = useState(0);
-    const [planProgress, setPlanProgress] = useState(0);
+    const [openActionCount, setOpenActionCount] = useState(0);
+    const [openTopicCount, setOpenTopicCount] = useState(0);
+    const [themeCount, setThemeCount] = useState<number | null>(null);
+    const [planProgress, setPlanProgress] = useState<PlanProgress>({ completed: 0, total: READING_PLAN_DATA.length, percent: 0 });
 
     // Books drills into bookDetail, so that view keeps the Books tab lit.
     const activeTabKey = tab === 'bookDetail' ? 'books' : tab;
-    const showSearch = tab === 'recent' || tab === 'bookDetail';
+    const showSearch = tab === 'recent' || (tab === 'bookDetail' && !isLockedIn);
 
     const handleNavigate = useCallback((next: Tab) => {
         setTab(next);
@@ -505,23 +643,98 @@ export default function LibraryScreen() {
         }
     }, [params.openEntryId]);
 
+    /**
+     * Colossal's one number for the tab you are on.
+     *
+     * `null` means this tab has nothing worth enlarging right now — Themes
+     * before it has clustered anything, where the mockup gives the slot to the
+     * empty state instead.
+     */
+    const giant: { value: number; label: string } | null = (() => {
+        switch (tab) {
+            case 'plan':
+                return {
+                    value: planProgress.completed,
+                    label: `of ${planProgress.total} readings · ${planProgress.percent}%`,
+                };
+            case 'actions':
+                return {
+                    value: openActionCount,
+                    label: openActionCount === 1 ? 'action still open' : 'actions still open',
+                };
+            case 'topics':
+                return {
+                    value: openTopicCount,
+                    label: openTopicCount === 1 ? 'follow-up open' : 'follow-ups open',
+                };
+            case 'themes':
+                return themeCount === null ? null : {
+                    value: themeCount,
+                    label: `${themeCount === 1 ? 'pattern' : 'patterns'} across ${journalCount} entries`,
+                };
+            default:
+                return {
+                    value: journalCount,
+                    label: journalCount === 1 ? 'entry written' : 'entries written',
+                };
+        }
+    })();
+
     return (
         <Screen>
 
             {/* ── Header Zone ───────────────────────────────────────────────── */}
+            {isLockedIn && tab === 'bookDetail' ? (
+                /*
+                 * A book takes the whole screen in Colossal.
+                 *
+                 * The mockup gives Book detail its own `.co-top` — a back arrow
+                 * and the word "Books" — and nothing else above it: no count, no
+                 * search, no filters. It reads as a place you went to rather than
+                 * a filter you applied, and the arrow is the way back. Cloth keeps
+                 * the breadcrumb, which is what its own mockup draws.
+                 */
+                <View style={styles.colossalTopRow}>
+                    <ScalePressable
+                        onPress={() => handleNavigate('books')}
+                        accessibilityRole="button"
+                        accessibilityLabel="Back to books"
+                        hitSlop={Spacing.md}
+                        style={styles.backArrow}
+                    >
+                        <ChevronLeft size={20} color={colors.textTertiary} strokeWidth={2} />
+                    </ScalePressable>
+                    <UIText variant="tab">Books</UIText>
+                </View>
+            ) : (
             <View>
-                <Hero>
-                    <UIText variant="display" tone="inverse">Library</UIText>
-                </Hero>
+                {isLockedIn ? (
+                    <>
+                        <View style={styles.colossalTop}>
+                            <UIText variant="tab">{MARK[tab] ?? 'Library'}</UIText>
+                        </View>
+                        {/*
+                          * The giant states whatever the current tab counts —
+                          * entries written on Recent, readings completed on
+                          * Plan, actions still open on Actions. Each tab gets
+                          * one number, which is the rule the style is built on;
+                          * Themes gets none until it has patterns to count,
+                          * because its other two states own the slot themselves.
+                          */}
+                        {giant && (
+                            <View style={styles.colossalCount}>
+                                <UIText variant="hero">{giant.value}</UIText>
+                                <UIText variant="label">{giant.label}</UIText>
+                            </View>
+                        )}
+                    </>
+                ) : (
+                    <Hero>
+                        <UIText variant="display" tone="inverse">Library</UIText>
+                    </Hero>
+                )}
 
-                <Segments
-                    items={TABS.map(t => ({ key: t.key, label: t.label }))}
-                    value={activeTabKey}
-                    onChange={(key) => handleNavigate(key as Exclude<Tab, 'bookDetail'>)}
-                    scrollable
-                />
-
-                {tab === 'bookDetail' && journalSelectedBook && (
+                {!isLockedIn && tab === 'bookDetail' && journalSelectedBook && (
                     <View style={[styles.breadcrumbRow, { borderBottomColor: colors.border }]}>
                         <ScalePressable
                             onPress={() => handleNavigate('books')}
@@ -536,7 +749,7 @@ export default function LibraryScreen() {
                 )}
 
                 {showSearch && (
-                    <View style={[styles.searchContainer, { borderBottomColor: colors.border, borderTopColor: colors.border }]}>
+                    <View style={styles.searchContainer}>
                         <TextInput
                             style={[
                                 styles.searchInput,
@@ -568,14 +781,22 @@ export default function LibraryScreen() {
                     </View>
                 )}
 
-                {tab === 'plan' && <PlanProgressBar progress={planProgress} />}
+                {tab === 'plan' && <PlanProgressBar progress={planProgress.percent} />}
+
+                <Segments
+                    items={TABS.map(t => ({ key: t.key, label: t.label }))}
+                    value={activeTabKey}
+                    onChange={(key) => handleNavigate(key as Exclude<Tab, 'bookDetail'>)}
+                    scrollable
+                />
             </View>
+            )}
 
             {/* ── Content Zone ──────────────────────────────────────────────── */}
             {tab === 'plan' ? (
                 <PlanContent onProgressChange={setPlanProgress} />
             ) : tab === 'themes' ? (
-                <ThemesContent />
+                <ThemesContent onPatternCountChange={setThemeCount} />
             ) : (
                 <JournalContent
                     viewMode={tab}
@@ -585,6 +806,8 @@ export default function LibraryScreen() {
                     onSearchChange={setJournalSearch}
                     onSelectedBookChange={setJournalSelectedBook}
                     onCountChange={setJournalCount}
+                    onOpenActionCountChange={setOpenActionCount}
+                    onOpenTopicCountChange={setOpenTopicCount}
                 />
             )}
         </Screen>
@@ -593,7 +816,71 @@ export default function LibraryScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
+/**
+ * The plan's markers, in-palette.
+ *
+ * The two shapes used to be hardcoded #E53935 and #1E88E5 — imported iOS red
+ * and blue that survive neither palette. The distinction the design keeps is
+ * shape and hue within the theme: an ochre diamond through the Hebrew
+ * Scriptures, a foreground dot for the Greek.
+ */
+const HEBREW_SCRIPTURES_END = 286;
+
 const styles = StyleSheet.create({
+    // .co-label over a run of rows
+    colossalSection: {
+        paddingTop: Spacing.lg + 2,
+        paddingBottom: Spacing.md,
+    },
+    // .co-row, centred rather than baseline — these rows carry a marker.
+    colossalRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.md,
+        paddingVertical: Spacing.lg - 1,
+        borderBottomWidth: Spacing.border.hairline,
+    },
+    colossalRowMain: {
+        flex: 1,
+        minWidth: 0,
+    },
+    rowDone: {
+        opacity: 0.45,
+    },
+    markerDiamond: {
+        width: 8,
+        height: 8,
+        transform: [{ rotate: '45deg' }],
+    },
+    markerDot: {
+        width: 8,
+        height: 8,
+        borderRadius: Spacing.borderRadius.round,
+    },
+    // .co-top with a back arrow, for a screen you navigated into.
+    colossalTopRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: Spacing.layout.screenPaddingTight,
+        paddingTop: Spacing.lg,
+    },
+    // The mockup hangs the arrow into the gutter so the glyph, not its box,
+    // lines up with the text below it.
+    backArrow: {
+        marginLeft: -6,
+    },
+    // .co-top — a mark, not a screen title.
+    colossalTop: {
+        paddingHorizontal: Spacing.layout.screenPaddingTight,
+        paddingTop: Spacing.lg,
+    },
+    // .co-giant.n over .co-giantl
+    colossalCount: {
+        paddingHorizontal: Spacing.layout.screenPaddingTight,
+        paddingTop: Spacing.xl + 2,
+        gap: Spacing.sm + 2,
+    },
     container: { flex: 1 },
 
     // ── Header: single tab row ─────────────────────────────────────
@@ -642,22 +929,23 @@ const styles = StyleSheet.create({
     breadcrumbCurrent: { fontSize: 14, fontWeight: '600' },
 
     // ── Search bar ─────────────────────────────────────────────────
+    /*
+     * The mockup's search sits in bare padding — the only line in this region
+     * is the one under the segments below it. The rules that used to bracket
+     * it read as a toolbar the design doesn't have.
+     */
     searchContainer: {
-        paddingHorizontal: Spacing.layout.screenPadding,
-        paddingVertical: 15,
-        borderTopWidth: 0.5,
-        borderBottomWidth: 0.5,
+        paddingHorizontal: Spacing.layout.screenPaddingTight,
+        paddingTop: Spacing.xl - 4,
+        paddingBottom: Spacing.lg + 2,
         flexDirection: 'row',
         alignItems: 'center',
     },
+    // .co-input — a uniform 14px box; size and face come from textStyle('body').
     searchInput: {
         flex: 1,
-        height: 44,
-        borderRadius: Spacing.borderRadius.lg,
-        paddingHorizontal: 16,
-        fontSize: 14,
-        borderWidth: 1,
-        fontWeight: '500',
+        padding: Spacing.md + 2,
+        borderWidth: Spacing.border.hairline,
     },
     clearSearch: {
         marginLeft: 10, width: 32, height: 32,
@@ -673,14 +961,15 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
         gap: 12,
     },
-    planProgressTrack: { flex: 1, height: 6, borderRadius: Spacing.borderRadius.round, overflow: 'hidden' },
+    // A square 6px block, not a pill — the design has no rounded meters.
+    planProgressTrack: { flex: 1, height: 6, overflow: 'hidden' },
     planProgressFill: { height: '100%', borderRadius: Spacing.borderRadius.sm },
     planProgressPct: { fontSize: 12, fontWeight: '800', letterSpacing: -0.5, minWidth: 46, textAlign: 'right' },
 
     // ── Study ──────────────────────────────────────────────────────
 
     // ── Plan ───────────────────────────────────────────────────────
-    planListContent: { paddingHorizontal: Spacing.layout.screenPadding, paddingTop: 0, paddingBottom: Spacing.xxl },
+    planListContent: { paddingTop: 0, paddingBottom: Spacing.xxl },
     planSectionHeader: {
         marginTop: Spacing.lg, marginBottom: Spacing.sm,
         paddingVertical: 10, paddingHorizontal: 12,

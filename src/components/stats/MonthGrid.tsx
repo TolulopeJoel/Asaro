@@ -20,7 +20,7 @@ interface MonthGridProps {
 // white to ochre. See `celebration` in src/theme/colors.ts.
 
 export const MonthGrid = React.memo(({ year, month, data, showTitle = true }: MonthGridProps) => {
-    const { colors } = useTheme();
+    const { colors, isLockedIn } = useTheme();
     const today = getLocalMidnight();
     const [rotating, setRotating] = useState(false);
 
@@ -74,6 +74,53 @@ export const MonthGrid = React.memo(({ year, month, data, showTitle = true }: Mo
     }, [days, year, month, data, today]);
 
     const weekDays = React.useMemo(() => ['S', 'M', 'T', 'W', 'T', 'F', 'S'], []);
+
+    if (isLockedIn) {
+        /*
+         * design/all-screens.html #stats, the `.co` slot: a plain seven-column
+         * grid of squares and nothing else. No day numbers, no weekday row, no
+         * clover — the month is a shape, and the one number worth reading has
+         * already been enlarged above it.
+         */
+        return (
+            <View style={styles.monthContainer}>
+                {showTitle && (
+                    <Text variant="label" style={styles.monthTitle}>
+                        {new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                    </Text>
+                )}
+                <View style={styles.colossalGrid}>
+                    {days.map((day, index) => {
+                        if (day === null) {
+                            return <View key={`pad-${index}`} style={styles.colossalCellSpacer} />;
+                        }
+
+                        const dayDate = new Date(year, month, day);
+                        const isFuture = dayDate.getTime() > today.getTime();
+                        const hasEntry = (data[formatDateToLocalString(dayDate)] || 0) > 0;
+                        const isToday = isSameDay(dayDate, today);
+
+                        return (
+                            <View key={day} style={styles.colossalCellWrapper}>
+                                <View
+                                    style={[
+                                        styles.colossalCell,
+                                        isFuture
+                                            ? { borderWidth: Spacing.border.hairline, borderColor: colors.border }
+                                            : isToday
+                                                ? { backgroundColor: colors.accent }
+                                                : hasEntry
+                                                    ? { backgroundColor: colors.textPrimary }
+                                                    : { backgroundColor: colors.backgroundSubtle },
+                                    ]}
+                                />
+                            </View>
+                        );
+                    })}
+                </View>
+            </View>
+        );
+    }
 
     return (
         <View style={styles.monthContainer}>
@@ -172,6 +219,25 @@ const styles = StyleSheet.create({
         marginBottom: 32,
     },
     monthTitle: { marginBottom: 16 },
+
+    // ── Colossal: the month as a shape ────────────────────────────────────
+    colossalGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        marginHorizontal: -3,
+    },
+    // The 6px gap of the mockup's grid, expressed as a 3px inset on each cell
+    // so the seven columns still divide the width exactly.
+    colossalCellWrapper: {
+        width: `${100 / 7}%`,
+        aspectRatio: 1,
+        padding: 3,
+    },
+    colossalCellSpacer: {
+        width: `${100 / 7}%`,
+        aspectRatio: 1,
+    },
+    colossalCell: { flex: 1 },
     weekDaysRow: {
         flexDirection: 'row',
         marginBottom: 12,

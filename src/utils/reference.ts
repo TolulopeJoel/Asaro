@@ -13,5 +13,21 @@
 const BETWEEN_DIGITS = /(\d)\s*-\s*(\d)/g;
 
 export function formatRange(reference: string): string {
-    return reference.replace(BETWEEN_DIGITS, '$1 – $2');
+    return reference.replace(BETWEEN_DIGITS, '$1\u2013$2');
+}
+
+/**
+ * Small counts, written out.
+ *
+ * The mockup says "four chapters selected" and "of five questions", never
+ * "4 chapters" — a screen that has already enlarged one numeral shouldn't
+ * spend a second one on a count of the first.
+ */
+const SPELLED = [
+    'no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight',
+    'nine', 'ten', 'eleven', 'twelve',
+];
+
+export function spell(n: number): string {
+    return SPELLED[n] ?? String(n);
 }

@@ -1,17 +1,24 @@
-import { useTheme } from '@/src/theme/ThemeContext';
-import { Spacing } from '@/src/theme/spacing';
-import { Typography } from '@/src/theme/typography';
-import React, { useEffect, useState } from 'react';
-import {
-    StyleProp,
-    StyleSheet,
-    TextInput,
-    View,
-    ViewStyle,
-} from 'react-native';
-import { ScalePressable } from './ScalePressable';
+/**
+ * Which chapters, and optionally which verses.
+ *
+ * design/all-screens.html #chapters: a six-column grid of cells, a rule, then
+ * the verse row. A range is drawn by its two ends — `.co-cell.cap` in ochre —
+ * with everything between them filled `.co-cell.on`, so the shape of what you
+ * picked is readable at a glance instead of spelled out in a sentence.
+ *
+ * The verse fields sit under the grid in one row rather than sprouting beside
+ * whichever cell you tapped: the old layout reflowed the grid as you typed,
+ * which moved the cell you were aiming at.
+ */
+import React, { useCallback, useEffect, useState } from 'react';
+import { StyleSheet, TextInput, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
+
+import { useTheme } from '../theme/ThemeContext';
+import { Spacing } from '../theme/spacing';
 import { BibleBook, getChapterNumbers } from '../data/bibleBooks';
-import { Text } from './ui';
+import { ScalePressable } from './ScalePressable';
+import { Text, textStyle } from './ui';
 
 interface ChapterRange {
     start: number;
@@ -31,6 +38,10 @@ interface ChapterPickerProps {
     onVerseRangeChange?: (verses: VerseRange | null) => void;
 }
 
+/** Six to a row, as the mockup's grid-template-columns says. */
+const COLUMNS = 6;
+const CELL_GAP = 6;
+
 export const ChapterPicker: React.FC<ChapterPickerProps> = React.memo(({
     selectedBook,
     selectedChapters,
@@ -38,20 +49,16 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = React.memo(({
     allowRange = true,
     onVerseRangeChange,
 }) => {
-    const { colors } = useTheme();
-    const [dragStart, setDragStart] = useState<number | null>(null);
-    const [dragCurrent, setDragCurrent] = useState<number | null>(null);
+    const { colors, style: themeStyle } = useTheme();
+    /*
+     * Cells are sized in pixels rather than percentages: the grid's gaps are
+     * in px, and a percentage width can't subtract them, so six 16.6% cells
+     * plus five gaps overflow the row and wrap to five-and-a-bit.
+     */
+    const [gridWidth, setGridWidth] = useState(0);
     const [readVerses, setReadVerses] = useState(false);
     const [startVerse, setStartVerse] = useState('1');
     const [endVerse, setEndVerse] = useState('');
-
-    useEffect(() => {
-        // Reset drag state when book changes
-        if (selectedBook) {
-            setDragStart(null);
-            setDragCurrent(null);
-        }
-    }, [selectedBook]);
 
     useEffect(() => {
         // Reset verse state when chapters change
@@ -60,259 +67,147 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = React.memo(({
     }, [selectedChapters]);
 
     useEffect(() => {
-        // Notify parent of verse range changes
-        if (onVerseRangeChange) {
-            if (readVerses) {
-                onVerseRangeChange({ start: startVerse, end: endVerse });
-            } else {
-                onVerseRangeChange(null);
-            }
-        }
-    }, [readVerses, startVerse, endVerse]);
+        if (!onVerseRangeChange) return;
+        onVerseRangeChange(readVerses ? { start: startVerse, end: endVerse } : null);
+    }, [readVerses, startVerse, endVerse, onVerseRangeChange]);
 
-    const handleReadVersesToggle = () => {
-        setReadVerses(!readVerses);
-        if (!readVerses) {
-            setStartVerse('1');
-            setEndVerse('');
-        }
-    };
+    const chapters = getChapterNumbers(selectedBook?.name || 'Philippians');
 
-    const chapters = getChapterNumbers(selectedBook?.name || "Philippians");
-
-    const handleChapterPress = (chapter: number) => {
+    const handleChapterPress = useCallback((chapter: number) => {
         if (!allowRange) {
             onChapterSelect({ start: chapter });
             return;
         }
-
-        // If no current selection, select single chapter
         if (!selectedChapters || selectedChapters.start === 0) {
             onChapterSelect({ start: chapter });
             return;
         }
 
-        // If tapping the same single chapter, clear selection
-        if (selectedChapters.start === chapter && !selectedChapters.end) {
-            onChapterSelect({ start: 0 });
-            return;
-        }
-
-        // If tapping within existing range, clear and select single
-        if (isChapterInSelection(chapter)) {
-            onChapterSelect({ start: chapter });
-            return;
-        }
-
-        // If tapping outside range, extend range or create new range
-        const currentStart = selectedChapters.start;
-        const currentEnd = selectedChapters.end || currentStart;
-
-        if (chapter < currentStart) {
-            onChapterSelect({ start: chapter, end: currentEnd });
-        } else if (chapter > currentEnd) {
-            onChapterSelect({ start: currentStart, end: chapter });
-        } else {
-            onChapterSelect({ start: chapter });
-        }
-    };
-
-    const isChapterInSelection = (chapter: number): boolean => {
-        if (!selectedChapters || selectedChapters.start === 0) return false;
-
         const { start } = selectedChapters;
         const end = selectedChapters.end || start;
 
-        return chapter >= start && chapter <= end;
-    };
-
-    const isChapterInDragSelection = (chapter: number): boolean => {
-        if (dragStart === null || dragCurrent === null) return false;
-
-        const start = Math.min(dragStart, dragCurrent);
-        const end = Math.max(dragStart, dragCurrent);
-
-        return chapter >= start && chapter <= end;
-    };
-
-    const getSelectionText = (): string => {
-        if (!selectedChapters || selectedChapters.start === 0) return '';
-
-        const { start, end } = selectedChapters;
-
-        // Build verse suffix if verses are being tracked
-        let verseSuffix = '';
-        if (readVerses && startVerse) {
-            verseSuffix = `:${startVerse}`;
-            if (endVerse) {
-                verseSuffix += `-${endVerse}`;
-            }
+        // Tapping inside what's already chosen collapses it to that one chapter;
+        // tapping outside it stretches the range to reach.
+        if (chapter >= start && chapter <= end) {
+            onChapterSelect({ start: chapter });
+        } else if (chapter < start) {
+            onChapterSelect({ start: chapter, end });
+        } else {
+            onChapterSelect({ start, end: chapter });
         }
+    }, [allowRange, selectedChapters, onChapterSelect]);
 
-        if (!end || end === start) {
-            return `Chapter ${start}${verseSuffix}`;
-        }
+    const cellWidth = gridWidth > 0
+        ? (gridWidth - CELL_GAP * (COLUMNS - 1)) / COLUMNS
+        : undefined;
 
-        // For ranges, show verses on both ends if applicable
-        if (readVerses) {
-            const startVerseText = startVerse ? `:${startVerse}` : '';
-            const endVerseText = endVerse ? `:${endVerse}` : '';
-            return `Chapters ${start}${startVerseText}–${end}${endVerseText}`;
-        }
-
-        return `Chapters ${start}–${end}`;
-    };
-
-    const renderChapterButton = (chapter: number) => {
-        const isSelected = isChapterInSelection(chapter);
-        const isInDrag = isChapterInDragSelection(chapter);
-        const isFirst = selectedChapters?.start === chapter && !selectedChapters?.end;
-        const isRangeStart = selectedChapters?.start === chapter && selectedChapters?.end;
-        const isRangeEnd = selectedChapters?.end === chapter;
-        const isMiddle = isSelected && !isRangeStart && !isRangeEnd && !isFirst;
-        const isSingleChapterSelected = isFirst && readVerses;
-        const showVerseInputsForRange = readVerses && (isRangeStart || isRangeEnd);
-
-        // Determine border radius based on position in range
-        let borderRadiusStyle = {};
-        if (isRangeStart) {
-            borderRadiusStyle = {
-                borderTopLeftRadius: Spacing.borderRadius.md,
-                borderBottomLeftRadius: Spacing.borderRadius.md,
-                borderTopRightRadius: 2,
-                borderBottomRightRadius: 2,
-            };
-        } else if (isRangeEnd) {
-            borderRadiusStyle = {
-                borderTopLeftRadius: 2,
-                borderBottomLeftRadius: 2,
-                borderTopRightRadius: Spacing.borderRadius.md,
-                borderBottomRightRadius: Spacing.borderRadius.md,
-            };
-        } else if (isMiddle) {
-            borderRadiusStyle = {
-                borderRadius: Spacing.borderRadius.sm,
-            };
-        }
-
-        return (
-            <View key={chapter} style={styles.chapterButtonWrapper}>
-                <ScalePressable
-                    style={[
-                        styles.chapterButton,
-                        { backgroundColor: colors.cardBackground, borderColor: colors.border + '50' },
-                        (isSelected || isInDrag) && {
-                            backgroundColor: colors.accent + '08',
-                            borderColor: colors.accent,
-                        },
-                        borderRadiusStyle,
-                        isMiddle && styles.chapterButtonMiddle,
-                        isRangeEnd && styles.chapterButtonRangeEnd,
-                    ] as StyleProp<ViewStyle>}
-                    onPress={() => handleChapterPress(chapter)}
-                >
-                    <Text
-                        variant="cell"
-                        style={[
-                            { color: isSelected ? colors.textPrimary : colors.textSecondary },
-                        ]}
-                    >
-                        {chapter}
-                    </Text>
-                </ScalePressable>
-
-                {/* Single chapter verse inputs */}
-                {isSingleChapterSelected && (
-                    <View style={styles.verseInputContainer}>
-                        <TextInput
-                            style={[styles.verseInput, { backgroundColor: colors.cardHover, borderColor: colors.border, color: colors.textPrimary }]}
-                            value={startVerse}
-                            onChangeText={setStartVerse}
-                            keyboardType="numeric"
-                            placeholder="1"
-                            placeholderTextColor={colors.textTertiary}
-                        />
-                        <Text variant="body" tone="tertiary" style={styles.verseColon}>-</Text>
-                        <TextInput
-                            style={[styles.verseInput, { backgroundColor: colors.cardHover, borderColor: colors.border, color: colors.textPrimary }]}
-                            value={endVerse}
-                            onChangeText={setEndVerse}
-                            keyboardType="numeric"
-                            placeholder="—"
-                            placeholderTextColor={colors.textTertiary}
-                        />
-                    </View>
-                )}
-
-                {/* Range start verse input */}
-                {isRangeStart && showVerseInputsForRange && (
-                    <>
-                        <Text variant="body" tone="tertiary" style={styles.verseColon}>:</Text>
-                        <TextInput
-                            style={[styles.verseInput, styles.verseInputRange, { backgroundColor: colors.cardHover, borderColor: colors.border, color: colors.textPrimary }]}
-                            value={startVerse}
-                            onChangeText={setStartVerse}
-                            keyboardType="numeric"
-                            placeholder="1"
-                            placeholderTextColor={colors.textTertiary}
-                        />
-                    </>
-                )}
-
-                {/* Range end verse input */}
-                {isRangeEnd && showVerseInputsForRange && (
-                    <>
-                        <Text variant="body" tone="tertiary" style={styles.verseColon}>:</Text>
-                        <TextInput
-                            style={[styles.verseInput, styles.verseInputRange, { backgroundColor: colors.cardHover, borderColor: colors.border, color: colors.textPrimary }]}
-                            value={endVerse}
-                            onChangeText={setEndVerse}
-                            keyboardType="numeric"
-                            placeholder="—"
-                            placeholderTextColor={colors.textTertiary}
-                        />
-                    </>
-                )}
-            </View>
-        );
-    };
+    const hasSelection = !!selectedChapters && selectedChapters.start > 0;
+    const start = selectedChapters?.start ?? 0;
+    const end = selectedChapters?.end || start;
 
     return (
         <View style={styles.container}>
-            <View style={styles.header}>
-                <Text variant="title" style={styles.bookTitle}>{selectedBook?.name}</Text>
+            <View
+                style={styles.grid}
+                onLayout={e => setGridWidth(e.nativeEvent.layout.width)}
+            >
+                {chapters.map(chapter => {
+                    const selected = hasSelection && chapter >= start && chapter <= end;
+                    // The two ends of a range carry the mark; a lone chapter is
+                    // both ends at once, so it carries it too.
+                    const isCap = selected && (chapter === start || chapter === end);
+
+                    return (
+                        <ScalePressable
+                            key={chapter}
+                            onPress={() => handleChapterPress(chapter)}
+                            accessibilityRole="button"
+                            accessibilityState={{ selected }}
+                            style={[
+                                styles.cell,
+                                { width: cellWidth, backgroundColor: colors.backgroundElevated, borderColor: colors.border },
+                                selected && { backgroundColor: colors.textPrimary, borderColor: colors.textPrimary },
+                                isCap && { backgroundColor: colors.markInk, borderColor: colors.markInk },
+                            ]}
+                        >
+                            <Text
+                                variant="cell"
+                                style={{ color: selected ? colors.textInverse : colors.textSecondary }}
+                            >
+                                {chapter}
+                            </Text>
+                        </ScalePressable>
+                    );
+                })}
             </View>
 
-            {selectedChapters && selectedChapters.start > 0 && (
-                <View style={[styles.selectionContainer, { backgroundColor: colors.cardHover, borderColor: colors.border }]}>
-                    <Text variant="body" tone="secondary">{getSelectionText()}</Text>
+            <View style={[styles.rule, { backgroundColor: colors.border }]} />
+
+            {/* ── verses, if you read them ─────────────────────────────────── */}
+            <View style={styles.verseToggleRow}>
+                <ScalePressable
+                    onPress={() => setReadVerses(v => !v)}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: readVerses }}
+                    hitSlop={Spacing.md}
+                    style={[
+                        styles.checkbox,
+                        readVerses
+                            ? { backgroundColor: colors.accent, borderColor: colors.accent }
+                            : { borderColor: colors.borderStrong },
+                    ]}
+                >
+                    {readVerses && (
+                        <Svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={colors.textInverse} strokeWidth="3.6" strokeLinecap="round">
+                            <Path d="M5 12l5 5L19 7" />
+                        </Svg>
+                    )}
+                </ScalePressable>
+                <Text variant="reference">I read verses</Text>
+                {hasSelection && (
                     <ScalePressable
-                        style={[styles.clearButton, { backgroundColor: colors.cardBackground, borderColor: colors.border + '50' }]}
                         onPress={() => onChapterSelect({ start: 0 })}
+                        style={styles.clear}
+                        accessibilityRole="button"
+                        accessibilityLabel="Clear chapter selection"
                     >
-                        <Text variant="bodySmall" tone="secondary">Clear</Text>
+                        <Text variant="tab" tone="secondary">Clear</Text>
                     </ScalePressable>
+                )}
+            </View>
+
+            {readVerses && (
+                <View style={styles.verseRow}>
+                    <TextInput
+                        style={[
+                            styles.verseInput,
+                            textStyle(themeStyle, 'subtitle'),
+                            { backgroundColor: colors.backgroundElevated, borderColor: colors.border, color: colors.textPrimary },
+                        ]}
+                        value={startVerse}
+                        onChangeText={setStartVerse}
+                        keyboardType="numeric"
+                        placeholder="1"
+                        placeholderTextColor={colors.textTertiary}
+                        accessibilityLabel="Start verse"
+                    />
+                    <Text variant="body" tone="tertiary">–</Text>
+                    <TextInput
+                        style={[
+                            styles.verseInput,
+                            textStyle(themeStyle, 'subtitle'),
+                            { backgroundColor: colors.backgroundElevated, borderColor: colors.border, color: colors.textPrimary },
+                        ]}
+                        value={endVerse}
+                        onChangeText={setEndVerse}
+                        keyboardType="numeric"
+                        placeholder="—"
+                        placeholderTextColor={colors.textTertiary}
+                        accessibilityLabel="End verse"
+                    />
+                    <Text variant="label">verses</Text>
                 </View>
             )}
-
-            <View style={styles.chaptersGrid}>
-                {chapters.map(renderChapterButton)}
-            </View>
-            <ScalePressable
-                style={styles.checkboxContainer}
-                onPress={handleReadVersesToggle}
-            >
-                <View style={[
-                    styles.checkbox,
-                    { backgroundColor: colors.cardBackground, borderColor: colors.border + '50' },
-                    readVerses && [styles.checkboxChecked, { backgroundColor: colors.accent, borderColor: colors.accent }]
-                ]}>
-                    {readVerses && (
-                        <Text variant="bodySmall" tone="inverse">✓</Text>
-                    )}
-                </View>
-                <Text variant="body" tone="secondary">I read verses</Text>
-            </ScalePressable>
         </View>
     );
 });
@@ -322,92 +217,46 @@ ChapterPicker.displayName = 'ChapterPicker';
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        minHeight: 250,
     },
-    header: {
-        marginBottom: Spacing.lg,
-    },
-    bookTitle: { marginBottom: Spacing.xs },
-    selectionContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: Spacing.md,
-        marginBottom: Spacing.xl,
-        borderRadius: Spacing.borderRadius.md,
-        borderWidth: 1,
-    },
-    checkboxContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.md,
-        marginTop: Spacing.xl,
-        padding: Spacing.sm,
-        borderRadius: Spacing.borderRadius.lg,
-    },
-    checkbox: {
-        width: 22,
-        height: 22,
-        borderRadius: Spacing.borderRadius.sm,
-        borderWidth: 1.5,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    checkboxChecked: {
-        // Colors handled in component
-    },
-    clearButton: {
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.sm,
-        borderRadius: Spacing.borderRadius.xl,
-        borderWidth: 1,
-    },
-    chaptersGrid: {
+    grid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 10,
-        justifyContent: 'flex-start',
+        gap: CELL_GAP,
     },
-    chapterButtonWrapper: {
-        flexDirection: 'row',
+    cell: {
+        height: Spacing.touchTarget + 2,
+        borderWidth: Spacing.border.hairline,
         alignItems: 'center',
-        marginBottom: 0,
-    },
-    chapterButton: {
-        width: 52,
-        height: 52,
-        borderRadius: Spacing.borderRadius.md,
-        borderWidth: 1,
         justifyContent: 'center',
-        alignItems: 'center',
     },
-    chapterButtonMiddle: {
-        marginLeft: -6,
-        marginRight: -6,
+    /** `.co-hr` */
+    rule: {
+        height: Spacing.border.hairline,
+        marginVertical: Spacing.xl + 2,
     },
-    chapterButtonRangeEnd: {
-        // marginLeft: -6,
-    },
-    verseInputContainer: {
+    verseToggleRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginLeft: Spacing.sm,
-        gap: 4,
+        gap: 10,
+    },
+    checkbox: {
+        width: 17,
+        height: 17,
+        borderWidth: Spacing.border.hairline,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    clear: { marginLeft: 'auto' },
+    verseRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.sm,
+        marginTop: Spacing.lg,
     },
     verseInput: {
-        width: 52,
-        height: 52,
-        borderWidth: 1,
-        borderRadius: Spacing.borderRadius.sm,
-        paddingHorizontal: 4,
-        fontSize: Typography.size.sm,
-        fontWeight: Typography.weight.semibold,
+        width: 80,
         textAlign: 'center',
-        letterSpacing: 0.2,
+        borderWidth: Spacing.border.hairline,
+        paddingVertical: Spacing.md + 2,
     },
-    verseInputRange: {
-        marginLeft: 4,
-        marginRight: 4,
-    },
-    verseColon: { marginHorizontal: 2 },
 });

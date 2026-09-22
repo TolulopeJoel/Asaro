@@ -338,7 +338,7 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
                      * no separate "Name this theme" button in this style.
                      */
                     const meta = [`${item.entryCount} ${item.entryCount === 1 ? 'entry' : 'entries'}`, ...books].join(' · ');
-                    const naming = savedName === undefined || namingIndex === index;
+                    const naming = !savedName || namingIndex === index;
 
                     return (
                         <View style={[styles.colossalTheme, { borderBottomColor: colors.border }]}>

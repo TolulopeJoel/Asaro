@@ -1,14 +1,28 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+/**
+ * The writing surface — one question at a time.
+ *
+ * design/all-screens.html #entry draws this in both styles: a question number,
+ * the question, the answer between two rules, and a five-step progress bar.
+ * The screen people spend the most time on gets the least decoration, and it
+ * asks one thing rather than showing five and letting you choose.
+ *
+ * Colossal gives its giant slot to the number (`.co-giant.sm`, in ochre) so the
+ * question itself can stay at a readable 26px. Cloth has no giant, so it names
+ * the step in a `.cl-label` instead — the same information, one step quieter.
+ */
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { ChevronLeft, X } from 'lucide-react-native';
+
 import { useTheme } from '../theme/ThemeContext';
 import { useAlert } from '../context/AlertContext';
 import { Spacing } from '../theme/spacing';
-import { Typography } from '../theme/typography';
 import { TextArea } from './TextArea';
 import { ActionItemPair, ActionItemsInput } from './ActionItemsInput';
 import { Button } from './Button';
-import { Text as UIText } from './ui';
+import { ScalePressable } from './ScalePressable';
+import { Text as UIText, ThemedButton } from './ui';
 
 export interface ReflectionAnswers {
   reflection1: string;
@@ -26,7 +40,18 @@ interface ReflectionFormProps {
   onSave?: (answers: ReflectionAnswers) => void;
   disabled?: boolean;
   saveButtonText?: string;
+  /** What is being reflected on — the `.co-mark` at the top of the screen. */
+  reference: string;
+  /** Leave the entry. */
+  onExit: () => void;
+  /** Step back off the first question, to the passage you chose. */
+  onChangePassage: () => void;
+  /** Throw the draft away. Absent when editing an entry that already exists. */
+  onDiscard?: () => void;
 }
+
+/** "01", "02" — the mockup sets the number two digits wide. */
+const pad = (n: number) => String(n).padStart(2, '0');
 
 export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
   initialAnswers,
@@ -34,8 +59,12 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
   onSave,
   disabled = false,
   saveButtonText = 'Save It',
+  reference,
+  onExit,
+  onChangePassage,
+  onDiscard,
 }) => {
-  const { colors } = useTheme();
+  const { colors, isLockedIn } = useTheme();
   const { showAlert } = useAlert();
   const [answers, setAnswers] = useState<ReflectionAnswers>({
     reflection1: initialAnswers?.reflection1 || '',
@@ -46,6 +75,18 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
     studyFurtherReminder: initialAnswers?.studyFurtherReminder || undefined,
     notes: initialAnswers?.notes || '',
   });
+
+  /**
+   * Which page you are on: 0–4 are the five questions, 5 is the notes.
+   *
+   * The notes page carries no number, because the mockup's label says "of five
+   * questions" and notes are not a sixth question. Colossal's rule allows a
+   * screen zero colossal elements — Settings uses none — so that page simply
+   * leads with its heading instead.
+   */
+  const [page, setPage] = useState(0);
+  const isNotes = page === REFLECTION_QUESTIONS.length;
+  const current = REFLECTION_QUESTIONS[page];
 
   const [showAndroidPicker, setShowAndroidPicker] = useState(false);
   const [androidPickerMode, setAndroidPickerMode] = useState<'date' | 'time'>('date');
@@ -70,7 +111,6 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
     }
   }, [answers, onAnswersChange]);
 
-
   const updateAnswer = (questionId: keyof ReflectionAnswers, value: string) => {
     setAnswers(prev => ({
       ...prev,
@@ -85,6 +125,13 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
     const hasActions = actionItems.some(item => item.action.trim().length > 0);
     return hasText || hasActions;
   })();
+
+  /** Whether the page you are on has been answered — it decides "Skip" or "Next". */
+  const answeredHere = useMemo(() => {
+    if (isNotes) return answers.notes.trim().length > 0;
+    if (current.isActionList) return answers.actionItems.some(i => i.action.trim().length > 0);
+    return ((answers[current.id as keyof ReflectionAnswers] as string) || '').trim().length > 0;
+  }, [answers, current, isNotes]);
 
   const handleSave = () => {
     if (!hasPrimaryContent) return;
@@ -106,35 +153,82 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
     }
   };
 
-  const renderQuestion = (questionData: ReflectionQuestion, index: number) => {
-    const { id, question, placeholder, isActionList } = questionData;
-    return (
-      <View
-        key={id}
-        style={styles.questionContainer}
-      >
-        <View style={styles.questionHeader}>
-          <UIText variant="title">{question}</UIText>
+  const goBack = () => (page === 0 ? onChangePassage() : setPage(p => p - 1));
+  const goForward = () => setPage(p => Math.min(p + 1, REFLECTION_QUESTIONS.length));
+
+  const gutter = isLockedIn ? Spacing.layout.screenPaddingTight : Spacing.layout.screenPadding;
+
+  return (
+    <View style={styles.container}>
+      {/* ── .co-top: what you're reflecting on, and the way out ────────── */}
+      <View style={[styles.topBar, { paddingHorizontal: gutter }]}>
+        <ScalePressable
+          onPress={goBack}
+          accessibilityRole="button"
+          accessibilityLabel={page === 0 ? 'Change passage' : 'Previous question'}
+          hitSlop={Spacing.md}
+          style={styles.backArrow}
+        >
+          <ChevronLeft size={20} color={colors.textTertiary} strokeWidth={2} />
+        </ScalePressable>
+        <UIText variant="tab" numberOfLines={1} style={styles.mark}>{reference}</UIText>
+        <ScalePressable
+          onPress={onExit}
+          accessibilityRole="button"
+          accessibilityLabel="Close"
+          hitSlop={Spacing.md}
+        >
+          <X size={19} color={colors.textTertiary} strokeWidth={1.9} />
+        </ScalePressable>
+      </View>
+
+      <View style={[styles.body, { paddingHorizontal: gutter }]}>
+        {/* ── the step you're on ─────────────────────────────────────────── */}
+        {isNotes ? null : isLockedIn ? (
+          <>
+            <UIText variant="heroSmall" tone="accent">{pad(page + 1)}</UIText>
+            <UIText variant="label" style={styles.giantLabel}>
+              {`of ${SPELLED[REFLECTION_QUESTIONS.length]} questions`}
+            </UIText>
+          </>
+        ) : (
+          <UIText variant="label">{`Question ${page + 1} of ${REFLECTION_QUESTIONS.length}`}</UIText>
+        )}
+
+        <UIText variant={isNotes ? 'display' : 'title'} style={styles.question}>
+          {isNotes ? 'Anything else?' : current.question}
+        </UIText>
+
+        {/* ── the answer ─────────────────────────────────────────────────── */}
+        <View style={styles.answer}>
+          {!isNotes && current.isActionList ? (
+            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              <ActionItemsInput
+                label={current.question}
+                items={answers.actionItems}
+                onChange={(items) => setAnswers(prev => ({ ...prev, actionItems: items }))}
+                disabled={disabled}
+              />
+            </ScrollView>
+          ) : (
+            <TextArea
+              bare
+              label={isNotes ? 'Additional thoughts' : current.question}
+              value={isNotes
+                ? answers.notes
+                : (answers[current.id as keyof ReflectionAnswers] as string) || ''}
+              placeholder={isNotes
+                ? 'Any other insights, questions, or reflections...'
+                : current.placeholder}
+              onChange={(text) => updateAnswer(isNotes ? 'notes' : (current.id as keyof ReflectionAnswers), text)}
+              disabled={disabled}
+              isAnswered={answeredHere}
+            />
+          )}
         </View>
 
-        {isActionList ? (
-          <ActionItemsInput
-            label={question}
-            items={answers.actionItems}
-            onChange={(items) => setAnswers(prev => ({ ...prev, actionItems: items }))}
-            disabled={disabled}
-          />
-        ) : (
-          <TextArea
-            label={question}
-            value={answers[id as keyof ReflectionAnswers] as string || ''}
-            placeholder={placeholder}
-            onChange={(text) => updateAnswer(id as keyof ReflectionAnswers, text)}
-            disabled={disabled}
-            isAnswered={((answers[id as keyof ReflectionAnswers] as string) || '').trim().length > 0}
-          />
-        )}
-        {id === 'studyFurther' && answers.studyFurther && answers.studyFurther.trim().length > 0 && !disabled && (
+        {/* The study-further reminder belongs to its own question only. */}
+        {!isNotes && current.id === 'studyFurther' && answeredHere && !disabled && (
           <View style={styles.reminderContainer}>
             <UIText variant="bodySmall" tone="secondary">Remind me at:</UIText>
             {Platform.OS === 'ios' ? (
@@ -178,43 +272,43 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
             )}
           </View>
         )}
-      </View>
-    );
-  };
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.questionsContainer}>
-        {REFLECTION_QUESTIONS.map((question, index) =>
-          renderQuestion(question, index)
-        )}
-
-        <View style={styles.notesContainer}>
-          <View style={styles.notesHeader}>
-            <UIText variant="body" tone="secondary" style={styles.notesTitle}>Additional Thoughts</UIText>
-          </View>
-          <TextArea
-            label=""
-            value={answers.notes}
-            placeholder="Any other insights, questions, or reflections..."
-            onChange={(text) => updateAnswer('notes', text)}
-            disabled={disabled}
-            isAnswered={answers.notes.trim().length > 0}
-          />
+        {/* ── where you are, as a bar of five ────────────────────────────── */}
+        <View style={styles.progress}>
+          {REFLECTION_QUESTIONS.map((q, i) => (
+            <View
+              key={q.id}
+              style={[
+                styles.progressStep,
+                { backgroundColor: i === page ? colors.accent : colors.border },
+              ]}
+            />
+          ))}
         </View>
       </View>
 
+      {/* ── the two things you can do next ───────────────────────────────── */}
       {!disabled && (
-        <View style={styles.actionsContainer}>
-          {hasPrimaryContent && (
-            <Button
+        <View style={[styles.footer, { paddingHorizontal: gutter }]}>
+          <View style={styles.footerButtons}>
+            {!isNotes && (
+              <ThemedButton
+                variant="secondary"
+                label={answeredHere ? 'Next' : 'Skip'}
+                onPress={goForward}
+              />
+            )}
+            <ThemedButton
               label={saveButtonText}
-              variant="primary"
-              size="lg"
               onPress={handleSave}
               disabled={!hasPrimaryContent}
-              style={{ flex: 1 }}
+              style={styles.record}
             />
+          </View>
+          {onDiscard && (
+            <ScalePressable onPress={onDiscard} style={styles.discard}>
+              <UIText variant="meta" tone="tertiary">Discard draft</UIText>
+            </ScalePressable>
           )}
         </View>
       )}
@@ -230,6 +324,11 @@ interface ReflectionQuestion {
   placeholder: string;
   isActionList?: boolean;
 }
+
+/** The mockup writes the count out — "of five questions", not "of 5". */
+const SPELLED: Record<number, string> = {
+  3: 'three', 4: 'four', 5: 'five', 6: 'six', 7: 'seven',
+};
 
 const REFLECTION_QUESTIONS: ReflectionQuestion[] = [
   {
@@ -264,38 +363,52 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  questionsContainer: {
-    // Removed paddingHorizontal since parent handles it
-  },
-  questionContainer: {
-    marginBottom: Spacing.xxxl,
-  },
-  questionHeader: {
-    marginBottom: Spacing.sm,
-  },
-
-  notesContainer: {
-    marginTop: Spacing.xl,
-  },
-  notesHeader: {
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: Spacing.md,
+    gap: Spacing.md,
+    paddingTop: Spacing.lg,
   },
-  notesTitle: { marginRight: Spacing.sm },
-  actionsContainer: {
+  // The mockup hangs the arrow into the gutter, so the glyph lines up with
+  // the text below it rather than its own box.
+  backArrow: { marginLeft: -6 },
+  mark: { flex: 1 },
+
+  body: {
+    flex: 1,
+    paddingTop: Spacing.xl + 2,
+  },
+  /** `.co-giantl` sits 10px under its numeral. */
+  giantLabel: { marginTop: 10 },
+  question: { marginVertical: Spacing.xl },
+  answer: { flex: 1 },
+
+  /** Five steps, 4px tall, 18px clear of the answer. */
+  progress: {
     flexDirection: 'row',
-    paddingVertical: Spacing.xxl,
+    gap: Spacing.xs,
+    paddingTop: Spacing.layout.cardPadding,
+  },
+  progressStep: { flex: 1, height: 4 },
+
+  footer: {
+    paddingTop: Spacing.xl - 4,
+    paddingBottom: Spacing.layout.tabBarPadding,
     gap: Spacing.md,
   },
+  footerButtons: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  record: { flex: 1 },
+  discard: { alignItems: 'center', paddingVertical: Spacing.xs },
+
   reminderContainer: {
     marginTop: Spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.sm,
   },
-
   androidPickerRow: {
     flexDirection: 'row',
     alignItems: 'center',

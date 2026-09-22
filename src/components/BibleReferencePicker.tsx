@@ -11,12 +11,14 @@ import {
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
-import { Typography } from '../theme/typography';
 import { ALL_BIBLE_BOOKS, BibleBook } from '../data/bibleBooks';
 import { ChevronLeft, Check, ArrowRight, X } from 'lucide-react-native';
-import { Text } from './ui';
+import { Text, textStyle } from './ui';
 
 const CHIP_THRESHOLD = 30;
+
+/** The band runs in Colossal's gutter; it sits under Colossal-width text. */
+const PICKER_GUTTER = Spacing.layout.screenPaddingTight;
 
 type Phase =
     | 'book'
@@ -56,10 +58,10 @@ const BackPill = ({
     <TouchableOpacity
         onPressIn={() => onInteraction?.()}
         onPress={onPress}
-        style={[styles.pill, styles.backPill, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '30' }]}
+        style={[styles.pill, styles.backPill, { backgroundColor: colors.textPrimary, borderColor: colors.textPrimary }]}
     >
-        <ChevronLeft size={14} color={colors.primary} />
-        <Text variant="cell" tone="accent">{label}</Text>
+        <ChevronLeft size={14} color={colors.textInverse} />
+        <Text variant="cell" tone="inverse">{label}</Text>
     </TouchableOpacity>
 );
 
@@ -77,12 +79,13 @@ const ActionPill = ({
     <TouchableOpacity
         onPressIn={() => onInteraction?.()}
         onPress={onPress}
-        style={[styles.pill, { backgroundColor: colors.background, borderColor: colors.border }]}
+        style={[styles.pill, { backgroundColor: colors.backgroundElevated, borderColor: colors.border }]}
     >
         <Text variant="cell">{label}</Text>
     </TouchableOpacity>
 );
 
+/** The blank the writer types into — `.co-pill.field`, dashed and in ochre. */
 const LiveNumberInput = ({
     inputRef,
     value,
@@ -105,11 +108,13 @@ const LiveNumberInput = ({
     onInteraction?: () => void;
     onInvalid?: () => void;
     colors: any;
-}) => (
+}) => {
+    const { style: themeStyle } = useTheme();
+    return (
     <View style={styles.inputWrapper}>
         <TextInput
             ref={inputRef}
-            style={[styles.numberInput, { color: colors.text, borderColor: colors.border }]}
+            style={[styles.numberInput, textStyle(themeStyle, 'cell'), { color: colors.accent, borderColor: colors.accent }]}
             placeholder={placeholder}
             placeholderTextColor={colors.textTertiary}
             keyboardType="number-pad"
@@ -138,14 +143,15 @@ const LiveNumberInput = ({
                 onSubmit();
             }}
             style={[styles.pill, {
-                backgroundColor: value ? colors.primary : colors.background,
-                borderColor: value ? colors.primary : colors.border,
+                backgroundColor: value ? colors.accent : colors.backgroundElevated,
+                borderColor: value ? colors.accent : colors.border,
             }]}
         >
-            {React.createElement(confirmIcon, { size: 14, color: value ? '#fff' : colors.textTertiary })}
+            {React.createElement(confirmIcon, { size: 14, color: value ? colors.textInverse : colors.textTertiary })}
         </TouchableOpacity>
     </View>
-);
+    );
+};
 
 const ChapterPills = ({
     book,
@@ -180,7 +186,7 @@ const ChapterPills = ({
                         key={ch}
                         onPressIn={() => onInteraction?.()}
                         onPress={() => onChapterSelect(ch)}
-                        style={[styles.pill, { backgroundColor: colors.background, borderColor: colors.border }]}
+                        style={[styles.pill, { backgroundColor: colors.backgroundElevated, borderColor: colors.border }]}
                     >
                         <Text variant="cell">{ch}</Text>
                     </TouchableOpacity>
@@ -490,7 +496,7 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
                             key={b.name}
                             onPressIn={() => onInteraction?.()}
                             onPress={() => handleBookSelect(b)}
-                            style={[styles.pill, { backgroundColor: colors.background, borderColor: colors.border }]}
+                            style={[styles.pill, { backgroundColor: colors.backgroundElevated, borderColor: colors.border }]}
                         >
                             <Text variant="cell">{b.name}</Text>
                         </TouchableOpacity>
@@ -637,6 +643,27 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
 
     if (!visible) return null;
 
+    /** What the band is asking for right now. */
+    const prompt = (() => {
+        const book = selectedBook?.name ?? '';
+        switch (phase) {
+            case 'book': return 'Which book?';
+            case 'chapter': return book ? `Which chapter of ${book}?` : 'Which chapter?';
+            case 'suffix': return 'A verse, or leave it at the chapter?';
+            case 'verse': return 'Which verse?';
+            case 'verse-suffix': return 'A range, or leave it there?';
+            case 'range-type': return 'Range to a chapter, or to a verse?';
+            case 'end-chapter': return 'Up to which chapter?';
+            case 'end-verse': return 'Up to which verse?';
+            default: return 'Which book?';
+        }
+    })();
+
+    /** The one line of guidance the mockup carries, on the chapter phase. */
+    const helper = phase === 'chapter' && selectedBook
+        ? `${selectedBook.name} has ${selectedBook.chapters} chapters — type a number or keep scrolling.`
+        : null;
+
     const content = (
         <Animated.View
             style={[
@@ -650,15 +677,27 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
                 },
             ]}
         >
-            <View style={[styles.ribbon, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}>
-                <TouchableOpacity
-                    onPress={onDismiss}
-                    style={[styles.closeBtn, { borderRightColor: colors.border }]}
-                >
-                    <X size={18} color={colors.textTertiary} />
-                </TouchableOpacity>
+            <View style={[styles.ribbon, { backgroundColor: colors.backgroundElevated, borderTopColor: colors.border }]}>
+                {/*
+                 * The band says what it is asking for before it offers the
+                 * pills. design/all-screens.html #refpicker puts that prompt in
+                 * a `.co-label` above the row — without it the strip is a line
+                 * of numbers with no stated question, which is exactly what it
+                 * used to be.
+                 */}
+                <View style={styles.promptRow}>
+                    <Text variant="label" style={styles.prompt} numberOfLines={1}>{prompt}</Text>
+                    <TouchableOpacity
+                        onPress={onDismiss}
+                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                        accessibilityRole="button"
+                        accessibilityLabel="Close reference picker"
+                    >
+                        <X size={16} color={colors.textTertiary} />
+                    </TouchableOpacity>
+                </View>
 
-                <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+                <Animated.View style={{ opacity: fadeAnim }}>
                     <ScrollView
                         horizontal
                         showsHorizontalScrollIndicator={false}
@@ -668,6 +707,10 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
                         {renderContent()}
                     </ScrollView>
                 </Animated.View>
+
+                {helper && (
+                    <Text variant="bodySmall" style={styles.helper}>{helper}</Text>
+                )}
             </View>
         </Animated.View>
     );
@@ -692,43 +735,44 @@ const styles = StyleSheet.create({
         zIndex: 1000,
         backgroundColor: 'transparent',
     },
+    /**
+     * A band across the foot of the screen, not a floating ribbon.
+     *
+     * The mockup seats it on its own ground with a hairline along the top —
+     * the boundary between writing and picking. The old version floated a
+     * rounded, shadowed pill over the text, which is the one thing the design
+     * note for this screen says not to do: it pulls the eye off the sentence.
+     */
     ribbon: {
-        height: 52,
+        borderTopWidth: Spacing.border.hairline,
+        paddingTop: Spacing.lg,
+        paddingBottom: Spacing.md,
+    },
+    promptRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: Spacing.sm,
-        borderRadius: Spacing.borderRadius.lg,
-        borderWidth: 1,
-        overflow: 'hidden',
-        /* High-end subtle glassmorphism */
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 4,
-        marginHorizontal: 12,
-        marginBottom: Platform.OS === 'ios' ? 8 : 12,
+        gap: Spacing.sm,
+        paddingHorizontal: PICKER_GUTTER,
+        marginBottom: Spacing.md,
     },
-    closeBtn: {
-        width: 44,
-        height: '100%',
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderRightWidth: 1,
-    },
+    prompt: { flex: 1 },
     scrollContent: {
         alignItems: 'center',
-        paddingHorizontal: Spacing.sm,
-        gap: Spacing.xs,
+        paddingHorizontal: PICKER_GUTTER,
+        gap: Spacing.sm,
     },
+    helper: {
+        marginTop: Spacing.md,
+        paddingHorizontal: PICKER_GUTTER,
+    },
+    /** `.co-pill` / `.cl-pill` — square, 44 tall, named by its border. */
     pill: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: Spacing.borderRadius.lg,
-        borderWidth: 1,
+        paddingHorizontal: 15,
+        height: Spacing.touchTarget,
+        borderWidth: Spacing.border.hairline,
         justifyContent: 'center',
         alignItems: 'center',
-        minWidth: 44,
+        minWidth: Spacing.touchTarget,
     },
     backPill: {
         flexDirection: 'row',
@@ -739,18 +783,16 @@ const styles = StyleSheet.create({
     inputWrapper: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: Spacing.xs,
-        paddingHorizontal: Spacing.xs,
+        gap: Spacing.sm,
     },
+    /** `.co-pill.field` — dashed and in the accent, so it reads as a blank. */
     numberInput: {
-        fontSize: Typography.size.sm,
-        fontWeight: '500',
-        width: 64,
-        height: 36,
-        borderWidth: 1,
-        borderRadius: Spacing.borderRadius.lg,
-        paddingHorizontal: 14,
-        letterSpacing: 0.1,
+        width: 92,
+        height: Spacing.touchTarget,
+        borderWidth: Spacing.border.hairline,
+        borderStyle: 'dashed',
+        paddingHorizontal: Spacing.md,
+        textAlign: 'center',
     },
 });
 

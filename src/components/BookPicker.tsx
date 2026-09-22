@@ -1,9 +1,20 @@
-import React from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+/**
+ * All 66 books, in two sections.
+ *
+ * design/all-screens.html #books draws this as a list of rows — the name, and
+ * the chapter count hanging off the right edge — not a grid of abbreviations.
+ * The grid was the reason a reader had to know "1Th" meant 1 Thessalonians;
+ * rows have room for the whole name, which is what both styles now use.
+ *
+ * The screen around the list (its mark, the filter field and the giant that
+ * enlarges what you typed) lives in BookStep, since it belongs to the screen
+ * rather than to the list.
+ */
+import React, { useMemo } from 'react';
+import { ScrollView, StyleSheet } from 'react-native';
 import { BibleBook, GREEK_BOOKS, HEBREW_BOOKS } from '../data/bibleBooks';
 import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
-import { Typography } from '../theme/typography';
 import { ScalePressable } from './ScalePressable';
 import { Text } from './ui';
 
@@ -11,186 +22,121 @@ interface BookPickerProps {
     selectedBook?: BibleBook;
     onBookSelect: (book: BibleBook) => void;
     availableBooks?: BibleBook[];
+    /** What the reader has typed into the filter, if anything. */
+    query?: string;
 }
 
-interface BookCardProps {
+/** Does this book answer to what's been typed? Name or abbreviation, either way. */
+export function matchesQuery(book: BibleBook, query: string): boolean {
+    const q = query.trim().toLowerCase();
+    if (!q) return true;
+    return book.name.toLowerCase().includes(q) || book.abbrv.toLowerCase().includes(q);
+}
+
+/** How many of the 66 a filter leaves standing. */
+export function countMatches(query: string): number {
+    return [...HEBREW_BOOKS, ...GREEK_BOOKS].filter(b => matchesQuery(b, query)).length;
+}
+
+/** `.co-book` / `.cl-book` — a row with the count hanging off its right edge. */
+const BookRow = React.memo(({ book, isSelected, onBookSelect }: {
     book: BibleBook;
     isSelected: boolean;
-    colors: any;
     onBookSelect: (book: BibleBook) => void;
-}
+}) => {
+    const { colors } = useTheme();
+    return (
+        <ScalePressable
+            style={[styles.row, { borderBottomColor: colors.border }]}
+            onPress={() => onBookSelect(book)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: isSelected }}
+        >
+            <Text variant="cell" tone={isSelected ? 'accent' : 'primary'}>{book.name}</Text>
+            <Text variant="caption" style={styles.count}>{book.chapters} ch</Text>
+        </ScalePressable>
+    );
+});
 
-const BookCard = React.memo(({ book, isSelected, colors, onBookSelect }: BookCardProps) => (
-    <ScalePressable
-        style={[
-            styles.bookCard,
-            { backgroundColor: colors.cardBackground, borderColor: colors.border + '50' },
-            isSelected && [styles.bookCardSelected, { backgroundColor: colors.accent + '08', borderColor: colors.accent }],
-        ]}
-        onPress={() => onBookSelect(book)}
-    >
-        <Text
-            variant="cell"
-            style={[
-                styles.bookAbbreviation,
-                { color: isSelected ? colors.textPrimary : colors.textSecondary },
-            ]}
-        >
-            {book.abbrv}
-        </Text>
-        <Text
-            variant="caption"
-            style={{ color: isSelected ? colors.accent : colors.textTertiary }}
-        >
-            {book.chapters}
-        </Text>
-    </ScalePressable>
-));
+BookRow.displayName = 'BookRow';
 
 export const BookPicker: React.FC<BookPickerProps> = React.memo(({
     selectedBook,
     onBookSelect,
-    availableBooks
+    availableBooks,
+    query = '',
 }) => {
-    const { colors } = useTheme();
+    const hebrew = useMemo(() => HEBREW_BOOKS.filter(b => matchesQuery(b, query)), [query]);
+    const greek = useMemo(() => GREEK_BOOKS.filter(b => matchesQuery(b, query)), [query]);
 
-    const getFilteredBooks = (books: BibleBook[]): BibleBook[] => {
-        return books;
-    };
-
-    const renderSectionHeader = (title: string, subtitle: string) => (
-        <View style={styles.sectionHeader}>
-            <Text variant="label" tone="secondary" style={styles.sectionTitle}>{title}</Text>
-            <Text variant="caption" style={styles.sectionSubtitle}>{subtitle}</Text>
-            <View style={[styles.sectionLine, { backgroundColor: colors.border }]} />
-        </View>
-    );
-
-    const renderBookGrid = (books: BibleBook[], isGreekBooks = false) => {
-        return (
-            <View style={[
-                styles.booksGrid,
-                isGreekBooks && styles.GreekBooksGrid
-            ]}>
-                {books.map(book => (
-                    <BookCard
-                        key={book.name}
-                        book={book}
-                        isSelected={selectedBook?.name === book.name}
-                        colors={colors}
-                        onBookSelect={onBookSelect}
-                    />
-                ))}
-            </View>
-        );
-    };
-
-    const renderContent = () => {
-        if (availableBooks && availableBooks.length > 0) {
-            return (
-                <View style={styles.booksContainer}>
-                    {renderBookGrid(availableBooks)}
-                </View>
-            )
-        }
-
-        const filteredHB = getFilteredBooks(HEBREW_BOOKS);
-        const filteredGK = getFilteredBooks(GREEK_BOOKS);
-
-        return (
-            <View style={styles.booksContainer}>
-                {/* Hebrew-Aramic Section */}
-                {renderSectionHeader('Hebrew-Aramic Scriptures', '39 books')}
-                {renderBookGrid(filteredHB, false)}
-
-                {/* Greek Section */}
-                {renderSectionHeader('Christian Greek Scriptures', '27 books')}
-                {renderBookGrid(filteredGK, true)}
-            </View>
-        );
-    };
+    const rows = (books: BibleBook[]) => books.map(book => (
+        <BookRow
+            key={book.name}
+            book={book}
+            isSelected={selectedBook?.name === book.name}
+            onBookSelect={onBookSelect}
+        />
+    ));
 
     return (
-        <View style={styles.container}>
-            <ScrollView
-                style={styles.scrollView}
-                contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
-            >
-                {renderContent()}
-            </ScrollView>
-        </View>
+        <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+        >
+            {availableBooks && availableBooks.length > 0 ? (
+                rows(availableBooks.filter(b => matchesQuery(b, query)))
+            ) : (
+                <>
+                    {hebrew.length > 0 && (
+                        <>
+                            <Text variant="label" style={styles.section}>
+                                {`Hebrew-Aramaic · ${HEBREW_BOOKS.length} books`}
+                            </Text>
+                            {rows(hebrew)}
+                        </>
+                    )}
+                    {greek.length > 0 && (
+                        <>
+                            <Text variant="label" style={[styles.section, hebrew.length > 0 && styles.sectionAfter]}>
+                                {`Christian Greek · ${GREEK_BOOKS.length} books`}
+                            </Text>
+                            {rows(greek)}
+                        </>
+                    )}
+                </>
+            )}
+
+            {/* The mockup's own line for a filter that has cut the list down. */}
+            {query.trim().length > 0 && (
+                <Text variant="bodySmall" style={styles.note}>
+                    {hebrew.length + greek.length === 0
+                        ? `Nothing matches “${query.trim()}”. Clear the filter to see all 66.`
+                        : 'Clear the filter to see all 66.'}
+                </Text>
+            )}
+        </ScrollView>
     );
 });
 
 BookPicker.displayName = 'BookPicker';
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        minHeight: 400,
-    },
     scrollView: {
         flex: 1,
     },
     scrollContent: {
         paddingBottom: Spacing.xl,
     },
-    booksContainer: {
-        flex: 1,
-    },
-    sectionHeader: {
-        marginBottom: Spacing.lg,
-        marginTop: Spacing.sm,
-    },
-    sectionTitle: { marginBottom: Spacing.xs },
-    sectionSubtitle: { marginBottom: Spacing.sm },
-    sectionLine: {
-        height: 1,
-        width: 40,
-        borderRadius: Spacing.borderRadius.none,
-    },
-    booksGrid: {
+    row: {
         flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'space-between',
-        marginBottom: Spacing.md,
-        gap: Spacing.sm,
+        alignItems: 'baseline',
+        height: Spacing.touchTarget + 2,
+        borderBottomWidth: Spacing.border.hairline,
     },
-    GreekBooksGrid: {
-        paddingTop: Spacing.md,
-    },
-    bookCard: {
-        width: '31%',
-        aspectRatio: 1.3,
-        borderRadius: Spacing.borderRadius.lg,
-        borderWidth: 1,
-        marginBottom: Spacing.sm,
-        paddingVertical: Spacing.md,
-        paddingHorizontal: Spacing.sm,
-        alignItems: 'center',
-        justifyContent: 'center',
-        position: 'relative',
-    },
-    bookCardSelected: {
-        borderWidth: 1.5,
-    },
-    bookAbbreviation: {
-        textAlign: 'center',
-        marginBottom: 2,
-    },
-    bookAbbreviationSelected: {
-        fontWeight: Typography.weight.semibold,
-    },
-    chapterCountSelected: {
-        fontWeight: Typography.weight.medium,
-    },
-    selectedDot: {
-        position: 'absolute',
-        top: Spacing.sm,
-        right: Spacing.sm,
-        width: 6,
-        height: 6,
-        borderRadius: Spacing.borderRadius.round,
-    },
+    count: { marginLeft: 'auto' },
+    section: { marginBottom: Spacing.md },
+    sectionAfter: { marginTop: Spacing.xl - 2 },
+    note: { paddingTop: Spacing.xl + 2 },
 });

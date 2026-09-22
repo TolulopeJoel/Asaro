@@ -47,14 +47,14 @@ import Animated, {
     useSharedValue, useAnimatedStyle, withSpring, withTiming,
     runOnJS,
 } from 'react-native-reanimated';
+import { ChevronLeft } from 'lucide-react-native';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { LoadingView } from '@/src/components/LoadingView';
 import { Skeleton } from '@/src/components/Skeleton';
 import { Button } from '@/src/components/Button';
 import { HyperlinkedText } from '@/src/components/HyperlinkedText';
 import { Avatar } from '@/src/components/Avatar';
-import { Text } from '@/src/components/ui';
-import { Hero, Screen } from '@/src/components/ui';
+import { Hero, Screen, Segments, Text } from '@/src/components/ui';
 
 
 
@@ -230,12 +230,104 @@ const buildProcessedFeed = (
 
 // ─── Accountability Member Card ───────────────────────────────────────────────
 
+/**
+ * One member's week, in Colossal.
+ *
+ * design/all-screens.html #group draws it as a `.co-row`: a circle, the name,
+ * one line about how they read, and when they last did. The mockup's line is a
+ * reading-pace description the app has never stored, so the row says what the
+ * app actually knows — the streak and the days covered this week.
+ */
+const ColossalMemberRow = ({ member, colors, onPress }: { member: any; colors: any; onPress: () => void }) => {
+    const when = member.readToday ? 'Today' : member.daysThisWeek > 0 ? 'This week' : 'Never';
+    const detail = member.streak > 0
+        ? `${member.streak}-day streak · ${member.daysThisWeek} of 7 this week`
+        : member.daysThisWeek > 0
+            ? `${member.daysThisWeek} of 7 this week`
+            : 'No entries yet';
+
+    return (
+        <ScalePressable
+            onPress={onPress}
+            style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: Spacing.md,
+                paddingVertical: Spacing.md + 3,
+                borderBottomWidth: Spacing.border.hairline,
+                borderBottomColor: colors.border,
+            }}
+        >
+            <Avatar id={member.userId || member.id} name={member.displayName} url={member.photoURL} size={38} radius={19} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+                <Text variant="reference">{member.displayName}{member.isMe ? ' (You)' : ''}</Text>
+                <Text variant="bodySmall" style={{ marginTop: 3 }}>{detail}</Text>
+            </View>
+            <Text variant="meta" tone={member.readToday ? 'accent' : 'tertiary'}>{when}</Text>
+        </ScalePressable>
+    );
+};
+
+/**
+ * One line of the group's activity, in Colossal.
+ *
+ * The Cloth feed is a chain of illustrated cards; Colossal keeps the same
+ * information as `.co-row` — who, what, when — because a monochrome column of
+ * icon badges reads as noise rather than as a timeline.
+ */
+const ColossalFeedRow = ({ item, colors, members }: { item: FeedItem; colors: any; members: any[] }) => {
+    if (item.type === 'separator') {
+        return <Text variant="label" style={{ paddingTop: Spacing.xl, paddingBottom: Spacing.md }}>{item.label}</Text>;
+    }
+
+    const when = formatRelativeTime(item.timestamp);
+
+    if (item.type === 'reading_digest') {
+        const names = item.extraCount > 0
+            ? `${item.names.join(', ')} +${item.extraCount} more`
+            : item.names.join(' & ');
+        return (
+            <View style={{ paddingVertical: Spacing.md + 3, borderBottomWidth: Spacing.border.hairline, borderBottomColor: colors.border }}>
+                <Text variant="reference">{names}</Text>
+                <Text variant="bodySmall" style={{ marginTop: 3 }}>
+                    {`${item.entries.length} ${item.entries.length === 1 ? 'person' : 'people'} read`}
+                </Text>
+                {when ? <Text variant="meta" style={{ marginTop: 6 }}>{when}</Text> : null}
+            </View>
+        );
+    }
+
+    const what =
+        item.type === 'journal_entry' ? `read ${item.bookName ?? ''} ${item.chapters ?? ''}`.trim()
+        : item.type === 'reflection_shared' ? 'shared a reflection'
+        : item.type === 'member_joined' ? 'joined the circle'
+        : item.type === 'member_removed' ? 'has left'
+        : item.type === 'admin_promoted' ? 'earned admin status'
+        : item.type === 'member_absent' ? 'has been away'
+        : item.badgeLabel ? String(item.badgeLabel).toLowerCase()
+        : 'was active';
+
+    return (
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: Spacing.md, paddingVertical: Spacing.md + 3, borderBottomWidth: Spacing.border.hairline, borderBottomColor: colors.border }}>
+            <View style={{ flex: 1, minWidth: 0 }}>
+                <Text variant="reference">{item.userName || 'Someone'}</Text>
+                <Text variant="bodySmall" style={{ marginTop: 3 }}>{what}</Text>
+            </View>
+            {when ? <Text variant="meta">{when}</Text> : null}
+        </View>
+    );
+};
+
 const AccountabilityMemberCard = ({
-    member, colors, styles, onPress,
+    member, colors, styles, onPress, isLockedIn,
 }: {
-    member: any; colors: any; styles: ReturnType<typeof getStyles>; onPress: () => void;
+    member: any; colors: any; styles: ReturnType<typeof getStyles>; onPress: () => void; isLockedIn?: boolean;
 }) => {
     const isMostConsistent = !member.readToday && member.daysThisWeek >= 5;
+
+    if (isLockedIn) {
+        return <ColossalMemberRow member={member} colors={colors} onPress={onPress} />;
+    }
 
     return (
         <ScalePressable
@@ -889,7 +981,7 @@ const sheetStyles = StyleSheet.create({
 
 export default function GroupDetailScreen() {
     const { id: groupId } = useLocalSearchParams<{ id: string }>();
-    const { colors } = useTheme();
+    const { colors, isLockedIn } = useTheme();
     const { user } = useAuth();
 
     const [activities, setActivities] = React.useState<any[]>([]);
@@ -1060,6 +1152,143 @@ export default function GroupDetailScreen() {
 
     const groupStreak: number = groupData?.groupStreak || 0;
     const { pinnedMilestone, feedItems } = buildProcessedFeed(activities, today);
+
+    if (isLockedIn) {
+        /*
+         * design/all-screens.html #group, the `.co` slot.
+         *
+         * How many have read today is the colossal element, and the filters
+         * come straight after it. The horizontal strip of faces Cloth shows
+         * above the tabs is dropped: it says the same thing the giant already
+         * says, and the style allows one colossal element, not one plus a
+         * decorative restatement of it.
+         */
+        return (
+            <Screen>
+                <View style={styles.colossalTop}>
+                    <ScalePressable
+                        onPress={() => router.back()}
+                        accessibilityRole="button"
+                        accessibilityLabel="Back to groups"
+                        hitSlop={Spacing.md}
+                        style={styles.backArrow}
+                    >
+                        <ChevronLeft size={20} color={colors.textTertiary} strokeWidth={2} />
+                    </ScalePressable>
+                    <Text variant="tab" numberOfLines={1} style={{ flex: 1 }}>
+                        {groupData?.name || 'Loading…'}
+                    </Text>
+                    <ScalePressable
+                        onPress={() => router.push('/(tabs)/groups/about' as any)}
+                        accessibilityRole="button"
+                        accessibilityLabel="How groups work"
+                        hitSlop={Spacing.md}
+                    >
+                        <Info size={18} color={colors.textTertiary} />
+                    </ScalePressable>
+                    {isAdmin && (
+                        <ScalePressable
+                            onPress={() => setIsEditModalVisible(true)}
+                            accessibilityRole="button"
+                            accessibilityLabel="Group settings"
+                            hitSlop={Spacing.md}
+                        >
+                            <MoreHorizontal size={18} color={colors.textTertiary} />
+                        </ScalePressable>
+                    )}
+                </View>
+
+                <View style={styles.colossalCount}>
+                    <Text variant="hero">{accountabilityData.readTodayCount}</Text>
+                    <Text variant="label" style={styles.giantLabel}>
+                        {`of ${accountabilityData.totalMembers} read today`}
+                    </Text>
+                </View>
+
+                <View style={styles.colossalSegs}>
+                    <Segments
+                        items={[
+                            { key: 'accountability', label: 'Progress' },
+                            { key: 'feed', label: 'Updates' },
+                            { key: 'members', label: 'Members' },
+                        ]}
+                        value={activeTab}
+                        onChange={key => setActiveTab(key as typeof activeTab)}
+                    />
+                </View>
+
+                {isOffline && (
+                    <Text variant="label" tone="secondary" style={styles.colossalNotice}>
+                        Offline — showing cached data
+                    </Text>
+                )}
+
+                <Animated.ScrollView
+                    ref={scrollViewRef}
+                    contentContainerStyle={styles.colossalScroll}
+                    showsVerticalScrollIndicator={false}
+                >
+                    {activeTab === 'accountability' && (
+                        <>
+                            {accountabilityData.upToDate.concat(accountabilityData.needsSupport).map(member => (
+                                <ColossalMemberRow
+                                    key={member.id}
+                                    member={member}
+                                    colors={colors}
+                                    onPress={() => setSelectedMember(member)}
+                                />
+                            ))}
+                            {accountabilityData.totalMembers === 0 && (
+                                <Text variant="sub">No members yet.</Text>
+                            )}
+                        </>
+                    )}
+
+                    {activeTab === 'members' && sortedMembers.map(member => (
+                        <ColossalMemberRow
+                            key={member.id}
+                            member={member}
+                            colors={colors}
+                            onPress={() => setSelectedMember(member)}
+                        />
+                    ))}
+
+                    {activeTab === 'feed' && (
+                        feedItems.length > 0 ? (
+                            feedItems.map((item: FeedItem) => (
+                                <ColossalFeedRow key={item.id} item={item} colors={colors} members={members} />
+                            ))
+                        ) : (
+                            <Text variant="sub">
+                                {isOffline ? 'Feed unavailable offline.' : 'No activity yet. Be the first!'}
+                            </Text>
+                        )
+                    )}
+                </Animated.ScrollView>
+
+                {selectedMember && (
+                    <MemberProfileSheet
+                        groupId={groupId}
+                        member={selectedMember}
+                        onClose={() => setSelectedMember(null)}
+                        colors={colors}
+                        today={today}
+                        isMe={selectedMember.userId === user?.uid || selectedMember.id === user?.uid}
+                        members={members}
+                        activities={activities}
+                    />
+                )}
+
+                <GroupEditModal
+                    visible={isEditModalVisible}
+                    groupData={groupData}
+                    groupId={groupId}
+                    onClose={() => setIsEditModalVisible(false)}
+                    colors={colors}
+                />
+            </Screen>
+        );
+    }
 
     return (
         <Screen>
@@ -1507,6 +1736,7 @@ export default function GroupDetailScreen() {
                                         member={member}
                                         colors={colors}
                                         styles={styles}
+                                        isLockedIn={isLockedIn}
                                         onPress={() => setSelectedMember(member)}
                                     />
                                 ))}
@@ -1527,6 +1757,7 @@ export default function GroupDetailScreen() {
                                         member={member}
                                         colors={colors}
                                         styles={styles}
+                                        isLockedIn={isLockedIn}
                                         onPress={() => setSelectedMember(member)}
                                     />
                                 ))}
@@ -1615,6 +1846,30 @@ export default function GroupDetailScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const getStyles = (colors: any) => StyleSheet.create({
+    // ── Colossal ──────────────────────────────────────────────────────────
+    colossalTop: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.md,
+        paddingHorizontal: Spacing.layout.screenPaddingTight,
+        paddingTop: Spacing.lg,
+    },
+    backArrow: { marginLeft: -6 },
+    colossalCount: {
+        paddingHorizontal: Spacing.layout.screenPaddingTight,
+        paddingTop: Spacing.xl + 2,
+    },
+    giantLabel: { marginTop: 10 },
+    colossalSegs: { paddingTop: Spacing.xl - 2 },
+    colossalNotice: {
+        paddingHorizontal: Spacing.layout.screenPaddingTight,
+        paddingTop: Spacing.md,
+    },
+    colossalScroll: {
+        paddingHorizontal: Spacing.layout.screenPaddingTight,
+        paddingBottom: Spacing.xxl,
+    },
+
     heroRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
     heroTitle: { flex: 1, minWidth: 0 },
     container: { flex: 1 },

@@ -1,38 +1,82 @@
-import React, { useEffect, useRef } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import { ChevronLeft, Trash2, Check, Share2 } from 'lucide-react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Check, ChevronLeft, X } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { Spacing } from '../../theme/spacing';
-import { Typography } from '../../theme/typography';
 import { BibleBook } from '../../data/bibleBooks';
 import { ChapterRange, VerseRange } from '../../hooks/useEntryHooks';
 import { ReflectionAnswers, ReflectionForm } from '../ReflectionForm';
 import { ScalePressable } from '../ScalePressable';
-import { BookPicker } from '../BookPicker';
+import { BookPicker, countMatches } from '../BookPicker';
 import { ChapterPicker } from '../ChapterPicker';
 import { Confetti, ConfettiRef } from '../Confetti';
-import { Text } from '../ui';
+import { Text, ThemedButton, textStyle } from '../ui';
+import { formatRange, spell } from '../../utils/reference';
+
+/** The canon, for the picker's "N of 66 books match". */
+const TOTAL_BOOKS = 66;
 
 interface BookStepProps {
     selectedBook?: BibleBook;
     onBookSelect: (book: BibleBook) => void;
+    /** Leave the entry — the `.co-top` close button. */
+    onExit: () => void;
 }
 
-export const BookStep = React.memo(({ selectedBook, onBookSelect }: BookStepProps) => {
-    const { colors } = useTheme();
+/**
+ * Choose a book.
+ *
+ * design/all-screens.html #books. There is no count worth enlarging on a
+ * picker, so the giant slot goes to what you have typed — which doubles as
+ * feedback that the filter is live. With the field empty it shows nothing:
+ * the style allows a screen zero colossal elements, never two.
+ */
+export const BookStep = React.memo(({ selectedBook, onBookSelect, onExit }: BookStepProps) => {
+    const { colors, style: themeStyle, isLockedIn } = useTheme();
+    const [query, setQuery] = useState('');
+    const gutter = isLockedIn ? Spacing.layout.screenPaddingTight : Spacing.layout.screenPadding;
+    const matches = countMatches(query);
+
     return (
         <View style={styles.stepContainer}>
-            <ScrollView key="step-book" style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                <View style={styles.stepContent}>
-                    <View style={styles.header}>
-                        <Text variant="label">Passage</Text>
-                        <Text variant="display">What book?</Text>
-                    </View>
-                    <View style={styles.contentArea}>
-                        <BookPicker selectedBook={selectedBook} onBookSelect={onBookSelect} />
-                    </View>
+            <View style={[styles.topBar, { paddingHorizontal: gutter }]}>
+                <Text variant="tab" style={styles.mark}>Choose a book</Text>
+                <ScalePressable onPress={onExit} accessibilityRole="button" accessibilityLabel="Close" hitSlop={Spacing.md}>
+                    <X size={19} color={colors.textTertiary} strokeWidth={1.9} />
+                </ScalePressable>
+            </View>
+
+            {query.trim().length > 0 && (
+                <View style={[styles.giant, { paddingHorizontal: gutter }]}>
+                    <Text variant="heroSmall" tone="accent" numberOfLines={1} adjustsFontSizeToFit>
+                        {query.trim()}
+                    </Text>
+                    <Text variant="label" style={styles.giantLabel}>
+                        {`${matches} of ${TOTAL_BOOKS} books match`}
+                    </Text>
                 </View>
-            </ScrollView>
+            )}
+
+            <View style={[styles.filter, { paddingHorizontal: gutter }]}>
+                <TextInput
+                    style={[
+                        styles.input,
+                        textStyle(themeStyle, 'body'),
+                        { backgroundColor: colors.searchBackground, borderColor: colors.border, color: colors.textPrimary },
+                    ]}
+                    value={query}
+                    onChangeText={setQuery}
+                    placeholder={`Filter ${TOTAL_BOOKS} books…`}
+                    placeholderTextColor={colors.textTertiary}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    accessibilityLabel="Filter books"
+                />
+            </View>
+
+            <View style={[styles.list, { paddingHorizontal: gutter }]}>
+                <BookPicker selectedBook={selectedBook} onBookSelect={onBookSelect} query={query} />
+            </View>
         </View>
     );
 });
@@ -47,6 +91,13 @@ interface ChapterStepProps {
     canContinue: boolean;
 }
 
+/**
+ * Which chapters.
+ *
+ * design/all-screens.html #chapters: the range you have picked is the screen's
+ * colossal element, the grid sits under it, and the one action at the foot
+ * names what it will do — "Use Genesis 12–15" rather than "Continue".
+ */
 export const ChapterStep = React.memo(({
     selectedBook,
     selectedChapters,
@@ -56,46 +107,65 @@ export const ChapterStep = React.memo(({
     onContinue,
     canContinue
 }: ChapterStepProps) => {
-    const { colors } = useTheme();
+    const { colors, isLockedIn } = useTheme();
+    const gutter = isLockedIn ? Spacing.layout.screenPaddingTight : Spacing.layout.screenPadding;
+
+    const start = selectedChapters?.start ?? 0;
+    const end = selectedChapters?.end || start;
+    const picked = start > 0;
+    const range = end !== start ? formatRange(`${start}-${end}`) : `${start}`;
+    const count = picked ? end - start + 1 : 0;
+
     return (
         <View style={styles.stepContainer}>
-            <ScrollView key="step-chapter" style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                <View style={styles.stepContent}>
-                    <View style={styles.header}>
-                        <Text variant="label">Passage</Text>
-                        <Text variant="display">What part?</Text>
-                    </View>
-                    <View style={styles.contentArea}>
-                        <ChapterPicker
-                            selectedBook={selectedBook}
-                            selectedChapters={selectedChapters}
-                            onChapterSelect={onChapterSelect}
-                            onVerseRangeChange={onVerseRangeChange}
-                            allowRange={true}
-                        />
-                    </View>
-                    <View style={styles.navigationContainer}>
-                        <ScalePressable
-                            style={[styles.backButton, { borderColor: colors.border }]}
-                            onPress={onBack}
-                        >
-                            <Text variant="button" tone="secondary" style={styles.backButtonText}>Change book</Text>
-                        </ScalePressable>
+            <View style={[styles.topBar, { paddingHorizontal: gutter }]}>
+                <ScalePressable
+                    onPress={onBack}
+                    accessibilityRole="button"
+                    accessibilityLabel="Back to books"
+                    hitSlop={Spacing.md}
+                    style={styles.backArrow}
+                >
+                    <ChevronLeft size={20} color={colors.textTertiary} strokeWidth={2} />
+                </ScalePressable>
+                <Text variant="tab" numberOfLines={1} style={styles.mark}>
+                    {selectedBook ? `${selectedBook.name} · ${selectedBook.chapters} chapters` : 'Chapters'}
+                </Text>
+            </View>
 
-                        <ScalePressable
-                            style={[
-                                styles.continueButton,
-                                { backgroundColor: colors.accent },
-                                !canContinue && styles.continueButtonDisabled,
-                            ]}
-                            onPress={onContinue}
-                            disabled={!canContinue}
-                        >
-                            <Text variant="body" tone="inverse" style={styles.continueButtonText}>Reflect</Text>
-                        </ScalePressable>
-                    </View>
+            {picked && (
+                <View style={[styles.giant, { paddingHorizontal: gutter }]}>
+                    <Text variant="heroSmall" numberOfLines={1} adjustsFontSizeToFit>{range}</Text>
+                    <Text variant="label" style={styles.giantLabel}>
+                        {`${spell(count)} ${count === 1 ? 'chapter' : 'chapters'} selected`}
+                    </Text>
                 </View>
+            )}
+
+            <ScrollView
+                style={styles.list}
+                contentContainerStyle={[styles.gridScroll, { paddingHorizontal: gutter }]}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+            >
+                <ChapterPicker
+                    selectedBook={selectedBook}
+                    selectedChapters={selectedChapters}
+                    onChapterSelect={onChapterSelect}
+                    onVerseRangeChange={onVerseRangeChange}
+                    allowRange={true}
+                />
             </ScrollView>
+
+            <View style={[styles.stepFooter, { paddingHorizontal: gutter }]}>
+                <ThemedButton
+                    label={picked && selectedBook ? `Use ${selectedBook.name} ${range}` : 'Pick a chapter'}
+                    variant="accent"
+                    block
+                    disabled={!canContinue}
+                    onPress={onContinue}
+                />
+            </View>
         </View>
     );
 });
@@ -108,7 +178,8 @@ interface ReflectionStepProps {
     isEditMode: boolean;
     onBack: () => void;
     onDiscard: () => void;
-    selectedChapters?: ChapterRange;
+    /** Leave the entry entirely — the `.co-top` close button. */
+    onExit: () => void;
     saveButtonText?: string;
 }
 
@@ -120,64 +191,30 @@ export const ReflectionStep = React.memo(({
     isEditMode,
     onBack,
     onDiscard,
-    selectedChapters,
+    onExit,
     saveButtonText
-}: ReflectionStepProps) => {
-    const { colors } = useTheme();
-    return (
-        <View style={styles.stepContainer}>
-            <ScrollView key="step-reflection" style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-                <View style={styles.stepContent}>
-                    <View style={styles.header}>
-                        <Text variant="label">Reflecting on</Text>
-                        <Text variant="display" numberOfLines={2}>{selectionSummary}</Text>
-                    </View>
-                    {!isEditMode && (
-                        <Text variant="body" tone="secondary" style={styles.stepDescription}>
-                            Consider these questions to get the most out of your reading:
-                        </Text>
-                    )}
-                    <View style={styles.contentArea}>
-                        <ReflectionForm
-                            initialAnswers={reflectionAnswers}
-                            onAnswersChange={onAnswersChange}
-                            onSave={onSave}
-                            disabled={false}
-                            saveButtonText={saveButtonText || (isEditMode ? 'Update entry' : 'Record it')}
-                        />
-                    </View>
-
-                    <View style={[styles.reflectionFooter, { borderTopColor: colors.border + '40' }]}>
-                        <ScalePressable
-                            style={styles.footerNavButton}
-                            onPress={onBack}
-                        >
-                            <ChevronLeft size={14} color={colors.textTertiary} />
-                            <Text variant="bodySmall" tone="tertiary">
-                                {`Change chapter${selectedChapters?.end && selectedChapters.end !== selectedChapters.start ? 's' : ''}`}
-                            </Text>
-                        </ScalePressable>
-
-                        {!isEditMode && reflectionAnswers && (
-                            <>
-                                <View style={[styles.footerDivider, { backgroundColor: colors.border }]} />
-                                <ScalePressable
-                                    style={styles.footerDiscardButton}
-                                    onPress={onDiscard}
-                                >
-                                    <Trash2 size={13} color={colors.danger} />
-                                    <Text variant="bodySmall" tone="danger">
-                                        Discard draft
-                                    </Text>
-                                </ScalePressable>
-                            </>
-                        )}
-                    </View>
-                </View>
-            </ScrollView>
-        </View>
-    );
-});
+}: ReflectionStepProps) => (
+    /*
+     * The writing surface owns the whole screen.
+     *
+     * design/all-screens.html #entry gives it its own `.co-top` and its own
+     * footer — there is no step header and no outer scroll, because the answer
+     * band is the thing that scrolls. So this step is a frame and nothing more.
+     */
+    <View style={styles.stepContainer}>
+        <ReflectionForm
+            initialAnswers={reflectionAnswers}
+            onAnswersChange={onAnswersChange}
+            onSave={onSave}
+            disabled={false}
+            saveButtonText={saveButtonText || (isEditMode ? 'Update entry' : 'Record it')}
+            reference={selectionSummary}
+            onExit={onExit}
+            onChangePassage={onBack}
+            onDiscard={!isEditMode && reflectionAnswers ? onDiscard : undefined}
+        />
+    </View>
+));
 
 interface SummaryStepProps {
     selectionSummary: string;
@@ -255,6 +292,34 @@ const styles = StyleSheet.create({
     stepContainer: {
         flex: 1,
     },
+
+    // ── the picker screens ────────────────────────────────────────────────
+    /** `.co-top` — a mark, and the way out. */
+    topBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.md,
+        paddingTop: Spacing.lg,
+    },
+    // The mockup hangs the arrow into the gutter so the glyph, not its box,
+    // lines up with what sits below it.
+    backArrow: { marginLeft: -6 },
+    mark: { flex: 1 },
+    giant: { paddingTop: Spacing.xl + 2 },
+    /** `.co-giantl` sits 10px under its numeral. */
+    giantLabel: { marginTop: 10 },
+    filter: { paddingTop: Spacing.xl - 2, paddingBottom: Spacing.layout.cardPadding },
+    input: {
+        borderWidth: Spacing.border.hairline,
+        paddingHorizontal: Spacing.md + 2,
+        paddingVertical: Spacing.md + 2,
+    },
+    list: { flex: 1 },
+    gridScroll: { paddingTop: Spacing.xl - 2, paddingBottom: Spacing.xl },
+    stepFooter: {
+        paddingTop: Spacing.md + 2,
+        paddingBottom: Spacing.layout.tabBarPadding,
+    },
     scrollView: {
         flex: 1,
     },
@@ -271,7 +336,6 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.xl,
         gap: 4,
     },
-    stepDescription: { marginBottom: Spacing.md },
     contentArea: {
         flex: 1,
         minHeight: 200,
@@ -300,32 +364,6 @@ const styles = StyleSheet.create({
         display: 'none',
     },
     continueButtonText: { textAlign: 'center' },
-    reflectionFooter: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: Spacing.lg,
-        marginTop: Spacing.xl,
-        paddingTop: Spacing.lg,
-        borderTopWidth: StyleSheet.hairlineWidth,
-    },
-    footerNavButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        paddingVertical: Spacing.sm,
-    },
-    footerDivider: {
-        width: 1,
-        height: 14,
-        opacity: 0.4,
-    },
-    footerDiscardButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        paddingVertical: Spacing.sm,
-    },
     summaryContent: {
         justifyContent: 'center',
         gap: Spacing.xxxl,

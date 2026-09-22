@@ -8,7 +8,6 @@ import {
 import { useAuth } from '@/src/context/AuthContext';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
-import { Typography } from '@/src/theme/typography';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { useRouter } from 'expo-router';
 import { Users, CloudOff, RefreshCw, Plus, ChevronRight, Flame } from 'lucide-react-native';
@@ -16,12 +15,11 @@ import { getFirestore, collection, doc, onSnapshot, getDocs, query, where, docum
 import { Button } from '@/src/components/Button';
 import { Skeleton } from '@/src/components/Skeleton';
 import { Avatar } from '@/src/components/Avatar';
-import { Text } from '@/src/components/ui';
-import { Hero, Screen } from '@/src/components/ui';
+import { Hero, Screen, Text, ThemedButton } from '@/src/components/ui';
 
 export default function GroupsScreen() {
     const { user, loading, displayName } = useAuth();
-    const { colors } = useTheme();
+    const { colors, isLockedIn } = useTheme();
     const router = useRouter();
     const db = getFirestore();
     const [joinedGroups, setJoinedGroups] = useState<any[]>([]);
@@ -129,6 +127,97 @@ export default function GroupsScreen() {
     }
 
     const isLoading = loading || checkingGroups;
+
+    const todayStr = (() => {
+        const t = new Date();
+        return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+    })();
+
+    /** How many people across all your circles — the second half of the giant's label. */
+    const people = joinedGroups.reduce((n, g) => n + (g.memberCount || 0), 0);
+
+    if (isLockedIn) {
+        /*
+         * design/all-screens.html #groups, the `.co` slot.
+         *
+         * This is the hardest screen for the style — avatars, member counts,
+         * social chrome — and it holds by making the count of circles the one
+         * colossal element and keeping every row plain: a circle, a name, a
+         * line of numbers, and the share who have read today.
+         */
+        return (
+            <Screen>
+                <View style={styles.colossalTop}>
+                    <Text variant="tab">Better Together</Text>
+                </View>
+
+                <ScrollView
+                    ref={scrollViewRef}
+                    contentContainerStyle={styles.colossalScroll}
+                    showsVerticalScrollIndicator={false}
+                >
+                    <Text variant="hero">{joinedGroups.length}</Text>
+                    <Text variant="label" style={styles.giantLabel}>
+                        {`${joinedGroups.length === 1 ? 'circle' : 'circles'}${people ? ` · ${people} people` : ''}`}
+                    </Text>
+
+                    {(isOffline || isLoading) && (
+                        <Text variant="label" tone="secondary" style={styles.colossalNotice}>
+                            {isOffline ? "Offline — showing cached groups" : 'Syncing your groups…'}
+                        </Text>
+                    )}
+
+                    {joinedGroups.length > 0 && (
+                        <>
+                            <View style={[styles.rule, { backgroundColor: colors.border }]} />
+                            <Text variant="label" style={styles.colossalSection}>My groups</Text>
+                            {joinedGroups.map(group => {
+                                const members = group.memberCount || 0;
+                                const readToday = group.readTodayDate === todayStr ? (group.readTodayCount || 0) : 0;
+                                const percent = members > 0 ? Math.round((readToday / members) * 100) : 0;
+
+                                return (
+                                    <ScalePressable
+                                        key={group.id}
+                                        onPress={() => router.push(`/(tabs)/groups/${group.id}` as any)}
+                                        style={[styles.colossalRow, { borderBottomColor: colors.border }]}
+                                    >
+                                        <Avatar id={group.id} name={group.name} url={group.photoURL} size={38} radius={19} />
+                                        <View style={styles.colossalRowMain}>
+                                            <Text variant="reference">{group.name}</Text>
+                                            <Text variant="bodySmall" style={styles.colossalSnip}>
+                                                {`${members} ${members === 1 ? 'member' : 'members'} · ${readToday} read today`}
+                                            </Text>
+                                        </View>
+                                        {/* Ochre means today is going well; grey means it isn't yet. */}
+                                        <Text variant="meta" tone={percent >= 50 ? 'accent' : 'tertiary'}>
+                                            {`${percent}%`}
+                                        </Text>
+                                    </ScalePressable>
+                                );
+                            })}
+                        </>
+                    )}
+
+                    <View style={[styles.rule, { backgroundColor: colors.border }]} />
+                    <Text variant="label" style={styles.colossalSection}>
+                        {joinedGroups.length > 0 ? 'Join another' : 'Join a circle'}
+                    </Text>
+                    {joinedGroups.length === 0 && (
+                        <Text variant="sub" style={styles.colossalBlurb}>
+                            Accountability is a team sport. Join a circle so someone notices when
+                            you don&apos;t read.
+                        </Text>
+                    )}
+                    <ThemedButton
+                        label="Enter Group Code"
+                        block
+                        onPress={() => router.push('/(tabs)/groups/join' as any)}
+                    />
+                </ScrollView>
+            </Screen>
+        );
+    }
 
     return (
         <Screen>
@@ -270,6 +359,32 @@ export default function GroupsScreen() {
 
 const styles = StyleSheet.create({
     heroSub: { marginTop: Spacing.sm },
+
+    // ── Colossal ──────────────────────────────────────────────────────────
+    colossalTop: {
+        paddingHorizontal: Spacing.layout.screenPaddingTight,
+        paddingTop: Spacing.lg,
+    },
+    colossalScroll: {
+        paddingHorizontal: Spacing.layout.screenPaddingTight,
+        paddingTop: Spacing.xl + 2,
+        paddingBottom: Spacing.xxl,
+    },
+    giantLabel: { marginTop: 10 },
+    colossalNotice: { marginTop: Spacing.lg },
+    /** `.co-hr` */
+    rule: { height: Spacing.border.hairline, marginVertical: Spacing.xl + 2 },
+    colossalSection: { marginBottom: Spacing.md - 2 },
+    colossalRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.md,
+        paddingVertical: Spacing.md + 3,
+        borderBottomWidth: Spacing.border.hairline,
+    },
+    colossalRowMain: { flex: 1, minWidth: 0 },
+    colossalSnip: { marginTop: 3 },
+    colossalBlurb: { marginBottom: Spacing.lg, marginTop: -Spacing.xs },
     container: {
         flex: 1,
     },
