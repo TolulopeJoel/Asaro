@@ -165,7 +165,7 @@ export default function AuthScreen() {
     return (
         <Screen>
             <Hero>
-                <Text variant="display" tone="inverse">
+                <Text variant="display" tone="onBand">
                     {isSignUp ? 'Create\nAccount' : 'Welcome\nBack'}
                 </Text>
             </Hero>

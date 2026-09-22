@@ -1,5 +1,3 @@
-import { Flashback } from '@/src/components/Flashback';
-import { WeeklyStreak } from '@/src/components/WeeklyStreak';
 import {
     getTotalEntryCount,
     JournalEntry,
@@ -7,18 +5,16 @@ import {
     getLastCompletedReadingItemId,
     checkEntryCoversChapters,
     toggleReadingItem,
-    getRecentStudyTopics,
-    getDaysSinceLastEntry,
 } from "@/src/data/database";
 import { READING_PLAN_DATA, ReadingItem } from "@/src/data/readingPlanData";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { Spacing } from "@/src/theme/spacing";
 import { Typography } from "@/src/theme/typography";
-import { Book, Settings, ArrowRight, Notebook } from "lucide-react-native";
+import { ArrowRight } from "lucide-react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Link, useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
-import { DeviceEventEmitter, ScrollView, StyleSheet, Text, View } from "react-native";
+import { DeviceEventEmitter, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { JournalEntryDetail } from '@/src/components/JournalEntryDetail';
 import { WavyAddIcon } from '@/src/components/WavyAddIcon';
@@ -30,71 +26,18 @@ import { Share } from 'react-native';
 import { useAlert } from '@/src/context/AlertContext';
 import { deleteJournalEntry } from '@/src/data/database';
 import { fetchWeeklyStreakData, DayStatus } from '@/src/components/WeeklyStreak';
-import { ActionReminders, fetchActionRemindersData, EnhancedActionItem } from '@/src/components/ActionReminders';
-import { StudyReminders } from '@/src/components/StudyReminders';
 import { fetchFlashbackData } from '@/src/components/Flashback';
 import { getDailyTitle } from '@/src/data/homeTitles';
 import { LockedInHome } from '@/src/components/home/LockedInHome';
+import { ClothHome } from '@/src/components/home/ClothHome';
 import { Confetti, ConfettiRef } from '@/src/components/Confetti';
 import { formatDateToLocalString } from '@/src/utils/dateUtils';
-import { STORAGE_KEYS } from '@/src/storage/storageKeys';
-import {
-    Card,
-    ClothMark,
-    Hero,
-    Screen,
-    Text as UIText,
-    ThemedButton,
-} from '@/src/components/ui';
+import { Screen, Text as UIText } from '@/src/components/ui';
 
 
 const DRAFT_KEY = "reflection_draft";
-import { LucideIcon } from "lucide-react-native";
-import { WelcomeBack } from '@/src/components/WelcomeBack';
 
-interface StatCardProps {
-    icon: LucideIcon;
-    value: number;
-    label: string;
-    unit?: string;
-}
-
-
-/**
- * The stat on Home is the screen's one enlarged element, so it takes `hero`:
- * Colossal's 116px giant (.co-giant.n) and Cloth's 34px stat numeral
- * (.cl-statn). It was set to `display`, which is why Locked In rendered the
- * count at 40px and lost the whole point of the style.
- *
- * The mockup sets it straight on the page ground under its own eyebrow, with
- * no panel around it (.co-giant + .co-giantl).
- */
-const StatCard = React.memo(({ icon, value, label, unit }: StatCardProps) => {
-    return (
-        <View style={styles.statCard}>
-            <View style={styles.statRow}>
-                <UIText variant="hero">{value}</UIText>
-                {unit ? <UIText variant="bodySmall" tone="secondary">{unit}</UIText> : null}
-            </View>
-            <UIText variant="label">{label}</UIText>
-        </View>
-    );
-});
-
-interface QuickStatsProps {
-    totalEntries: number;
-}
-
-const QuickStats = React.memo(({ totalEntries }: QuickStatsProps) => {
-    return (
-        <View style={styles.statsContainer}>
-            <StatCard icon={Notebook} value={totalEntries} label="Entries so far" />
-        </View>
-    );
-});
-
-// Shared by the normal NextReading card and LockedInHome so tapping "next reading"
-// behaves identically in both modes.
+// Shared by both home compositions so tapping "next reading" behaves identically.
 async function handleNextReadingPress(
     nextItem: ReadingItem,
     router: ReturnType<typeof useRouter>,
@@ -139,39 +82,6 @@ async function handleNextReadingPress(
         });
     }
 }
-
-interface NextReadingProps {
-    nextItem: ReadingItem | null;
-    onRefresh: () => void;
-}
-
-const NextReading = React.memo(({ nextItem, onRefresh }: NextReadingProps) => {
-    const router = useRouter();
-
-    const handlePress = useCallback(() => {
-        if (!nextItem) return;
-        handleNextReadingPress(nextItem, router, onRefresh);
-    }, [nextItem, router, onRefresh]);
-
-    if (!nextItem) return null;
-
-    return (
-        <View>
-            <UIText variant="label">Today</UIText>
-            <UIText variant="display" style={styles.readingTitle}>
-                {nextItem.book} {nextItem.chapters}
-            </UIText>
-            <UIText variant="bodySmall" tone="secondary">{nextItem.section}</UIText>
-            <ThemedButton
-                label="Begin reflection"
-                onPress={handlePress}
-                block
-                style={styles.readingCta}
-                accessibilityHint={`Opens a reflection for ${nextItem.book} ${nextItem.chapters}`}
-            />
-        </View>
-    );
-});
 
 const FloatingActionButton = React.memo(() => {
     const { colors } = useTheme();
@@ -235,10 +145,7 @@ const DraftBar = React.memo(() => {
 export default function Index() {
     const [stats, setStats] = useState({ totalEntries: 0 });
     const [nextReading, setNextReading] = useState<ReadingItem | null>(null);
-    const [topics, setTopics] = useState<JournalEntry[]>([]);
-    const [daysAway, setDaysAway] = useState<number | null>(null);
     const [weekDays, setWeekDays] = useState<DayStatus[]>([]);
-    const [actionReminders, setActionReminders] = useState<{ pinned: EnhancedActionItem[], rotating: EnhancedActionItem[] } | null>(null);
     const [flashbackEntry, setFlashbackEntry] = useState<{ entry: JournalEntry, type: 'year' | 'month' | 'random' } | null>(null);
     const [draftExists, setDraftExists] = useState(false);
     const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
@@ -249,7 +156,7 @@ export default function Index() {
     const { showAlert } = useAlert();
     const scrollViewRef = useRef<ScrollView>(null);
     const confettiRef = useRef<ConfettiRef>(null);
-    const { colors, isLockedIn } = useTheme();
+    const { isLockedIn } = useTheme();
     const router = useRouter();
 
     const loadStats = useCallback(async () => {
@@ -311,28 +218,19 @@ export default function Index() {
             const [
                 newStats,
                 newNextReading,
-                newTopics,
                 newWeekDays,
-                newActionReminders,
                 newFlashback,
-                newDaysAway
             ] = await Promise.all([
                 loadStats(),
                 loadNextReading(),
-                getRecentStudyTopics(7),
                 fetchWeeklyStreakData(),
-                fetchActionRemindersData(),
                 fetchFlashbackData(),
-                getDaysSinceLastEntry()
             ]);
 
             setStats(newStats);
             setNextReading(newNextReading);
-            setTopics(newTopics);
             setWeekDays(newWeekDays);
-            setActionReminders(newActionReminders);
             setFlashbackEntry(newFlashback);
-            setDaysAway(newDaysAway);
 
             // Check for weekly streak celebration
             checkCelebration(newWeekDays);
@@ -438,8 +336,18 @@ export default function Index() {
     }, [nextReading, router, loadHomeData]);
 
     /**
-     * The flashback, flattened to the three strings the Colossal screen shows.
-     * Cloth's <Flashback> card renders the same entry with its own chrome.
+     * "Sunday, 21 September" — the date under Cloth's hero title.
+     *
+     * The band says what day it is because Cloth's home is the one screen that
+     * greets you; Colossal states the reading instead and skips the date.
+     */
+    const homeDateLine = useMemo(
+        () => new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }),
+        []
+    );
+
+    /**
+     * The flashback, flattened to the three strings both home screens show.
      */
     const flashbackForLockedIn = useMemo(() => {
         if (!flashbackEntry) return null;
@@ -547,48 +455,35 @@ export default function Index() {
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
-                <Hero>
-                    <View style={styles.headerTitleRow}>
-                        <UIText
-                            variant="display"
-                            tone="inverse"
-                            style={styles.title}
-                            numberOfLines={2}
-                        >
-                            {getDailyTitle()}
-                        </UIText>
-                        <ScalePressable
-                            style={styles.settingsButton}
-                            onPress={() => router.push('/settings')}
-                            accessibilityRole="button"
-                            accessibilityLabel="Settings"
-                        >
-                            <Settings size={19} color={colors.accent} />
-                        </ScalePressable>
-                    </View>
-                </Hero>
-
-                <View style={styles.body}>
                 {isLoading ? (
                     <View style={{ height: 400, justifyContent: 'center' }}>
                         <LoadingView size={48} />
                     </View>
                 ) : (
-                    <>
-                        <WelcomeBack daysAway={daysAway} />
-                        <QuickStats totalEntries={stats.totalEntries} />
-                        <NextReading nextItem={nextReading} onRefresh={loadHomeData} />
-                        <WeeklyStreak weekDays={weekDays} />
-                        <ActionReminders
-                            pinnedItems={actionReminders?.pinned}
-                            rotatingItems={actionReminders?.rotating}
-                            onEntryPress={handleEntryPress}
-                        />
-                        <StudyReminders topics={topics} onEntryPress={handleEntryPress} />
-                        <Flashback flashbackData={flashbackEntry} onEntryPress={handleEntryPress} />
-                    </>
+                    /*
+                     * design/all-screens.html #home, the `.cl` slot: four blocks
+                     * under the band, in this order. WelcomeBack, the action
+                     * reminders and the study reminders are drawn on neither
+                     * style's Home — the design lists exactly "daily title, next
+                     * reading, weekly streak, entry count and the flashback" —
+                     * so they no longer render here.
+                     */
+                    <ClothHome
+                        greeting={getDailyTitle()}
+                        dateLine={homeDateLine}
+                        reading={nextReading}
+                        readingNumber={nextReading?.id}
+                        weekDays={weekDays}
+                        entryCount={stats.totalEntries}
+                        flashback={flashbackForLockedIn}
+                        onBeginReflection={handleBeginReflection}
+                        onSettings={() => router.push('/settings')}
+                        onWeekPress={() => router.push('/stats')}
+                        onFlashbackPress={
+                            flashbackEntry ? () => handleEntryPress(flashbackEntry.entry) : undefined
+                        }
+                    />
                 )}
-                </View>
             </ScrollView>
 
             <Confetti ref={confettiRef} />

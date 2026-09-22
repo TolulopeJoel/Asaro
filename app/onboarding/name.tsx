@@ -97,7 +97,7 @@ export default function NameScreen() {
         <Screen>
             <Hero>
                 <Text variant="label" tone="onHero" style={styles.heroStep}>Step 1 of 3</Text>
-                <Text variant="display" tone="inverse">Hello.</Text>
+                <Text variant="display" tone="onBand">Hello.</Text>
             </Hero>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

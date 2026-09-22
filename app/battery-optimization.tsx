@@ -79,7 +79,7 @@ export default function BatteryOptimizationScreen() {
         <Screen>
             <Hero>
                 <Text variant="label" tone="onHero" style={styles.heroStep}>Almost there</Text>
-                <Text variant="display" tone="inverse" style={styles.heroTitle}>One last thing</Text>
+                <Text variant="display" tone="onBand" style={styles.heroTitle}>One last thing</Text>
             </Hero>
 
 

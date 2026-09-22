@@ -1,5 +1,5 @@
 /**
- * The head of a book's own screen, in Colossal.
+ * The head of a book's own screen.
  *
  * The design's note on this screen is the reason it looks the way it does:
  * there is no single number here worth enlarging, so the book's name takes the
@@ -51,8 +51,18 @@ export const BookDetailHeader = React.memo(({
 }: BookDetailHeaderProps) => {
     const { colors, isLockedIn } = useTheme();
 
-    // Cloth keeps its own header; the breadcrumb row above already names the book.
-    if (!isLockedIn) return null;
+    /*
+     * Cloth puts the book's name and its stats on the hero band (see the
+     * library screen's header zone), so all that is left for the list is the
+     * `.cl-label` that opens the run of entries.
+     */
+    if (!isLockedIn) {
+        return (
+            <View style={styles.clothHeader}>
+                <Text variant="label">Your entries</Text>
+            </View>
+        );
+    }
 
     const chapters = totalChapters
         ? `${coveredCount} of ${totalChapters} chapters`
@@ -89,6 +99,22 @@ const styles = StyleSheet.create({
         height: StyleSheet.hairlineWidth,
         marginVertical: Spacing.xl + 2,
     },
+    /** `.cl-body.tight` opens straight onto its label. */
+    clothHeader: { paddingTop: Spacing.md },
+    clothStillAhead: { paddingTop: Spacing.lg },
+    clothStillAheadLabel: { marginBottom: Spacing.sm },
+    /** `.cl-panel` holding the chips, wrapped at a 6px gap. */
+    clothChipPanel: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: Spacing.xs + 2,
+        padding: Spacing.layout.cardPadding,
+    },
+    clothChip: {
+        paddingVertical: Spacing.sm - 2,
+        paddingHorizontal: Spacing.md - 1,
+    },
+    clothChipLabel: { fontWeight: '600' },
     chips: {
         flexDirection: 'row',
         flexWrap: 'wrap',
@@ -125,7 +151,27 @@ export interface StillAheadProps {
  */
 export const StillAhead = React.memo(({ ranges }: StillAheadProps) => {
     const { colors, isLockedIn } = useTheme();
-    if (!isLockedIn || ranges.length === 0) return null;
+    if (ranges.length === 0) return null;
+
+    if (!isLockedIn) {
+        /*
+         * Cloth gathers the chips into one `.cl-panel` — the chips are ecru
+         * cut-outs of the page showing through the panel, which is the same
+         * figure/ground move the grid cells make on the chapter picker.
+         */
+        return (
+            <View style={styles.clothStillAhead}>
+                <Text variant="label" style={styles.clothStillAheadLabel}>Still ahead</Text>
+                <View style={[styles.clothChipPanel, { backgroundColor: colors.backgroundSubtle }]}>
+                    {ranges.map((range) => (
+                        <View key={range} style={[styles.clothChip, { backgroundColor: colors.background }]}>
+                            <Text variant="bodySmall" tone="primary" style={styles.clothChipLabel}>{range}</Text>
+                        </View>
+                    ))}
+                </View>
+            </View>
+        );
+    }
 
     return (
         <View>

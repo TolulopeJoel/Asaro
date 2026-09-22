@@ -196,16 +196,26 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
             );
         }
 
+        /*
+         * design/all-screens.html #themesintro, the `.cl` slot: a centred
+         * column in a 34px gutter. Cloth sets the privacy line between two
+         * hairlines just as Colossal does — it is the one sentence on this
+         * screen that must not be skimmed past.
+         */
         return (
-            <View style={styles.center}>
-                <Sparkles size={40} color={colors.accent} />
+            <View style={styles.clothCentre}>
+                <Sparkles size={34} color={colors.accent} strokeWidth={1.5} />
                 <UIText variant="title" style={styles.centred}>Find your themes</UIText>
                 <UIText variant="body" tone="secondary" style={styles.centred}>
                     Àṣàrò can group your entries by what you keep coming back to. It needs a
-                    one-time 23MB download, then it works offline — your reflections are never
-                    sent anywhere.
+                    one-time 23MB download, then it works offline.
                 </UIText>
-                <Button label="Download (23MB)" onPress={handleDownload} />
+                <View style={[styles.clothPledge, { borderColor: colors.border }]}>
+                    <UIText variant="sub" tone="primary" style={styles.centred}>
+                        Your reflections are never sent anywhere.
+                    </UIText>
+                </View>
+                <ThemedButton label="Download (23MB)" onPress={handleDownload} />
             </View>
         );
     }
@@ -257,15 +267,25 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
             );
         }
 
+        /*
+         * design/all-screens.html #themesearly, the `.cl` slot. Cloth states
+         * the shortfall as a sentence and draws the same two-part bar under it,
+         * in indigo against the hairline rather than ochre against the surface.
+         */
         return (
-            <View style={styles.center}>
-                <Sparkles size={40} color={colors.textTertiary} />
+            <View style={styles.clothCentre}>
+                <Sparkles size={34} color={colors.textMuted} strokeWidth={1.5} />
                 <UIText variant="title" style={styles.centred}>Not yet</UIText>
                 <UIText variant="body" tone="secondary" style={styles.centred}>
                     You have {entryCount} {entryCount === 1 ? 'entry' : 'entries'} with enough
                     written in them. Themes start to mean something around {MIN_ENTRIES} — before
                     that they mostly describe the reading plan rather than you.
                 </UIText>
+                <View style={styles.clothBar}>
+                    <View style={{ flex: Math.max(entryCount, 0.001), height: 6, backgroundColor: colors.textPrimary }} />
+                    <View style={{ flex: Math.max(MIN_ENTRIES - entryCount, 0.001), height: 6, backgroundColor: colors.border }} />
+                </View>
+                <UIText variant="label">{`${entryCount} of ${MIN_ENTRIES}`}</UIText>
             </View>
         );
     }
@@ -315,7 +335,7 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
                      * here is what to do with it. */
                     <UIText variant="sub" style={styles.colossalIntro}>Name the ones you recognise.</UIText>
                 ) : (
-                    <UIText variant="bodySmall" tone="tertiary" style={styles.intro}>
+                    <UIText variant="bodySmall" tone="secondary" style={styles.intro}>
                         {clusters.length} {clusters.length === 1 ? 'pattern' : 'patterns'} across your
                         entries. Name the ones you recognise.
                     </UIText>
@@ -406,13 +426,10 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
                 return (
                     <ScalePressable
                         onPress={() => setOpenIndex(index)}
-                        style={[
-                            styles.card,
-                            { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder },
-                        ]}
+                        style={[styles.card, { backgroundColor: colors.backgroundSubtle }]}
                     >
                         {savedName && (
-                            <UIText variant="subtitle">{savedName.name}</UIText>
+                            <UIText variant="subtitle" style={styles.clothName}>{savedName.name}</UIText>
                         )}
 
                         <View style={styles.cardHeader}>
@@ -598,6 +615,21 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
 
+    /** `.cl` themes states: centred in a 34px gutter, gap 16. */
+    clothCentre: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: Spacing.lg,
+        paddingHorizontal: Spacing.xxl + 2,
+    },
+    clothPledge: {
+        borderTopWidth: Spacing.border.hairline,
+        borderBottomWidth: Spacing.border.hairline,
+        paddingVertical: 11,
+    },
+    clothBar: { flexDirection: 'row', gap: 3, width: '100%' },
+
     center: {
         flex: 1,
         alignItems: 'center',
@@ -607,17 +639,29 @@ const styles = StyleSheet.create({
     },
     centred: { textAlign: 'center' },
     intro: { paddingBottom: Spacing.md },
-    list: { padding: Spacing.layout.screenPadding, paddingBottom: 80 },
-    card: {
-        borderWidth: 1,
-        borderRadius: Spacing.borderRadius.none,
-        padding: Spacing.lg,
-        marginBottom: Spacing.md,
-        gap: Spacing.sm,
+    clothNameCta: { marginTop: Spacing.sm },
+    list: {
+        paddingHorizontal: Spacing.layout.screenPadding,
+        paddingTop: Spacing.layout.cardPadding,
+        paddingBottom: 80,
     },
-    cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    /**
+     * `.cl-panel{background:var(--panel); padding:18px}` — filled, never
+     * outlined. Cloth separates by colour block; the 1px border this used to
+     * carry is Colossal's device, and having both made the panel read as a
+     * card from a third design.
+     */
+    card: {
+        padding: Spacing.layout.cardPadding,
+        marginBottom: Spacing.md,
+        gap: 0,
+    },
+    /** `.cl-h.md` name, 7px clear of the count line under it. */
+    clothName: { marginBottom: 7 },
+    cardHeader: { flexDirection: 'row', alignItems: 'baseline', gap: 10, marginBottom: 11 },
     books: { flex: 1 },
-    snippet: { gap: 2, paddingTop: 6 },
+    /** A reference line at 3px, then its snippet — the mockup's own rhythm. */
+    snippet: { gap: 3, paddingBottom: 10 },
     nameCta: {
         marginTop: Spacing.sm,
         borderWidth: 1,

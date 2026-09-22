@@ -10,7 +10,8 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "verify:ml": "node scripts/verify-tokenizer.mjs && node scripts/verify-theme-matching.mjs",
-    "check:glyphs": "node scripts/check-glyphs.mjs"
+    "check:glyphs": "node scripts/check-glyphs.mjs",
+    "check:design": "node scripts/check-design.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/archivo": "^0.4.2",

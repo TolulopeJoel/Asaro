@@ -1,6 +1,5 @@
 import { MonthGrid } from '@/src/components/stats/MonthGrid';
 import { LoadingView } from '@/src/components/LoadingView';
-import { StatCard } from '@/src/components/stats/StatCard';
 import { getDailyEntryCounts, getFirstEntryDate } from '@/src/data/database';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
@@ -10,7 +9,7 @@ import React, { useCallback, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { ChevronLeft } from 'lucide-react-native';
 import { ScalePressable } from '@/src/components/ScalePressable';
-import { Card, Hero, Screen, Text as UIText } from '@/src/components/ui';
+import { Hero, Screen, Text as UIText } from '@/src/components/ui';
 
 /**
  * The longest and current unbroken runs, with the dates they cover.
@@ -161,47 +160,63 @@ export default function StatsScreen() {
 
     const { longest, current } = React.useMemo(() => runs(state.allTimeData), [state.allTimeData]);
 
-    /** `.co-label` over a figure, with when it happened hanging off the right. */
-    const Run = ({ label, run, accent }: { label: string; run: Run | null; accent?: boolean }) => (
-        <>
-            <View style={[styles.rule, { backgroundColor: colors.border }]} />
-            <View style={styles.runRow}>
-                <View>
+    /**
+     * A run of unbroken days.
+     *
+     * Colossal sets it between rules with the dates hanging off the right;
+     * Cloth gathers the same three lines into a `.cl-panel`. Both are what
+     * their mockup draws.
+     */
+    const Run = ({ label, run, accent }: { label: string; run: Run | null; accent?: boolean }) => {
+        const days = run ? `${run.days} ${run.days === 1 ? 'day' : 'days'}` : 'None yet';
+        const when = run
+            ? label === 'Current run'
+                ? `since ${dayMonth(run.from)}`
+                : `${dayMonth(run.from)}–${dayMonth(run.to)}`
+            : null;
+
+        if (!isLockedIn) {
+            return (
+                <View style={[styles.clothRunPanel, { backgroundColor: colors.backgroundSubtle }]}>
                     <UIText variant="label" style={styles.runLabel}>{label}</UIText>
-                    <UIText variant="subtitle" tone={accent ? 'accent' : 'primary'}>
-                        {run ? `${run.days} ${run.days === 1 ? 'day' : 'days'}` : 'None yet'}
-                    </UIText>
+                    <UIText variant="subtitle" tone={accent ? 'accent' : 'primary'}>{days}</UIText>
+                    {when && <UIText variant="bodySmall" style={styles.clothRunWhen}>{when}</UIText>}
                 </View>
-                {run && (
-                    <UIText variant="meta">
-                        {label === 'Current run'
-                            ? `since ${dayMonth(run.from)}`
-                            : `${dayMonth(run.from)}–${dayMonth(run.to)}`}
-                    </UIText>
-                )}
-            </View>
-        </>
-    );
+            );
+        }
+
+        return (
+            <>
+                <View style={[styles.rule, { backgroundColor: colors.border }]} />
+                <View style={styles.runRow}>
+                    <View>
+                        <UIText variant="label" style={styles.runLabel}>{label}</UIText>
+                        <UIText variant="subtitle" tone={accent ? 'accent' : 'primary'}>{days}</UIText>
+                    </View>
+                    {when && <UIText variant="meta">{when}</UIText>}
+                </View>
+            </>
+        );
+    };
 
     const renderHeader = useCallback(() => (
         <View style={styles.monthHeader}>
-            {/* The counts sit on cloth, as two panels — the mockup's Stats
-                screen leads with the figures, not with the grid. */}
-            <Card style={styles.statsCard}>
-                <View style={styles.statsRow}>
-                    <StatCard
-                        label="completed"
-                        value={state.currentMonthStats.completed}
-                        color={colors.textPrimary}
-                    />
-                    <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-                    <StatCard
-                        label="total days"
-                        value={state.currentMonthStats.total}
-                        color={colors.textSecondary}
-                    />
+            {/*
+              * design/all-screens.html #stats, the `.cl` slot: two panels side
+              * by side, each a numeral over its label. Cloth leads with the
+              * figures rather than the grid — it has no colossal slot to spend,
+              * so the two `.cl-statn` numerals carry the screen between them.
+              */}
+            <View style={styles.clothStatsRow}>
+                <View style={[styles.clothStatPanel, { backgroundColor: colors.backgroundSubtle }]}>
+                    <UIText variant="hero">{state.currentMonthStats.completed}</UIText>
+                    <UIText variant="caption" tone="secondary" style={styles.clothStatLabel}>completed</UIText>
                 </View>
-            </Card>
+                <View style={[styles.clothStatPanel, { backgroundColor: colors.backgroundSubtle }]}>
+                    <UIText variant="hero" tone="secondary">{state.currentMonthStats.total}</UIText>
+                    <UIText variant="caption" tone="secondary" style={styles.clothStatLabel}>total days</UIText>
+                </View>
+            </View>
             <UIText variant="label" style={styles.monthLabel}>{currentMonthName}</UIText>
         </View>
     ), [colors, currentMonthName, state.currentMonthStats]);
@@ -251,8 +266,19 @@ export default function StatsScreen() {
                 </>
             ) : (
                 <Hero>
-                    <UIText variant="display" tone="inverse">{headerTitle}</UIText>
-                    <UIText variant="body" tone="onHero" style={styles.heroSub}>{currentMonthName} {new Date().getFullYear()}</UIText>
+                    <ScalePressable
+                        onPress={() => router.back()}
+                        accessibilityRole="button"
+                        accessibilityLabel="Back"
+                        hitSlop={Spacing.md}
+                        style={styles.clothBack}
+                    >
+                        <ChevronLeft size={20} color={colors.accent} strokeWidth={1.9} />
+                    </ScalePressable>
+                    <UIText variant="display" tone="onBand" style={styles.clothHeroTitle}>{headerTitle}</UIText>
+                    <UIText variant="sub" tone="onHero" style={styles.heroSub}>
+                        {`${currentMonthName} ${new Date().getFullYear()}`}
+                    </UIText>
                 </Hero>
             )}
 
@@ -272,12 +298,12 @@ export default function StatsScreen() {
                     ListHeaderComponent={isLockedIn
                         ? <View style={[styles.rule, { backgroundColor: colors.border }]} />
                         : renderHeader}
-                    ListFooterComponent={isLockedIn ? (
+                    ListFooterComponent={
                         <>
                             <Run label="Longest run" run={longest} />
                             <Run label="Current run" run={current} accent />
                         </>
-                    ) : null}
+                    }
                     showsVerticalScrollIndicator={false}
                     initialNumToRender={2}
                     maxToRenderPerBatch={2}
@@ -331,6 +357,14 @@ const styles = StyleSheet.create({
         alignItems: 'baseline',
     },
     runLabel: { marginBottom: 6 },
+    /** `.cl-panel` × 2, side by side with a 12px gap. */
+    clothBack: { marginLeft: -6, alignSelf: 'flex-start' },
+    clothHeroTitle: { marginTop: 10 },
+    clothStatsRow: { flexDirection: 'row', gap: Spacing.md },
+    clothStatPanel: { flex: 1, padding: Spacing.layout.cardPadding },
+    clothStatLabel: { marginTop: 6, textTransform: 'uppercase' },
+    clothRunPanel: { padding: Spacing.layout.cardPadding, marginBottom: Spacing.md },
+    clothRunWhen: { marginTop: 4 },
     monthTitleLarge: { marginBottom: Spacing.xl },
     statsRow: {
         flexDirection: 'row',

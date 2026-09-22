@@ -5,21 +5,18 @@ import { useTheme } from '../../theme/ThemeContext';
 import { Text } from '../ui';
 
 /**
- * "Today", "This Week", "Older" over a run of entries.
- *
- * Colossal draws none: its library is one unbroken run of rows, and each row
- * already carries how long ago it was in its own `.co-when` column, so a
- * heading would be saying the same thing twice.
+ * "Today", "This Week", "Older" over a run of entries — drawn by neither style.
  */
 export const DateGroupHeader = React.memo(({ title }: { title: string }) => {
-    const { isLockedIn } = useTheme();
-    if (isLockedIn) return null;
-
-    return (
-        <View style={styles.dateGroup}>
-            <Text variant="label" tone="tertiary">{title}</Text>
-        </View>
-    );
+    /*
+     * Neither style draws one. Both mockups show the library as one unbroken
+     * run of rows, and every row already carries how long ago it was in its own
+     * `.cl-when` / `.co-when` column — a heading would say it twice.
+     *
+     * The grouping itself still runs: it is what orders the list.
+     */
+    void title;
+    return null;
 });
 
 /**

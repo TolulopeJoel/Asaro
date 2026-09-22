@@ -11,7 +11,7 @@
  * rather than to the list.
  */
 import React, { useMemo } from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { BibleBook, GREEK_BOOKS, HEBREW_BOOKS } from '../data/bibleBooks';
 import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
@@ -60,12 +60,41 @@ const BookRow = React.memo(({ book, isSelected, onBookSelect }: {
 
 BookRow.displayName = 'BookRow';
 
+/**
+ * A section heading over a run of books.
+ *
+ * Cloth splits it — the canon's name on the left, "39 books" hanging off the
+ * right on the same baseline — while Colossal runs the two together into one
+ * `.co-label`. Both mockups are explicit about it, so the split is per style.
+ */
+function SectionHeading({ name, count, spaced }: { name: string; count: number; spaced?: boolean }) {
+    const { isLockedIn } = useTheme();
+
+    if (isLockedIn) {
+        return (
+            <Text variant="label" style={[styles.section, spaced && styles.sectionAfter]}>
+                {`${name} · ${count} books`}
+            </Text>
+        );
+    }
+
+    return (
+        <View style={[styles.clothSection, spaced && styles.sectionAfter]}>
+            <Text variant="label">{name}</Text>
+            <Text variant="caption" tone="secondary" style={styles.clothSectionCount}>
+                {`${count} books`}
+            </Text>
+        </View>
+    );
+}
+
 export const BookPicker: React.FC<BookPickerProps> = React.memo(({
     selectedBook,
     onBookSelect,
     availableBooks,
     query = '',
 }) => {
+    const { isLockedIn } = useTheme();
     const hebrew = useMemo(() => HEBREW_BOOKS.filter(b => matchesQuery(b, query)), [query]);
     const greek = useMemo(() => GREEK_BOOKS.filter(b => matchesQuery(b, query)), [query]);
 
@@ -91,17 +120,20 @@ export const BookPicker: React.FC<BookPickerProps> = React.memo(({
                 <>
                     {hebrew.length > 0 && (
                         <>
-                            <Text variant="label" style={styles.section}>
-                                {`Hebrew-Aramaic · ${HEBREW_BOOKS.length} books`}
-                            </Text>
+                            <SectionHeading
+                                name={isLockedIn ? 'Hebrew-Aramaic' : 'Hebrew-Aramaic Scriptures'}
+                                count={HEBREW_BOOKS.length}
+                            />
                             {rows(hebrew)}
                         </>
                     )}
                     {greek.length > 0 && (
                         <>
-                            <Text variant="label" style={[styles.section, hebrew.length > 0 && styles.sectionAfter]}>
-                                {`Christian Greek · ${GREEK_BOOKS.length} books`}
-                            </Text>
+                            <SectionHeading
+                                name={isLockedIn ? 'Christian Greek' : 'Christian Greek Scriptures'}
+                                count={GREEK_BOOKS.length}
+                                spaced={hebrew.length > 0}
+                            />
                             {rows(greek)}
                         </>
                     )}
@@ -137,6 +169,14 @@ const styles = StyleSheet.create({
     },
     count: { marginLeft: 'auto' },
     section: { marginBottom: Spacing.md },
+    /** `.cl-label` left, `.cl-sublabel` right, on one baseline. */
+    clothSection: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
+        justifyContent: 'space-between',
+        marginBottom: Spacing.sm,
+    },
+    clothSectionCount: { textTransform: 'uppercase' },
     sectionAfter: { marginTop: Spacing.xl - 2 },
     note: { paddingTop: Spacing.xl + 2 },
 });

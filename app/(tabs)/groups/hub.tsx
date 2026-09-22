@@ -89,10 +89,49 @@ export default function GroupsScreen() {
     }, [user]);
 
     if (!user) {
+        /*
+         * design/all-screens.html #groups, the `.co` slot, for a reader who has
+         * not signed in.
+         *
+         * This branch used to sit above the Colossal one, so Locked In fell
+         * through to Cloth's layout — an indigo-band title rendered
+         * `tone="inverse"`, which is #000000 in this palette, on a #000000
+         * ground. The heading was invisible.
+         */
+        if (isLockedIn) {
+            return (
+                <Screen>
+                    <View style={styles.colossalTop}>
+                        <Text variant="tab">Better Together</Text>
+                    </View>
+
+                    <ScrollView
+                        ref={scrollViewRef}
+                        contentContainerStyle={styles.colossalScroll}
+                        showsVerticalScrollIndicator={false}
+                    >
+                        <Text variant="display">Read it with someone.</Text>
+                        <Text variant="sub" style={styles.colossalBlurb}>
+                            Groups sync through your account, so you&apos;ll need to sign in
+                            before joining one.
+                        </Text>
+
+                        <View style={[styles.rule, { backgroundColor: colors.border }]} />
+
+                        <ThemedButton
+                            label="Sign in to Join Them"
+                            block
+                            onPress={() => router.push('/(tabs)/groups/auth' as any)}
+                        />
+                    </ScrollView>
+                </Screen>
+            );
+        }
+
         return (
             <Screen>
                 <Hero>
-                    <Text variant="display" tone="inverse">Better{'\n'}Together</Text>
+                    <Text variant="display" tone="onBand">Better{'\n'}Together</Text>
                     <Text variant="body" tone="onHero" style={styles.heroSub}>Consistency is key. Read together!</Text>
                 </Hero>
                 <ScrollView
@@ -223,7 +262,7 @@ export default function GroupsScreen() {
         <Screen>
             <Hero>
                 <View style={styles.headerTitleRow}>
-                    <Text variant="display" tone="inverse">My Groups</Text>
+                    <Text variant="display" tone="onBand">My Groups</Text>
                     <ScalePressable
                         onPress={() => router.push('/(tabs)/groups/join' as any)}
                         accessibilityRole="button"

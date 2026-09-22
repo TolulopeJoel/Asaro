@@ -237,49 +237,59 @@ const ReadingCard = React.memo(({
         );
     }
 
+    /*
+     * design/all-screens.html #plan, the `.cl` slot.
+     *
+     * Cloth draws each reading as a `.cl-panel` carrying the same two markers —
+     * an ochre diamond through the Hebrew Scriptures, an indigo dot for the
+     * Greek — with the book in the serif and its chapters beneath. Today's
+     * reading takes a 3px ochre rail, which is the only place the accent lands
+     * on this screen besides the markers and the progress bar.
+     */
+    const isDiamond = item.id <= HEBREW_SCRIPTURES_END;
+
     return (
         <ScalePressable
             style={[
-                styles.planCard,
-                {
-                    backgroundColor: colors.cardBackground,
-                    borderColor: isCompleted ? colors.accent + '30' : colors.cardBorder,
-                },
-                item.isKey && !isCompleted && { borderColor: colors.borderActive }
+                styles.clothPlanRow,
+                { backgroundColor: colors.backgroundSubtle },
+                schedule?.urgent && { borderLeftWidth: Spacing.border.marker, borderLeftColor: colors.accent },
+                isCompleted && styles.clothPlanDone,
             ]}
             onPress={() => onToggle(item.id, !isCompleted)}
+            accessibilityRole="button"
+            accessibilityState={{ checked: isCompleted }}
         >
-            <View style={styles.planCardContent}>
-                <View style={styles.planBookInfo}>
-                    <View style={styles.planBookHeader}>
-                        {item.isKey && item.id <= 286 && (
-                            <View style={[styles.keyDiamond, { backgroundColor: colors.accent }]} />
-                        )}
-                        {item.isKey && item.id > 286 && (
-                            <View style={[styles.keyDot, { backgroundColor: colors.accentSecondary }]} />
-                        )}
-                        <UIText
-                            variant="subtitle"
-                            tone={isCompleted ? 'tertiary' : 'primary'}
-                            style={isCompleted ? styles.struck : undefined}
-                        >
-                            {item.book}
-                        </UIText>
-                    </View>
-                    <UIText variant="bodySmall" tone={isCompleted ? 'muted' : 'secondary'}>
-                        {item.chapters || "Full Book"}
-                    </UIText>
-                </View>
-
-                <View style={[
-                    styles.planCheckbox,
-                    {
-                        backgroundColor: isCompleted ? colors.accent : 'transparent',
-                        borderColor: isCompleted ? colors.accent : colors.border,
-                    }
-                ]}>
-                    {isCompleted && <Check size={14} color={colors.background} />}
-                </View>
+            <View
+                style={[
+                    isDiamond ? styles.markerDiamond : styles.markerDot,
+                    { backgroundColor: isDiamond ? colors.accent : colors.textPrimary },
+                ]}
+            />
+            <View style={styles.colossalRowMain}>
+                <UIText
+                    variant="subtitle"
+                    tone={isCompleted ? 'tertiary' : 'primary'}
+                    style={isCompleted ? styles.struck : undefined}
+                >
+                    {item.book}
+                </UIText>
+                <UIText variant="bodySmall" tone={isCompleted ? 'muted' : 'secondary'} style={styles.clothPlanSub}>
+                    {item.chapters
+                        ? `${formatRange(item.chapters)}${schedule?.urgent ? ' · today' : ''}`
+                        : 'Full Book'}
+                </UIText>
+            </View>
+            {/* `.cl-panel`'s 19px box: filled indigo with an ecru tick when done. */}
+            <View
+                style={[
+                    styles.clothPlanBox,
+                    isCompleted
+                        ? { backgroundColor: colors.textPrimary, borderColor: colors.textPrimary }
+                        : { backgroundColor: colors.background, borderColor: colors.border },
+                ]}
+            >
+                {isCompleted && <Check size={11} color={colors.textInverse} strokeWidth={3.4} />}
             </View>
         </ScalePressable>
     );
@@ -297,6 +307,7 @@ interface JournalContentProps {
     onCountChange: (count: number) => void;
     onOpenActionCountChange: (count: number) => void;
     onOpenTopicCountChange: (count: number) => void;
+    onCoveredChange: (covered: number) => void;
 }
 
 function JournalContent({
@@ -309,6 +320,7 @@ function JournalContent({
     onCountChange,
     onOpenActionCountChange,
     onOpenTopicCountChange,
+    onCoveredChange,
 }: JournalContentProps) {
     const router = useRouter();
     const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -332,6 +344,7 @@ function JournalContent({
                 onCountChange={onCountChange}
                 onOpenActionCountChange={onOpenActionCountChange}
                 onOpenTopicCountChange={onOpenTopicCountChange}
+                onCoveredChange={onCoveredChange}
             />
         </View>
     );
@@ -622,6 +635,7 @@ export default function LibraryScreen() {
     const [journalCount, setJournalCount] = useState(0);
     const [openActionCount, setOpenActionCount] = useState(0);
     const [openTopicCount, setOpenTopicCount] = useState(0);
+    const [coveredCount, setCoveredCount] = useState(0);
     const [themeCount, setThemeCount] = useState<number | null>(null);
     const [planProgress, setPlanProgress] = useState<PlanProgress>({ completed: 0, total: READING_PLAN_DATA.length, percent: 0 });
 
@@ -650,6 +664,11 @@ export default function LibraryScreen() {
      * before it has clustered anything, where the mockup gives the slot to the
      * empty state instead.
      */
+    /** "17 of 50 chapters" for Cloth's book band. */
+    const bookCoverage = journalSelectedBook?.chapters
+        ? `${coveredCount} of ${journalSelectedBook.chapters} chapters`
+        : `${coveredCount} ${coveredCount === 1 ? 'chapter' : 'chapters'}`;
+
     const giant: { value: number; label: string } | null = (() => {
         switch (tab) {
             case 'plan':
@@ -679,6 +698,49 @@ export default function LibraryScreen() {
                 };
         }
     })();
+
+    /**
+     * The search field. Cloth renders it on the hero band in the translucent
+     * `.onhero` treatment; Colossal renders it on the page under the giant.
+     */
+    const searchField = (
+        <>
+            <TextInput
+                style={[
+                    styles.searchInput,
+                    textStyle(themeStyle, 'body'),
+                    isLockedIn
+                        ? {
+                            backgroundColor: colors.searchBackground,
+                            color: colors.textPrimary,
+                            borderColor: colors.border,
+                        }
+                        : {
+                            backgroundColor: colors.textInverse + '1A',
+                            color: colors.textInverse,
+                            borderColor: colors.textInverse + '47',
+                        },
+                ]}
+                placeholder={
+                    tab === 'bookDetail' && journalSelectedBook
+                        ? `Search ${journalSelectedBook.name}…`
+                        : journalCount > 0
+                            ? `Search ${journalCount} entries…`
+                            : 'Search entries…'
+                }
+                placeholderTextColor={isLockedIn ? colors.textTertiary : colors.textOnHero}
+                value={journalSearch}
+                onChangeText={setJournalSearch}
+                autoCapitalize="none"
+                autoCorrect={false}
+            />
+            {journalSearch.length > 0 && (
+                <ScalePressable style={styles.clearSearch} onPress={() => setJournalSearch('')}>
+                    <UIText variant="title" tone={isLockedIn ? 'secondary' : 'inverse'}>×</UIText>
+                </ScalePressable>
+            )}
+        </>
+    );
 
     return (
         <Screen>
@@ -730,55 +792,51 @@ export default function LibraryScreen() {
                     </>
                 ) : (
                     <Hero>
-                        <UIText variant="display" tone="inverse">Library</UIText>
+                        {tab === 'bookDetail' && journalSelectedBook ? (
+                            /*
+                             * design/all-screens.html #book, the `.cl` slot: a
+                             * book takes over the band. The arrow hangs into
+                             * the gutter, the breadcrumb sits above the name,
+                             * and the coverage line replaces the search — the
+                             * screen is about one book, not about finding one.
+                             */
+                            <>
+                                <ScalePressable
+                                    onPress={() => handleNavigate('books')}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Back to books"
+                                    hitSlop={Spacing.md}
+                                    style={styles.heroBack}
+                                >
+                                    <ChevronLeft size={20} color={colors.accent} strokeWidth={1.9} />
+                                </ScalePressable>
+                                <UIText variant="label" tone="onHero" style={styles.heroCrumb}>
+                                    {`Books / ${journalSelectedBook.name}`}
+                                </UIText>
+                                <UIText variant="display" tone="onBand" style={styles.heroBookName}>
+                                    {journalSelectedBook.name}
+                                </UIText>
+                                <UIText variant="sub" tone="onHero">
+                                    {`${bookCoverage} · ${journalCount} ${journalCount === 1 ? 'entry' : 'entries'}`}
+                                </UIText>
+                            </>
+                        ) : (
+                            <>
+                                <UIText variant="display" tone="onBand">Library</UIText>
+                                {/*
+                                  * `.cl-input.onhero` — the search sits ON the
+                                  * indigo band, not under it, so the header
+                                  * reads as one block of cloth rather than a
+                                  * title with a field beneath.
+                                  */}
+                                {showSearch && <View style={styles.heroSearch}>{searchField}</View>}
+                            </>
+                        )}
                     </Hero>
                 )}
 
-                {!isLockedIn && tab === 'bookDetail' && journalSelectedBook && (
-                    <View style={[styles.breadcrumbRow, { borderBottomColor: colors.border }]}>
-                        <ScalePressable
-                            onPress={() => handleNavigate('books')}
-                            accessibilityRole="button"
-                            accessibilityLabel="Back to books"
-                        >
-                            <UIText variant="label" tone="secondary">Books</UIText>
-                        </ScalePressable>
-                        <UIText variant="label" tone="tertiary"> / </UIText>
-                        <UIText variant="subtitle">{journalSelectedBook.name}</UIText>
-                    </View>
-                )}
-
-                {showSearch && (
-                    <View style={styles.searchContainer}>
-                        <TextInput
-                            style={[
-                                styles.searchInput,
-                                textStyle(themeStyle, 'body'),
-                                {
-                                    backgroundColor: colors.searchBackground,
-                                    color: colors.textPrimary,
-                                    borderColor: colors.border,
-                                },
-                            ]}
-                            placeholder={
-                                tab === 'bookDetail' && journalSelectedBook
-                                    ? `Search ${journalSelectedBook.name}...`
-                                    : journalCount > 0
-                                        ? `Search ${journalCount} entries...`
-                                        : 'Search entries...'
-                            }
-                            placeholderTextColor={colors.textTertiary}
-                            value={journalSearch}
-                            onChangeText={setJournalSearch}
-                            autoCapitalize="none"
-                            autoCorrect={false}
-                        />
-                        {journalSearch.length > 0 && (
-                            <ScalePressable style={styles.clearSearch} onPress={() => setJournalSearch('')}>
-                                <UIText variant="title" tone="secondary">×</UIText>
-                            </ScalePressable>
-                        )}
-                    </View>
+                {showSearch && isLockedIn && (
+                    <View style={styles.searchContainer}>{searchField}</View>
                 )}
 
                 {tab === 'plan' && <PlanProgressBar progress={planProgress.percent} />}
@@ -808,6 +866,7 @@ export default function LibraryScreen() {
                     onCountChange={setJournalCount}
                     onOpenActionCountChange={setOpenActionCount}
                     onOpenTopicCountChange={setOpenTopicCount}
+                    onCoveredChange={setCoveredCount}
                 />
             )}
         </Screen>
@@ -847,6 +906,23 @@ const styles = StyleSheet.create({
     rowDone: {
         opacity: 0.45,
     },
+    /** `.cl-panel` as a plan row: 18px, an 8px gap under it, markers at the head. */
+    clothPlanRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.md,
+        padding: Spacing.layout.cardPadding,
+        marginBottom: Spacing.sm,
+    },
+    clothPlanDone: { opacity: 0.6 },
+    clothPlanSub: { marginTop: 2 },
+    clothPlanBox: {
+        width: 19,
+        height: 19,
+        borderWidth: Spacing.border.hairline,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     markerDiamond: {
         width: 8,
         height: 8,
@@ -871,6 +947,12 @@ const styles = StyleSheet.create({
         marginLeft: -6,
     },
     // .co-top — a mark, not a screen title.
+    /** `.cl-input.onhero{margin-top:18px}` */
+    heroSearch: { marginTop: Spacing.layout.cardPadding, position: 'relative' },
+    /** The arrow hangs into the gutter so the glyph lines up with the name. */
+    heroBack: { marginLeft: -6, alignSelf: 'flex-start' },
+    heroCrumb: { marginTop: 10 },
+    heroBookName: { marginTop: Spacing.sm },
     colossalTop: {
         paddingHorizontal: Spacing.layout.screenPaddingTight,
         paddingTop: Spacing.lg,

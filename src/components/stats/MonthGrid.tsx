@@ -1,10 +1,9 @@
 import { useTheme } from '@/src/theme/ThemeContext';
 import { formatDateToLocalString, getLocalMidnight, isSameDay } from '@/src/utils/dateUtils';
-import React, { useCallback, useState } from 'react';
+import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Clover } from '../Clover';
-import { useFocusEffect } from 'expo-router';
 import { Spacing } from '../../theme/spacing';
+import { ClothMark } from '../ui/Cloth';
 import { Text } from '../ui';
 
 interface MonthGridProps {
@@ -14,23 +13,16 @@ interface MonthGridProps {
     showTitle?: boolean;
 }
 
-// A completed week is still celebrated — but with the theme's own ramp rather
-// than seven iOS system hues, which belonged to neither palette. Cloth reads as
-// cloth taken deeper into the indigo vat with each dip; Colossal warms from
-// white to ochre. See `celebration` in src/theme/colors.ts.
-
+/**
+ * A month, as a shape.
+ *
+ * Neither mockup draws day numbers, a weekday row, or the per-week clover
+ * celebration this used to carry — the month reads as a block of marks, and the
+ * one number worth reading has already been enlarged above it.
+ */
 export const MonthGrid = React.memo(({ year, month, data, showTitle = true }: MonthGridProps) => {
     const { colors, isLockedIn } = useTheme();
     const today = getLocalMidnight();
-    const [rotating, setRotating] = useState(false);
-
-    useFocusEffect(
-        useCallback(() => {
-            setRotating(true);
-            return () => setRotating(false);
-        }, [])
-    );
-
 
     const days = React.useMemo(() => {
         const firstDayOfMonth = new Date(year, month, 1);
@@ -47,33 +39,6 @@ export const MonthGrid = React.memo(({ year, month, data, showTitle = true }: Mo
         }
         return d;
     }, [year, month]);
-
-    // Determine which week rows are fully complete (all non-null, non-future days have entries)
-    const completeWeekRows = React.useMemo(() => {
-        const rows: boolean[] = [];
-        for (let rowStart = 0; rowStart < days.length; rowStart += 7) {
-            const rowDays = days.slice(rowStart, rowStart + 7);
-            const realDays = rowDays.filter(d => d !== null) as number[];
-
-            if (realDays.length === 0) {
-                rows.push(false);
-                continue;
-            }
-
-            const allComplete = realDays.every(d => {
-                const dayDate = new Date(year, month, d);
-                const isFuture = dayDate.getTime() > today.getTime();
-                if (isFuture) return false; // incomplete week if any future days remain
-                const dateStr = formatDateToLocalString(dayDate);
-                return (data[dateStr] || 0) > 0;
-            });
-
-            rows.push(allComplete);
-        }
-        return rows;
-    }, [days, year, month, data, today]);
-
-    const weekDays = React.useMemo(() => ['S', 'M', 'T', 'W', 'T', 'F', 'S'], []);
 
     if (isLockedIn) {
         /*
@@ -122,6 +87,13 @@ export const MonthGrid = React.memo(({ year, month, data, showTitle = true }: Mo
         );
     }
 
+    /*
+     * design/all-screens.html #stats, the `.cl` slot: the month as a grid of
+     * woven squares. A day you wrote is the resist mark on a hairline square, a
+     * day you missed is the bare panel, today is solid indigo, and a day still
+     * to come is a dashed outline on the page's own ground. Four states, no day
+     * numbers — the count above already says how many.
+     */
     return (
         <View style={styles.monthContainer}>
             {showTitle && (
@@ -129,79 +101,41 @@ export const MonthGrid = React.memo(({ year, month, data, showTitle = true }: Mo
                     {new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                 </Text>
             )}
-
-            <View style={styles.weekDaysRow}>
-                {weekDays.map((day, index) => (
-                    <Text key={index} variant="label" tone="tertiary" style={styles.weekDayText}>
-                        {day}
-                    </Text>
-                ))}
-            </View>
-
-            <View style={styles.daysGrid}>
+            <View style={styles.colossalGrid}>
                 {days.map((day, index) => {
                     if (day === null) {
-                        return <View key={`empty-${index}`} style={styles.dayCellEmpty} />;
+                        return <View key={`pad-${index}`} style={styles.colossalCellSpacer} />;
                     }
 
                     const dayDate = new Date(year, month, day);
-                    const dateStr = formatDateToLocalString(dayDate);
                     const isFuture = dayDate.getTime() > today.getTime();
-
-                    if (isFuture) {
-                        return <View key={`empty-future-${index}`} style={styles.dayCellEmpty} />;
-                    }
-
-                    const count = data[dateStr] || 0;
+                    const hasEntry = (data[formatDateToLocalString(dayDate)] || 0) > 0;
                     const isToday = isSameDay(dayDate, today);
-                    const hasEntry = count > 0;
-
-                    const rowIndex = Math.floor(index / 7);
-                    const dayOfWeek = index % 7;
-                    const isCompleteWeek = completeWeekRows[rowIndex];
-                    const dayColor = colors.celebration[dayOfWeek];
 
                     return (
-                        <View key={day} style={styles.dayCellWrapper}>
-                            <View style={[
-                                styles.dayIndicator,
-                                hasEntry && {
-                                    backgroundColor: colors.textPrimary,
-                                    borderColor: colors.textPrimary,
-                                    borderWidth: 0.5,
-                                },
-                                !hasEntry && !isToday && {
-                                    backgroundColor: 'transparent',
-                                    borderColor: colors.textTertiary,
-                                    borderWidth: 0.5,
-                                    opacity: 0.3,
-                                },
-                                isToday && !hasEntry && {
-                                    borderColor: colors.textPrimary,
-                                    borderWidth: 1,
-                                    backgroundColor: colors.textPrimary + '08',
-                                }
-                            ]}>
-                                {hasEntry ? (
-                                    <Clover
-                                        color={isCompleteWeek ? dayColor : colors.cardBackground}
-                                        size={isCompleteWeek ? 18 : 15}
-                                        shouldRotate={isCompleteWeek && rotating}
-                                    />
-                                ) : (
-                                    <Text style={[
-                                        styles.dayNumber,
-                                        {
-                                            color: isToday
-                                                ? colors.textPrimary
-                                                : colors.textSecondary,
-                                            opacity: isToday ? 0.7 : 0.45,
-                                            fontWeight: '500'
+                        <View key={day} style={styles.colossalCellWrapper}>
+                            <View
+                                style={[
+                                    styles.colossalCell,
+                                    isFuture
+                                        ? {
+                                            backgroundColor: colors.background,
+                                            borderWidth: Spacing.border.hairline,
+                                            borderColor: colors.border,
+                                            borderStyle: 'dashed',
                                         }
-                                    ]}>
-                                        {day}
-                                    </Text>
-                                )}
+                                        : isToday
+                                            ? { backgroundColor: colors.textPrimary }
+                                            : hasEntry
+                                                ? {
+                                                    backgroundColor: colors.backgroundSubtle,
+                                                    borderWidth: Spacing.border.hairline,
+                                                    borderColor: colors.border,
+                                                }
+                                                : { backgroundColor: colors.backgroundSubtle },
+                                ]}
+                            >
+                                {hasEntry && !isToday && !isFuture && <ClothMark />}
                             </View>
                         </View>
                     );
@@ -237,7 +171,7 @@ const styles = StyleSheet.create({
         width: `${100 / 7}%`,
         aspectRatio: 1,
     },
-    colossalCell: { flex: 1 },
+    colossalCell: { flex: 1, overflow: 'hidden' },
     weekDaysRow: {
         flexDirection: 'row',
         marginBottom: 12,

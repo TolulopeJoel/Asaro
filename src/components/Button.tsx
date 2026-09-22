@@ -154,8 +154,17 @@ export const Button: React.FC<ButtonProps> = ({
     const iconSize = size === 'sm' ? 16 : size === 'lg' ? 24 : 20;
     const iconColor = (getVariantLabelStyles() as TextStyle).color;
 
-    // Use white dots for primary/secondary/danger, and theme accent for outline/ghost
-    const dotColor = (variant === 'outline' || variant === 'ghost') ? colors.accent : '#FFFFFF';
+    /*
+     * The loading dots have to sit on the button they are inside.
+     *
+     * This was a literal '#FFFFFF', which is white-on-white on a Colossal
+     * primary — that style's `buttonPrimary` IS white, so a loading button
+     * looked empty. Reading the label colour back off the variant keeps the
+     * dots legible in both styles without a per-style branch.
+     */
+    const dotColor = (variant === 'outline' || variant === 'ghost')
+        ? colors.accent
+        : ((getVariantLabelStyles() as TextStyle).color as string) ?? colors.buttonPrimaryText;
 
     return (
         <ScalePressable

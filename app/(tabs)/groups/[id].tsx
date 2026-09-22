@@ -1300,7 +1300,7 @@ export default function GroupDetailScreen() {
                         <Avatar id={groupId} name={groupData?.name} url={groupData?.photoURL} size={44} />
                     )}
                     <View style={styles.heroTitle}>
-                        <Text variant="display" tone="inverse" numberOfLines={2}>
+                        <Text variant="display" tone="onBand" numberOfLines={2}>
                             {groupData?.name || 'Loading…'}
                         </Text>
                     </View>

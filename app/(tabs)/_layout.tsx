@@ -9,7 +9,6 @@ import { Spacing } from '@/src/theme/spacing';
 
 export default function TabLayout() {
     const { colors: themeColors, isLockedIn } = useTheme();
-    const lockedInMode = isLockedIn;
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const lastPressTime = useRef<number>(0);
@@ -55,8 +54,16 @@ export default function TabLayout() {
                     {props.state.routes.map((route, index) => {
                         // Hide dynamic routes from the tab bar
                         if (route.name.includes('[id]')) return null;
-                        // Locked In Mode hides the social surface too, not just home clutter
-                        if (route.name === 'groups' && lockedInMode) return null;
+                        /*
+                         * Groups stays in Locked In.
+                         *
+                         * This used to be hidden — "Locked In hides the social
+                         * surface too" — but design/all-screens.html draws the
+                         * Groups hub and Group detail as Colossal screens, with
+                         * three tabs and Groups lit, on every one of its `.co`
+                         * mockups. Hiding the tab made those screens
+                         * unreachable in the style they were drawn for.
+                         */
 
                         const isFocused = props.state.index === index;
                         const shouldHighlight = isFocused;

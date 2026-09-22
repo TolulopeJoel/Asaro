@@ -184,7 +184,7 @@ export default function JoinGroupScreen() {
     return (
         <Screen>
             <Hero>
-                <Text variant="display" tone="inverse">Enter{'\n'}Group Code</Text>
+                <Text variant="display" tone="onBand">Enter{'\n'}Group Code</Text>
             </Hero>
             <ScrollView contentContainerStyle={styles.content}>
                 <View style={[styles.card, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>

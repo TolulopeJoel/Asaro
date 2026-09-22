@@ -10,7 +10,7 @@ import { ScalePressable } from '../ScalePressable';
 import { BookPicker, countMatches } from '../BookPicker';
 import { ChapterPicker } from '../ChapterPicker';
 import { Confetti, ConfettiRef } from '../Confetti';
-import { Text, ThemedButton, textStyle } from '../ui';
+import { Hero, Text, ThemedButton, textStyle } from '../ui';
 import { formatRange, spell } from '../../utils/reference';
 
 /** The canon, for the picker's "N of 66 books match". */
@@ -37,6 +37,50 @@ export const BookStep = React.memo(({ selectedBook, onBookSelect, onExit }: Book
     const gutter = isLockedIn ? Spacing.layout.screenPaddingTight : Spacing.layout.screenPadding;
     const matches = countMatches(query);
 
+    const filterField = (
+        <TextInput
+            style={[
+                styles.input,
+                textStyle(themeStyle, 'body'),
+                isLockedIn
+                    ? { backgroundColor: colors.searchBackground, borderColor: colors.border, color: colors.textPrimary }
+                    : { backgroundColor: colors.textInverse + '1A', borderColor: colors.textInverse + '47', color: colors.textInverse },
+            ]}
+            value={query}
+            onChangeText={setQuery}
+            placeholder={`Filter ${TOTAL_BOOKS} books…`}
+            placeholderTextColor={isLockedIn ? colors.textTertiary : colors.textOnHero}
+            autoCapitalize="none"
+            autoCorrect={false}
+            accessibilityLabel="Filter books"
+        />
+    );
+
+    if (!isLockedIn) {
+        /*
+         * design/all-screens.html #books, the `.cl` slot. Cloth names the
+         * screen on its band and puts the filter there with it — there is no
+         * giant, because Cloth has no colossal slot to spend and the query is
+         * already legible in the field you typed it into.
+         */
+        return (
+            <View style={styles.stepContainer}>
+                <Hero>
+                    <View style={styles.clothHeroTop}>
+                        <Text variant="display" tone="onBand" style={styles.mark}>Choose a book</Text>
+                        <ScalePressable onPress={onExit} accessibilityRole="button" accessibilityLabel="Close" hitSlop={Spacing.md}>
+                            <X size={19} color={colors.accent} strokeWidth={1.9} />
+                        </ScalePressable>
+                    </View>
+                    <View style={styles.clothHeroField}>{filterField}</View>
+                </Hero>
+                <View style={[styles.list, { paddingHorizontal: gutter, paddingTop: Spacing.xl - 4 }]}>
+                    <BookPicker selectedBook={selectedBook} onBookSelect={onBookSelect} query={query} />
+                </View>
+            </View>
+        );
+    }
+
     return (
         <View style={styles.stepContainer}>
             <View style={[styles.topBar, { paddingHorizontal: gutter }]}>
@@ -57,22 +101,7 @@ export const BookStep = React.memo(({ selectedBook, onBookSelect, onExit }: Book
                 </View>
             )}
 
-            <View style={[styles.filter, { paddingHorizontal: gutter }]}>
-                <TextInput
-                    style={[
-                        styles.input,
-                        textStyle(themeStyle, 'body'),
-                        { backgroundColor: colors.searchBackground, borderColor: colors.border, color: colors.textPrimary },
-                    ]}
-                    value={query}
-                    onChangeText={setQuery}
-                    placeholder={`Filter ${TOTAL_BOOKS} books…`}
-                    placeholderTextColor={colors.textTertiary}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    accessibilityLabel="Filter books"
-                />
-            </View>
+            <View style={[styles.filter, { paddingHorizontal: gutter }]}>{filterField}</View>
 
             <View style={[styles.list, { paddingHorizontal: gutter }]}>
                 <BookPicker selectedBook={selectedBook} onBookSelect={onBookSelect} query={query} />
@@ -306,6 +335,9 @@ const styles = StyleSheet.create({
     backArrow: { marginLeft: -6 },
     mark: { flex: 1 },
     giant: { paddingTop: Spacing.xl + 2 },
+    /** Cloth's band: the title and its close button, then the filter under them. */
+    clothHeroTop: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+    clothHeroField: { marginTop: Spacing.layout.cardPadding },
     /** `.co-giantl` sits 10px under its numeral. */
     giantLabel: { marginTop: 10 },
     filter: { paddingTop: Spacing.xl - 2, paddingBottom: Spacing.layout.cardPadding },

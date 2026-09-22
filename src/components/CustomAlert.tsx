@@ -45,7 +45,16 @@ export const CustomAlert: React.FC = () => {
                         </View>
                     )}
 
-                    <Text variant="display" style={styles.title}>{title}</Text>
+                    {/*
+                      * `title`, not `display`.
+                      *
+                      * An alert floats over a screen that has already spent its
+                      * one colossal element, and `display` is 40px `.co-h.lg` in
+                      * Colossal — a second giant on top of the first, which is
+                      * the one rule the style does not bend. `.co-h.md` is the
+                      * heading step below it.
+                      */}
+                    <Text variant="title" style={styles.title}>{title}</Text>
                     <Text variant="body" tone="secondary" style={styles.message}>{message}</Text>
 
                     <View style={styles.buttonContainer}>

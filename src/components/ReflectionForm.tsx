@@ -23,6 +23,7 @@ import { ActionItemPair, ActionItemsInput } from './ActionItemsInput';
 import { Button } from './Button';
 import { ScalePressable } from './ScalePressable';
 import { Text as UIText, ThemedButton } from './ui';
+import { ClothMark } from './ui/Cloth';
 
 export interface ReflectionAnswers {
   reflection1: string;
@@ -273,18 +274,37 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
           </View>
         )}
 
-        {/* ── where you are, as a bar of five ────────────────────────────── */}
-        <View style={styles.progress}>
-          {REFLECTION_QUESTIONS.map((q, i) => (
+        {/* ── where you are ──────────────────────────────────────────────── */}
+        {isLockedIn ? (
+          /* Colossal counts the steps: five bars, the one you're on in ochre. */
+          <View style={styles.progress}>
+            {REFLECTION_QUESTIONS.map((q, i) => (
+              <View
+                key={q.id}
+                style={[
+                  styles.progressStep,
+                  { backgroundColor: i === page ? colors.accent : colors.border },
+                ]}
+              />
+            ))}
+          </View>
+        ) : (
+          /*
+           * Cloth measures it instead — the woven strip fills as you go. This
+           * is the motif doing a job rather than decorating, which is the one
+           * thing the design note for this screen asks of the pattern.
+           */
+          <View style={[styles.clothProgress, { backgroundColor: colors.border }]}>
             <View
-              key={q.id}
               style={[
-                styles.progressStep,
-                { backgroundColor: i === page ? colors.accent : colors.border },
+                styles.clothProgressFill,
+                { width: `${((page + 1) / (REFLECTION_QUESTIONS.length + 1)) * 100}%` },
               ]}
-            />
-          ))}
-        </View>
+            >
+              <ClothMark />
+            </View>
+          </View>
+        )}
       </View>
 
       {/* ── the two things you can do next ───────────────────────────────── */}
@@ -390,6 +410,9 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.layout.cardPadding,
   },
   progressStep: { flex: 1, height: 4 },
+  /** Cloth's strip is one 10px band that fills, not five counted steps. */
+  clothProgress: { height: 10, marginTop: Spacing.layout.cardPadding, overflow: 'hidden' },
+  clothProgressFill: { height: 10, overflow: 'hidden' },
 
   footer: {
     paddingTop: Spacing.xl - 4,

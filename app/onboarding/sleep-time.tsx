@@ -14,7 +14,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
-import { ScalePressable } from '@/src/components/ScalePressable';
 import { Hero, Screen, Text, ThemedButton, textStyle } from '@/src/components/ui';
 
 export default function SleepTimeScreen() {
@@ -232,117 +231,78 @@ export default function SleepTimeScreen() {
         );
     }
 
+    /*
+     * design/all-screens.html #sleep, the `.cl` slot. Cloth states the step and
+     * the question on its band, then sets the two fields inside one centred
+     * `.cl-panel` with an ochre colon between them — the panel is what makes
+     * the pair read as a single time rather than two numbers.
+     */
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <Screen edges={['top']}>
-                <Hero>
+                <Hero style={styles.clothHero}>
                     <Text variant="label" tone="onHero" style={styles.heroStep}>Step 2 of 3</Text>
-                    <Text variant="display" tone="inverse">Noted.</Text>
+                    <Text variant="display" tone="onBand">When do you{'\n'}turn in?</Text>
                 </Hero>
                 <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     style={styles.keyboardView}
                 >
-                    <View style={styles.content}>
-                        <View style={styles.textContainer}>
-                            <View style={styles.introBlock}>
+                    <View style={styles.clothBody}>
+                        <Text variant="sub">
+                            Reminders stop at this hour, so the app never nags you after bedtime.
+                        </Text>
 
-                                <Text variant="body" style={styles.introText}>
-                                    I promise not to disturb your beauty sleep. But once you wake up? No mercy.
-                                    {'\n\n'}
-                                    I need to know when to let you rest.
-                                </Text>
-                            </View>
-
-                            <Text variant="label" style={styles.label}>
-                                What time do you usually go to sleep?
-                            </Text>
-
-                            <View style={styles.timeInputContainer}>
-                                {/* Hour Input */}
-                                <TextInput
-                                    style={[
-                                        styles.input,
-                                        {
-                                            color: colors.textPrimary,
-                                            borderBottomColor: error ? 'red' : colors.textPrimary,
-                                            minWidth: 60,
-                                            textAlign: 'center'
-                                        }
-                                    ]}
-                                    placeholder="10"
-                                    placeholderTextColor={colors.textMuted}
-                                    value={hour}
-                                    onChangeText={handleHourChange}
-                                    onBlur={handleBlurHour}
-                                    keyboardType="number-pad"
-                                    returnKeyType="next"
-                                    maxLength={2}
-                                    autoFocus={true}
-                                    onSubmitEditing={() => minuteInputRef.current?.focus()}
-                                />
-
-                                <Text variant="display" style={styles.separator}>:</Text>
-
-                                {/* Minute Input */}
-                                <TextInput
-                                    ref={minuteInputRef}
-                                    style={[
-                                        styles.input,
-                                        {
-                                            color: colors.textPrimary,
-                                            borderBottomColor: error ? 'red' : colors.textPrimary,
-                                            minWidth: 60,
-                                            textAlign: 'center'
-                                        }
-                                    ]}
-                                    placeholder="00"
-                                    placeholderTextColor={colors.textMuted}
-                                    value={minute}
-                                    onChangeText={handleMinuteChange}
-                                    onBlur={handleBlurMinute}
-                                    keyboardType="number-pad"
-                                    returnKeyType="done"
-                                    maxLength={2}
-                                />
-
-                                {/* AM/PM Toggle */}
-                                <TouchableOpacity onPress={togglePeriod} activeOpacity={0.6}>
-                                    <Text variant="display" style={styles.periodText}>
-                                        {period}
-                                    </Text>
-                                </TouchableOpacity>
-                            </View>
-
-                            {error && (
-                                <Text variant="bodySmall" tone="danger">
-                                    {error}
-                                </Text>
-                            )}
-                        </View>
-
-                        <View style={styles.footer}>
-                            <ScalePressable
+                        <View style={[styles.clothPanel, { backgroundColor: colors.backgroundSubtle }]}>
+                            <TextInput
                                 style={[
-                                    styles.button,
-                                    {
-                                        backgroundColor: isFormValid ? colors.textPrimary : colors.cardBackground,
-                                        borderColor: isFormValid ? 'transparent' : colors.border,
-                                        borderWidth: isFormValid ? 0 : 1,
-                                        opacity: isFormValid ? 1 : 0.5
-                                    }
+                                    styles.clothTimeInput,
+                                    textStyle(themeStyle, 'display'),
+                                    { backgroundColor: colors.background, color: error ? colors.danger : colors.textPrimary },
                                 ]}
-                                onPress={handleContinue}
-                                disabled={!isFormValid}
-                            >
-                                <Text style={[
-                                    styles.buttonText,
-                                    {
-                                        color: isFormValid ? colors.background : colors.textSecondary,
-                                    }
-                                ]}>Continue</Text>
-                            </ScalePressable>
+                                placeholder="10"
+                                placeholderTextColor={colors.textMuted}
+                                value={hour}
+                                onChangeText={handleHourChange}
+                                onBlur={handleBlurHour}
+                                keyboardType="number-pad"
+                                returnKeyType="next"
+                                maxLength={2}
+                                autoFocus
+                                onSubmitEditing={() => minuteInputRef.current?.focus()}
+                                accessibilityLabel="Hour"
+                            />
+                            <Text variant="display" tone="accent">:</Text>
+                            <TextInput
+                                ref={minuteInputRef}
+                                style={[
+                                    styles.clothTimeInput,
+                                    textStyle(themeStyle, 'display'),
+                                    { backgroundColor: colors.background, color: error ? colors.danger : colors.textPrimary },
+                                ]}
+                                placeholder="00"
+                                placeholderTextColor={colors.textMuted}
+                                value={minute}
+                                onChangeText={handleMinuteChange}
+                                onBlur={handleBlurMinute}
+                                keyboardType="number-pad"
+                                returnKeyType="done"
+                                maxLength={2}
+                                accessibilityLabel="Minute"
+                            />
+                            <TouchableOpacity onPress={togglePeriod} activeOpacity={0.6} accessibilityRole="button">
+                                <Text variant="tab" tone="secondary">{period}</Text>
+                            </TouchableOpacity>
                         </View>
+
+                        {error && <Text variant="bodySmall" tone="danger">{error}</Text>}
+
+                        <ThemedButton
+                            label="Continue"
+                            block
+                            disabled={!isFormValid}
+                            onPress={handleContinue}
+                        />
                     </View>
                 </KeyboardAvoidingView>
             </Screen>
@@ -353,6 +313,29 @@ export default function SleepTimeScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+    },
+
+    /** `.cl-hero{padding-top:64px}` on this screen. */
+    clothHero: { paddingTop: 64 },
+    /** `.cl-body{padding-top:30px; gap:18px}` */
+    clothBody: {
+        flex: 1,
+        paddingTop: Spacing.xxl - 2,
+        paddingHorizontal: Spacing.layout.screenPadding,
+        gap: Spacing.layout.cardPadding,
+    },
+    /** One panel holding the whole time, so it reads as a time. */
+    clothPanel: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        padding: Spacing.xl + 2,
+    },
+    clothTimeInput: {
+        width: 86,
+        textAlign: 'center',
+        paddingVertical: Spacing.md,
     },
 
     // ── Colossal ──────────────────────────────────────────────────────────

@@ -1,11 +1,9 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { ChevronRight } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { JournalEntry } from '../../data/database';
 import { ScalePressable } from '../ScalePressable';
-import { HyperlinkedText } from '../HyperlinkedText';
-import { formatDate, formatWhen, getAnsweredStatus, getChapterText, getDynamicCardStyle, getPreviewText } from './JournalCardHelpers';
+import { formatWhen, getChapterText, getPreviewText } from './JournalCardHelpers';
 import { Spacing } from '../../theme/spacing';
 import { Text } from '../ui';
 
@@ -22,156 +20,63 @@ interface EntryCardProps {
 /**
  * One entry in the library list.
  *
- * Colossal draws `.co-row`: the reference, a one-line snippet under it and
- * how long ago on the right, separated by a hairline. It carries no card, no
- * reference badge, no chevron and no reflection dots — the mockup's Locked In
- * library is six rows of type on a black ground and nothing else, and adding
- * the card chrome back is what made it read as a different screen.
+ * Both styles draw the same row — `.cl-row` and `.co-row` are the same
+ * composition: the reference, a one-line snippet under it, and how long ago on
+ * the right, separated by a hairline. Only the type differs, and that is what
+ * the variant system is for: `reference` is Fraunces 17 in Cloth and Archivo
+ * 14 in Colossal, `bodySmall` is 13 against 12.5, `meta` 10.5 against 10.
  *
- * Cloth keeps its card, which is what its own mockup draws.
+ * It used to branch — a row for Colossal, a bordered card with a date, an ochre
+ * reference badge, a chevron and four reflection dots for Cloth. None of that
+ * chrome is in either mockup; the design's library is a run of type on cloth.
  */
 export const EntryCard = React.memo(({ entry, omitBookName = false, onEntryPress }: EntryCardProps) => {
-    const { colors, isLockedIn } = useTheme();
+    const { colors } = useTheme();
     const previewText = getPreviewText(entry);
-    const dynamic = getDynamicCardStyle(previewText);
 
-    if (isLockedIn) {
-        return (
-            <ScalePressable
-                style={[styles.row, { borderBottomColor: colors.border }]}
-                onPress={() => onEntryPress(entry)}
-            >
-                <View style={styles.rowMain}>
-                    {entry.book_name ? (
-                        <Text variant="reference">
-                            {omitBookName
-                                ? `${entry.chapter_end && entry.chapter_end !== entry.chapter_start ? 'Chapters' : 'Chapter'} ${getChapterText(entry)}`
-                                : `${entry.book_name} ${getChapterText(entry)}`}
-                        </Text>
-                    ) : null}
-                    <Text variant="bodySmall" numberOfLines={1} style={styles.rowSnippet}>
-                        {previewText}
-                    </Text>
-                </View>
-                <Text variant="meta">{formatWhen(entry.created_at)}</Text>
-            </ScalePressable>
-        );
-    }
+    const reference = omitBookName
+        ? `${entry.chapter_end && entry.chapter_end !== entry.chapter_start ? 'Chapters' : 'Chapter'} ${getChapterText(entry)}`
+        : `${entry.book_name} ${getChapterText(entry)}`;
 
     return (
-        <View>
-            <ScalePressable
-                style={[styles.entryCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
-                onPress={() => onEntryPress(entry)}
-            >
-                <View style={styles.entryHeader}>
-                    <View style={styles.entryHeaderLeft}>
-                        <Text variant="bodySmall" tone="tertiary">
-                            {formatDate(entry.created_at)}
-                        </Text>
-                        {entry.book_name && (
-                            <View style={[styles.refBadge, { backgroundColor: colors.accent + '15' }]}>
-                                <Text variant="label" style={{ color: colors.accent + 'A5' }}>
-                                    {entry.book_name} {getChapterText(entry)}
-                                </Text>
-                            </View>
-                        )}
-                    </View>
-                    <ChevronRight size={14} color={colors.textMuted} />
-                </View>
-
-                <HyperlinkedText
-                    style={[
-                        styles.entryPreview,
-                        {
-                            color: colors.textPrimary,
-                            fontSize: dynamic.fontSize,
-                            lineHeight: dynamic.lineHeight,
-                            marginBottom: 10,
-                        }
-                    ]}
-                    numberOfLines={3}
-                    text={previewText}
-                />
-
-                <View style={styles.entryFooter}>
-                    <View style={styles.reflectionIndicator}>
-                        {getAnsweredStatus(entry).map((answered, idx) => (
-                            <View
-                                key={idx}
-                                style={[
-                                    styles.reflectionDot,
-                                    { backgroundColor: colors.border },
-                                    answered && { backgroundColor: colors.accentSecondary }
-                                ]}
-                            />
-                        ))}
-                    </View>
-                </View>
-            </ScalePressable>
-        </View>
+        <ScalePressable
+            style={[styles.row, { borderBottomColor: colors.border }]}
+            onPress={() => onEntryPress(entry)}
+            accessibilityRole="button"
+            accessibilityLabel={`Open entry for ${reference}`}
+        >
+            <View style={styles.rowMain}>
+                {entry.book_name ? <Text variant="reference">{reference}</Text> : null}
+                <Text variant="bodySmall" numberOfLines={1} style={styles.rowSnippet}>
+                    {previewText}
+                </Text>
+            </View>
+            <Text variant="meta">{formatWhen(entry.created_at)}</Text>
+        </ScalePressable>
     );
 });
 
+EntryCard.displayName = 'EntryCard';
+
 const styles = StyleSheet.create({
-    // .co-row
+    /**
+     * `.cl-row{gap:14px; padding:16px 0}` against `.co-row{gap:12px; padding:15px 0}`.
+     * The two are within a pixel of each other, so one row serves both and the
+     * difference stays where the design puts it — in the type.
+     */
     row: {
         flexDirection: 'row',
         alignItems: 'baseline',
-        gap: Spacing.md,
+        gap: Spacing.md + 1,
         paddingVertical: Spacing.lg - 1,
         borderBottomWidth: Spacing.border.hairline,
     },
-    // .co-rmain
     rowMain: {
         flex: 1,
         minWidth: 0,
     },
-    // .co-snip
+    /** `.cl-snip{margin:4px 0 0}` / `.co-snip{margin:3px 0 0}` */
     rowSnippet: {
         marginTop: 3,
-    },
-    entryCard: {
-        borderRadius: Spacing.borderRadius.lg,
-        padding: 16,
-        marginBottom: 12,
-        borderWidth: 1,
-    },
-    entryHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 12,
-    },
-    entryHeaderLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    refBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: Spacing.borderRadius.lg,
-    },
-    entryScripture: {
-        fontSize: 10,
-        fontWeight: '600',
-        letterSpacing: 0.5,
-    },
-    entryPreview: {
-        fontWeight: '500',
-    },
-    entryFooter: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    reflectionIndicator: {
-        flexDirection: 'row',
-        gap: 5,
-    },
-    reflectionDot: {
-        width: 8,
-        height: 8,
-        borderRadius: Spacing.borderRadius.round,
     },
 });

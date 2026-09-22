@@ -1,15 +1,15 @@
-import { THEME_STYLES, useTheme } from '@/src/theme/ThemeContext';
+import { useTheme } from '@/src/theme/ThemeContext';
 import {
-    Card,
     Hero,
     Screen,
     Text as UIText,
+    ThemedButton,
 } from '@/src/components/ui';
 import { useAlert } from '@/src/context/AlertContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
-import { getAllScheduledNotifications, setupDailyNotifications, sendTestNotification } from '@/src/utils/notifications';
-import { exportJournalEntriesToJson, importJournalEntriesFromJson } from '@/src/data/database';
+import { getAllScheduledNotifications, setupDailyNotifications, sendTestNotification, hasNotificationPermissions, openNotificationSettings } from '@/src/utils/notifications';
+import { exportJournalEntriesToJson, importJournalEntriesFromJson, getFirstEntryDate } from '@/src/data/database';
 import { STORAGE_KEYS } from '@/src/storage/storageKeys';
 import Constants from 'expo-constants';
 import * as DocumentPicker from 'expo-document-picker';
@@ -18,7 +18,7 @@ import * as Sharing from 'expo-sharing';
 import { Stack, useRouter } from 'expo-router';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { DeviceEventEmitter, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { Button } from '@/src/components/Button';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import {
@@ -26,16 +26,10 @@ import {
     Bell,
     RefreshCw,
     ChevronLeft,
-    ChevronRight,
-    ArrowLeft,
-    Sun,
     Moon,
-    Smartphone,
     Archive,
     Download,
-    Check,
 } from 'lucide-react-native';
-import { LoadingView } from '@/src/components/LoadingView';
 import { getFirestore, doc, setDoc, getDoc, writeBatch, query, where, onSnapshot, collectionGroup } from '@react-native-firebase/firestore';
 import { useAuth } from '@/src/context/AuthContext';
 import { Avatar } from '@/src/components/Avatar';
@@ -124,70 +118,40 @@ const SettingsItem = ({
     colors: any;
     isLockedIn?: boolean;
 }) => {
-    if (isLockedIn) {
-        /*
-         * design/all-screens.html #settings, the `.co` slot: the label on the
-         * left and its value on the right, and nothing else. No icon chip and
-         * no chevron — a list where every row carries both reads as texture
-         * rather than as information, and this is the longest list in the app.
-         * A value of "On" is the one thing here worth the accent.
-         */
-        return (
-            <ScalePressable
-                style={[styles.colossalRow, { borderBottomColor: colors.border }]}
-                onPress={onPress}
-                accessibilityRole="button"
-            >
-                <UIText
-                    variant="reference"
-                    tone={destructive ? 'danger' : 'primary'}
-                    style={styles.colossalRowLabel}
-                >
-                    {label}
-                </UIText>
-                {value && (
-                    <UIText variant="meta" tone={value === 'On' ? 'accent' : 'tertiary'}>{value}</UIText>
-                )}
-            </ScalePressable>
-        );
-    }
+    /*
+     * design/all-screens.html #settings — both slots draw the same row: the
+     * label on the left, its value on the right, and nothing else. No icon
+     * chip and no chevron; a list where every row carries both reads as
+     * texture rather than as information, and this is the longest list in the
+     * app. A value of "On" is the one thing here worth the accent.
+     *
+     * Only the face differs, which is what the variant system is for: Cloth
+     * sets the label in Work Sans at `body`, Colossal in Archivo at `.co-ref`.
+     */
+    void icon; void showChevron;
 
     return (
         <ScalePressable
-            style={[styles.itemContainer, { borderBottomColor: colors.border + '50' }]}
+            style={[styles.settingRow, { borderBottomColor: colors.border }]}
             onPress={onPress}
+            accessibilityRole="button"
         >
-            <View style={[styles.itemIconWrap, { backgroundColor: destructive ? colors.dangerSurface : colors.backgroundSubtle }]}>
-                {React.createElement(icon, { size: 18, color: destructive ? colors.danger : colors.accent, strokeWidth: 2 })}
-            </View>
-            <View style={styles.itemContent}>
-                <UIText variant="body" tone={destructive ? 'danger' : 'primary'}>{label}</UIText>
-                {value && <UIText variant="caption">{value}</UIText>}
-            </View>
-            {showChevron && <ChevronRight size={16} color={colors.textMuted} />}
+            <UIText
+                variant={isLockedIn ? 'reference' : 'body'}
+                tone={destructive ? 'danger' : 'primary'}
+                style={styles.settingRowLabel}
+            >
+                {label}
+            </UIText>
+            {value && (
+                <UIText variant="meta" tone={value === 'On' ? 'accent' : 'secondary'}>{value}</UIText>
+            )}
         </ScalePressable>
     );
 };
 
-/**
- * A settings section.
- *
- * The design sets these as an eyebrow over hairline-separated rows on the page
- * ground (`.cl-label` + `.cl-row`), not as a bordered card — Settings is the
- * one screen in the mockup with no panel on it at all. `colors` is still taken
- * so callers need not change; the section itself no longer paints anything.
- */
-const SettingsGroup = ({ title, children }: { title: string; children: React.ReactNode; colors?: any }) => (
-    <View style={styles.group}>
-        <UIText variant="label" style={styles.groupTitle}>{title}</UIText>
-        <View style={styles.groupContent}>
-            {children}
-        </View>
-    </View>
-);
-
 export default function Settings() {
-    const { colors, shape, theme, setTheme, style: themeStyle, setStyle: setThemeStyle, isLockedIn } = useTheme();
+    const { colors, setStyle: setThemeStyle, isLockedIn } = useTheme();
     const router = useRouter();
     const { showAlert } = useAlert();
 
@@ -197,7 +161,6 @@ export default function Settings() {
     const [tapCount, setTapCount] = useState(0);
     const [isExporting, setIsExporting] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
-    const [lastBackupDate, setLastBackupDate] = useState<string | null>(null);
     const scrollViewRef = useRef<ScrollView>(null);
     const { user } = useAuth();
     const db = getFirestore();
@@ -207,6 +170,14 @@ export default function Settings() {
     const [sleepTime, setSleepTime] = useState<string | null>(null);
     const [lastSleepChangeAt, setLastSleepChangeAt] = useState<string | null>(null);
     const [isUpdatingSleep, setIsUpdatingSleep] = useState(false);
+    /*
+     * The three things the mockup's Settings rows state that the screen never
+     * knew: when you started reading, whether notifications are actually on,
+     * and (for admins) whether the photo editor is open under the profile row.
+     */
+    const [readingSince, setReadingSince] = useState<string | null>(null);
+    const [notificationsOn, setNotificationsOn] = useState<boolean | null>(null);
+    const [showPhotoEditor, setShowPhotoEditor] = useState(false);
 
     const handleSaveProfileURL = useCallback(async (url: string) => {
         if (!user?.uid) return;
@@ -240,7 +211,10 @@ export default function Settings() {
 
 
     useEffect(() => {
-        AsyncStorage.getItem(STORAGE_KEYS.LAST_BACKUP_DATE).then(val => setLastBackupDate(val));
+        getFirstEntryDate().then(date => {
+            if (date) setReadingSince(date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }));
+        }).catch(() => { });
+        hasNotificationPermissions().then(setNotificationsOn).catch(() => setNotificationsOn(null));
         AsyncStorage.getItem(STORAGE_KEYS.SLEEP_TIME).then(val => setSleepTime(val));
         AsyncStorage.getItem(STORAGE_KEYS.LAST_SLEEP_CHANGE_AT).then(val => setLastSleepChangeAt(val));
 
@@ -340,16 +314,6 @@ export default function Settings() {
         }
     };
 
-    const formatTrigger = (trigger: any) => {
-        if (trigger.type === 'date') {
-            return new Date(trigger.value).toLocaleString();
-        } else if (trigger.hour !== undefined) {
-            const hour = trigger.hour.toString().padStart(2, '0');
-            const minute = trigger.minute.toString().padStart(2, '0');
-            return `Daily at ${hour}:${minute}${trigger.repeats ? ' (Repeating)' : ''}`;
-        }
-        return JSON.stringify(trigger);
-    };
 
     const handleExport = async () => {
         if (isExporting) return;
@@ -366,7 +330,6 @@ export default function Settings() {
 
             const nowIso = now.toISOString();
             await AsyncStorage.setItem(STORAGE_KEYS.LAST_BACKUP_DATE, nowIso);
-            setLastBackupDate(nowIso);
 
             if (await Sharing.isAvailableAsync()) {
                 await Sharing.shareAsync(uri, {
@@ -517,7 +480,13 @@ export default function Settings() {
             <ScrollView
                 ref={scrollViewRef}
                 style={styles.scrollView}
-                contentContainerStyle={styles.scrollContent}
+                contentContainerStyle={[
+                    styles.scrollContent,
+                    // Colossal's header and body carry their own 22px gutter, so
+                    // the scroll view must not add Cloth's 24 on top of it — the
+                    // screen was sitting 46px in from the edge.
+                    isLockedIn && styles.scrollContentColossal,
+                ]}
                 showsVerticalScrollIndicator={false}
             >
                 {isLockedIn ? (
@@ -539,24 +508,95 @@ export default function Settings() {
                         <UIText variant="tab">Settings</UIText>
                     </View>
                 ) : (
+                    /*
+                     * design/all-screens.html #settings, the `.cl` slot: Cloth
+                     * drops to a single header band and puts the profile on it —
+                     * the avatar in ochre, the name at 24px, and how long you
+                     * have been reading underneath. No screen title: the band
+                     * is about you, not about the word "Settings".
+                     */
                     <Hero style={styles.hero}>
-                        <View style={styles.headerTitleRow}>
-                            <ScalePressable
-                                onPress={() => router.back()}
-                                style={styles.backButton}
-                                accessibilityRole="button"
-                                accessibilityLabel="Back"
-                            >
-                                <ArrowLeft size={22} color={colors.textInverse} />
-                            </ScalePressable>
-                            <UIText variant="display" tone="inverse" style={{ flex: 1 }}>Engine Room</UIText>
-                        </View>
+                        <ScalePressable
+                            onPress={() => router.back()}
+                            style={styles.clothBack}
+                            accessibilityRole="button"
+                            accessibilityLabel="Back"
+                            hitSlop={Spacing.md}
+                        >
+                            <ChevronLeft size={20} color={colors.accent} strokeWidth={1.9} />
+                        </ScalePressable>
+                        <ScalePressable
+                            disabled={!isAdmin}
+                            onPress={() => setShowPhotoEditor(v => !v)}
+                            accessibilityRole={isAdmin ? 'button' : undefined}
+                            accessibilityLabel={isAdmin ? 'Edit profile photo' : undefined}
+                            style={styles.clothProfile}
+                        >
+                            <Avatar
+                                id={user?.uid}
+                                name={user?.displayName || 'Reader'}
+                                url={photoURL}
+                                size={52}
+                                radius={26}
+                            />
+                            <View style={styles.clothProfileText}>
+                                <UIText variant="title" tone="onBand">{user?.displayName || 'Reader'}</UIText>
+                                {readingSince && (
+                                    <UIText variant="sub" tone="onHero" style={styles.clothProfileSub}>
+                                        {`Reading since ${readingSince}`}
+                                    </UIText>
+                                )}
+                            </View>
+                        </ScalePressable>
                     </Hero>
                 )}
 
-                {/* Profile Section for Admins */}
-                {isAdmin && (
-                    <SettingsGroup title="Profile" colors={colors}>
+                {/*
+                  * design/all-screens.html #settings — one body, both styles.
+                  *
+                  * Both slots give Settings the same architecture: labelled runs
+                  * of plain rows — Reminders, Your data, Engine Room, About —
+                  * with no panel anywhere on the screen. Neither draws an
+                  * Appearance selector or a Style card picker: the style switch
+                  * is expressed as a ROW ("Locked In Mode · On"), and light/dark
+                  * has no second Cloth palette to choose between yet.
+                  *
+                  * Cloth carries the profile on its hero band; Colossal has no
+                  * band, so it leads the body with the same row instead.
+                  */}
+                <View style={isLockedIn ? styles.colossalBody : styles.clothBody}>
+                    {isLockedIn && (
+                        <>
+                            <ScalePressable
+                                disabled={!isAdmin}
+                                onPress={() => setShowPhotoEditor(v => !v)}
+                                accessibilityRole={isAdmin ? 'button' : undefined}
+                                accessibilityLabel={isAdmin ? 'Edit profile photo' : undefined}
+                                style={styles.colossalProfile}
+                            >
+                                <Avatar
+                                    id={user?.uid}
+                                    name={user?.displayName || 'Reader'}
+                                    url={photoURL}
+                                    size={52}
+                                    radius={26}
+                                />
+                                <View style={styles.colossalProfileText}>
+                                    <UIText variant="subtitle">{user?.displayName || 'Reader'}</UIText>
+                                    {readingSince && (
+                                        <UIText variant="bodySmall" style={styles.colossalProfileSub}>
+                                            {`Reading since ${readingSince}`}
+                                        </UIText>
+                                    )}
+                                </View>
+                            </ScalePressable>
+                            <View style={[styles.rule, { backgroundColor: colors.border }]} />
+                        </>
+                    )}
+
+                    {/* Admins keep the photo editor; it opens under the profile
+                        rather than as a section neither mockup draws. */}
+                    {isAdmin && showPhotoEditor && (
                         <ProfilePhotoCard
                             user={user}
                             colors={colors}
@@ -564,239 +604,110 @@ export default function Settings() {
                             onSave={handleSaveProfileURL}
                             isSaving={isSavingProfile}
                         />
-                    </SettingsGroup>
-                )}
-
-                {/* Light / dark / follow the system */}
-                <SettingsGroup title="Appearance" colors={colors}>
-                    <View style={styles.themeSelector}>
-                        {(['light', 'dark', 'system'] as const).map((mode) => (
-                            <ScalePressable
-                                key={mode}
-                                onPress={() => setTheme(mode)}
-                                style={[
-                                    styles.themeOption,
-                                    { backgroundColor: theme === mode ? colors.accent : colors.buttonSecondary },
-                                    { borderColor: theme === mode ? 'transparent' : colors.buttonSecondaryBorder }
-                                ]}
-                            >
-                                {React.createElement(
-                                    mode === 'light' ? Sun : mode === 'dark' ? Moon : Smartphone,
-                                    {
-                                        size: 20,
-                                        color: theme === mode ? colors.background : colors.textSecondary
-                                    }
-                                )}
-                            </ScalePressable>
-                        ))}
-                    </View>
-                </SettingsGroup>
-
-                {/* Cloth or Locked In */}
-                <SettingsGroup title="Style" colors={colors}>
-                    <View style={styles.styleChoices}>
-                        {THEME_STYLES.map(option => {
-                            const active = themeStyle === option.key;
-                            return (
-                                <ScalePressable
-                                    key={option.key}
-                                    onPress={() => setThemeStyle(option.key)}
-                                    accessibilityRole="radio"
-                                    accessibilityState={{ selected: active }}
-                                    accessibilityLabel={`${option.label}. ${option.blurb}`}
-                                    style={[
-                                        styles.styleChoice,
-                                        {
-                                            borderRadius: shape.card,
-                                            borderColor: active ? colors.accent : colors.border,
-                                            backgroundColor: active ? colors.accent + '12' : 'transparent',
-                                        },
-                                    ]}
-                                >
-                                    <View style={styles.styleChoiceText}>
-                                        <UIText variant="body" tone={active ? 'accent' : 'primary'}>
-                                            {option.label}
-                                        </UIText>
-                                        <UIText variant="caption">{option.blurb}</UIText>
-                                    </View>
-                                    <View
-                                        style={[
-                                            styles.styleChoiceMark,
-                                            { borderColor: active ? colors.accent : colors.borderStrong },
-                                            active && { backgroundColor: colors.accent },
-                                        ]}
-                                    >
-                                        {active && <Check size={12} color={colors.background} strokeWidth={3} />}
-                                    </View>
-                                </ScalePressable>
-                            );
-                        })}
-                    </View>
-                </SettingsGroup>
-
-                {/* Data Management */}
-                <SettingsGroup title={isLockedIn ? 'Your data' : 'Backup & Restore'} colors={colors}>
-                    {isLockedIn ? (
-                        /*
-                         * The mockup names these rather than drawing them as two
-                         * unlabelled icon buttons — "Share entries backup" and
-                         * "Import entries" are the strings it uses, and on the
-                         * longest list in the app a row you can read beats a
-                         * glyph you have to recognise.
-                         */
-                        <>
-                            <SettingsItem
-                                isLockedIn
-                                label="Share entries backup"
-                                value={isExporting ? 'Working…' : undefined}
-                                icon={Archive}
-                                onPress={handleExport}
-                                colors={colors}
-                            />
-                            <SettingsItem
-                                isLockedIn
-                                label="Import entries"
-                                value={isImporting ? 'Working…' : undefined}
-                                icon={Download}
-                                onPress={handleImport}
-                                colors={colors}
-                            />
-                        </>
-                    ) : (
-                    <View style={styles.buttonGroup}>
-                        <ScalePressable
-                            onPress={handleExport}
-                            disabled={isExporting}
-                            style={[styles.actionButton, { backgroundColor: colors.buttonSecondary, borderColor: colors.buttonSecondaryBorder }]}
-                        >
-                            {isExporting ? <LoadingView size={20} /> : <Archive size={20} color={colors.textSecondary} />}
-                        </ScalePressable>
-                        <ScalePressable
-                            onPress={handleImport}
-                            disabled={isImporting}
-                            style={[styles.actionButton, { backgroundColor: colors.buttonSecondary, borderColor: colors.buttonSecondaryBorder }]}
-                        >
-                            {isImporting ? <LoadingView size={20} /> : <Download size={20} color={colors.textSecondary} />}
-                        </ScalePressable>
-                    </View>
                     )}
-                    {lastBackupDate ? (
-                        <View>
-                            <UIText variant="caption" tone="muted" style={styles.lastBackupText}>
-                                Last backup: {new Date(lastBackupDate).toLocaleString()}
-                            </UIText>
-                            {(new Date().getTime() - new Date(lastBackupDate).getTime() > 7 * 24 * 60 * 60 * 1000) && (
-                                <UIText style={[styles.lastBackupText, { color: colors.warning, fontStyle: 'italic', marginTop: -8, paddingHorizontal: 20 }]}>
-                                    It's been a while since your last backup! If your phone crashes, please don't cry to me
-                                </UIText>
-                            )}
-                        </View>
-                    ) : (
-                        <UIText style={[styles.lastBackupText, { color: colors.warning, fontStyle: 'italic', paddingHorizontal: 20 }]}>
-                            You haven't backed up your data. If you lose everything, please don't cry to me
-                        </UIText>
-                    )}
-                </SettingsGroup>
 
-                {/* Accountability */}
-                <SettingsGroup title="Accountability" colors={colors}>
+                    <UIText variant="label" style={styles.sectionLabel}>Reminders</UIText>
                     <SettingsItem
                         isLockedIn={isLockedIn}
-                        label="Sleep Time"
+                        label="Sleep time"
                         value={formatSleepTime(sleepTime)}
                         icon={Bed}
                         onPress={handleUpdateSleepTime}
                         colors={colors}
                     />
-                    <UIText style={[styles.lastBackupText, { color: colors.textTertiary, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 16 }]}>
-                        Notifications won't be sent after this time.
-                    </UIText>
-                </SettingsGroup>
+                    <SettingsItem
+                        isLockedIn={isLockedIn}
+                        label="Notifications"
+                        value={notificationsOn === null ? '—' : notificationsOn ? 'On' : 'Off'}
+                        icon={Bell}
+                        onPress={openNotificationSettings}
+                        colors={colors}
+                    />
+                    <SettingsItem
+                        isLockedIn={isLockedIn}
+                        label="Locked In Mode"
+                        value={isLockedIn ? 'On' : 'Off'}
+                        icon={Moon}
+                        onPress={() => setThemeStyle(isLockedIn ? 'cloth' : 'colossal')}
+                        colors={colors}
+                    />
 
-                {/* About */}
-                <View style={styles.group}>
-                    <UIText variant="caption" tone="secondary" style={styles.groupTitle}>ABOUT</UIText>
-                    <TouchableOpacity
+                    <View style={[styles.rule, { backgroundColor: colors.border }]} />
+
+                    <UIText variant="label" style={styles.sectionLabel}>Your data</UIText>
+                    <SettingsItem
+                        isLockedIn={isLockedIn}
+                        label="Share entries backup"
+                        value={isExporting ? 'Working…' : undefined}
+                        icon={Archive}
+                        onPress={handleExport}
+                        colors={colors}
+                    />
+                    <SettingsItem
+                        isLockedIn={isLockedIn}
+                        label="Import entries"
+                        value={isImporting ? 'Working…' : undefined}
+                        icon={Download}
+                        onPress={handleImport}
+                        colors={colors}
+                    />
+
+                    <View style={[styles.rule, { backgroundColor: colors.border }]} />
+
+                    {/* Both mockups show these plainly rather than behind the
+                        five-tap easter egg they used to hide under. */}
+                    <UIText variant="label" style={styles.sectionLabel}>Engine Room</UIText>
+                    <SettingsItem
+                        isLockedIn={isLockedIn}
+                        label="Reschedule notifications"
+                        value={isLoadingNotifications ? 'Working…' : undefined}
+                        icon={RefreshCw}
+                        onPress={handleForceReschedule}
+                        colors={colors}
+                    />
+                    <SettingsItem
+                        isLockedIn={isLockedIn}
+                        label="Send test notification"
+                        icon={Bell}
+                        onPress={handleTestNotification}
+                        colors={colors}
+                    />
+
+                    {/* Cloth gives Version its own "About"; Colossal folds it
+                        into Engine Room. Both are what their mockup draws. */}
+                    {!isLockedIn && (
+                        <>
+                            <View style={[styles.rule, { backgroundColor: colors.border }]} />
+                            <UIText variant="label" style={styles.sectionLabel}>About</UIText>
+                        </>
+                    )}
+                    <SettingsItem
+                        isLockedIn={isLockedIn}
+                        label="Version"
+                        value={Constants.expoConfig?.version || '1.0.0'}
+                        icon={Bell}
                         onPress={handleNotificationTitleTap}
-                        activeOpacity={0.7}
-                        style={isLockedIn
-                            ? [styles.colossalRow, { borderBottomColor: colors.border }]
-                            : [styles.row, { paddingHorizontal: 4 }]}
-                    >
-                        <UIText
-                            variant={isLockedIn ? 'reference' : 'subtitle'}
-                            style={isLockedIn ? styles.colossalRowLabel : undefined}
-                        >
-                            Version
+                        colors={colors}
+                    />
+
+                    {showNotifications && scheduledNotifications.length > 0 && (
+                        <UIText variant="bodySmall" style={styles.sectionLabel}>
+                            {`${scheduledNotifications.length} scheduled`}
                         </UIText>
-                        <UIText variant={isLockedIn ? 'meta' : 'body'} tone="tertiary">
-                            {Constants.expoConfig?.version || '1.0.0'}
-                        </UIText>
-                    </TouchableOpacity>
+                    )}
                 </View>
 
-                {/* Notifications - Easter Egg */}
-                {showNotifications && (
-                    <SettingsGroup title="Scheduled Notifications" colors={colors}>
-                        <View style={styles.notificationsHeaderRow}>
-                            <View style={styles.headerTitleRow}>
-                                <Bell size={14} color={colors.accent} />
-                                <UIText variant="caption" tone="secondary">
-                                    NOTIFICATIONS
-                                </UIText>
-                            </View>
-                            <View style={styles.headerActions}>
-                                <Button
-                                    variant="ghost"
-                                    onPress={handleTestNotification}
-                                    disabled={isLoadingNotifications}
-                                    icon={Bell}
-                                    size="sm"
-                                />
-                                <Button
-                                    variant="ghost"
-                                    onPress={handleForceReschedule}
-                                    disabled={isLoadingNotifications}
-                                    loading={isLoadingNotifications}
-                                    icon={RefreshCw}
-                                    size="sm"
-                                />
-                            </View>
-                        </View>
-
-                        {scheduledNotifications.length > 0 ? (
-                            <View style={styles.notificationsList}>
-                                <UIText variant="bodySmall" tone="secondary" style={styles.notificationsCount}>
-                                    {scheduledNotifications.length} scheduled
-                                </UIText>
-                                {scheduledNotifications.map((notif, index) => (
-                                    <View
-                                        key={notif.identifier || index}
-                                        style={[styles.notificationItem, {
-                                            backgroundColor: colors.cardBackground,
-                                            borderColor: colors.cardBorder,
-                                        }]}
-                                    >
-                                        <UIText variant="body">
-                                            {notif.content.title}
-                                        </UIText>
-                                        <UIText variant="bodySmall" tone="secondary">
-                                            {notif.content.body}
-                                        </UIText>
-                                        <UIText variant="caption" style={styles.notificationTime}>
-                                            {formatTrigger(notif.trigger)}
-                                        </UIText>
-                                    </View>
-                                ))}
-                            </View>
-                        ) : (
-                            <UIText variant="bodySmall" tone="secondary" style={styles.emptyText}>
-                                No scheduled notifications
-                            </UIText>
-                        )}
-                    </SettingsGroup>
-                )}
             </ScrollView>
+
+            {/*
+              * The mockup's footer, in both styles. Every setting here already
+              * persists the moment it changes — there is no pending state to
+              * commit — so the button does the only honest thing left and
+              * closes the screen.
+              */}
+            <View style={[styles.colossalFooter, !isLockedIn && styles.clothFooter]}>
+                <ThemedButton label="Save Changes" block onPress={() => router.back()} />
+            </View>
         </Screen>
     );
 }
@@ -812,7 +723,45 @@ const styles = StyleSheet.create({
         paddingBottom: Spacing.xl - 2,
     },
     colossalBack: { marginLeft: -6 },
-    colossalRow: {
+    /** Cloth's band: the arrow hangs into the gutter, the profile sits under it. */
+    clothBack: { marginLeft: -6, alignSelf: 'flex-start' },
+    clothProfile: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.md + 2,
+        marginTop: Spacing.md,
+    },
+    clothProfileText: { flex: 1, minWidth: 0 },
+    clothProfileSub: { marginTop: 3 },
+    /** `.co-body{padding:26px 22px 0}`, overridden to 22 on this screen. */
+    colossalBody: {
+        paddingHorizontal: Spacing.layout.screenPaddingTight,
+        paddingTop: Spacing.xl - 2,
+    },
+    colossalProfile: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.md + 2,
+    },
+    colossalProfileText: { flex: 1, minWidth: 0 },
+    colossalProfileSub: { marginTop: 4 },
+    /** `.co-hr{height:1px; background:var(--hair); margin:26px 0}` */
+    rule: { height: Spacing.border.hairline, marginVertical: Spacing.xl + 2 },
+    /** `.cl-label{margin:20px 0 4px}` / `.co-label{margin:0 0 10px}` */
+    sectionLabel: { marginBottom: 10 },
+    /** Cloth's body runs in its own 24px gutter. */
+    clothBody: {
+        paddingHorizontal: Spacing.layout.screenPadding,
+        paddingTop: Spacing.lg,
+    },
+    clothFooter: { paddingHorizontal: Spacing.layout.screenPadding },
+    colossalFooter: {
+        paddingHorizontal: Spacing.layout.screenPaddingTight,
+        paddingTop: Spacing.md + 2,
+        paddingBottom: Spacing.layout.tabBarPadding,
+    },
+    /** `.cl-row{padding:16px 0}` / `.co-row{padding:15px 0}` — one row, both styles. */
+    settingRow: {
         flexDirection: 'row',
         alignItems: 'baseline',
         gap: Spacing.md,
@@ -820,7 +769,7 @@ const styles = StyleSheet.create({
         borderBottomWidth: Spacing.border.hairline,
     },
     /** The mockup lightens a settings label: it names a thing, not a heading. */
-    colossalRowLabel: { flex: 1, fontWeight: '500' },
+    settingRowLabel: { flex: 1, fontWeight: '500' },
 
     container: {
         flex: 1,
@@ -863,6 +812,10 @@ const styles = StyleSheet.create({
     scrollContent: {
         padding: Spacing.layout.screenPadding,
         paddingBottom: 60,
+    },
+    scrollContentColossal: {
+        paddingHorizontal: 0,
+        paddingTop: 0,
     },
     header: {
         marginBottom: Spacing.xl,

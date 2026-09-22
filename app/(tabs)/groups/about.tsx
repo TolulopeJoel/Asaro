@@ -98,7 +98,7 @@ export default function AboutGroupsScreen() {
                 >
                     <ChevronLeft size={22} color={colors.textInverse} />
                 </ScalePressable>
-                <Text variant="display" tone="inverse">Group Logic</Text>
+                <Text variant="display" tone="onBand">Group Logic</Text>
             </Hero>
 
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>

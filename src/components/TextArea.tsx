@@ -18,6 +18,29 @@ import { useBibleRefPicker } from '../hooks/useBibleRefPicker';
 import { ScalePressable } from './ScalePressable';
 import { Spacing } from '../theme/spacing';
 import { Screen, textStyle } from './ui';
+import Svg, { Defs, Line, Pattern, Rect } from 'react-native-svg';
+
+/**
+ * Cloth's ruled paper — a hairline every 28px, matching the mockup's
+ * `repeating-linear-gradient(0deg, transparent 0 27px, #d8cab2 27px 28px)`.
+ * The 28px step is the answer text's own line height, so the writing sits on
+ * the rules rather than across them.
+ */
+function RuledPaper({ color }: { color: string }) {
+    const id = 'ruled-paper';
+    return (
+        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+            <Svg width="100%" height="100%">
+                <Defs>
+                    <Pattern id={id} width={28} height={28} patternUnits="userSpaceOnUse">
+                        <Line x1={0} y1={27.5} x2={28} y2={27.5} stroke={color} strokeWidth={1} />
+                    </Pattern>
+                </Defs>
+                <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${id})`} />
+            </Svg>
+        </View>
+    );
+}
 
 const TextArea: React.FC<{
     label: string;
@@ -100,14 +123,27 @@ const TextArea: React.FC<{
                 {/* ── Inline compact view ── */}
                 <View style={bare ? textAreaStyles.containerBare : textAreaStyles.container}>
                     <View style={bare ? [
+                        /*
+                         * The writing band, per style.
+                         *
+                         * Colossal sets the answer between two hairlines on the
+                         * page's own ground. Cloth writes on a `.cl-panel` ruled
+                         * every 28px — the mockup's lined paper, which is the one
+                         * place in the design where a surface is decorated for
+                         * the sake of what happens on it rather than to separate
+                         * two things.
+                         */
                         textAreaStyles.inputContainerBare,
-                        { borderColor: colors.border },
+                        themeStyle === 'cloth'
+                            ? { backgroundColor: colors.backgroundSubtle }
+                            : { borderTopWidth: Spacing.border.hairline, borderBottomWidth: Spacing.border.hairline, borderColor: colors.border },
                     ] : [
                         textAreaStyles.inputContainer,
                         { backgroundColor: colors.cardBackground, borderColor: colors.border },
                         isAnswered && { borderColor: colors.border, backgroundColor: colors.background },
                         disabled && { backgroundColor: colors.background },
                     ]}>
+                        {bare && themeStyle === 'cloth' && <RuledPaper color={colors.border} />}
                         <TextInput
                             ref={regularTextInputRef}
                             inputAccessoryViewID="bible-picker"
@@ -251,15 +287,13 @@ const textAreaStyles = StyleSheet.create({
         flex: 1,
         position: 'relative',
     },
-    /** Two hairlines and nothing else — the mockup's writing band. */
     inputContainerBare: {
         flex: 1,
-        borderTopWidth: Spacing.border.hairline,
-        borderBottomWidth: Spacing.border.hairline,
         position: 'relative',
+        overflow: 'hidden',
     },
     inputBare: {
-        paddingVertical: Spacing.layout.cardPadding,
+        padding: Spacing.lg,
     },
     inputContainer: {
         borderRadius: Spacing.borderRadius.lg,

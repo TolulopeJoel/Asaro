@@ -1,17 +1,9 @@
 import { requestNotificationPermissions, openNotificationSettings, hasNotificationPermissions } from '@/src/utils/notifications';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import {
-    AppState,
-    View,
-    StyleSheet,
-    TouchableOpacity,
-} from 'react-native';
+import { AppState, View, StyleSheet } from 'react-native';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
-import { Typography } from '@/src/theme/typography';
-import { Bell, ArrowRight } from 'lucide-react-native';
-import { ScalePressable } from '@/src/components/ScalePressable';
 import { useAlert } from '@/src/context/AlertContext';
 import { Hero, Screen, Text, ThemedButton } from '@/src/components/ui';
 
@@ -112,52 +104,37 @@ export default function PermissionsScreen() {
         );
     }
 
+    /*
+     * design/all-screens.html #perms, the `.cl` slot. Cloth states the ask on
+     * its band and gathers the three promises into one `.cl-panel` separated by
+     * hairlines — the same three lines Colossal sets as bare rows.
+     */
     return (
         <Screen>
-            <Hero>
+            <Hero style={styles.clothHero}>
                 <Text variant="label" tone="onHero" style={styles.heroStep}>Step 3 of 3</Text>
-                <Text variant="display" tone="inverse" style={styles.heroTitle}>Stay Connected</Text>
+                <Text variant="display" tone="onBand">Can I Check{'\n'}Up On You? 😏</Text>
             </Hero>
 
+            <View style={styles.clothBody}>
+                <Text variant="sub">
+                    One nudge a day, at a time you choose, and nothing after your sleep hour.
+                </Text>
 
-            <View style={styles.content}>
-                <View style={styles.header}>
-                    <View style={[styles.iconContainer, { backgroundColor: 'rgba(225, 143, 67, 0.1)' }]}>
-                        <Bell size={Typography.size.display} color={colors.primary} />
-                    </View>
+                <View style={[styles.clothPanel, { backgroundColor: colors.backgroundSubtle }]}>
+                    <Text variant="label" style={styles.clothPanelLabel}>What you&apos;ll get</Text>
+                    {PROMISES.map((promise, i) => (
+                        <View key={promise}>
+                            {i > 0 && <View style={[styles.clothHr, { backgroundColor: colors.border }]} />}
+                            <Text variant="body">{promise}</Text>
+                        </View>
+                    ))}
                 </View>
 
-                <View style={styles.textContainer}>
-
-                    <Text variant="body" tone="secondary" style={styles.description}>
-                        Àṣàrò helps you stay consistent with your Bible reading through{" "}
-                        <Text style={{ textDecorationLine: 'line-through' }}>
-                            friendly
-                        </Text>{" "}
-                        daily reminders.
-                    </Text>
-                </View>
-
-                <View style={styles.footer}>
-                    <ScalePressable
-                        style={[styles.button, { backgroundColor: colors.textPrimary }]}
-                        onPress={handleRequestPermission}
-                    >
-                        <Text variant="body" tone="inverse">Allow Notifications</Text>
-                        <ArrowRight size={Typography.size.lg} color={colors.background} style={{ marginLeft: Spacing.sm }} />
-                    </ScalePressable>
-
-                    {permissionStatus === 'denied' && (
-                        <TouchableOpacity
-                            style={styles.secondaryButton}
-                            onPress={handleOpenSettings}
-                        >
-                            <Text variant="body" tone="secondary">
-                                Open Settings
-                            </Text>
-                        </TouchableOpacity>
-                    )}
-                </View>
+                <ThemedButton label="Allow Notifications" variant="accent" block onPress={handleRequestPermission} />
+                {permissionStatus === 'denied' && (
+                    <ThemedButton label="Open Settings" variant="secondary" block onPress={handleOpenSettings} />
+                )}
             </View>
         </Screen>
     );
@@ -167,6 +144,19 @@ const styles = StyleSheet.create({
     heroStep: { marginBottom: Spacing.sm },
 
     // ── Colossal ──────────────────────────────────────────────────────────
+    /** `.cl-hero{padding-top:64px}` on this screen. */
+    clothHero: { paddingTop: 64 },
+    /** `.cl-body{padding-top:30px; gap:18px}` */
+    clothBody: {
+        flex: 1,
+        paddingTop: Spacing.xxl - 2,
+        paddingHorizontal: Spacing.layout.screenPadding,
+        gap: Spacing.layout.cardPadding,
+    },
+    clothPanel: { padding: Spacing.layout.cardPadding },
+    clothPanelLabel: { marginBottom: 7 },
+    /** `.cl-hr{margin:9px 0}` between the promises. */
+    clothHr: { height: Spacing.border.hairline, marginVertical: 9 },
     colossalTop: {
         flexDirection: 'row',
         justifyContent: 'space-between',

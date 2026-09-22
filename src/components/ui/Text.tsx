@@ -24,12 +24,22 @@ export interface TextProps extends RNTextProps {
     variant?: TextVariant;
     /** Named palette role. Defaults to the sensible one for the variant. */
     tone?: 'primary' | 'secondary' | 'tertiary' | 'muted' | 'accent' | 'inverse'
-    | 'onHero' | 'success' | 'warning' | 'danger' | 'info';
+    | 'onBand' | 'onHero' | 'success' | 'warning' | 'danger' | 'info';
     children?: React.ReactNode;
 }
 
-function toneColor(tone: TextProps['tone'], colors: ThemeColors): string {
+/**
+ * `onBand` is the title of a <Hero>, and it is style-dependent by nature.
+ *
+ * Cloth's hero is an indigo band, so its title is the ecru `textInverse`.
+ * Colossal draws no band at all — the title sits on the page — so the same
+ * `textInverse` is #000000 on a #000000 ground and the heading vanishes. Four
+ * screens shipped that way. A tone that resolves per style removes the trap
+ * rather than asking every caller to remember it.
+ */
+function toneColor(tone: TextProps['tone'], colors: ThemeColors, themeStyle: ThemeStyle): string {
     switch (tone) {
+        case 'onBand': return themeStyle === 'cloth' ? colors.textInverse : colors.textPrimary;
         case 'secondary': return colors.textSecondary;
         case 'tertiary': return colors.textTertiary;
         case 'muted': return colors.textMuted;
@@ -364,7 +374,7 @@ export function Text({ variant = 'body', tone, style, children, ...rest }: TextP
 
     return (
         <RNText
-            style={[VARIANTS[themeStyle][variant], { color: toneColor(resolved, colors) }, style]}
+            style={[VARIANTS[themeStyle][variant], { color: toneColor(resolved, colors, themeStyle) }, style]}
             {...rest}
         >
             {children}

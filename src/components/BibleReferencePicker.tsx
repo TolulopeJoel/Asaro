@@ -13,12 +13,14 @@ import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
 import { ALL_BIBLE_BOOKS, BibleBook } from '../data/bibleBooks';
 import { ChevronLeft, Check, ArrowRight, X } from 'lucide-react-native';
+import { ClothStrip } from './ui/Cloth';
 import { Text, textStyle } from './ui';
 
 const CHIP_THRESHOLD = 30;
 
-/** The band runs in Colossal's gutter; it sits under Colossal-width text. */
+/** Colossal runs a 22px gutter, Cloth a 24px one; the band follows the text. */
 const PICKER_GUTTER = Spacing.layout.screenPaddingTight;
+const PICKER_GUTTER_CLOTH = Spacing.layout.screenPadding;
 
 type Phase =
     | 'book'
@@ -230,7 +232,7 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
     onInteraction,
     floating = false,
 }) => {
-    const { colors } = useTheme();
+    const { colors, isLockedIn } = useTheme();
 
     const [phase, setPhase] = useState<Phase>('book');
     const [selectedBook, setSelectedBook] = useState<BibleBook | null>(null);
@@ -664,6 +666,8 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
         ? `${selectedBook.name} has ${selectedBook.chapters} chapters — type a number or keep scrolling.`
         : null;
 
+    const gutter = isLockedIn ? PICKER_GUTTER : PICKER_GUTTER_CLOTH;
+
     const content = (
         <Animated.View
             style={[
@@ -677,7 +681,21 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
                 },
             ]}
         >
-            <View style={[styles.ribbon, { backgroundColor: colors.backgroundElevated, borderTopColor: colors.border }]}>
+            {/*
+              * Cloth marks the boundary between writing and picking with the
+              * crosshatch strip — the one job the design says pattern is
+              * unambiguously good at. Colossal has no cloth to cut, so it uses
+              * a hairline instead.
+              */}
+            {!isLockedIn && <ClothStrip />}
+            <View
+                style={[
+                    styles.ribbon,
+                    isLockedIn
+                        ? { backgroundColor: colors.backgroundElevated, borderTopWidth: Spacing.border.hairline, borderTopColor: colors.border }
+                        : { backgroundColor: colors.backgroundSubtle },
+                ]}
+            >
                 {/*
                  * The band says what it is asking for before it offers the
                  * pills. design/all-screens.html #refpicker puts that prompt in
@@ -685,7 +703,7 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
                  * of numbers with no stated question, which is exactly what it
                  * used to be.
                  */}
-                <View style={styles.promptRow}>
+                <View style={[styles.promptRow, { paddingHorizontal: gutter }]}>
                     <Text variant="label" style={styles.prompt} numberOfLines={1}>{prompt}</Text>
                     <TouchableOpacity
                         onPress={onDismiss}
@@ -702,14 +720,14 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
                         horizontal
                         showsHorizontalScrollIndicator={false}
                         keyboardShouldPersistTaps="always"
-                        contentContainerStyle={styles.scrollContent}
+                        contentContainerStyle={[styles.scrollContent, { paddingHorizontal: gutter }]}
                     >
                         {renderContent()}
                     </ScrollView>
                 </Animated.View>
 
                 {helper && (
-                    <Text variant="bodySmall" style={styles.helper}>{helper}</Text>
+                    <Text variant="bodySmall" style={[styles.helper, { paddingHorizontal: gutter }]}>{helper}</Text>
                 )}
             </View>
         </Animated.View>
@@ -744,7 +762,6 @@ const styles = StyleSheet.create({
      * note for this screen says not to do: it pulls the eye off the sentence.
      */
     ribbon: {
-        borderTopWidth: Spacing.border.hairline,
         paddingTop: Spacing.lg,
         paddingBottom: Spacing.md,
     },
@@ -752,19 +769,14 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: Spacing.sm,
-        paddingHorizontal: PICKER_GUTTER,
         marginBottom: Spacing.md,
     },
     prompt: { flex: 1 },
     scrollContent: {
         alignItems: 'center',
-        paddingHorizontal: PICKER_GUTTER,
         gap: Spacing.sm,
     },
-    helper: {
-        marginTop: Spacing.md,
-        paddingHorizontal: PICKER_GUTTER,
-    },
+    helper: { marginTop: Spacing.md },
     /** `.co-pill` / `.cl-pill` — square, 44 tall, named by its border. */
     pill: {
         paddingHorizontal: 15,
