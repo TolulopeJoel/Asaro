@@ -147,7 +147,8 @@ export default function BatteryOptimizationScreen() {
 }
 
 const styles = StyleSheet.create({
-    heroStep: { marginBottom: Spacing.sm },
+    /** The band's eyebrow: `margin:0 0 10px`. */
+    heroStep: { marginBottom: 10 },
 
     // ── Cloth ─────────────────────────────────────────────────────────────
     clothBody: {

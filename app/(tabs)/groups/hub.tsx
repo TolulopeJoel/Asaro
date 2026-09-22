@@ -132,7 +132,7 @@ export default function GroupsScreen() {
             <Screen edges={[]}>
                 <Hero ownsTopInset>
                     <Text variant="display" tone="onBand">Better{'\n'}Together</Text>
-                    <Text variant="body" tone="onHero" style={styles.heroSub}>Consistency is key. Read together!</Text>
+                    <Text variant="sub" tone="onHero" style={styles.heroSub}>Consistency is key. Read together!</Text>
                 </Hero>
                 <ScrollView
                     ref={scrollViewRef}
@@ -268,7 +268,7 @@ export default function GroupsScreen() {
                         accessibilityRole="button"
                         accessibilityLabel="Join a group"
                     >
-                        <Plus size={26} color={colors.textInverse} />
+                        <Plus size={22} color={colors.accent} />
                     </ScalePressable>
                 </View>
             </Hero>

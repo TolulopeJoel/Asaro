@@ -328,8 +328,9 @@ const styles = StyleSheet.create({
     },
     statsCard: {},
     monthLabel: {},
+    /** `.cl-hsub{margin:8px 0 0}` */
     heroSub: {
-        marginTop: Spacing.xs,
+        marginTop: Spacing.sm,
     },
 
     // ── Colossal ──────────────────────────────────────────────────────────

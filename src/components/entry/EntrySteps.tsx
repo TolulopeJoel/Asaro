@@ -179,7 +179,7 @@ export const ChapterStep = React.memo(({
                         {selectedBook?.name ?? 'Chapters'}
                     </Text>
                     {selectedBook && (
-                        <Text variant="sub" tone="onHero">
+                        <Text variant="sub" tone="onHero" style={styles.clothHeroSub}>
                             {`${selectedBook.chapters} chapters`}
                         </Text>
                     )}
@@ -448,6 +448,8 @@ const styles = StyleSheet.create({
     },
     /** `.cl-htitle{margin-top:8px}` on this screen. */
     clothHeroTitle: { marginTop: Spacing.sm },
+    /** `.cl-hsub{margin:8px 0 0}` */
+    clothHeroSub: { marginTop: Spacing.sm },
     clothBody: { flex: 1, paddingTop: Spacing.layout.cardPadding },
     /** `.cl-panel` summary: background block, name left, Clear pinned right. */
     clothSummary: {

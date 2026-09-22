@@ -9,8 +9,8 @@
  * In Colossal these render nothing — `patternOpacity` is 0 and the components
  * bail out early. Locked In wears no cloth.
  */
-import React, { useId } from 'react';
-import { StyleSheet, View, ViewStyle } from 'react-native';
+import React, { useCallback, useId, useState } from 'react';
+import { LayoutChangeEvent, StyleSheet, View, ViewStyle } from 'react-native';
 import Svg, { Circle, Defs, Line, Pattern, Rect } from 'react-native-svg';
 
 import { useTheme } from '../../theme/ThemeContext';
@@ -25,13 +25,37 @@ import { Motif } from '../../theme/spacing';
 export function ClothGround({ style }: { style?: ViewStyle }) {
     const { colors } = useTheme();
     const pid = `rings-${useId()}`;
+    /*
+     * The rings are sized from a measured layout rather than from `100%`.
+     *
+     * react-native-svg resolves a percentage dimension once, against the size
+     * the <Svg> had when it first laid out, and does not re-resolve it when the
+     * parent grows. A band whose height is stable never shows this, but one
+     * that fills in after a fetch does: Group detail renders its title alone
+     * while loading, then adds `.cl-hsub` underneath, and the band gets taller
+     * than the rings were measured for — leaving the bottom strip of indigo
+     * bare, with the pattern stopping in mid-air partway down.
+     *
+     * Reading the layout and passing pixels means the <Rect> is re-issued at
+     * the band's real height every time it changes.
+     */
+    const [size, setSize] = useState({ width: 0, height: 0 });
+    const onLayout = useCallback((e: LayoutChangeEvent) => {
+        const { width, height } = e.nativeEvent.layout;
+        setSize(prev => (prev.width === width && prev.height === height ? prev : { width, height }));
+    }, []);
+
     if (colors.patternOpacity === 0) return null;
 
     const { tile, centre, radius, step, count, strokeWidth } = Motif.rings;
 
     return (
-        <View style={[StyleSheet.absoluteFill, { opacity: colors.patternOpacity }, style]} pointerEvents="none">
-            <Svg width="100%" height="100%">
+        <View
+            style={[StyleSheet.absoluteFill, { opacity: colors.patternOpacity }, style]}
+            pointerEvents="none"
+            onLayout={onLayout}
+        >
+            <Svg width={size.width} height={size.height}>
                 <Defs>
                     <Pattern id={pid} width={tile} height={tile} patternUnits="userSpaceOnUse">
                         {Array.from({ length: count }, (_, i) => (
@@ -47,7 +71,7 @@ export function ClothGround({ style }: { style?: ViewStyle }) {
                         ))}
                     </Pattern>
                 </Defs>
-                <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${pid})`} />
+                <Rect x="0" y="0" width={size.width} height={size.height} fill={`url(#${pid})`} />
             </Svg>
         </View>
     );

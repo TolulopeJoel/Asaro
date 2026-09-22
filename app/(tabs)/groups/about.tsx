@@ -92,13 +92,14 @@ export default function AboutGroupsScreen() {
             <Hero ownsTopInset>
                 <ScalePressable
                     onPress={() => router.back()}
-                    style={styles.backButton}
+                    style={styles.backArrow}
                     accessibilityRole="button"
                     accessibilityLabel="Back"
+                    hitSlop={Spacing.md}
                 >
-                    <ChevronLeft size={22} color={colors.textInverse} />
+                    <ChevronLeft size={20} color={colors.accent} strokeWidth={1.9} />
                 </ScalePressable>
-                <Text variant="display" tone="onBand">Group Logic</Text>
+                <Text variant="display" tone="onBand" style={styles.clothHeroTitle}>Group Logic</Text>
             </Hero>
 
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -144,14 +145,14 @@ const getStyles = (colors: any) => StyleSheet.create({
         paddingHorizontal: Spacing.md,
         height: 56,
     },
-    backButton: {
-        width: 44,
-        height: 44,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderRadius: Spacing.borderRadius.round,
-        backgroundColor: colors.backgroundElevated + '80',
-    },
+    /*
+     * Every Cloth band draws its back arrow the same way: a bare ochre glyph
+     * hanging 6px into the gutter so the chevron lines up with the title's
+     * stem. This screen used to carry a tinted round pill instead.
+     */
+    backArrow: { marginLeft: -6, alignSelf: 'flex-start' },
+    /** `.cl-htitle{margin-top:10px}` under the arrow. */
+    clothHeroTitle: { marginTop: 10 },
     scrollContent: {
         padding: Spacing.layout.screenPadding,
         paddingTop: Spacing.lg,

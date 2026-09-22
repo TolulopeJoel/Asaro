@@ -141,7 +141,8 @@ export default function PermissionsScreen() {
 }
 
 const styles = StyleSheet.create({
-    heroStep: { marginBottom: Spacing.sm },
+    /** The band's eyebrow: `margin:0 0 10px`. */
+    heroStep: { marginBottom: 10 },
 
     // ── Colossal ──────────────────────────────────────────────────────────
     /** `.cl-body{padding-top:30px; gap:18px}` */

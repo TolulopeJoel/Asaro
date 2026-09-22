@@ -92,7 +92,20 @@ export function Hero({ children, style, topPadding = Spacing.layout.heroPaddingT
     const { colors, style: themeStyle } = useTheme();
     const insets = useScreenInsets();
 
-    const top: ViewStyle = { paddingTop: (ownsTopInset ? insets.top : 0) + topPadding };
+    /*
+     * The mockup's `padding-top:52px` is measured from the top of the display
+     * — its phone frame draws no status bar, so 52 is the whole allowance
+     * above the title. Adding the inset to it would double-count and leave the
+     * band half again too tall. The app hides the status bar, so the inset's
+     * only job here is clearing a camera cutout: it is a floor under the
+     * band's own padding, not something to stack on top of it. Spacing.lg is
+     * the breathing room between a cutout and the first line of type.
+     */
+    const top: ViewStyle = {
+        paddingTop: ownsTopInset
+            ? Math.max(topPadding, insets.top + Spacing.lg)
+            : topPadding,
+    };
 
     // Colossal wears no band: it marks a screen by scale, not by a colour area.
     if (themeStyle !== 'cloth') {

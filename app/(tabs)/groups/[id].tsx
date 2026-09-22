@@ -1260,7 +1260,7 @@ export default function GroupDetailScreen() {
                     {groupData?.name || 'Loading…'}
                 </Text>
                 {!isLoading && (
-                    <Text variant="sub" tone="onHero">
+                    <Text variant="sub" tone="onHero" style={styles.clothGroupSub}>
                         {`${accountabilityData.totalMembers} ${accountabilityData.totalMembers === 1 ? 'member' : 'members'} · ${accountabilityData.readTodayCount} read today`}
                     </Text>
                 )}
@@ -1653,6 +1653,8 @@ const getStyles = (colors: any) => StyleSheet.create({
     clothEditButton: { marginLeft: Spacing.md },
     /** `.cl-htitle{margin-top:10px}` on this screen. */
     clothGroupTitle: { marginTop: 10 },
+    /** `.cl-hsub{margin:8px 0 0}` */
+    clothGroupSub: { marginTop: Spacing.sm },
     heroRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
     heroTitle: { flex: 1, minWidth: 0 },
     container: { flex: 1 },

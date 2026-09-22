@@ -385,7 +385,8 @@ const styles = StyleSheet.create({
     introBlock: {
         marginBottom: Spacing.xxxl * 1.5,
     },
-    heroStep: { marginBottom: Spacing.sm },
+    /** The band's eyebrow: `margin:0 0 10px`. */
+    heroStep: { marginBottom: 10 },
     introText: { opacity: 0.8 },
     label: { opacity: 0.5, marginBottom: Spacing.xl, textAlign: 'center' },
     timeInputContainer: {
