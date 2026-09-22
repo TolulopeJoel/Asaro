@@ -77,6 +77,8 @@ interface JournalEntryListProps {
     onCoveredChange?: (covered: number) => void;
     /** Entries against the open book — Cloth's hero band, Colossal's .co-giantl. */
     onBookEntryCountChange?: (count: number) => void;
+    /** Distinct books with at least one entry — Colossal's giant on the Books tab. */
+    onBooksWithEntriesCountChange?: (count: number) => void;
 }
 
 
@@ -94,6 +96,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
     onOpenTopicCountChange,
     onCoveredChange,
     onBookEntryCountChange,
+    onBooksWithEntriesCountChange,
 }) => {
     const { colors, isLockedIn } = useTheme();
     const [entries, setEntries] = useState<JournalEntry[]>([]);
@@ -138,6 +141,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
                 .sort((a, b) => b.entryCount - a.entryCount);
 
             setAvailableBooks(booksWithEntries);
+            onBooksWithEntriesCountChange?.(booksWithEntries.length);
         } catch (error) {
             console.error('Error loading entries:', error);
         } finally {

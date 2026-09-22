@@ -246,6 +246,7 @@ interface JournalContentProps {
     onOpenTopicCountChange: (count: number) => void;
     onCoveredChange: (covered: number) => void;
     onBookEntryCountChange: (count: number) => void;
+    onBooksWithEntriesCountChange: (count: number) => void;
 }
 
 function JournalContent({
@@ -260,6 +261,7 @@ function JournalContent({
     onOpenTopicCountChange,
     onCoveredChange,
     onBookEntryCountChange,
+    onBooksWithEntriesCountChange,
 }: JournalContentProps) {
     const router = useRouter();
     const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -285,6 +287,7 @@ function JournalContent({
                 onOpenTopicCountChange={onOpenTopicCountChange}
                 onCoveredChange={onCoveredChange}
                 onBookEntryCountChange={onBookEntryCountChange}
+                onBooksWithEntriesCountChange={onBooksWithEntriesCountChange}
             />
         </View>
     );
@@ -578,11 +581,23 @@ export default function LibraryScreen() {
     const [coveredCount, setCoveredCount] = useState(0);
     /** Entries against the open book — not the app-wide journalCount. */
     const [bookEntryCount, setBookEntryCount] = useState(0);
+    /** Distinct books with at least one entry — the Books tab's giant. */
+    const [booksWithEntriesCount, setBooksWithEntriesCount] = useState(0);
     const [themeCount, setThemeCount] = useState<number | null>(null);
     const [planProgress, setPlanProgress] = useState<PlanProgress>({ completed: 0, total: READING_PLAN_DATA.length, percent: 0 });
 
     // Books drills into bookDetail, so that view keeps the Books tab lit.
     const activeTabKey = tab === 'bookDetail' ? 'books' : tab;
+    /*
+     * Themes only earns a working search once it has enough to search —
+     * design/all-screens.html draws the field on `#themes` (its "results"
+     * state, 47 entries deep) but not on `#themesintro` or `#themesearly`,
+     * which are exactly the states where clustering hasn't found much yet.
+     * `themeCount` is null before results exist at all; 5 is where "a little"
+     * becomes "enough to bother searching."
+     */
+    const showThemeSearch = tab === 'themes' && themeCount !== null && themeCount > 5;
+    const isSearchTab = tab === 'recent' || showThemeSearch;
 
     const handleNavigate = useCallback((next: Tab) => {
         /*
@@ -611,21 +626,30 @@ export default function LibraryScreen() {
     /**
      * Colossal's one number for the tab you are on.
      *
-     * `null` means this tab has nothing worth enlarging right now — Themes
-     * before it has clustered anything, where the mockup gives the slot to the
-     * empty state instead.
+     * `null` means this tab has nothing worth enlarging right now. The
+     * mockup gives Themes' slot to its own empty state before clustering has
+     * run at all — but every other tab keeps its giant up regardless of what
+     * it's counting, so Themes stands in an "X" rather than vanishing the
+     * slot: a placeholder, not a number pretending to mean something before
+     * there's anything to count, but the header stays the same shape
+     * switching onto and off a tab that isn't ready yet.
      */
     /** "17 of 50 chapters" for Cloth's book band. */
     const bookCoverage = journalSelectedBook?.chapters
         ? `${coveredCount} of ${journalSelectedBook.chapters} chapters`
         : `${coveredCount} ${coveredCount === 1 ? 'chapter' : 'chapters'}`;
 
-    const giant: { value: number; label: string } | null = (() => {
+    const giant: { value: number | string; label: string } | null = (() => {
         switch (tab) {
             case 'plan':
                 return {
                     value: planProgress.completed,
                     label: `of ${planProgress.total} readings · ${planProgress.percent}%`,
+                };
+            case 'books':
+                return {
+                    value: booksWithEntriesCount,
+                    label: booksWithEntriesCount === 1 ? 'book written in' : 'books written in',
                 };
             case 'actions':
                 return {
@@ -638,10 +662,12 @@ export default function LibraryScreen() {
                     label: openTopicCount === 1 ? 'follow-up open' : 'follow-ups open',
                 };
             case 'themes':
-                return themeCount === null ? null : {
-                    value: themeCount,
-                    label: `${themeCount === 1 ? 'pattern' : 'patterns'} across ${journalCount} entries`,
-                };
+                return themeCount === null
+                    ? { value: 'X', label: 'patterns pending' }
+                    : {
+                        value: themeCount,
+                        label: `${themeCount === 1 ? 'pattern' : 'patterns'} across ${journalCount} entries`,
+                    };
             default:
                 return {
                     value: journalCount,
@@ -791,7 +817,7 @@ export default function LibraryScreen() {
                                   * would be filler where real content fits.
                                   */}
                                 <View style={styles.heroSearch}>
-                                    {tab === 'recent' ? (
+                                    {isSearchTab ? (
                                         searchField
                                     ) : tab === 'plan' ? (
                                         <View style={styles.heroProgress}>
@@ -823,7 +849,7 @@ export default function LibraryScreen() {
                   */}
                 {isLockedIn && tab !== 'bookDetail' && (
                     <View style={styles.searchContainer}>
-                        {tab === 'recent' ? (
+                        {isSearchTab ? (
                             searchField
                         ) : tab === 'plan' ? (
                             <View style={[styles.colossalSlot, { flexDirection: 'row', alignItems: 'center' }]}>
@@ -873,6 +899,7 @@ export default function LibraryScreen() {
                     onOpenTopicCountChange={setOpenTopicCount}
                     onCoveredChange={setCoveredCount}
                     onBookEntryCountChange={setBookEntryCount}
+                    onBooksWithEntriesCountChange={setBooksWithEntriesCount}
                 />
             )}
         </Screen>
