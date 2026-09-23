@@ -397,7 +397,10 @@ export function findConvergence(
          *
          * Degree asks whether the passage is central to THIS reader or merely
          * central to everyone — without it the answer is Psalm 119 and John
-         * 3:16 for every user alive.
+         * 3:16 for every user alive. Square root rather than log: degrees in
+         * the Treasury run from one to several hundred, and log compresses
+         * that hundred-fold range into barely two, so the discount the comment
+         * promised was not one the score delivered.
          *
          * planShape asks whether the reader assembled this set or the schedule
          * did. Both discounts demote rather than exclude, so a real thread that
@@ -407,7 +410,7 @@ export function findConvergence(
         const planShape = sequentiality(contributors);
         const citingFraction = citing.size / contributors.length;
         const score =
-            (weight / Math.log(1 + degree)) *
+            (weight / Math.sqrt(degree)) *
             (1 - config.planPenalty * planShape) *
             citingFraction;
 
