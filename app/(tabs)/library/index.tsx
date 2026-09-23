@@ -4,12 +4,10 @@ import {
     Clock,
     Library,
     Zap,
-    Bookmark,
     Check,
     Plus,
     Notebook,
     LucideIcon,
-    BookCopy,
     Sparkles,
     ChevronLeft
 } from 'lucide-react-native';
@@ -53,27 +51,82 @@ type PlanListDataItem =
 
 // ─── Tab Config ───────────────────────────────────────────────────────────────
 
-const TABS: { key: Exclude<Tab, 'bookDetail'>; label: string; icon: LucideIcon }[] = [
-    { key: 'recent', label: 'Recent', icon: Clock },
-    { key: 'books', label: 'Books', icon: BookCopy },
-    { key: 'actions', label: 'Actions', icon: Zap },
-    { key: 'topics', label: 'Follow-ups', icon: Bookmark },
+/**
+ * The four places the Library goes.
+ *
+ * It held six, in a strip set to scroll — so the sixth, Plan, sat off-screen
+ * until you dragged the row sideways. A hidden tab is worse than a crowded
+ * one, and the crowding had a cause: the strip was mixing destinations with
+ * views of them.
+ *
+ * Recent and Books were never two places. They are one list of entries,
+ * grouped two ways, and grouping is not navigation. Actions and Follow-ups
+ * were two places holding one question — what did I leave hanging? — split by
+ * which column the answer happened to live in, which is the schema's concern
+ * and not the reader's.
+ *
+ * So each of those collapses into a destination with a control inside it, and
+ * the top strip carries only things that are genuinely different from each
+ * other. Four fit without scrolling, and nothing was lost on the way.
+ */
+type Section = 'entries' | 'unfinished' | 'themes' | 'plan';
+
+const SECTIONS: { key: Section; label: string; icon: LucideIcon }[] = [
+    { key: 'entries', label: 'Entries', icon: Clock },
     { key: 'themes', label: 'Themes', icon: Sparkles },
+    { key: 'unfinished', label: 'Unfinished', icon: Zap },
     { key: 'plan', label: 'Plan', icon: Library },
 ];
+
+/** Which section a view belongs to. Book detail is still Entries, drilled in. */
+const SECTION_OF: Record<Tab, Section> = {
+    recent: 'entries',
+    books: 'entries',
+    bookDetail: 'entries',
+    actions: 'unfinished',
+    topics: 'unfinished',
+    themes: 'themes',
+    plan: 'plan',
+};
+
+/** Where a section lands when you tap it. */
+const DEFAULT_VIEW: Record<Section, Tab> = {
+    entries: 'recent',
+    unfinished: 'actions',
+    themes: 'themes',
+    plan: 'plan',
+};
+
+/**
+ * The control inside a destination.
+ *
+ * "To do" and "To look up" rather than Actions and Follow-ups: an action item
+ * is a resolution about behaviour and a study-further note is a question to
+ * research, and naming them after what the reader will do with them keeps that
+ * difference visible while putting them in one place. Sections without an
+ * entry here render no second row at all.
+ */
+const SUBVIEWS: Partial<Record<Section, { key: Tab; label: string }[]>> = {
+    entries: [
+        { key: 'recent', label: 'Recent' },
+        { key: 'books', label: 'By book' },
+    ],
+    unfinished: [
+        { key: 'actions', label: 'To do' },
+        { key: 'topics', label: 'To look up' },
+    ],
+};
 
 /**
  * The `.co-mark` over each tab — the small caps line the mockup puts where
  * Cloth puts its hero band. Books drills into a screen with its own header, so
  * it never reads this.
  */
-const MARK: Partial<Record<Tab, string>> = {
-    recent: 'Library',
-    books: 'Library',
-    plan: 'Library · Plan',
-    actions: 'Library · Actions',
-    topics: 'Library · Follow-ups',
+const MARK: Partial<Record<Section, string>> = {
+    entries: 'Library',
+    unfinished: 'Library · Unfinished',
     themes: 'Library · Themes',
+    plan: 'Library · Plan',
 };
 
 // ─── Plan Section Header ──────────────────────────────────────────────────────
@@ -586,8 +639,14 @@ export default function LibraryScreen() {
     const [themeCount, setThemeCount] = useState<number | null>(null);
     const [planProgress, setPlanProgress] = useState<PlanProgress>({ completed: 0, total: READING_PLAN_DATA.length, percent: 0 });
 
-    // Books drills into bookDetail, so that view keeps the Books tab lit.
-    const activeTabKey = tab === 'bookDetail' ? 'books' : tab;
+    /*
+     * `tab` stays the fine-grained view — every per-view behaviour below still
+     * keys on it. `section` is only which of the four destinations is lit, so
+     * drilling into a book keeps Entries lit and its own control on "By book".
+     */
+    const section = SECTION_OF[tab];
+    const subviews = SUBVIEWS[section];
+    const activeSubview = tab === 'bookDetail' ? 'books' : tab;
     /*
      * Themes only earns a working search once it has enough to search —
      * design/all-screens.html draws the field on `#themes` (its "results"
@@ -750,7 +809,7 @@ export default function LibraryScreen() {
                 {isLockedIn ? (
                     <>
                         <View style={styles.colossalTop}>
-                            <UIText variant="tab">{MARK[tab] ?? 'Library'}</UIText>
+                            <UIText variant="tab">{MARK[section] ?? 'Library'}</UIText>
                         </View>
                         {/*
                           * The giant states whatever the current tab counts —
@@ -871,12 +930,25 @@ export default function LibraryScreen() {
                   * drew the six-tab strip under its own book band.
                   */}
                 {tab !== 'bookDetail' && (
-                    <Segments
-                        items={TABS.map(t => ({ key: t.key, label: t.label }))}
-                        value={activeTabKey}
-                        onChange={(key) => handleNavigate(key as Exclude<Tab, 'bookDetail'>)}
-                        scrollable
-                    />
+                    <>
+                        {/*
+                          * Not scrollable any more. Four fit, and a strip that
+                          * scrolls hides whatever sits past the fold — which is
+                          * how Plan ended up invisible.
+                          */}
+                        <Segments
+                            items={SECTIONS.map(t => ({ key: t.key, label: t.label }))}
+                            value={section}
+                            onChange={key => handleNavigate(DEFAULT_VIEW[key as Section])}
+                        />
+                        {subviews && (
+                            <Segments
+                                items={subviews}
+                                value={activeSubview}
+                                onChange={key => handleNavigate(key as Exclude<Tab, 'bookDetail'>)}
+                            />
+                        )}
+                    </>
                 )}
             </View>
             )}
