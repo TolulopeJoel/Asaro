@@ -167,8 +167,9 @@ function dominantBookShare(cluster: Cluster<StoredEmbedding>): number {
  * Drop the clusters that are not themes, and order what remains.
  *
  * Returns richer objects than it takes so a caller can say *why* something
- * ranked where it did — the UI does not use that yet, but a ranking nobody
- * can interrogate is one nobody can fix.
+ * ranked where it did. `spanDays` is now the theme card's headline rather
+ * than debug detail — a ranking nobody can interrogate is one nobody can
+ * fix, and one the reader never sees is one they cannot trust either.
  *
  * `now` is injectable so the recency maths can be tested without the clock.
  */
@@ -207,4 +208,26 @@ export function rankThemes(
     // Cohesion breaks ties, as it did before — tighter is better at equal size.
     ranked.sort((a, b) => b.score - a.score || b.cluster.cohesion - a.cluster.cohesion);
     return ranked;
+}
+
+/**
+ * How long a theme has been running, phrased the way the UI says it.
+ *
+ * Returns null below a month, which is the whole point of the function rather
+ * than an edge case. "Across 8 months" is evidence that a thought outlived the
+ * passage that prompted it — the reader had forgotten the first entry by the
+ * time they wrote the second. A fortnight is a reading session, and rounding
+ * one up to "1 month" spends that credibility on noise. Callers that must say
+ * something regardless supply their own words for the null.
+ *
+ * Shared so the list and the detail view cannot drift into two vocabularies
+ * for the same fact.
+ */
+export function spanLabel(spanDays: number): string | null {
+    const months = spanDays / 30.4;
+    if (months < 1) return null;
+    if (months < 2) return 'across a month';
+    if (months < 12) return `across ${Math.round(months)} months`;
+    const years = months / 12;
+    return years < 2 ? 'across a year' : `across ${Math.round(years)} years`;
 }

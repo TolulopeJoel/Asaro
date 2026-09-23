@@ -7,6 +7,7 @@ import { Spacing } from '../theme/spacing';
 import { ScalePressable } from './ScalePressable';
 import { HyperlinkedText } from './HyperlinkedText';
 import { Cluster } from '../ml/clustering';
+import { spanLabel } from '../ml/themeQuality';
 import { StoredEmbedding, EMBEDDABLE_FIELDS, ACTION_FIELD } from '../data/embeddingRepository';
 import { Screen, Text } from './ui';
 
@@ -82,9 +83,10 @@ export function ThemeDetail({ cluster, name, onClose, onRename, onOpenEntry }: P
             .map(m => new Date(m.createdAt).getTime())
             .filter(t => !Number.isNaN(t));
         if (dates.length < 2) return '';
-        const months = (Math.max(...dates) - Math.min(...dates)) / (1000 * 60 * 60 * 24 * 30.4);
-        if (months < 1) return 'within a month';
-        return `across ${Math.round(months)} months`;
+        const days = (Math.max(...dates) - Math.min(...dates)) / (1000 * 60 * 60 * 24);
+        // Detail has room to say something either way, so it supplies the
+        // words spanLabel withholds below a month; the list just drops the line.
+        return spanLabel(days) ?? 'within a month';
     }, [cluster]);
 
     return (

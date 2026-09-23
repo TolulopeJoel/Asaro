@@ -8,9 +8,9 @@ import { Spacing } from '../theme/spacing';
 import { ScalePressable } from './ScalePressable';
 import { Button } from './Button';
 import { HyperlinkedText } from './HyperlinkedText';
-import { Cluster, centerWithinFields, clusterThemes, representatives } from '../ml/clustering';
+import { centerWithinFields, clusterThemes, representatives } from '../ml/clustering';
 import { suggestNames } from '../ml/themeNames';
-import { rankThemes } from '../ml/themeQuality';
+import { RankedTheme, rankThemes, spanLabel } from '../ml/themeQuality';
 import {
     EMBEDDABLE_FIELDS,
     ACTION_FIELD,
@@ -75,7 +75,14 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
     // read through, and pushing a route would eject you on every entry.
     const [openEntry, setOpenEntry] = useState<JournalEntry | null>(null);
     const [progress, setProgress] = useState(0);
-    const [clusters, setClusters] = useState<Cluster<StoredEmbedding>[]>([]);
+    /*
+     * The full ranking is kept, not just the clusters inside it. `spanDays` is
+     * the card's headline — see the meta line in renderItem — so throwing the
+     * wrapper away and keeping `.cluster` meant recomputing from member dates
+     * at every render site, in two different vocabularies.
+     */
+    const [ranked, setRanked] = useState<RankedTheme[]>([]);
+    const clusters = useMemo(() => ranked.map(theme => theme.cluster), [ranked]);
     const [named, setNamed] = useState<NamedTheme[]>([]);
     const [entryCount, setEntryCount] = useState(0);
     const [namingIndex, setNaming] = useState<number | null>(null);
@@ -127,7 +134,7 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
             const found = clusterThemes(centered, { grain: 85, minEntries: 3 });
             const ranked = rankThemes(found, centered);
 
-            setClusters(ranked.map(theme => theme.cluster));
+            setRanked(ranked);
             onPatternCountChange?.(ranked.length);
             setNamed(await getNamedThemes());
             setPhase('ready');
@@ -411,6 +418,23 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
                 const previewCount = PREVIEW_SNIPPETS[index] ?? 0;
                 const reps = previewCount > 0 ? representatives(item, previewCount) : [];
                 const books = [...new Set(item.members.map(m => m.bookName))].filter(Boolean);
+                /*
+                 * What the card leads with, and the reason the feature exists.
+                 *
+                 * "5 entries" is the least interesting true thing about a
+                 * theme — it is a fact about the clustering, not about the
+                 * reader. "Across 8 months" says the same group outlived the
+                 * passage that prompted it: you wrote it in Genesis in
+                 * October, forgot, and wrote it again in Leviticus in June.
+                 * That gap is the evidence the connection is yours rather
+                 * than the reading plan's, which is the only claim this
+                 * screen can make that search could not.
+                 *
+                 * Falls back to the count below a month, where there is no
+                 * such claim to make — see spanLabel.
+                 */
+                const span = spanLabel(ranked[index]?.spanDays ?? 0);
+                const entryCountLabel = `${item.entryCount} ${item.entryCount === 1 ? 'entry' : 'entries'}`;
                 const savedName = matchThemeName(
                     item.members.map(m => ({ entryId: m.entryId, field: m.field })),
                     named,
@@ -432,7 +456,7 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
                      * it is made of and offers the field, which is why there is
                      * no separate "Name this theme" button in this style.
                      */
-                    const meta = [`${item.entryCount} ${item.entryCount === 1 ? 'entry' : 'entries'}`, ...books].join(' · ');
+                    const meta = [span ?? entryCountLabel, ...books].join(' · ');
                     /*
                      * Open only on request now. This used to be
                      * `!savedName || …`, so every unnamed theme sat under an
@@ -532,7 +556,7 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
                             </UIText>
 
                             <View style={styles.cardHeader}>
-                                <UIText variant="label">{item.entryCount} entries</UIText>
+                                <UIText variant="label">{span ?? entryCountLabel}</UIText>
                                 {books.length > 0 && (
                                     <UIText variant="caption" style={styles.books} numberOfLines={1}>
                                         {books.join(' · ')}
