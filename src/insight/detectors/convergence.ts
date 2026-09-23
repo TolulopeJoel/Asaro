@@ -21,7 +21,14 @@
 
 import { withDatabase } from '../../data/db';
 import { BibleGraph, loadGraph } from '../../bible/graph';
-import { VerseId, bookNumberFromName, bookNumberOf, citationsIn } from '../../bible/ref';
+import {
+    CitedRange,
+    VerseId,
+    bookNumberFromName,
+    bookNumberOf,
+    citationsIn,
+    verseOf,
+} from '../../bible/ref';
 import { recordObservation } from '../observation';
 
 /** Reflection columns scanned for `[[...]]` citations. */
@@ -35,8 +42,8 @@ export interface SeedEntry {
     chapterStart: number;
     chapterEnd?: number;
     createdAt: string;
-    /** Verses the writer cited in their own words, via `[[...]]`. */
-    citations: VerseId[];
+    /** Passages the writer cited in their own words, via `[[...]]`. */
+    citations: CitedRange[];
 }
 
 export interface ConvergenceOptions {
@@ -280,12 +287,31 @@ export function findConvergence(
             }
         }
 
-        const citedOrdinals = entry.citations
-            .map(cited => graph.ordinalOf(cited))
-            .filter(ordinal => ordinal >= 0);
-        if (citedOrdinals.length > 0) {
-            const each = config.citationBudget / citedOrdinals.length;
-            for (const ordinal of citedOrdinals) {
+        /*
+         * A citation's whole span is seeded, with its budget split across it.
+         *
+         * Per citation rather than per verse, so quoting a sixteen-verse
+         * passage is one act of pointing and not sixteen — otherwise a reader
+         * who cites generously would drown out one who cites precisely.
+         */
+        /*
+         * A whole-chapter citation is not the reader pointing at anything.
+         *
+         * "[[Leviticus 4]]" names the chapter they were already assigned, so
+         * it carries exactly the information the chapter seed carries and none
+         * of the specificity the citation channel exists for. Counting it as a
+         * citation makes the gate trivial to clear — one such tag drags thirty
+         * verses in at citation weight — and the detector goes back to
+         * reporting the reading schedule in a better disguise.
+         */
+        const pointed = entry.citations.filter(cited => verseOf(cited.start) !== 0);
+        const perCitation = pointed.length ? config.citationBudget / pointed.length : 0;
+
+        for (const cited of pointed) {
+            const ordinals = graph.ordinalsBetween(cited.start, cited.end);
+            if (ordinals.length === 0) continue;
+            const each = perCitation / ordinals.length;
+            for (const ordinal of ordinals) {
                 addSeed(ordinal, each, entry.entryId, seedFromCitation);
             }
         }
