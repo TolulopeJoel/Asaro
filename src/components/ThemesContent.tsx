@@ -139,6 +139,24 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
         }
     }, [compute]);
 
+    /*
+     * "Try again" has to ask what actually went wrong.
+     *
+     * Retrying straight into `compute` assumes the model is on disk and goes
+     * looking for patterns with it. When the failure was the download itself
+     * that is the wrong half of the job: the model gets fetched anyway, deep
+     * inside `embed`, but with no progress callback and under a "Looking for
+     * patterns…" label — 23MB of silence that reads exactly like the hang the
+     * reader just hit. Routing a missing model back through `handleDownload`
+     * retries the part that failed, with the progress bar that belongs to it.
+     */
+    const handleRetry = useCallback(async () => {
+        const ready = await isModelDownloaded();
+        if (!mounted.current) return;
+        if (ready) await compute();
+        else await handleDownload();
+    }, [compute, handleDownload]);
+
     const handleSaveName = useCallback(
         async (index: number) => {
             const cluster = clusters[index];
@@ -295,7 +313,7 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
             <View style={styles.center}>
                 <UIText variant="title" style={styles.centred}>Couldn&apos;t finish</UIText>
                 <UIText variant="body" tone="secondary" style={styles.centred}>{errorText}</UIText>
-                <Button label="Try again" onPress={compute} />
+                <Button label="Try again" onPress={handleRetry} />
             </View>
         );
     }

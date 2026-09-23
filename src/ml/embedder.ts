@@ -14,7 +14,14 @@
  */
 
 import { InferenceSession, Tensor } from 'onnxruntime-react-native';
-import { documentDirectory, getInfoAsync, makeDirectoryAsync, createDownloadResumable } from 'expo-file-system/legacy';
+import {
+    documentDirectory,
+    getInfoAsync,
+    makeDirectoryAsync,
+    createDownloadResumable,
+    deleteAsync,
+    moveAsync,
+} from 'expo-file-system/legacy';
 
 import { WordPieceTokenizer } from './wordpiece';
 
@@ -23,6 +30,15 @@ const MODEL_URL =
 
 const MODEL_DIR = `${documentDirectory}models/`;
 const MODEL_PATH = `${MODEL_DIR}all-MiniLM-L6-v2-quantized.onnx`;
+/**
+ * Where bytes land while they are still arriving.
+ *
+ * The download writes here and is renamed onto MODEL_PATH only once it has
+ * completed, so a file at MODEL_PATH always means a whole file. Downloading
+ * straight to MODEL_PATH is what made a broken download indistinguishable
+ * from a finished one.
+ */
+const MODEL_PART_PATH = `${MODEL_PATH}.part`;
 
 /** MiniLM's output width. Vectors are stored at this size. */
 export const EMBEDDING_DIMS = 384;
@@ -51,8 +67,21 @@ export async function isModelDownloaded(): Promise<boolean> {
 /**
  * Fetch the model if it isn't cached. Safe to call repeatedly.
  *
- * A partial file from an interrupted download would fail to load as a session
- * forever, so anything suspiciously small is treated as absent and refetched.
+ * Interrupting this — losing signal, turning the radio off, backgrounding the
+ * app — used to poison the install permanently. The download wrote straight to
+ * MODEL_PATH as bytes arrived, and `isModelDownloaded` only asks whether that
+ * file is over 1MB, against a model of ~23MB. A download cut off anywhere past
+ * the first megabyte therefore left a file that every later call read as
+ * "already downloaded": `downloadModel` returned without fetching a byte,
+ * `InferenceSession.create` choked on the truncated ONNX, and the same error
+ * came back no matter how many times you retried or how good the connection
+ * was, because nothing ever went back for the rest of the file.
+ *
+ * Two things stop that. Bytes land on MODEL_PART_PATH and are renamed onto
+ * MODEL_PATH only after the transfer is verified complete, so a file at
+ * MODEL_PATH always means a whole file rather than however much arrived. And
+ * completeness is judged against the length the server advertised, not a
+ * 1MB floor that a partial file clears trivially.
  */
 export async function downloadModel(onProgress?: DownloadProgress): Promise<void> {
     if (await isModelDownloaded()) return;
@@ -60,15 +89,39 @@ export async function downloadModel(onProgress?: DownloadProgress): Promise<void
     const dir = await getInfoAsync(MODEL_DIR);
     if (!dir.exists) await makeDirectoryAsync(MODEL_DIR, { intermediates: true });
 
-    const download = createDownloadResumable(MODEL_URL, MODEL_PATH, {}, progress => {
-        if (!onProgress || !progress.totalBytesExpectedToWrite) return;
-        onProgress(progress.totalBytesWritten / progress.totalBytesExpectedToWrite);
-    });
+    // Whatever a previous attempt left behind is of no use: resuming is not
+    // wired up, so this restarts from zero regardless.
+    await deleteAsync(MODEL_PART_PATH, { idempotent: true });
 
-    await download.downloadAsync();
+    /** What the server said the body would be, as reported by the last progress tick. */
+    let expectedBytes = 0;
 
-    if (!(await isModelDownloaded())) {
-        throw new Error('Model download did not complete');
+    try {
+        const download = createDownloadResumable(MODEL_URL, MODEL_PART_PATH, {}, progress => {
+            if (progress.totalBytesExpectedToWrite > 0) {
+                expectedBytes = progress.totalBytesExpectedToWrite;
+            }
+            if (!onProgress || !progress.totalBytesExpectedToWrite) return;
+            onProgress(progress.totalBytesWritten / progress.totalBytesExpectedToWrite);
+        });
+
+        await download.downloadAsync();
+
+        /*
+         * `downloadAsync` resolving is not proof of a complete body — a
+         * connection dropped mid-transfer can settle it with only part of the
+         * file written — so check the bytes on disk against the advertised
+         * length before trusting it.
+         */
+        const part = await getInfoAsync(MODEL_PART_PATH);
+        const written = part.exists ? (part.size ?? 0) : 0;
+        const short = expectedBytes > 0 ? written < expectedBytes : written < 1_000_000;
+        if (short) throw new Error('Model download did not complete');
+
+        await moveAsync({ from: MODEL_PART_PATH, to: MODEL_PATH });
+    } catch (error) {
+        await deleteAsync(MODEL_PART_PATH, { idempotent: true });
+        throw error;
     }
 }
 
@@ -84,7 +137,23 @@ export async function ensureReady(onProgress?: DownloadProgress): Promise<void> 
         // reason to parse it during app startup.
         const vocab = require('../../assets/models/vocab.json') as Record<string, number>;
         tokenizer = new WordPieceTokenizer(vocab);
-        session = await InferenceSession.create(MODEL_PATH);
+
+        try {
+            session = await InferenceSession.create(MODEL_PATH);
+        } catch (error) {
+            /*
+             * The file is on disk and passed for downloaded, and ONNX still
+             * can't read it — so it is damaged, and no retry that trusts it
+             * will ever get further than this line. Throwing it away is what
+             * turns the next attempt into a real download instead of another
+             * identical failure: downloads predating the .part handling above
+             * (and anything truncated by a full disk or a half-written file)
+             * heal here rather than stranding Themes for good.
+             */
+            tokenizer = null;
+            await deleteAsync(MODEL_PATH, { idempotent: true });
+            throw error;
+        }
     })();
 
     try {
