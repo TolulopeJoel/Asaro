@@ -96,6 +96,12 @@ export function formatVerseId(id: VerseId): string {
         : `${name} ${chapterOf(id)}:${verse}`;
 }
 
+/** A citation as the writer made it: one verse, or the span they pointed at. */
+export interface CitedRange {
+    start: VerseId;
+    end: VerseId;
+}
+
 /**
  * Parse the `[[...]]` citations the writer left in their own answers.
  *
@@ -105,23 +111,25 @@ export function formatVerseId(id: VerseId): string {
  * would put a verse the reader never chose into the evidence for a claim
  * about them, which is the one failure this whole feature cannot afford.
  *
- * Returns the first verse of a range. The range's head is what the reader
- * reached for; the tail is how far they kept reading.
+ * Returns the whole span, not its first verse. Keeping only the head looks
+ * harmless and quietly destroys the signal: someone citing `Jeremiah 10:1-16`
+ * means the passage about idols and the God who made the earth, and verse 1 is
+ * "Hear the word that Jehovah has spoken" — an opener that connects to
+ * nothing. In one real journal both of the citations that should have carried
+ * a theme were ranges whose meaning sat in the middle, so the reader's
+ * clearest thread was invisible while their reading schedule was not.
  */
-export function parseReference(text: string): VerseId | null {
+export function parseReference(text: string): CitedRange | null {
     /*
      * The trailing letter in "Exodus 20:5a" is not optional to support.
-     *
      * Writers use it to point at half a verse, and `openBibleReferenceFromTag`
      * has always accepted it — so a stricter pattern here does not reject
      * those citations visibly, it drops them silently from the one channel
      * that records what the reader chose rather than what the plan assigned.
-     * Ten percent of a real journal's citations carried a suffix, including
-     * Exodus 20:5a, which sat right inside that reader's strongest theme.
      */
     const match = text
         .trim()
-        .match(/^(.+?)\s+(\d+)(?::(\d+)[a-z]?)?(?:\s*[-–]\s*(?:\d+:)?\d+[a-z]?)?$/i);
+        .match(/^(.+?)\s+(\d+)(?::(\d+)[a-z]?)?(?:\s*[-–]\s*(?:(\d+):)?(\d+)[a-z]?)?$/i);
     if (!match) return null;
 
     const book = bookNumberFromName(match[1].trim());
@@ -130,15 +138,46 @@ export function parseReference(text: string): VerseId | null {
     const chapter = Number(match[2]);
     if (!Number.isFinite(chapter) || chapter < 1) return null;
 
-    return verseId(book, chapter, match[3] ? Number(match[3]) : 0);
+    const verse = match[3] ? Number(match[3]) : undefined;
+    const tailChapter = match[4] ? Number(match[4]) : undefined;
+    const tail = match[5] ? Number(match[5]) : undefined;
+
+    /*
+     * With no verse, a trailing number is a CHAPTER: "Genesis 12-15" is four
+     * chapters, not verses 12 to 15. Reading it the other way would silently
+     * shrink a whole passage to a handful of verses in chapter 12.
+     */
+    if (verse === undefined) {
+        return {
+            start: verseId(book, chapter, 0),
+            end: verseId(book, tail ?? chapter, 999),
+        };
+    }
+
+    if (tail === undefined) {
+        const only = verseId(book, chapter, verse);
+        return { start: only, end: only };
+    }
+
+    return {
+        start: verseId(book, chapter, verse),
+        end: verseId(book, tailChapter ?? chapter, tail),
+    };
 }
 
 /** Every `[[...]]` citation in a block of answer text, in order, deduped. */
-export function citationsIn(text: string): VerseId[] {
-    const found: VerseId[] = [];
+export function citationsIn(text: string): CitedRange[] {
+    const found: CitedRange[] = [];
+    const seen = new Set<string>();
+
     for (const match of text.matchAll(/\[\[(.+?)\]\]/g)) {
-        const id = parseReference(match[1]);
-        if (id !== null && !found.includes(id)) found.push(id);
+        const range = parseReference(match[1]);
+        if (!range) continue;
+        const key = `${range.start}:${range.end}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        found.push(range);
     }
+
     return found;
 }
