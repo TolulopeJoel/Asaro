@@ -61,6 +61,9 @@ export interface BibleGraph {
      * read" becomes "what the graph can reason about".
      */
     ordinalsInChapters(bookName: string, chapterStart: number, chapterEnd?: number): number[];
+
+    /** Ordinals for every verse the graph knows between two ids, inclusive. */
+    ordinalsBetween(lo: VerseId, hi: VerseId): number[];
 }
 
 class PackedGraph implements BibleGraph {
@@ -154,16 +157,18 @@ class PackedGraph implements BibleGraph {
         return low;
     }
 
-    ordinalsInChapters(bookName: string, chapterStart: number, chapterEnd?: number): number[] {
-        const bounds = chapterSpanBounds(bookName, chapterStart, chapterEnd);
-        if (!bounds) return [];
-
-        const [lo, hi] = bounds;
+    ordinalsBetween(lo: VerseId, hi: VerseId): number[] {
         const out: number[] = [];
         for (let i = this.lowerBound(lo); i < this.verses.length && this.verses[i] <= hi; i++) {
             out.push(i);
         }
         return out;
+    }
+
+    ordinalsInChapters(bookName: string, chapterStart: number, chapterEnd?: number): number[] {
+        const bounds = chapterSpanBounds(bookName, chapterStart, chapterEnd);
+        if (!bounds) return [];
+        return this.ordinalsBetween(bounds[0], bounds[1]);
     }
 }
 
