@@ -39,6 +39,16 @@ export function useAutoSave(
     const isMountedRef = useRef(true);
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+    /*
+     * What the next save should write.
+     *
+     * The 20s interval is created once and never re-created, so anything it
+     * closed over would be frozen at the moment the reflection step opened —
+     * and every tick would write that stale draft back over the fresh one.
+     */
+    const latest = useRef({ reflectionAnswers, selectedBook, selectedChapters, verseRange, readingItemId });
+    latest.current = { reflectionAnswers, selectedBook, selectedChapters, verseRange, readingItemId };
+
     useEffect(() => {
         isMountedRef.current = true;
         return () => {
@@ -58,7 +68,7 @@ export function useAutoSave(
         const saveDraft = async () => {
             if (!isMountedRef.current) return;
             try {
-                const draftData: DraftData = { selectedBook, selectedChapters, verseRange, reflectionAnswers, readingItemId };
+                const draftData: DraftData = { ...latest.current };
                 await AsyncStorage.setItem(STORAGE_KEYS.REFLECTION_DRAFT, JSON.stringify(draftData));
                 lastSaveTime.current = Date.now();
             } catch (e) {

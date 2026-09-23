@@ -10,7 +10,7 @@
  * question itself can stay at a readable 26px. Cloth has no giant, so it names
  * the step in a `.cl-label` instead — the same information, one step quieter.
  */
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { ChevronLeft, X } from 'lucide-react-native';
@@ -127,12 +127,30 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
     return hasText || hasActions;
   })();
 
-  /** Whether the page you are on has been answered — it decides "Skip" or "Next". */
-  const answeredHere = useMemo(() => {
-    if (isNotes) return answers.notes.trim().length > 0;
-    if (current.isActionList) return answers.actionItems.some(i => i.action.trim().length > 0);
-    return ((answers[current.id as keyof ReflectionAnswers] as string) || '').trim().length > 0;
-  }, [answers, current, isNotes]);
+  /** Whether a given question (not necessarily the current one) has an answer on it. */
+  const isQuestionAnswered = (q: ReflectionQuestion) => {
+    if (q.isActionList) return answers.actionItems.some(i => i.action.trim().length > 0);
+    return ((answers[q.id as keyof ReflectionAnswers] as string) || '').trim().length > 0;
+  };
+
+  /*
+   * Whether the page you are on has been answered — it decides "Skip" or
+   * "Next". Plain const rather than useMemo: `isQuestionAnswered` closes
+   * over `answers` and is redefined every render anyway, so memoizing this
+   * would only add a dependency-array footgun for no real cost saved.
+   */
+  const answeredHere = isNotes ? answers.notes.trim().length > 0 : isQuestionAnswered(current);
+
+  /*
+   * Answered questions, Notes included — what the progress bar actually
+   * tracks. `page` alone would count a skipped question as progress just
+   * because you've moved past it; this only grows when there's something
+   * written, so skipping through the five questions leaves the bar exactly
+   * where it was rather than reading as work done.
+   */
+  const answeredCount =
+    REFLECTION_QUESTIONS.filter(isQuestionAnswered).length +
+    (answers.notes.trim().length > 0 ? 1 : 0);
 
   const handleSave = () => {
     if (!hasPrimaryContent) return;
@@ -213,6 +231,14 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
             </ScrollView>
           ) : (
             <TextArea
+              /*
+               * One field per question, not one field reused.
+               *
+               * Without the key React keeps the same TextArea (and the same
+               * native input) across pages, so the previous question's text
+               * can linger in it and its expand-modal state carries over.
+               */
+              key={isNotes ? 'notes' : current.id}
               bare
               label={isNotes ? 'Additional thoughts' : current.question}
               value={isNotes
@@ -276,14 +302,25 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
 
         {/* ── where you are ──────────────────────────────────────────────── */}
         {isLockedIn ? (
-          /* Colossal counts the steps: five bars, the one you're on in ochre. */
+          /*
+           * Colossal counts the steps: five bars. The one you're on is
+           * ochre — until it's actually answered, at which point it turns
+           * white like every other answered step, ochre marking only "where
+           * you are", not "what's done".
+           */
           <View style={styles.progress}>
             {REFLECTION_QUESTIONS.map((q, i) => (
               <View
                 key={q.id}
                 style={[
                   styles.progressStep,
-                  { backgroundColor: i === page ? colors.accent : colors.border },
+                  {
+                    backgroundColor: isQuestionAnswered(q)
+                      ? colors.textPrimary
+                      : i === page
+                        ? colors.accent
+                        : colors.border,
+                  },
                 ]}
               />
             ))}
@@ -293,12 +330,15 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
            * Cloth measures it instead — the woven strip fills as you go. This
            * is the motif doing a job rather than decorating, which is the one
            * thing the design note for this screen asks of the pattern.
+           *
+           * It fills by `answeredCount`, not `page`: paging past a question
+           * you skipped shouldn't read as ground covered.
            */
           <View style={[styles.clothProgress, { backgroundColor: colors.border }]}>
             <View
               style={[
                 styles.clothProgressFill,
-                { width: `${((page + 1) / (REFLECTION_QUESTIONS.length + 1)) * 100}%` },
+                { width: `${(answeredCount / (REFLECTION_QUESTIONS.length + 1)) * 100}%` },
               ]}
             >
               <ClothMark />

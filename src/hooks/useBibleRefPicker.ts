@@ -110,7 +110,10 @@ export function useBibleRefPicker({
      */
     const handleTextChange = useCallback(
         (text: string) => {
-            setValue(text);
+            // Through the ref, never the captured prop: this callback is memoized
+            // for the life of the field, so a captured `setValue` would keep
+            // writing to whatever answer the field was pointed at on first render.
+            setValueRef.current(text);
 
             const si = refStartIndexRef.current;
 
