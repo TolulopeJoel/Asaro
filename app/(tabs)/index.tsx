@@ -18,7 +18,6 @@ import { DeviceEventEmitter, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { JournalEntryDetail } from '@/src/components/JournalEntryDetail';
 import { WavyAddIcon } from '@/src/components/WavyAddIcon';
-import { AnimatedModal } from '@/src/components/AnimatedModal';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { LoadingView } from '@/src/components/LoadingView';
 import { CardFAB } from '@/src/components/CardFAB';
@@ -27,6 +26,10 @@ import { useAlert } from '@/src/context/AlertContext';
 import { deleteJournalEntry } from '@/src/data/database';
 import { fetchWeeklyStreakData, DayStatus } from '@/src/components/WeeklyStreak';
 import { fetchFlashbackData } from '@/src/components/Flashback';
+import { useObservation } from '@/src/insight/useObservation';
+import { ObservationCard } from '@/src/components/insight/ObservationCard';
+import { ObservationReceipts } from '@/src/components/insight/ObservationReceipts';
+import { AnimatedModal } from '@/src/components/AnimatedModal';
 import { getDailyTitle } from '@/src/data/homeTitles';
 import { LockedInHome } from '@/src/components/home/LockedInHome';
 import { ClothHome } from '@/src/components/home/ClothHome';
@@ -151,6 +154,58 @@ export default function Index() {
     const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
     const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    /*
+     * A noticing, when there is one and the quiet period has passed.
+     * Gated on the journal being loaded so detection never races the DB, and
+     * on there being entries at all — the graph has nothing to converge on
+     * before someone has written.
+     */
+    const echo = useObservation(!isLoading && stats.totalEntries > 0);
+    const [receiptsOpen, setReceiptsOpen] = useState(false);
+
+    const observationCard =
+        echo.rendered && !receiptsOpen ? (
+            <ObservationCard
+                observation={echo.rendered}
+                onOpen={() => {
+                    echo.open();
+                    setReceiptsOpen(true);
+                }}
+                onDismiss={() => echo.dismiss()}
+            />
+        ) : null;
+
+    /*
+     * The receipts, as an element rather than a component.
+     *
+     * Declaring a component inside render gives it a new identity on every
+     * pass, so React unmounts and remounts the whole modal subtree — which
+     * here would drop the loaded entries and reset the sheet mid-read. An
+     * element has no identity to lose.
+     */
+    const echoReceipts = (
+        <AnimatedModal
+            visible={receiptsOpen && !!echo.observation}
+            onRequestClose={() => setReceiptsOpen(false)}
+        >
+            {echo.observation && echo.rendered && (
+                <ObservationReceipts
+                    observation={echo.observation}
+                    rendered={echo.rendered}
+                    onClose={() => setReceiptsOpen(false)}
+                    onVerdict={agreed => {
+                        setReceiptsOpen(false);
+                        echo.verdict(agreed);
+                    }}
+                    onOpenEntry={entry => {
+                        setReceiptsOpen(false);
+                        handleEntryPress(entry);
+                    }}
+                />
+            )}
+        </AnimatedModal>
+    );
+
     const [isSharing, setIsSharing] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const { showAlert } = useAlert();
@@ -438,11 +493,13 @@ export default function Index() {
                         onFlashbackPress={
                             flashbackEntry ? () => handleEntryPress(flashbackEntry.entry) : undefined
                         }
+                        observation={observationCard}
                     />
                 )}
                 <Confetti ref={confettiRef} />
                 {draftExists && <DraftBar />}
                 <HomeDetailModal />
+                {echoReceipts}
             </Screen>
         );
     }
@@ -487,6 +544,7 @@ export default function Index() {
                         onFlashbackPress={
                             flashbackEntry ? () => handleEntryPress(flashbackEntry.entry) : undefined
                         }
+                        observation={observationCard}
                     />
                 )}
             </ScrollView>
@@ -497,6 +555,7 @@ export default function Index() {
             {draftExists && <DraftBar />}
 
             <HomeDetailModal />
+            {echoReceipts}
 
         </Screen>
     );

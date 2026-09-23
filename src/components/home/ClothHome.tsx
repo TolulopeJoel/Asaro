@@ -44,6 +44,14 @@ export interface ClothHomeProps {
     onSettings: () => void;
     onWeekPress?: () => void;
     onFlashbackPress?: () => void;
+    /**
+     * A noticing, when there is one.
+     *
+     * Passed as a node rather than as data: the card decides its own weight
+     * from the active style, so neither Home has to know how it is drawn —
+     * and there is one card rather than two that must be kept in step.
+     */
+    observation?: React.ReactNode;
 }
 
 /**
@@ -108,6 +116,7 @@ export function ClothHome({
     onSettings,
     onWeekPress,
     onFlashbackPress,
+    observation,
 }: ClothHomeProps) {
     const { colors } = useTheme();
 
@@ -166,6 +175,8 @@ export function ClothHome({
                       */}
                     <Text variant="caption" style={styles.statLabel}>Entries so far</Text>
                 </View>
+
+                {observation}
 
                 {flashback && (
                     <ScalePressable

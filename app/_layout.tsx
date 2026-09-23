@@ -106,6 +106,18 @@ export default function RootLayout() {
         }
         setDbInitialized(true);
 
+        /*
+         * Phase 0 plumbing check. Dev only, fire-and-forget so it cannot
+         * delay startup, and it removes the row it writes. Delete this block
+         * once the Echoes surface exists and can be looked at directly.
+         */
+        if (__DEV__) {
+          import('@/src/insight/smokeTest')
+            .then(({ runPhase0SmokeTest }) => runPhase0SmokeTest())
+            .then(report => console.log(report))
+            .catch(error => console.log('Phase 0 smoke test failed to run:', error));
+        }
+
         await initializeNotificationChannel();
 
         // Load all four requirement values in parallel — they're independent.

@@ -142,6 +142,15 @@ const DEFAULTS: Required<ConvergenceOptions> = {
     maxCandidates: 3,
 };
 
+/** "Genesis 12-15", as the journal recorded the reading. */
+function passageLabel(entry: SeedEntry): string {
+    const range =
+        entry.chapterEnd && entry.chapterEnd !== entry.chapterStart
+            ? `${entry.chapterStart}\u2013${entry.chapterEnd}`
+            : `${entry.chapterStart}`;
+    return `${entry.bookName} ${range}`;
+}
+
 export interface ConvergenceCandidate {
     hubVerseId: VerseId;
     /** How many references the hub has in total. High means famous, not personal. */
@@ -149,6 +158,8 @@ export interface ConvergenceCandidate {
     /** Contributing entries, oldest first — the order the card reads them in. */
     entryIds: number[];
     bookNames: string[];
+    /** The passages themselves, oldest first — what the card actually lists. */
+    passages: string[];
     /** Of those entries, how many reached the hub through a verse they cited. */
     citingEntryCount: number;
     /**
@@ -419,6 +430,7 @@ export function findConvergence(
             hubDegree: degree,
             entryIds: contributors.map(e => e.entryId),
             bookNames: books,
+            passages: contributors.map(passageLabel),
             citingEntryCount: citing.size,
             citingFraction,
             spanDays,
@@ -481,6 +493,7 @@ export async function detectConvergence(options: ConvergenceOptions = {}): Promi
                     hubDegree: candidate.hubDegree,
                     entryCount: candidate.entryIds.length,
                     bookNames: candidate.bookNames,
+                    passages: candidate.passages,
                     spanDays: Math.round(candidate.spanDays),
                     planShape: Number(candidate.planShape.toFixed(2)),
                     hubBook: bookNumberOf(candidate.hubVerseId),
