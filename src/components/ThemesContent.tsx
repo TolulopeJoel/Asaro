@@ -42,6 +42,18 @@ const FIELD_LABELS: Record<string, string> = {
  */
 const MIN_ENTRIES = 15;
 
+/**
+ * Example snippets per theme, by position in the list.
+ *
+ * Straight from design/all-screens.html #themes, which draws its three themes
+ * at three different weights rather than one weight repeated: the first gets
+ * a name, meta and two excerpts; the second one excerpt; the third is a bare
+ * name-and-meta row. Both the `.cl` and `.co` slots taper identically, so it
+ * is the rule for the screen and not a quirk of one style. Anything past the
+ * second position is compact — read the name, tap if it interests you.
+ */
+const PREVIEW_SNIPPETS = [2, 1];
+
 type Phase = 'checking' | 'needsModel' | 'downloading' | 'working' | 'ready' | 'tooEarly' | 'error';
 
 function reference(item: StoredEmbedding): string {
@@ -373,7 +385,17 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
                 )
             }
             renderItem={({ item, index }) => {
-                const reps = representatives(item, 3);
+                /*
+                 * Snippets taper down the list rather than repeating at full
+                 * weight. Every theme was showing three, which is what made
+                 * this a scroll: past the first screenful the examples stop
+                 * being orienting and start being a wall, and the answer to
+                 * "what is this theme" is the name, not its third excerpt.
+                 * Clusters arrive sorted strongest first, so position is
+                 * rank — the theme most worth reading earns the most room.
+                 */
+                const previewCount = PREVIEW_SNIPPETS[index] ?? 0;
+                const reps = previewCount > 0 ? representatives(item, previewCount) : [];
                 const books = [...new Set(item.members.map(m => m.bookName))].filter(Boolean);
                 const savedName = matchThemeName(
                     item.members.map(m => ({ entryId: m.entryId, field: m.field })),
@@ -580,7 +602,13 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
                             </ScalePressable>
                         )}
 
-                        {item.entryCount > reps.length && (
+                        {/*
+                          * Only meaningful next to visible examples. On a
+                          * compact row the meta line already says how many
+                          * entries there are, and "+4 more" under nothing
+                          * reads as a count of things being hidden.
+                          */}
+                        {reps.length > 0 && item.entryCount > reps.length && (
                             <UIText variant="caption" style={styles.more}>
                                 +{item.entryCount - reps.length} more — tap to read
                             </UIText>
