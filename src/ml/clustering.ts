@@ -17,6 +17,12 @@
  *   No generated labels. Clusters are named by the person who wrote them.
  *   A model guessing names would be worse, could be wrong in ways nobody can
  *   hotfix, and naming your own recurring thought is the point of the app.
+ *   themeNames.ts does put a provisional label on an unnamed cluster, which
+ *   is not a walk-back of this: it extracts words the person already wrote
+ *   rather than inventing a description, it is never persisted, and a saved
+ *   name always beats it. The rule this module cares about — that nothing
+ *   invents an interpretation and stores it as though a person meant it —
+ *   still holds.
  */
 
 export interface Embedded {

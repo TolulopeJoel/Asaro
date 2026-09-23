@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, FlatList, StyleSheet, TextInput, View } from 'react-native';
 import { Sparkles, Check, X } from 'lucide-react-native';
@@ -9,6 +9,7 @@ import { ScalePressable } from './ScalePressable';
 import { Button } from './Button';
 import { HyperlinkedText } from './HyperlinkedText';
 import { Cluster, centerWithinFields, clusterThemes, representatives } from '../ml/clustering';
+import { suggestNames } from '../ml/themeNames';
 import {
     EMBEDDABLE_FIELDS,
     ACTION_FIELD,
@@ -177,6 +178,17 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
         [clusters, draftName, named],
     );
 
+    /*
+     * A provisional label per cluster, so no theme shows up nameless.
+     *
+     * Must sit above the early returns below — it is a hook, and the phase
+     * checks bail out before the list renders. Recomputed only when the
+     * clusters themselves change; a saved name is applied over the top of
+     * this at each render site rather than being folded in here, so renaming
+     * never has to invalidate it.
+     */
+    const suggested = useMemo(() => suggestNames(clusters), [clusters]);
+
     // ── states before there is anything to show ──────────────────────────────
 
     if (phase === 'checking') {
@@ -335,10 +347,11 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
     const openCluster = openIndex !== null ? clusters[openIndex] : null;
     const openName =
         openCluster &&
-        matchThemeName(
+        (matchThemeName(
             openCluster.members.map(m => ({ entryId: m.entryId, field: m.field })),
             named,
-        )?.name;
+        )?.name ??
+            suggested[openIndex!]);
 
     return (
         <>
@@ -366,6 +379,14 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
                     item.members.map(m => ({ entryId: m.entryId, field: m.field })),
                     named,
                 );
+                /*
+                 * Every theme carries a name now: the person's own if they
+                 * gave it one, otherwise the words their entries lean on.
+                 * `savedName` still gates the naming affordances below — a
+                 * suggestion is something to replace, not something already
+                 * saved.
+                 */
+                const displayName = savedName?.name ?? suggested[index];
 
                 if (isLockedIn) {
                     /*
@@ -376,14 +397,26 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
                      * no separate "Name this theme" button in this style.
                      */
                     const meta = [`${item.entryCount} ${item.entryCount === 1 ? 'entry' : 'entries'}`, ...books].join(' · ');
-                    const naming = !savedName || namingIndex === index;
+                    /*
+                     * Open only on request now. This used to be
+                     * `!savedName || …`, so every unnamed theme sat under an
+                     * open text field — reasonable when unnamed meant blank,
+                     * nagging once a theme already reads with a name. Naming
+                     * is still reachable here the moment you ask for it, and
+                     * from the pencil in the detail view.
+                     */
+                    const naming = namingIndex === index;
 
                     return (
                         <View style={[styles.colossalTheme, { borderBottomColor: colors.border }]}>
                             <ScalePressable onPress={() => setOpenIndex(index)}>
-                                {savedName && (
-                                    <UIText variant="subtitle" style={styles.colossalName}>{savedName.name}</UIText>
-                                )}
+                                <UIText
+                                    variant="subtitle"
+                                    tone={savedName ? undefined : 'secondary'}
+                                    style={styles.colossalName}
+                                >
+                                    {displayName}
+                                </UIText>
                                 <UIText variant="label" tone="accent" style={styles.colossalMeta} numberOfLines={1}>
                                     {meta}
                                 </UIText>
@@ -422,7 +455,7 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
                                         value={namingIndex === index ? draftName : ''}
                                         onFocus={() => {
                                             setNaming(index);
-                                            setDraftName(savedName?.name ?? '');
+                                            setDraftName(displayName);
                                         }}
                                         onChangeText={setDraftName}
                                         onSubmitEditing={() => handleSaveName(index)}
@@ -448,14 +481,19 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
                  * button. That button only ever appears once a theme already
                  * has a name, as "Rename". Same rule Colossal already follows.
                  */
-                const naming = !savedName || namingIndex === index;
+                // Open only on request — see the Colossal branch above.
+                const naming = namingIndex === index;
 
                 return (
                     <View style={[styles.card, { backgroundColor: colors.backgroundSubtle }]}>
                         <ScalePressable onPress={() => setOpenIndex(index)}>
-                            {savedName && (
-                                <UIText variant="subtitle" style={styles.clothName}>{savedName.name}</UIText>
-                            )}
+                            <UIText
+                                variant="subtitle"
+                                tone={savedName ? undefined : 'secondary'}
+                                style={styles.clothName}
+                            >
+                                {displayName}
+                            </UIText>
 
                             <View style={styles.cardHeader}>
                                 <UIText variant="label">{item.entryCount} entries</UIText>
@@ -497,7 +535,7 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
                                     value={namingIndex === index ? draftName : ''}
                                     onFocus={() => {
                                         setNaming(index);
-                                        setDraftName(savedName?.name ?? '');
+                                        setDraftName(displayName);
                                     }}
                                     onChangeText={setDraftName}
                                     onSubmitEditing={() => handleSaveName(index)}
@@ -532,11 +570,13 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
                             <ScalePressable
                                 onPress={() => {
                                     setNaming(index);
-                                    setDraftName(savedName?.name ?? '');
+                                    setDraftName(displayName);
                                 }}
                                 style={[styles.nameCta, { borderColor: colors.border }]}
                             >
-                                <UIText variant="label" tone="tertiary">Rename</UIText>
+                                <UIText variant="label" tone="tertiary">
+                                    {savedName ? 'Rename' : 'Name this'}
+                                </UIText>
                             </ScalePressable>
                         )}
 
