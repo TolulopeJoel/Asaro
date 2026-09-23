@@ -10,6 +10,7 @@ import { Button } from './Button';
 import { HyperlinkedText } from './HyperlinkedText';
 import { Cluster, centerWithinFields, clusterThemes, representatives } from '../ml/clustering';
 import { suggestNames } from '../ml/themeNames';
+import { rankThemes } from '../ml/themeQuality';
 import {
     EMBEDDABLE_FIELDS,
     ACTION_FIELD,
@@ -112,9 +113,22 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
                 return;
             }
 
-            const found = clusterThemes(centerWithinFields(items), { grain: 85, minEntries: 3 });
-            setClusters(found);
-            onPatternCountChange?.(found.length);
+            /*
+             * Clustering says what groups together; rankThemes says which of
+             * those groups is worth showing. It drops anything no tighter
+             * than two entries picked at random, pushes suspected
+             * reading-plan artifacts (one book, one week) below themes that
+             * recur across books and months, and tilts toward what you have
+             * written recently. The centered vectors go with it because the
+             * "tighter than chance" floor is measured against this corpus,
+             * not a fixed number.
+             */
+            const centered = centerWithinFields(items);
+            const found = clusterThemes(centered, { grain: 85, minEntries: 3 });
+            const ranked = rankThemes(found, centered);
+
+            setClusters(ranked.map(theme => theme.cluster));
+            onPatternCountChange?.(ranked.length);
             setNamed(await getNamedThemes());
             setPhase('ready');
         } catch (error: any) {
@@ -159,7 +173,7 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
      * looking for patterns with it. When the failure was the download itself
      * that is the wrong half of the job: the model gets fetched anyway, deep
      * inside `embed`, but with no progress callback and under a "Looking for
-     * patterns…" label — 23MB of silence that reads exactly like the hang the
+     * patterns…" label — 34MB of silence that reads exactly like the hang the
      * reader just hit. Routing a missing model back through `handleDownload`
      * retries the part that failed, with the progress bar that belongs to it.
      */
@@ -226,14 +240,14 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
                     <UIText variant="display">Find your themes</UIText>
                     <UIText variant="sub">
                         Àṣàrò can group your entries by what you keep coming back to. It needs a
-                        one-time 23MB download, then it works offline.
+                        one-time 34MB download, then it works offline.
                     </UIText>
                     <View style={[styles.pledge, { borderColor: colors.border }]}>
                         <UIText variant="bodySmall" tone="primary" style={styles.pledgeText}>
                             Your reflections are never sent anywhere.
                         </UIText>
                     </View>
-                    <ThemedButton label="Download (23MB)" variant="accent" block onPress={handleDownload} />
+                    <ThemedButton label="Download (34MB)" variant="accent" block onPress={handleDownload} />
                 </View>
             );
         }
@@ -250,14 +264,14 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
                 <UIText variant="title" style={styles.centred}>Find your themes</UIText>
                 <UIText variant="body" tone="secondary" style={styles.centred}>
                     Àṣàrò can group your entries by what you keep coming back to. It needs a
-                    one-time 23MB download, then it works offline.
+                    one-time 34MB download, then it works offline.
                 </UIText>
                 <View style={[styles.clothPledge, { borderColor: colors.border }]}>
                     <UIText variant="sub" tone="primary" style={styles.centred}>
                         Your reflections are never sent anywhere.
                     </UIText>
                 </View>
-                <ThemedButton label="Download (23MB)" onPress={handleDownload} />
+                <ThemedButton label="Download (34MB)" onPress={handleDownload} />
             </View>
         );
     }

@@ -1,16 +1,25 @@
 /**
  * On-device sentence embeddings — the engine behind Themes.
  *
- * Runs all-MiniLM-L6-v2 (quantized, ~23MB) through ONNX Runtime. Nothing is
+ * Runs bge-small-en-v1.5 (quantized, ~34MB) through ONNX Runtime. Nothing is
  * sent anywhere: a person's reflections never leave the phone, which is the
  * whole reason this is local rather than an API call.
+ *
+ * It replaced all-MiniLM-L6-v2, which scored around 42 on MTEB's clustering
+ * task against this model's ~47-49. Clustering is the only score that matters
+ * here — Themes groups writing, it never retrieves against a query — and the
+ * swap was close to free: same BERT vocabulary (the bundled vocab.json maps
+ * all 30,522 tokens to identical ids, so wordpiece.ts is untouched), same 384
+ * dimensions, so nothing about how vectors are stored had to change. The one
+ * real difference is pooling, below.
  *
  * The model is downloaded on first use rather than bundled, so the install
  * stays small and people who never open Themes never pay for it.
  *
  * The maths here mirrors scripts/thought-echoes/echoes.py exactly — same model
- * file, same mean-pooling, same normalisation — so the Python experiments are
- * a valid reference for what this produces.
+ * file, same CLS pooling, same normalisation — so the Python experiments are
+ * a valid reference for what this produces. Change one, change the other, or
+ * the harness stops predicting what the app will do.
  */
 
 import { InferenceSession, Tensor } from 'onnxruntime-react-native';
@@ -21,15 +30,16 @@ import {
     createDownloadResumable,
     deleteAsync,
     moveAsync,
+    readDirectoryAsync,
 } from 'expo-file-system/legacy';
 
 import { WordPieceTokenizer } from './wordpiece';
 
 const MODEL_URL =
-    'https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/main/onnx/model_quantized.onnx';
+    'https://huggingface.co/Xenova/bge-small-en-v1.5/resolve/main/onnx/model_quantized.onnx';
 
 const MODEL_DIR = `${documentDirectory}models/`;
-const MODEL_PATH = `${MODEL_DIR}all-MiniLM-L6-v2-quantized.onnx`;
+const MODEL_PATH = `${MODEL_DIR}bge-small-en-v1.5-quantized.onnx`;
 /**
  * Where bytes land while they are still arriving.
  *
@@ -40,7 +50,7 @@ const MODEL_PATH = `${MODEL_DIR}all-MiniLM-L6-v2-quantized.onnx`;
  */
 const MODEL_PART_PATH = `${MODEL_PATH}.part`;
 
-/** MiniLM's output width. Vectors are stored at this size. */
+/** The model's output width. Vectors are stored at this size. */
 export const EMBEDDING_DIMS = 384;
 
 /**
@@ -70,7 +80,7 @@ export async function isModelDownloaded(): Promise<boolean> {
  * Interrupting this — losing signal, turning the radio off, backgrounding the
  * app — used to poison the install permanently. The download wrote straight to
  * MODEL_PATH as bytes arrived, and `isModelDownloaded` only asks whether that
- * file is over 1MB, against a model of ~23MB. A download cut off anywhere past
+ * file is over 1MB, against a model of ~34MB. A download cut off anywhere past
  * the first megabyte therefore left a file that every later call read as
  * "already downloaded": `downloadModel` returned without fetching a byte,
  * `InferenceSession.create` choked on the truncated ONNX, and the same error
@@ -119,9 +129,35 @@ export async function downloadModel(onProgress?: DownloadProgress): Promise<void
         if (short) throw new Error('Model download did not complete');
 
         await moveAsync({ from: MODEL_PART_PATH, to: MODEL_PATH });
+        await deleteSupersededModels();
     } catch (error) {
         await deleteAsync(MODEL_PART_PATH, { idempotent: true });
         throw error;
+    }
+}
+
+/**
+ * Remove model files left by a previous version of the app.
+ *
+ * Changing MODEL_URL changes MODEL_PATH with it, so the file the old build
+ * downloaded is simply never opened again — it just sits in the documents
+ * directory taking up its full size for the life of the install. Anyone
+ * upgrading from all-MiniLM-L6-v2 would be carrying 23MB of it. Swept by
+ * listing the directory rather than by naming the old file, so the next swap
+ * cleans up after itself without anyone remembering to add a case here.
+ *
+ * Best-effort: a model that downloaded fine should not fail because tidying
+ * up afterwards did.
+ */
+async function deleteSupersededModels(): Promise<void> {
+    try {
+        const keep = [MODEL_PATH, MODEL_PART_PATH].map(path => path.split('/').pop());
+        for (const name of await readDirectoryAsync(MODEL_DIR)) {
+            if (!name.endsWith('.onnx') || keep.includes(name)) continue;
+            await deleteAsync(`${MODEL_DIR}${name}`, { idempotent: true });
+        }
+    } catch {
+        // Nothing here is worth surfacing to a reader.
     }
 }
 
@@ -172,9 +208,17 @@ export function unload(): void {
 /**
  * Embed texts into unit-length vectors.
  *
- * Mean-pools the token vectors over the attention mask (so padding
- * contributes nothing) and L2-normalises, which is what sentence-transformers
- * does for this model and what makes a dot product a cosine similarity.
+ * Takes the [CLS] vector and L2-normalises it, which is what
+ * sentence-transformers does for this model and what makes a dot product a
+ * cosine similarity.
+ *
+ * CLS, not mean. bge-small-en-v1.5 ships `pooling_mode_cls_token: true` and
+ * was trained with its sentence meaning gathered into that one position;
+ * mean-pooling it — correct for the MiniLM this replaced — produces vectors
+ * that still look plausible, still normalise, still cluster into *something*,
+ * and are quietly wrong. There is no error to catch, so the rule is simply
+ * that pooling belongs to the model: read it off the model's own
+ * 1_Pooling/config.json rather than inheriting whatever the last one used.
  */
 export async function embed(texts: string[]): Promise<Float32Array[]> {
     if (texts.length === 0) return [];
@@ -207,23 +251,35 @@ export async function embed(texts: string[]): Promise<Float32Array[]> {
         }
 
         const results = await session.run(feeds);
-        const hidden = results[session.outputNames[0]].data as Float32Array;
+
+        /*
+         * By name where the export provides it. Picking outputNames[0] blind
+         * is fine until a build happens to put `pooler_output` first — that is
+         * a [batch, 384] tensor, so reading position 0 of a sequence that
+         * isn't there would hand back a plausible-looking wrong answer rather
+         * than failing. The dimension check below is the backstop.
+         */
+        const outputName = session.outputNames.includes('last_hidden_state')
+            ? 'last_hidden_state'
+            : session.outputNames[0];
+        const output = results[outputName];
+
+        if (output.dims.length !== 3 || output.dims[2] !== EMBEDDING_DIMS) {
+            throw new Error(
+                `Expected [batch, tokens, ${EMBEDDING_DIMS}] from '${outputName}', got [${output.dims.join(', ')}]`,
+            );
+        }
+
+        const hidden = output.data as Float32Array;
 
         for (let r = 0; r < rows; r++) {
             const pooled = new Float32Array(EMBEDDING_DIMS);
-            let counted = 0;
 
-            for (let t = 0; t < width; t++) {
-                if (encoded[r].attentionMask[t] === 0) continue;
-                const offset = (r * width + t) * EMBEDDING_DIMS;
-                for (let d = 0; d < EMBEDDING_DIMS; d++) pooled[d] += hidden[offset + d];
-                counted += 1;
-            }
-
-            const divisor = counted || 1;
+            // [CLS] is always token 0 — see WordPieceTokenizer.encode.
+            const offset = r * width * EMBEDDING_DIMS;
             let norm = 0;
             for (let d = 0; d < EMBEDDING_DIMS; d++) {
-                pooled[d] /= divisor;
+                pooled[d] = hidden[offset + d];
                 norm += pooled[d] * pooled[d];
             }
             norm = Math.sqrt(norm) || 1e-9;

@@ -5,7 +5,17 @@ import { bytesToVector, embed, vectorToBytes } from '../ml/embedder';
 /** Bumping this invalidates every stored vector. Change it if the model changes. */
 import { stripReferences } from '../utils/reference';
 
-export const EMBEDDING_MODEL = 'all-MiniLM-L6-v2-q';
+/**
+ * Which model the stored vectors came from.
+ *
+ * Bumping this is the whole migration. `pruneEmbeddings` deletes every row
+ * whose model does not match, and `backfillEmbeddings` re-embeds whatever is
+ * missing — so changing the string here retires the old vectors and rebuilds
+ * them, with no schema change and nothing to hand-write. Vectors from two
+ * different models are not comparable, so they must never be allowed to sit
+ * in the same table and be clustered together.
+ */
+export const EMBEDDING_MODEL = 'bge-small-en-v1.5-q';
 
 /**
  * Fields worth embedding, with the label the UI shows.

@@ -1,7 +1,7 @@
 /**
  * BERT WordPiece tokenizer — the input half of on-device embeddings.
  *
- * MiniLM expects exactly what bert-base-uncased produces, and Hugging Face's
+ * The model expects exactly what bert-base-uncased produces, and Hugging Face's
  * tokenizer is a Rust binary we can't run here, so this reimplements the same
  * pipeline in TS. It is verified byte-for-byte against the real tokenizer's
  * output in scripts/thought-echoes/verify-tokenizer.mjs — if you touch this
