@@ -109,9 +109,19 @@ export function formatVerseId(id: VerseId): string {
  * reached for; the tail is how far they kept reading.
  */
 export function parseReference(text: string): VerseId | null {
+    /*
+     * The trailing letter in "Exodus 20:5a" is not optional to support.
+     *
+     * Writers use it to point at half a verse, and `openBibleReferenceFromTag`
+     * has always accepted it — so a stricter pattern here does not reject
+     * those citations visibly, it drops them silently from the one channel
+     * that records what the reader chose rather than what the plan assigned.
+     * Ten percent of a real journal's citations carried a suffix, including
+     * Exodus 20:5a, which sat right inside that reader's strongest theme.
+     */
     const match = text
         .trim()
-        .match(/^(.+?)\s+(\d+)(?::(\d+))?(?:\s*[-–]\s*(?:\d+:)?\d+)?$/);
+        .match(/^(.+?)\s+(\d+)(?::(\d+)[a-z]?)?(?:\s*[-–]\s*(?:\d+:)?\d+[a-z]?)?$/i);
     if (!match) return null;
 
     const book = bookNumberFromName(match[1].trim());
