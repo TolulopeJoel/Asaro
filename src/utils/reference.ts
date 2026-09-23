@@ -16,6 +16,27 @@ export function formatRange(reference: string): string {
     return reference.replace(BETWEEN_DIGITS, '$1\u2013$2');
 }
 
+/** A reference inserted into an answer with the `@` picker: `[[Genesis 3:15]]`. */
+const INLINE_REFERENCE = /\[\[.+?\]\]/g;
+
+/**
+ * Drop inline references from a piece of writing, leaving the writing.
+ *
+ * For analysis only — never for display, where the markers are what
+ * `HyperlinkedText` turns into tappable links.
+ *
+ * A citation is the strongest-looking token in a sentence and says the least
+ * about the person: two entries that both cite Genesis look alike to a model
+ * whether or not they have a single thought in common, and the passage cited
+ * is usually just whatever was on the reading plan that day. Themes built on
+ * that drift back into describing the plan rather than the reader — the exact
+ * failure the Themes empty state warns about — so clustering and labelling
+ * both read the prose with the citations taken out.
+ */
+export function stripReferences(text: string): string {
+    return text.replace(INLINE_REFERENCE, ' ').replace(/\s+/g, ' ').trim();
+}
+
 /**
  * Small counts, written out.
  *

@@ -22,6 +22,7 @@
  */
 
 import { Cluster, Embedded } from './clustering';
+import { stripReferences } from '../utils/reference';
 
 /**
  * Function words, plus the vocabulary every reflection carries regardless of
@@ -85,9 +86,16 @@ const MAX_LABEL_WORDS = 2;
  */
 const STEM_LENGTH = 4;
 
-/** Split on anything that isn't a letter or an apostrophe, so digits and refs drop out. */
+/**
+ * Split on anything that isn't a letter or an apostrophe.
+ *
+ * Citations come out first. The member text here is the raw answer — the
+ * snippets rendered beside a theme need the `[[...]]` markers intact — so
+ * without this a book someone happened to cite twice outranks what they
+ * actually wrote, and the theme gets labelled "Genesis".
+ */
 function words(text: string): string[] {
-    return text
+    return stripReferences(text)
         .toLowerCase()
         .split(/[^a-z'À-ɏ]+/)
         .map(word => word.replace(/^'+|'+$/g, ''))

@@ -3,6 +3,8 @@ import { Embedded } from '../ml/clustering';
 import { bytesToVector, embed, vectorToBytes } from '../ml/embedder';
 
 /** Bumping this invalidates every stored vector. Change it if the model changes. */
+import { stripReferences } from '../utils/reference';
+
 export const EMBEDDING_MODEL = 'all-MiniLM-L6-v2-q';
 
 /**
@@ -54,7 +56,13 @@ async function collectTexts(): Promise<PendingText[]> {
         const out: PendingText[] = [];
         for (const entry of entries) {
             for (const { column } of EMBEDDABLE_FIELDS) {
-                const text = (entry[column] ?? '').trim();
+                /*
+                 * Stripped before the length gate, not after: an answer that
+                 * only clears MIN_CHARS on the weight of its citations has
+                 * less to cluster on than the count suggests, and it is the
+                 * prose we are measuring.
+                 */
+                const text = stripReferences((entry[column] ?? '').trim());
                 if (text.length >= MIN_CHARS) {
                     out.push({ entryId: entry.id, field: column, text });
                 }
@@ -73,7 +81,7 @@ async function collectTexts(): Promise<PendingText[]> {
 
         const byEntry = new Map<number, string[]>();
         for (const row of actions) {
-            const text = [row.action, row.motivation].filter(Boolean).join(' ').trim();
+            const text = stripReferences([row.action, row.motivation].filter(Boolean).join(' ').trim());
             if (!text) continue;
             const bucket = byEntry.get(row.entry_id);
             if (bucket) bucket.push(text);
@@ -147,14 +155,41 @@ export async function backfillEmbeddings(
     return stale.length;
 }
 
-/** Drop vectors whose entry is gone, and any left by a previous model. */
+/**
+ * Drop vectors whose entry is gone, any left by a previous model, and any
+ * whose text no longer qualifies for embedding at all.
+ *
+ * That last case is easy to miss and does real damage. `backfillEmbeddings`
+ * only ever writes, so a row whose answer has since fallen out of
+ * `collectTexts` — edited down below MIN_CHARS, or left under it once its
+ * citations stopped counting toward the length — keeps its old vector and
+ * goes on being clustered forever, from text that is no longer what it was
+ * measured from. Dropping it here is what keeps "embedded" and "embeddable"
+ * the same set.
+ */
 export async function pruneEmbeddings(): Promise<void> {
+    const embeddable = await collectTexts();
+    const keep = new Set(embeddable.map(t => `${t.entryId}:${t.field}`));
+
     await withDatabase(async database => {
         await database.runAsync(`DELETE FROM entry_embeddings WHERE model != ?`, [EMBEDDING_MODEL]);
         await database.runAsync(
             `DELETE FROM entry_embeddings
              WHERE entry_id NOT IN (SELECT id FROM journal_entries)`,
         );
+
+        const rows = await database.getAllAsync<{ entry_id: number; field: string }>(
+            `SELECT entry_id, field FROM entry_embeddings WHERE model = ?`,
+            [EMBEDDING_MODEL],
+        );
+
+        for (const row of rows) {
+            if (keep.has(`${row.entry_id}:${row.field}`)) continue;
+            await database.runAsync(
+                `DELETE FROM entry_embeddings WHERE model = ? AND entry_id = ? AND field = ?`,
+                [EMBEDDING_MODEL, row.entry_id, row.field],
+            );
+        }
     });
 }
 
