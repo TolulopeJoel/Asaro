@@ -151,6 +151,16 @@ export interface ConvergenceCandidate {
     bookNames: string[];
     /** Of those entries, how many reached the hub through a verse they cited. */
     citingEntryCount: number;
+    /**
+     * The share of contributors that pointed rather than merely passed nearby.
+     *
+     * Two of four is a different claim from two of seven. Both have two people
+     * pointing, but in the second case five arrived because the schedule sent
+     * them, so most of the evidence is about the plan and the finding is
+     * diluted. Count is how much evidence there is; this is how much of it the
+     * reader chose.
+     */
+    citingFraction: number;
     spanDays: number;
     /**
      * How much the contributing entries look like someone reading straight
@@ -395,7 +405,11 @@ export function findConvergence(
          * noise.
          */
         const planShape = sequentiality(contributors);
-        const score = (weight / Math.log(1 + degree)) * (1 - config.planPenalty * planShape);
+        const citingFraction = citing.size / contributors.length;
+        const score =
+            (weight / Math.log(1 + degree)) *
+            (1 - config.planPenalty * planShape) *
+            citingFraction;
 
         candidates.push({
             hubVerseId: graph.verseAt(ordinal),
@@ -403,6 +417,7 @@ export function findConvergence(
             entryIds: contributors.map(e => e.entryId),
             bookNames: books,
             citingEntryCount: citing.size,
+            citingFraction,
             spanDays,
             planShape,
             score,
@@ -478,7 +493,11 @@ export async function detectConvergence(options: ConvergenceOptions = {}): Promi
                  * and plan shape do; a raw dot-product sum does not.
                  */
                 confidence:
-                    Math.min(1, candidate.entryIds.length / 8) * (1 - 0.5 * candidate.planShape),
+                    Math.min(1, candidate.entryIds.length / 8) *
+                    (1 - 0.5 * candidate.planShape) *
+                    // Softened rather than applied straight: a finding where a
+                    // third of the evidence was chosen is weaker, not worthless.
+                    (0.5 + 0.5 * candidate.citingFraction),
                 evidence: [
                     ...candidate.entryIds.map(entryId => ({ kind: 'entry' as const, entryId })),
                     { kind: 'verse' as const, verseId: candidate.hubVerseId },
