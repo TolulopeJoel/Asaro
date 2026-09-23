@@ -32,6 +32,7 @@ import {
 import { JournalEntryList } from '@/src/components/JournalEntryList';
 import { JournalEntry } from '@/src/data/database';
 import { ThemesContent } from '@/src/components/ThemesContent';
+import { EchoesContent } from '@/src/components/insight/EchoesContent';
 
 // Plan imports
 import { READING_PLAN_DATA, ReadingItem } from '@/src/data/readingPlanData';
@@ -43,7 +44,7 @@ import * as WebBrowser from 'expo-web-browser';
 
 export type ViewMode = 'recent' | 'books' | 'bookDetail' | 'actions' | 'topics';
 /** 'bookDetail' is a drill-in from Books, not a tab of its own. */
-export type Tab = ViewMode | 'plan' | 'themes';
+export type Tab = ViewMode | 'plan' | 'themes' | 'echoes';
 
 type PlanListDataItem =
     | { type: 'sectionHeader'; section: string; id: string }
@@ -69,11 +70,11 @@ type PlanListDataItem =
  * the top strip carries only things that are genuinely different from each
  * other. Four fit without scrolling, and nothing was lost on the way.
  */
-type Section = 'entries' | 'unfinished' | 'themes' | 'plan';
+type Section = 'entries' | 'unfinished' | 'echoes' | 'plan';
 
 const SECTIONS: { key: Section; label: string; icon: LucideIcon }[] = [
     { key: 'entries', label: 'Entries', icon: Clock },
-    { key: 'themes', label: 'Themes', icon: Sparkles },
+    { key: 'echoes', label: 'Echoes', icon: Sparkles },
     { key: 'unfinished', label: 'Unfinished', icon: Zap },
     { key: 'plan', label: 'Plan', icon: Library },
 ];
@@ -85,7 +86,8 @@ const SECTION_OF: Record<Tab, Section> = {
     bookDetail: 'entries',
     actions: 'unfinished',
     topics: 'unfinished',
-    themes: 'themes',
+    themes: 'echoes',
+    echoes: 'echoes',
     plan: 'plan',
 };
 
@@ -93,7 +95,7 @@ const SECTION_OF: Record<Tab, Section> = {
 const DEFAULT_VIEW: Record<Section, Tab> = {
     entries: 'recent',
     unfinished: 'actions',
-    themes: 'themes',
+    echoes: 'echoes',
     plan: 'plan',
 };
 
@@ -115,6 +117,17 @@ const SUBVIEWS: Partial<Record<Section, { key: Tab; label: string }[]>> = {
         { key: 'actions', label: 'To do' },
         { key: 'topics', label: 'To look up' },
     ],
+    /*
+     * Themes sits under Echoes rather than beside it. They answer the same
+     * question — what does this journal keep returning to — by different
+     * means: Echoes states a claim it can prove, Themes clusters what it
+     * cannot. Phase 4 replaces the clustering with a named taxonomy and this
+     * second entry retires, leaving Echoes with no control at all.
+     */
+    echoes: [
+        { key: 'echoes', label: 'Noticed' },
+        { key: 'themes', label: 'Themes' },
+    ],
 };
 
 /**
@@ -125,7 +138,7 @@ const SUBVIEWS: Partial<Record<Section, { key: Tab; label: string }[]>> = {
 const MARK: Partial<Record<Section, string>> = {
     entries: 'Library',
     unfinished: 'Library · Unfinished',
-    themes: 'Library · Themes',
+    echoes: 'Library · Echoes',
     plan: 'Library · Plan',
 };
 
@@ -637,6 +650,7 @@ export default function LibraryScreen() {
     /** Distinct books with at least one entry — the Books tab's giant. */
     const [booksWithEntriesCount, setBooksWithEntriesCount] = useState(0);
     const [themeCount, setThemeCount] = useState<number | null>(null);
+    const [echoCount, setEchoCount] = useState(0);
     const [planProgress, setPlanProgress] = useState<PlanProgress>({ completed: 0, total: READING_PLAN_DATA.length, percent: 0 });
 
     /*
@@ -719,6 +733,17 @@ export default function LibraryScreen() {
                 return {
                     value: openTopicCount,
                     label: openTopicCount === 1 ? 'follow-up open' : 'follow-ups open',
+                };
+            case 'echoes':
+                /*
+                 * What has been noticed, not how many entries were read to
+                 * notice it. Zero is a true and useful answer here — it says
+                 * the app has not spoken yet — so it gets the slot rather
+                 * than a placeholder.
+                 */
+                return {
+                    value: echoCount,
+                    label: echoCount === 1 ? 'thing noticed' : 'things noticed',
                 };
             case 'themes':
                 return themeCount === null
@@ -956,6 +981,8 @@ export default function LibraryScreen() {
             {/* ── Content Zone ──────────────────────────────────────────────── */}
             {tab === 'plan' ? (
                 <PlanContent onProgressChange={setPlanProgress} />
+            ) : tab === 'echoes' ? (
+                <EchoesContent onCountChange={setEchoCount} />
             ) : tab === 'themes' ? (
                 <ThemesContent onPatternCountChange={setThemeCount} />
             ) : (

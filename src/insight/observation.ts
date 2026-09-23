@@ -212,6 +212,29 @@ export async function getPendingObservations(limit = 10): Promise<StoredObservat
     });
 }
 
+/**
+ * Everything noticed, newest first — the archive behind the Echoes tab.
+ *
+ * Unlike `getPendingObservations` this keeps what the reader has already seen,
+ * dismissed, or rejected. A card that vanishes for good the moment it is
+ * dismissed teaches people not to dismiss it; keeping the record, verdicts
+ * included, is how the app shows it heard the answer. Rejected findings are
+ * never re-offered on Home — they simply remain legible here.
+ */
+export async function getRecentObservations(limit = 30): Promise<StoredObservation[]> {
+    return withDatabase(async database => {
+        const rows = await database.getAllAsync<any>(
+            `SELECT * FROM observations
+             WHERE shown_at IS NOT NULL OR feedback IS NOT NULL OR dismissed_at IS NOT NULL
+             ORDER BY COALESCE(shown_at, created_at) DESC
+             LIMIT ?`,
+            [limit],
+        );
+        const evidence = await evidenceFor(database, rows.map(r => r.id));
+        return rows.map(row => hydrate(row, evidence.get(row.id) ?? []));
+    });
+}
+
 export async function getObservation(id: number): Promise<StoredObservation | null> {
     return withDatabase(async database => {
         const row = await database.getFirstAsync<any>(`SELECT * FROM observations WHERE id = ?`, [id]);
