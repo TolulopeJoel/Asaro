@@ -1,6 +1,6 @@
 import { withDatabase, getDbVersion, setDbVersion } from './db';
 
-const CURRENT_DB_VERSION = 9;
+const CURRENT_DB_VERSION = 10;
 
 export const initializeDatabase = async (): Promise<boolean> => {
     try {
@@ -251,6 +251,64 @@ export const initializeDatabase = async (): Promise<boolean> => {
                         FOREIGN KEY (theme_id) REFERENCES themes(id) ON DELETE CASCADE,
                         FOREIGN KEY (entry_id) REFERENCES journal_entries(id) ON DELETE CASCADE
                     );
+                `);
+            }
+
+            if (currentVersion < 10) {
+                /*
+                 * Migration to v10: observations.
+                 *
+                 * The unit the reader is shown. Every detector — the ones that
+                 * walk the cross-reference graph, the ones that count what is
+                 * missing, the ones that cluster — writes the same record
+                 * here, so the ranking, the pacing and the feedback loop are
+                 * written once rather than per detector.
+                 *
+                 * `payload` holds the structured claim and never its wording.
+                 * Phrasing is chosen at render time, so a better sentence can
+                 * ship in an update without rewriting anyone's history, and
+                 * two readers with the same finding are never stuck with one
+                 * frozen string.
+                 *
+                 * `dedupe_key` is what stops a true noticing becoming a
+                 * nag. Detectors re-run as the journal grows and will keep
+                 * finding the same thing; the key identifies the finding
+                 * rather than the run, so the second discovery updates the
+                 * first instead of queueing behind it.
+                 */
+                await database.execAsync(`
+                    CREATE TABLE IF NOT EXISTS observations (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        detector TEXT NOT NULL,
+                        dedupe_key TEXT NOT NULL,
+                        payload TEXT NOT NULL,
+                        confidence REAL NOT NULL DEFAULT 0,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        shown_at DATETIME,
+                        opened_at DATETIME,
+                        dismissed_at DATETIME,
+                        feedback INTEGER,
+                        UNIQUE (detector, dedupe_key)
+                    );
+
+                    -- The receipts. An observation the reader cannot check is
+                    -- a horoscope, so the evidence is stored with the claim
+                    -- rather than recomputed when they ask for it — recomputed
+                    -- evidence can disagree with the claim it justifies.
+                    CREATE TABLE IF NOT EXISTS observation_evidence (
+                        observation_id INTEGER NOT NULL,
+                        kind TEXT NOT NULL,
+                        entry_id INTEGER,
+                        field TEXT,
+                        verse_id INTEGER,
+                        action_item_id INTEGER,
+                        sort_order INTEGER NOT NULL DEFAULT 0,
+                        FOREIGN KEY (observation_id) REFERENCES observations(id) ON DELETE CASCADE
+                    );
+
+                    CREATE INDEX IF NOT EXISTS idx_obs_detector ON observations(detector, created_at);
+                    CREATE INDEX IF NOT EXISTS idx_obs_pending ON observations(shown_at, confidence);
+                    CREATE INDEX IF NOT EXISTS idx_obs_evidence ON observation_evidence(observation_id);
                 `);
             }
 
