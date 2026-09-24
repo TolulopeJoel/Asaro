@@ -38,6 +38,21 @@ export function stripReferences(text: string): string {
 }
 
 /**
+ * Keep the reference, lose the brackets: `[[Exodus 20:12]]` becomes
+ * `Exodus 20:12`.
+ *
+ * `stripReferences` exists for the machinery — clustering and word counts,
+ * where a citation is noise. This exists for anywhere the text is shown as
+ * plain words, where a citation is the opposite of noise and the brackets are
+ * the only part nobody meant to write. `HyperlinkedText` renders the markup
+ * properly and needs neither; this is for the places that cannot, like a card
+ * that quotes one line back.
+ */
+export function unwrapReferences(text: string): string {
+    return text.replace(/\[\[(.+?)\]\]/g, '$1').replace(/\s+/g, ' ').trim();
+}
+
+/**
  * Small counts, written out.
  *
  * The mockup says "four chapters selected" and "of five questions", never

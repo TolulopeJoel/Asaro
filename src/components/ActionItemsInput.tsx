@@ -11,6 +11,7 @@ import { getBibleStyledParts } from '../utils/bibleUtils';
 import { useRefPicker } from '../context/RefPickerContext';
 import { Screen, Text } from './ui';
 import { KindChips } from './journal/KindChips';
+import { hasReason, isBlank } from '../data/actionValidation';
 
 export interface ActionItemPair {
     action: string;
@@ -279,6 +280,9 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
 
     const renderActionItemPair = (item: ActionItemPair, index: number, isModal: boolean) => {
         const hMotiv = isModal ? motivationHeightsModal[index] : motivationHeights[index];
+        /* Only once something has actually been written — an untouched pair is
+         * not yet incomplete, it is simply empty. */
+        const needsReason = !isBlank(item) && !hasReason(item);
 
         return (
             <View key={index}>
@@ -344,7 +348,20 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                     {/* Motivation field */}
                     <View style={styles.fieldContainer}>
                         <View style={styles.fieldHeader}>
-                            <Text variant="label" tone="tertiary" style={styles.fieldLabel}>motivated by</Text>
+                            {/*
+                              * The requirement is stated on the label rather
+                              * than raised as an error after the fact. Someone
+                              * who sees "needed" while writing supplies it;
+                              * someone told at save time has already moved on
+                              * and will type anything to get past it.
+                              */}
+                            <Text
+                                variant="label"
+                                tone={needsReason ? 'accent' : 'tertiary'}
+                                style={styles.fieldLabel}
+                            >
+                                {needsReason ? 'motivated by — needed' : 'motivated by'}
+                            </Text>
                             {!disabled && item.motivation.length > 0 && (
                                 <ScalePressable
                                     onPress={() => clearField(index, 'motivation', isModal)}

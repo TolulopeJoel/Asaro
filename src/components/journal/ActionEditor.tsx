@@ -24,6 +24,7 @@ import { Screen, Text, ThemedButton, textStyle } from '../ui';
 import { KindChips } from './KindChips';
 import { ActionKind, actionKindOf } from '../../data/actionKind';
 import { EnhancedActionItem } from '../../data/database';
+import { hasReason } from '../../data/actionValidation';
 
 interface Props {
     item: EnhancedActionItem;
@@ -55,9 +56,15 @@ export function ActionEditor({ item, onClose, onSave, onArchive }: Props) {
     const archived = !!item.archived_at;
 
     const derived = actionKindOf(kind);
+    /*
+     * The same rule the wizard enforces. Without it the editor would be a way
+     * round the requirement — write a reason to get the item saved, then come
+     * back and take it out.
+     */
+    const reasonMissing = !hasReason({ action, motivation });
 
     const save = async () => {
-        if (saving || !action.trim()) return;
+        if (saving || !action.trim() || reasonMissing) return;
         setSaving(true);
         try {
             await onSave({ action, motivation, ...kind });
@@ -109,7 +116,12 @@ export function ActionEditor({ item, onClose, onSave, onArchive }: Props) {
             >
                 <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
                     {field('action', action, setAction, 'I will...')}
-                    {field('motivated by', motivation, setMotivation, 'Because...')}
+                    {field(
+                        reasonMissing ? 'motivated by — needed' : 'motivated by',
+                        motivation,
+                        setMotivation,
+                        'Because...',
+                    )}
 
                     <View style={styles.kind}>
                         <Text variant="label" tone="tertiary">kind</Text>
@@ -128,7 +140,7 @@ export function ActionEditor({ item, onClose, onSave, onArchive }: Props) {
                         label={saving ? 'Saving…' : 'Save'}
                         variant="accent"
                         block
-                        disabled={saving || !action.trim()}
+                        disabled={saving || !action.trim() || reasonMissing}
                         onPress={save}
                         style={styles.save}
                     />

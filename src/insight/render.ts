@@ -23,6 +23,7 @@
  */
 
 import { VerseId, formatVerseId } from '../bible/ref';
+import { unwrapReferences } from '../utils/reference';
 import { spanLabel } from '../ml/themeQuality';
 import { StoredObservation } from './observation';
 
@@ -105,7 +106,14 @@ function agoPhrase(ageDays: number): string {
  * handing it back to them.
  */
 function trimQuote(text: string, limit = 180): string {
-    const clean = text.replace(/\s+/g, ' ').trim();
+    /*
+     * Unwrapped, not stripped. A card is plain text so it cannot make a
+     * citation tappable — but showing `[[Exodus 20:12]]` puts markup in front
+     * of the reader, and removing it outright would delete the reason where
+     * the reference IS the reason. Keeping the words and losing the brackets
+     * is the only reading that serves both.
+     */
+    const clean = unwrapReferences(text);
     if (clean.length <= limit) return clean;
     const cut = clean.slice(0, limit);
     return `${cut.slice(0, cut.lastIndexOf(' ')).replace(/[,;:.]$/, '')}…`;

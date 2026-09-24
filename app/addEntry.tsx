@@ -12,6 +12,7 @@ import { BibleBook, getBookByName } from '../src/data/bibleBooks';
 import { setupDailyNotifications, scheduleReminderNotification } from '../src/utils/notifications';
 import { queueActivity, syncPendingActivities } from '../src/utils/syncActivities';
 import { useAlert } from '@/src/context/AlertContext';
+import { firstWithoutReason, isBlank } from '@/src/data/actionValidation';
 import { useAuth } from '@/src/context/AuthContext';
 import { useAutoSave, useStepFade, Step, DraftData, ChapterRange, VerseRange } from '../src/hooks/useEntryHooks';
 import { BookStep, ChapterStep, ReflectionStep, SummaryStep } from '../src/components/entry/EntrySteps';
@@ -186,6 +187,21 @@ export default function MeditationSessionScreen() {
             showAlert({ title: 'Incomplete', message: 'Please select a book and chapter first.' });
             return;
         }
+        /*
+         * An action without a reason is not saved, because the reason is the
+         * part worth keeping. The message quotes the action back rather than
+         * saying "something is missing" — that way it asks a question the
+         * writer can answer instead of sending them hunting.
+         */
+        const unreasoned = firstWithoutReason(answers.actionItems ?? []);
+        if (unreasoned) {
+            showAlert({
+                title: 'Why does this matter?',
+                message: `You wrote "${unreasoned.action.trim()}" — add what moves you to it. Months from now that reason is the part you will have forgotten.`,
+            });
+            return;
+        }
+
         if (isSaving.current) return;
         isSaving.current = true;
 
@@ -200,7 +216,7 @@ export default function MeditationSessionScreen() {
                 notes: answers.notes,
                 studyFurther: answers.studyFurther,
                 studyFurtherReminder: answers.studyFurtherReminder,
-                actionItems: answers.actionItems.filter(item => item.action.trim() || item.motivation.trim()),
+                actionItems: answers.actionItems.filter(item => !isBlank(item)),
                 readingItemId: params.readingItemId ? Number(params.readingItemId) : undefined,
             };
 
