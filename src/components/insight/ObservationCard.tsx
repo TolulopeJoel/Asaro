@@ -63,6 +63,18 @@ export function ObservationCard({ observation, onOpen, onDismiss }: Props) {
      * chrome for a hairline and lets the passage carry the emphasis, which is
      * what that style does everywhere else in the app.
      */
+    const subjectFirst = !!observation.subjectFirst;
+
+    const subjectLine = (
+        <Text
+            variant={isLockedIn ? 'subtitle' : 'reference'}
+            style={styles.subject}
+            numberOfLines={subjectFirst ? 3 : 2}
+        >
+            {observation.subject}
+        </Text>
+    );
+
     const body = (
         <>
             <View style={styles.header}>
@@ -80,6 +92,17 @@ export function ObservationCard({ observation, onOpen, onDismiss }: Props) {
             </View>
 
             {/*
+              * The topic, when the card has one — above the sentence that
+              * refers to it, so "this one" points backwards at something the
+              * reader has already met.
+              */}
+            {subjectFirst && (
+                <View style={[styles.topic, { borderBottomColor: colors.border }]}>
+                    {subjectLine}
+                </View>
+            )}
+
+            {/*
               * The evidence, oldest first — the count made visible rather than
               * stated. Omitted entirely when a detector has no passages to
               * list: absence rests on counts rather than places, and an empty
@@ -95,20 +118,16 @@ export function ObservationCard({ observation, onOpen, onDismiss }: Props) {
                 {observation.claim}
             </Text>
 
-            <View style={[styles.subjectRow, { borderTopColor: colors.border }]}>
-                <Text
-                    variant={isLockedIn ? 'subtitle' : 'reference'}
-                    style={styles.subject}
-                    numberOfLines={2}
-                >
-                    {observation.subject}
-                </Text>
-                {observation.openLabel && (
-                    <Text variant="label" tone="accent">
-                        {observation.openLabel}
-                    </Text>
-                )}
-            </View>
+            {!subjectFirst && (
+                <View style={[styles.subjectRow, { borderTopColor: colors.border }]}>
+                    {subjectLine}
+                    {observation.openLabel && (
+                        <Text variant="label" tone="accent">
+                            {observation.openLabel}
+                        </Text>
+                    )}
+                </View>
+            )}
 
             {/*
               * Where the button would have been, on a card that has none.
@@ -191,5 +210,11 @@ const styles = StyleSheet.create({
     aside: {
         marginTop: Spacing.sm,
         fontStyle: 'italic',
+    },
+    /* A heading, so the rule sits under it rather than over it. */
+    topic: {
+        marginTop: Spacing.md,
+        paddingBottom: Spacing.md,
+        borderBottomWidth: 1,
     },
 });

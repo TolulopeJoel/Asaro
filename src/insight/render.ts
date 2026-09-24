@@ -51,6 +51,20 @@ export interface RenderedObservation {
      */
     openLabel?: string;
     /**
+     * Whether the subject is the card's topic rather than its destination.
+     *
+     * Convergence keeps its subject for last because that verse is somewhere
+     * the reader is being SENT — the card is an argument and the passage is
+     * its payoff, so arriving at it early would give away the ending.
+     *
+     * Absence has no destination. Its subject is what the card is ABOUT, and a
+     * topic belongs at the top like a heading. The claim then says "this one"
+     * about something already on screen instead of something three lines
+     * further down, which is the difference between a sentence that resolves
+     * as you read it and one that asks you to hold a pronoun open.
+     */
+    subjectFirst?: boolean;
+    /**
      * A closing remark, where a card with no receipts would have had a button.
      *
      * Only for findings that cannot be opened. It is the one line on such a
@@ -141,11 +155,19 @@ function renderAbsence(claim: Record<string, unknown>): RenderedObservation {
      * two measured numbers set side by side, carrying attitude purely through
      * word order. Nothing is added to what was counted.
      *
-     * The second number keeps its unit. An earlier draft ended "— 38", where
-     * the dash stood in for the verb and left the figure to fend for itself;
-     * a reader who has not already worked out what is being counted has no
-     * way in. "38 times" inherits the frame the first sentence set up, and
-     * costs one word.
+     * The second number keeps its unit and its verb. An earlier draft ended
+     * "— 38", where the dash stood in for both and left the figure to fend
+     * for itself; a reader who has not already worked out what is being
+     * counted has no way in.
+     *
+     * Note where the personality sits: inside the claim, not only around it.
+     * The rule elsewhere in this file is that Àṣàrò frames a finding and does
+     * not make it, and that is the right rule for convergence, whose sentence
+     * asserts a connection. It was too strong here. The real constraint is
+     * that nothing may be asserted which the data does not show, and "you
+     * know how to do that one" is backed by the very number it sits next to.
+     * Keeping him out of the sentence was a proxy for the constraint, not the
+     * constraint itself.
      *
      * What is deliberately NOT here is any claim about how the reader studies.
      * A draft asked "are you sure you are reading your Bible well?", which is
@@ -163,8 +185,19 @@ function renderAbsence(claim: Record<string, unknown>): RenderedObservation {
          */
         kind: 'I have been counting',
         evidence: [],
-        claim: `Out of ${total} entries, you have answered this one ${times}. If it's to ${richShort}, ${richCount} times.`,
-        subject: poorQuestion,
+        claim: `Out of ${total} entries, you have answered this one ${times}. If it's to ${richShort} ${richCount} times, you know how to do that one.`,
+        /*
+         * Quoted, unlike every other subject in this file.
+         *
+         * A convergence's subject is a verse reference and a commitment's is
+         * the reader's own sentence; neither can be mistaken for the app
+         * speaking. This one is a QUESTION, on a card where a character is
+         * doing all the talking — left bare it reads as Àṣàrò asking it of
+         * you right now, rather than as the question you keep stepping over.
+         * The quotes mark it as borrowed: the wizard's words, held up.
+         */
+        subject: `\u201c${poorQuestion}\u201d`,
+        subjectFirst: true,
         /*
          * No receipts, and so nothing to tap.
          *
@@ -176,13 +209,30 @@ function renderAbsence(claim: Record<string, unknown>): RenderedObservation {
          * proving something nobody disputes and charging a tap for it.
          *
          * Which leaves the card to be worth reading on its own, and that is
-         * what the aside is for. The tease is aimed at the question rather
-         * than at the reader's spiritual life, which is both the safe target
-         * and the funnier one — and it keeps him to the line the notification
-         * copy holds, where he is allowed to be affronted on his own behalf
-         * and never on Jehovah's.
+         * what the aside is for.
+         *
+         * It is the innocent face after the tease, which is the shape of every
+         * other thing he says — "But remember I care, that's why I disturb",
+         * "No lecture from me". A second joke here would be piling on; this
+         * lands the first one and then steps back.
+         *
+         * "Just saying" is the phrase everybody understands to mean the exact
+         * opposite, which is why it works: the disclaimer and the point are
+         * the same sentence, and nobody is fooled, least of all him. Naming
+         * judgement outright is also the plainest possible statement of the
+         * rule this detector runs on — it counts, it does not appraise.
+         *
+         * Contracted, because he contracts everywhere else. "I am not judging"
+         * is a shade stiff for a man who says "I'm keeping absolute record".
+         *
+         * It also does work no flat sentence can. The rule for this detector
+         * is state the record, never the judgement — but a reader looking at 9
+         * against 38 will supply a judgement whether or not the app does, and
+         * a card that simply goes quiet leaves them to convict themselves. Him
+         * declining out loud is the difference between an observation and a
+         * telling-off.
          */
-        aside: 'Hmm. So this question has offended you?',
+        aside: "I'm not judging o, just saying.",
     };
 }
 
