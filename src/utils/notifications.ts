@@ -155,21 +155,30 @@ export async function scheduleReminderNotification(
   });
 }
 
-// Notification messages organized by time of day
-const morningReminders = [
+/*
+ * Notification messages by slot.
+ *
+ * The first slot fires at 11:59 — see `middayMin` below — and the name here
+ * matters more than it looks. It used to be called `morning`, and when the
+ * time moved to just-before-noon only three of these eight lines were
+ * rewritten; the rest went on greeting people with "Rise and shine" and "since
+ * you woke up" at lunchtime for as long as that mismatch stood. If the slot
+ * ever moves again, every line in its array has to move with it.
+ */
+const middayReminders = [
   { title: "Good afternoon o", body: "Àṣàrò here. You haven't read your Bible yet? Ehn ehn, we're starting like this?" },
   { title: "Afternoon check", body: "I'm not asking you, I'm telling you — open that Bible now" },
-  { title: "Early call", body: "So you woke up and the first thing wasn't your Bible? Interesting" },
-  { title: "Rise and shine", body: "Jehovah is waiting. You know I don't joke with these things" },
-  { title: "Afternoon reminder", body: "Don't make me start disturbing you this early. Just read it" },
-  { title: "Àṣàrò checking in", body: "I've been watching you since you woke up. Where's your Bible?" },
-  { title: "Fresh start", body: "New day, same excuses? Please, let's not do this" },
-  { title: "Early warning", body: "You think I forgot? I never forget. Go and read that Bible" },
+  { title: "Half the day gone", body: "So the whole morning passed and the Bible didn't enter? Interesting" },
+  { title: "Midday check", body: "Jehovah is waiting. You know I don't joke with these things" },
+  { title: "Afternoon reminder", body: "I'm here before the afternoon has even started. Don't make me come back. Just read it" },
+  { title: "Àṣàrò checking in", body: "I've been watching you all morning. Where's your Bible?" },
+  { title: "Same story", body: "New day, same excuses? Please, let's not do this" },
+  { title: "First warning", body: "You think I forgot? I never forget. Go and read that Bible" },
 ];
 
 const eveningReminders = [
   { title: "Evening o", body: "The whole day has passed and you still haven't read? What's going on?" },
-  { title: "Àṣàrò is asking", body: "So we're playing hide and seek with the Bible today? I don't have enegy to hide o" },
+  { title: "Àṣàrò is asking", body: "So we're playing hide and seek with the Bible today? I don't have energy to hide o" },
   { title: "Serious question", body: "If you were asked what you read today, what would you say?" },
   { title: "Evening check", body: "I've been patient since morning. My patience is running out o 😌" },
   { title: "Reality check", body: "You're scrolling on your phone but you can't read your Bible? Make it make sense" },
@@ -180,8 +189,8 @@ const eveningReminders = [
 
 const lateReminders = [
   { title: "Àṣàrò again", body: "You thought I was joking? Here I am again. Open that Bible right now" },
-  { title: "Late warning", body: "Your friends are sleeping with a clear conscience. Don't you want the same?" },
-  { title: "Not playing", body: "This stubbornness, where is it taking you? Just 15 minutes of reading, is it too much?" },
+  { title: "Late warning", body: "Everybody has closed for the day. Me, I'm still here waiting for you o" },
+  { title: "Not playing", body: "This your stubbornness ehn. Just 15 minutes of reading, is it too much?" },
   { title: "Getting serious", body: "I've come three times today. Don't test me o 😂" },
   { title: "Persistence mode", body: "You think if you ignore me I'll disappear? You don't know me o 😂😂😂" },
   { title: "Accountability time", body: "So we made a commitment and now you're forming busy abi? Please open your Bible" },
@@ -193,7 +202,7 @@ const finalReminders = [
   { title: "Final warning", body: "This is the last time I'm asking nicely. Tomorrow I'm coming earlier 😅" },
   { title: "Midnight call", body: "You really want to sleep without reading? You're a strong person o" },
   { title: "Last chance", body: "Àṣàrò doesn't give up. If you sleep now, just know I tried my best" },
-  { title: "Bedtime", body: "You can't even give Jehovah 15 minutes? Okay o, we'll see tomorrow" },
+  { title: "Bedtime", body: "Fifteen minutes. That is all I have been asking for since morning. Okay o, we'll see tomorrow" },
   { title: "Serious now", body: "I'm not joking anymore. Your spiritual life needs this. Please read" },
   { title: "Almost done", body: "You've ignored me all day. Fine. But remember I care, that's why I disturb" },
   { title: "Àṣàrò's plea", body: "I'm begging you with all my heart — just open that Bible before you sleep" },
@@ -237,7 +246,7 @@ async function getDynamicNotificationTimes() {
     }
   }
 
-  const morningMin = 11 * 60 + 59; // 11:59 AM
+  const middayMin = 11 * 60 + 59; // 11:59 AM
   const eveningMin = 17 * 60 + 30; // 05:30 PM (Earliest evening start)
 
   // Final is 1 hour before sleep
@@ -247,14 +256,14 @@ async function getDynamicNotificationTimes() {
   const lateMin = ((sleepHour - 3 + 24) % 24) * 60 + sleepMin;
 
   const rawSlots = [
-    { totalMin: morningMin, reminders: morningReminders, name: 'Morning' },
+    { totalMin: middayMin, reminders: middayReminders, name: 'Midday' },
     { totalMin: eveningMin, reminders: eveningReminders, name: 'Evening' },
     { totalMin: lateMin, reminders: lateReminders, name: 'Late' },
     { totalMin: finalMin, reminders: finalReminders, name: 'Final' },
   ];
 
   // Logic: Only keep slots that are at least 60 mins apart, 
-  // prioritizing later slots (Final > Late > Evening > Morning)
+  // prioritizing later slots (Final > Late > Evening > Midday)
   const sortedRaw = rawSlots.sort((a, b) => b.totalMin - a.totalMin);
   const finalSlots: any[] = [];
 
