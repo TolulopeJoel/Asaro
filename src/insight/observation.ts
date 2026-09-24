@@ -23,15 +23,76 @@
 import { withDatabase } from '../data/db';
 import { VerseId } from '../bible/ref';
 
+/**
+ * Every detector, in one place.
+ *
+ * A list rather than a bare union, because two things need to enumerate them —
+ * the archive query below, and anything that reports per-detector accuracy —
+ * and a second hand-kept copy is how a renamed detector goes on being queried
+ * under a name nothing writes any more.
+ */
+export const DETECTORS = [
+    'convergence',
+    'commitment',
+    'absence',
+    'divineName',
+    'recurrence',
+    'motif',
+    'turn',
+] as const;
+
 /** Which detector found it. Also the key the pacing rules group by. */
-export type DetectorName =
-    | 'convergence'
-    | 'commitment'
-    | 'absence'
-    | 'divineName'
-    | 'recurrence'
-    | 'motif'
-    | 'turn';
+export type DetectorName = (typeof DETECTORS)[number];
+
+/**
+ * Whether a finding is worth looking back at, or only worth saying once.
+ *
+ * Every observation is STORED — that is what stops the same finding being
+ * offered twice, and it is where the reader's verdict lives. This is a
+ * different question: does it belong in the archive a person browses?
+ *
+ * It belongs there when the finding is the only place its subject exists. A
+ * convergence names a passage and a connection that live nowhere else in the
+ * app, so losing the card loses the discovery.
+ *
+ * It does not belong there when the subject already has a home. A commitment
+ * card hands back words the reader wrote, about a commitment sitting two taps
+ * away under Working on — filing the card beside it would put a copy of
+ * something next to the thing, and an archive of reminders about items you
+ * already own reads as clutter rather than as a record.
+ *
+ * So the rule is: archive discoveries, not echoes of what is already yours.
+ */
+const EPHEMERAL: DetectorName[] = ['commitment'];
+
+/**
+ * Where a finding belongs, which is a question about timing as much as place.
+ *
+ * `home` is for a discovery. It draws someone in — you open the app and there
+ * is something you did not know, so the front page is exactly right.
+ *
+ * `afterSave` is for a finding that lands better as a reward than as an
+ * interruption. A commitment card hands back something you wrote months ago
+ * about who you are trying to be; the moment that resonates is not while you
+ * are deciding whether to read today, but immediately after you have written
+ * a new one — when you are already in a committing frame of mind and the older
+ * words read as continuity rather than as a task. It is also earned: you did
+ * the work, and this is what comes back.
+ *
+ * On Home it would compete with the reading, the day's practices and the plan,
+ * and lose to all three. On the save screen it is the only thing there.
+ */
+export type Surface = 'home' | 'afterSave';
+
+const AFTER_SAVE: DetectorName[] = ['commitment'];
+
+export function surfaceOf(detector: DetectorName): Surface {
+    return AFTER_SAVE.includes(detector) ? 'afterSave' : 'home';
+}
+
+export function appearsInArchive(detector: DetectorName): boolean {
+    return !EPHEMERAL.includes(detector);
+}
 
 export interface EvidenceItem {
     kind: 'entry' | 'verse' | 'actionItem';
@@ -197,14 +258,21 @@ async function evidenceFor(database: any, ids: number[]): Promise<Map<number, Ev
  * one people turn off. Ordering is confidence for now; Phase 6 replaces this
  * with a ranker trained on the columns this module has been filling in.
  */
-export async function getPendingObservations(limit = 10): Promise<StoredObservation[]> {
+export async function getPendingObservations(
+    limit = 10,
+    surface: Surface = 'home',
+): Promise<StoredObservation[]> {
     return withDatabase(async database => {
+        const detectors = DETECTORS.filter(name => surfaceOf(name) === surface);
+        if (detectors.length === 0) return [];
+
         const rows = await database.getAllAsync<any>(
             `SELECT * FROM observations
              WHERE shown_at IS NULL AND dismissed_at IS NULL AND (feedback IS NULL OR feedback = 1)
+               AND detector IN (${detectors.map(() => '?').join(',')})
              ORDER BY confidence DESC, created_at DESC
              LIMIT ?`,
-            [limit],
+            [...detectors, limit],
         );
 
         const evidence = await evidenceFor(database, rows.map(r => r.id));
@@ -223,12 +291,22 @@ export async function getPendingObservations(limit = 10): Promise<StoredObservat
  */
 export async function getRecentObservations(limit = 30): Promise<StoredObservation[]> {
     return withDatabase(async database => {
+        /*
+         * Ephemeral detectors are excluded here, not at write time. They still
+         * need their rows: the dedupe key is what stops one commitment being
+         * offered every week, and the verdict column is the only ground truth
+         * the app ever gets about whether a detector is right. Storing and
+         * showing are separate decisions.
+         */
+        const archived = DETECTORS.filter(appearsInArchive);
+
         const rows = await database.getAllAsync<any>(
             `SELECT * FROM observations
-             WHERE shown_at IS NOT NULL OR feedback IS NOT NULL OR dismissed_at IS NOT NULL
+             WHERE (shown_at IS NOT NULL OR feedback IS NOT NULL OR dismissed_at IS NOT NULL)
+               AND detector IN (${archived.map(() => '?').join(',')})
              ORDER BY COALESCE(shown_at, created_at) DESC
              LIMIT ?`,
-            [limit],
+            [...archived, limit],
         );
         const evidence = await evidenceFor(database, rows.map(r => r.id));
         return rows.map(row => hydrate(row, evidence.get(row.id) ?? []));

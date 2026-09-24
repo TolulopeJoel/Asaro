@@ -13,6 +13,10 @@ import { setupDailyNotifications, scheduleReminderNotification } from '../src/ut
 import { queueActivity, syncPendingActivities } from '../src/utils/syncActivities';
 import { useAlert } from '@/src/context/AlertContext';
 import { firstWithoutReason, isBlank } from '@/src/data/actionValidation';
+import { useObservation } from '@/src/insight/useObservation';
+import { ObservationCard } from '@/src/components/insight/ObservationCard';
+import { ObservationReceipts } from '@/src/components/insight/ObservationReceipts';
+import { AnimatedModal } from '@/src/components/AnimatedModal';
 import { useAuth } from '@/src/context/AuthContext';
 import { useAutoSave, useStepFade, Step, DraftData, ChapterRange, VerseRange } from '../src/hooks/useEntryHooks';
 import { BookStep, ChapterStep, ReflectionStep, SummaryStep } from '../src/components/entry/EntrySteps';
@@ -31,6 +35,28 @@ export default function MeditationSessionScreen() {
     const entryId = params.entryId ? Number(params.entryId) : undefined;
 
     const [currentStep, setCurrentStep] = useState<Step>('book');
+
+    /*
+     * Something committed to before, shown once the entry is saved.
+     *
+     * Only loaded on the summary step — asking for it earlier would run a
+     * query behind a screen nobody is going to see it on, and the detector's
+     * own eight-week floor means it can never be the commitment just written.
+     */
+    const echo = useObservation(currentStep === 'summary', 'afterSave');
+    const [echoOpen, setEchoOpen] = useState(false);
+
+    const echoCard =
+        echo.rendered && !echoOpen ? (
+            <ObservationCard
+                observation={echo.rendered}
+                onOpen={() => {
+                    echo.open();
+                    setEchoOpen(true);
+                }}
+                onDismiss={() => echo.dismiss()}
+            />
+        ) : null;
     const [selectedBook, setSelectedBook] = useState<BibleBook>();
     const [selectedChapters, setSelectedChapters] = useState<ChapterRange>();
     const [verseRange, setVerseRange] = useState<VerseRange | null>(null);
@@ -401,6 +427,7 @@ export default function MeditationSessionScreen() {
             case 'summary':
                 return (
                     <SummaryStep
+                        observation={echoCard}
                         selectionSummary={selectionSummary}
                         formattedDate={formattedDate}
                         onDone={handleDone}
@@ -438,6 +465,26 @@ export default function MeditationSessionScreen() {
                     {renderCurrentStep()}
                 </Animated.View>
             </KeyboardAvoidingView>
+
+            {/* The receipts behind "show me why", over the summary rather than
+              * pushing a route — closing puts the reader back where they were. */}
+            <AnimatedModal visible={echoOpen && !!echo.observation} onRequestClose={() => setEchoOpen(false)}>
+                {echo.observation && echo.rendered && (
+                    <ObservationReceipts
+                        observation={echo.observation}
+                        rendered={echo.rendered}
+                        onClose={() => setEchoOpen(false)}
+                        onVerdict={agreed => {
+                            setEchoOpen(false);
+                            echo.verdict(agreed);
+                        }}
+                        onOpenEntry={entry => {
+                            setEchoOpen(false);
+                            router.push(`/library/${entry.id}`);
+                        }}
+                    />
+                )}
+            </AnimatedModal>
         </Screen>
     );
 }

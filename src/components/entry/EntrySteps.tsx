@@ -333,6 +333,14 @@ interface SummaryStepProps {
     formattedDate: string;
     onDone: () => void;
     onShare: () => void;
+    /**
+     * Something you committed to before, if there is one.
+     *
+     * Sits between the entry you just recorded and the way out — after the
+     * confirmation, so it reads as what came back rather than as another step,
+     * and above the actions so leaving is never blocked by it.
+     */
+    observation?: React.ReactNode;
 }
 
 export const SummaryStep = React.memo(({
@@ -340,6 +348,7 @@ export const SummaryStep = React.memo(({
     formattedDate,
     onDone,
     onShare,
+    observation,
 }: SummaryStepProps) => {
     const { colors } = useTheme();
     const confettiRef = useRef<ConfettiRef>(null);
@@ -378,6 +387,8 @@ export const SummaryStep = React.memo(({
                         </View>
                         <View style={[styles.entryCardRule, { backgroundColor: colors.accent + '40' }]} />
                     </View>
+
+                    {observation}
 
                     <View style={styles.summaryActions}>
                         <ScalePressable

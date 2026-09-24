@@ -28,6 +28,7 @@ import { detectConvergence } from './detectors/convergence';
 import { detectCommitments } from './detectors/commitment';
 import {
     StoredObservation,
+    Surface,
     getPendingObservations,
     markDismissed,
     markOpened,
@@ -69,7 +70,12 @@ export interface ObservationSlot {
     verdict: (agreed: boolean) => Promise<void>;
 }
 
-export function useObservation(enabled: boolean): ObservationSlot {
+/**
+ * @param surface which placement's findings to draw from — see `surfaceOf`.
+ *   Home and the save screen each pull their own, so a commitment never
+ *   competes with a discovery for the same slot.
+ */
+export function useObservation(enabled: boolean, surface: Surface = 'home'): ObservationSlot {
     const [observation, setObservation] = useState<StoredObservation | null>(null);
     const [rendered, setRendered] = useState<RenderedObservation | null>(null);
     const mounted = useRef(true);
@@ -86,7 +92,7 @@ export function useObservation(enabled: boolean): ObservationSlot {
 
         (async () => {
             try {
-                if ((await millisSince(LAST_RUN_KEY)) > DETECT_EVERY_MS) {
+                if (surface === 'home' && (await millisSince(LAST_RUN_KEY)) > DETECT_EVERY_MS) {
                     /*
                      * Sequential, not parallel. Both write to the same table
                      * through one SQLite connection, and the whole pass is a
@@ -98,10 +104,16 @@ export function useObservation(enabled: boolean): ObservationSlot {
                     await stamp(LAST_RUN_KEY);
                 }
 
-                // Still inside the quiet period — say nothing at all.
-                if ((await millisSince(LAST_SHOWN_KEY)) < QUIET_PERIOD_MS) return;
+                /*
+                 * The quiet period is Home's, not everything's. A card shown
+                 * after saving an entry is already rate-limited by the act of
+                 * writing one — nobody writes three a day — and making it wait
+                 * on Home's timer would mean a reader who journals daily sees
+                 * one a fortnight for no reason either surface cares about.
+                 */
+                if (surface === 'home' && (await millisSince(LAST_SHOWN_KEY)) < QUIET_PERIOD_MS) return;
 
-                const pending = await getPendingObservations(5);
+                const pending = await getPendingObservations(5, surface);
                 if (!mounted.current) return;
 
                 /*
@@ -115,14 +127,14 @@ export function useObservation(enabled: boolean): ObservationSlot {
                     setObservation(candidate);
                     setRendered(words);
                     await markShown(candidate.id);
-                    await stamp(LAST_SHOWN_KEY);
+                    if (surface === 'home') await stamp(LAST_SHOWN_KEY);
                     return;
                 }
             } catch {
                 // A noticing is never important enough to interrupt Home.
             }
         })();
-    }, [enabled]);
+    }, [enabled, surface]);
 
     const clear = useCallback(() => {
         if (!mounted.current) return;
