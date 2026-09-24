@@ -267,7 +267,8 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         flexWrap: 'wrap',
         gap: 6,
-        paddingBottom: Spacing.layout.cardPadding,
+        // `.cl-body.tight{gap:12px}` — the gap this screen's body runs at.
+        paddingBottom: Spacing.md,
     },
     tag: {
         paddingHorizontal: 10,
@@ -280,7 +281,7 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.sm,
     },
     /** Cloth panels stack with air between them; Colossal's hairline is the gap. */
-    clothCardGap: { marginBottom: Spacing.lg },
+    clothCardGap: { marginBottom: Spacing.md },
     cardHeader: {
         flexDirection: 'row',
         alignItems: 'center',
