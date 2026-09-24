@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
-import { Check, ChevronLeft, X } from 'lucide-react-native';
+import { ChevronLeft, X } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { Spacing } from '../../theme/spacing';
 import { BibleBook } from '../../data/bibleBooks';
@@ -331,6 +331,8 @@ export const ReflectionStep = React.memo(({
 interface SummaryStepProps {
     selectionSummary: string;
     formattedDate: string;
+    /** How many of the questions came back with something in them. */
+    answerCount: number;
     onDone: () => void;
     onShare: () => void;
     /**
@@ -343,14 +345,32 @@ interface SummaryStepProps {
     observation?: React.ReactNode;
 }
 
+/**
+ * The last step of the wizard, and the only screen the app gives you for free.
+ *
+ * design/all-screens.html #saved. Confirmation and receipt are one element,
+ * not two: a tick inside a ring says "done" and nothing else, while the
+ * passage and the date say done *and* what was done. Cloth puts both in the
+ * band — the wizard runs bandless while you write, so the band returning is
+ * itself the signal that you have arrived somewhere — and Colossal gives the
+ * passage its giant under a "Recorded" mark.
+ *
+ * No second large element. The count of answers is a fact about the form
+ * rather than about the reader, so it rides in the supporting line and never
+ * takes a size of its own.
+ *
+ * There is no close button. The two ways out are the two controls at the foot,
+ * and neither of them loses the entry.
+ */
 export const SummaryStep = React.memo(({
     selectionSummary,
     formattedDate,
+    answerCount,
     onDone,
     onShare,
     observation,
 }: SummaryStepProps) => {
-    const { colors } = useTheme();
+    const { colors, isLockedIn } = useTheme();
     const confettiRef = useRef<ConfettiRef>(null);
 
     useEffect(() => {
@@ -360,53 +380,75 @@ export const SummaryStep = React.memo(({
         return () => clearTimeout(timer);
     }, []);
 
+    const meta = `${spell(answerCount)} ${answerCount === 1 ? 'answer' : 'answers'} · ${formattedDate}`;
+
     return (
         <View style={styles.stepContainer}>
             <Confetti ref={confettiRef} />
-            <ScrollView key="step-summary" style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                <View style={[styles.stepContent, styles.summaryContent]}>
-                    <View style={styles.successHero}>
-                        <View style={[styles.successRing, { borderColor: colors.accent + '30' }]}>
-                            <View style={[styles.successIconOuter, { backgroundColor: colors.accent + '18' }]}>
-                                <Check size={38} color={colors.accent} />
-                            </View>
-                        </View>
-                        <Text variant="display">Recorded</Text>
-                        <Text variant="body" tone="secondary" style={styles.successSubtitle}>
-                            Your reflection has been saved.
-                        </Text>
-                    </View>
 
-                    <View style={[styles.entryCard, { backgroundColor: colors.cardBackground, borderColor: colors.border + '50' }]}>
-                        <View style={[styles.entryCardRule, { backgroundColor: colors.accent + '40' }]} />
-                        <View style={styles.entryCardBody}>
-                            <Text variant="label">Read</Text>
-                            <Text variant="display" style={styles.entryCardPassage}>{selectionSummary}</Text>
-                            <View style={[styles.entryCardSeparator, { backgroundColor: colors.border + '60' }]} />
-                            <Text variant="bodySmall" tone="secondary" style={styles.entryCardDate}>{formattedDate}</Text>
-                        </View>
-                        <View style={[styles.entryCardRule, { backgroundColor: colors.accent + '40' }]} />
-                    </View>
-
-                    {observation}
-
-                    <View style={styles.summaryActions}>
-                        <ScalePressable
-                            style={[styles.primaryButton, { backgroundColor: colors.accent }]}
-                            onPress={onDone}
-                        >
-                            <Text variant="body" tone="inverse" style={styles.primaryButtonText}>Check in Library</Text>
-                        </ScalePressable>
-
-                        <ScalePressable
-                            style={styles.shareLink}
-                            onPress={onShare}
-                        >
-                            <Text variant="bodySmall" tone="tertiary">Share this reflection</Text>
-                        </ScalePressable>
-                    </View>
+            {isLockedIn ? (
+                <View
+                    style={[
+                        styles.topBar,
+                        { paddingHorizontal: Spacing.layout.screenPaddingTight },
+                    ]}
+                >
+                    <Text variant="tab">Recorded</Text>
                 </View>
+            ) : (
+                <Hero ownsTopInset>
+                    <Text variant="label">Recorded</Text>
+                    <Text variant="display" tone="onBand" style={styles.savedTitle}>
+                        {selectionSummary}
+                    </Text>
+                    <Text variant="sub" tone="onHero" style={styles.savedMeta}>{meta}</Text>
+                </Hero>
+            )}
+
+            <ScrollView
+                key="step-summary"
+                style={styles.scrollView}
+                contentContainerStyle={[
+                    styles.savedContent,
+                    {
+                        paddingHorizontal: isLockedIn
+                            ? Spacing.layout.screenPaddingTight
+                            : Spacing.layout.screenPadding,
+                    },
+                ]}
+                showsVerticalScrollIndicator={false}
+            >
+                {isLockedIn && (
+                    <>
+                        <Text variant="label" tone="accent">Read</Text>
+                        <Text variant="display" style={styles.savedTitle}>{selectionSummary}</Text>
+                        <Text variant="sub" style={styles.savedMeta}>{meta}</Text>
+                        <View style={[styles.savedRule, { backgroundColor: colors.border }]} />
+                    </>
+                )}
+
+                {observation}
             </ScrollView>
+
+            <View
+                style={[
+                    styles.savedFooter,
+                    {
+                        paddingHorizontal: isLockedIn
+                            ? Spacing.layout.screenPaddingTight
+                            : Spacing.layout.screenPadding,
+                    },
+                ]}
+            >
+                <ThemedButton label="Check in Library" block onPress={onDone} />
+                <ScalePressable
+                    style={styles.shareLink}
+                    onPress={onShare}
+                    accessibilityRole="button"
+                >
+                    <Text variant="button" tone="tertiary">Share this reflection</Text>
+                </ScalePressable>
+            </View>
         </View>
     );
 });
@@ -516,66 +558,26 @@ const styles = StyleSheet.create({
         display: 'none',
     },
     continueButtonText: { textAlign: 'center' },
-    summaryContent: {
-        justifyContent: 'center',
-        gap: Spacing.xxxl,
-        minHeight: 400,
+    /** `.cl-htitle` and `.co-h.lg` sit 10px under the label above them. */
+    savedTitle: { marginTop: 10 },
+    /** `.cl-hsub{margin:8px 0 0}` */
+    savedMeta: { marginTop: Spacing.sm },
+    savedContent: {
+        paddingTop: Spacing.xl - 2,
+        paddingBottom: Spacing.xl,
     },
-    summaryActions: {
-        gap: Spacing.lg,
+    /** `.co-hr` between the passage and what came back. */
+    savedRule: {
+        height: Spacing.border.hairline,
+        marginTop: Spacing.xl + 2,
+        marginBottom: Spacing.xl - 2,
+    },
+    savedFooter: {
         alignItems: 'center',
+        gap: Spacing.xs + 2,
+        paddingTop: Spacing.xl - 4,
+        paddingBottom: Spacing.layout.tabBarPadding,
     },
-    successHero: {
-        alignItems: 'center',
-        gap: Spacing.md,
-    },
-    successRing: {
-        width: 112,
-        height: 112,
-        borderRadius: Spacing.borderRadius.round,
-        borderWidth: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: Spacing.xs,
-    },
-    successIconOuter: {
-        width: 80,
-        height: 80,
-        borderRadius: Spacing.borderRadius.round,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    successSubtitle: { opacity: 0.6 },
-    entryCard: {
-        borderRadius: Spacing.borderRadius.lg,
-        borderWidth: 1,
-        overflow: 'hidden',
-    },
-    entryCardRule: {
-        height: 3,
-        width: '100%',
-    },
-    entryCardBody: {
-        paddingVertical: Spacing.xl,
-        paddingHorizontal: Spacing.xl,
-        alignItems: 'center',
-        gap: Spacing.sm,
-    },
-    entryCardPassage: {},
-    entryCardSeparator: {
-        width: 32,
-        height: 1,
-        marginVertical: Spacing.xs,
-        opacity: 0.5,
-    },
-    entryCardDate: { opacity: 0.55 },
-    primaryButton: {
-        width: '100%',
-        paddingVertical: 20,
-        paddingHorizontal: Spacing.xxl,
-        borderRadius: Spacing.borderRadius.lg,
-    },
-    primaryButtonText: { textAlign: 'center' },
     shareLink: {
         paddingVertical: Spacing.sm,
         paddingHorizontal: Spacing.md,

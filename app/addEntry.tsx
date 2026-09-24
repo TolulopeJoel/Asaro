@@ -392,6 +392,20 @@ export default function MeditationSessionScreen() {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
     }), []);
 
+    /*
+     * What the save screen says under the passage. Counted from what was
+     * actually written rather than from the number of questions, so skipping
+     * one is reported honestly instead of being rounded up to five.
+     */
+    const answerCount = useMemo(() => {
+        const a = reflectionAnswers;
+        if (!a) return 0;
+        const written = [a.reflection1, a.reflection2, a.reflection4, a.studyFurther, a.notes]
+            .filter(text => !!text?.trim()).length;
+        const acted = a.actionItems?.some(item => item.action.trim()) ? 1 : 0;
+        return written + acted;
+    }, [reflectionAnswers]);
+
     // ─── Step renders ─────────────────────────────────────────────────────────
 
     const renderCurrentStep = () => {
@@ -431,6 +445,7 @@ export default function MeditationSessionScreen() {
                         observation={echoCard}
                         selectionSummary={selectionSummary}
                         formattedDate={formattedDate}
+                        answerCount={answerCount}
                         onDone={handleDone}
                         onShare={handleShare}
                     />
@@ -450,13 +465,13 @@ export default function MeditationSessionScreen() {
     }
 
     /*
-     * Only the Cloth Book and Chapter steps wear a band, and a band takes the
+     * Only the Cloth Book, Chapter and summary steps wear a band, and a band takes the
      * top inset into itself (<Hero ownsTopInset>) so the cloth runs to the top
      * of the screen. Every other step — Colossal throughout, and Cloth's
      * reflection wizard — draws its own top bar and still needs Screen to
      * reserve that space.
      */
-    const bandOwnsTop = !isLockedIn && (currentStep === 'book' || currentStep === 'chapter');
+    const bandOwnsTop = !isLockedIn && (currentStep === 'book' || currentStep === 'chapter' || currentStep === 'summary');
 
     return (
         <Screen edges={bandOwnsTop ? [] : ['top']}>
