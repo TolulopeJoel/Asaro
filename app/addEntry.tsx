@@ -17,6 +17,7 @@ import { useObservation } from '@/src/insight/useObservation';
 import { ObservationCard } from '@/src/components/insight/ObservationCard';
 import { ObservationReceipts } from '@/src/components/insight/ObservationReceipts';
 import { AnimatedModal } from '@/src/components/AnimatedModal';
+import { setActionItemArchived } from '@/src/data/journalRepository';
 import { useAuth } from '@/src/context/AuthContext';
 import { useAutoSave, useStepFade, Step, DraftData, ChapterRange, VerseRange } from '../src/hooks/useEntryHooks';
 import { BookStep, ChapterStep, ReflectionStep, SummaryStep } from '../src/components/entry/EntrySteps';
@@ -481,6 +482,19 @@ export default function MeditationSessionScreen() {
                         onOpenEntry={entry => {
                             setEchoOpen(false);
                             router.push(`/library/${entry.id}`);
+                        }}
+                        onArchiveSubject={async () => {
+                            /*
+                             * The commitment this card is about, taken from the
+                             * evidence rather than guessed — the same record the
+                             * receipts are drawn from.
+                             */
+                            const id = echo.observation?.evidence.find(
+                                item => item.kind === 'actionItem',
+                            )?.actionItemId;
+                            setEchoOpen(false);
+                            if (id) await setActionItemArchived(id, true);
+                            await echo.dismiss();
                         }}
                     />
                 )}

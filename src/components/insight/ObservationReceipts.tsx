@@ -54,6 +54,9 @@ interface Props {
     onClose: () => void;
     onVerdict: (agreed: boolean) => void;
     onOpenEntry: (entry: JournalEntry) => void;
+    /** Retire the thing the finding is about. Only for findings with a subject
+     * the reader owns — see the bottom control. */
+    onArchiveSubject?: () => void;
 }
 
 function formatDate(raw: string): string {
@@ -91,9 +94,17 @@ export function ObservationReceipts({
     onClose,
     onVerdict,
     onOpenEntry,
+    onArchiveSubject,
 }: Props) {
     const { colors } = useTheme();
     const [entries, setEntries] = useState<JournalEntry[]>([]);
+
+    /*
+     * Whether this finding is an inference or a quotation. Derived from the
+     * detector rather than passed in, so a new detector cannot ship asking the
+     * reader to refute their own handwriting.
+     */
+    const canBeWrong = observation.detector !== 'commitment';
 
     useEffect(() => {
         let alive = true;
@@ -220,20 +231,45 @@ export function ObservationReceipts({
                 })}
 
                 {/*
-                 * Last, and quiet. It has to be one tap and cost nothing —
-                 * this is the only ground truth the app ever gets about
-                 * whether a detector is right, and a verdict that feels like
-                 * an accusation is a verdict nobody gives.
+                 * What the bottom control offers depends on whether the
+                 * finding can be WRONG.
+                 *
+                 * A convergence infers something — these passages point there
+                 * — and an inference can be mistaken, so it gets "that's not
+                 * it". That control carries the whole falsifiability argument:
+                 * a finding nobody can refuse is a horoscope, and the verdict
+                 * is the only ground truth the app ever gets.
+                 *
+                 * A commitment card infers nothing. It quotes the reader's own
+                 * words back, so there is no claim to refute and "that's not
+                 * it" would be asking whether they wrote what they wrote. The
+                 * real answer to being handed an old commitment is not "that's
+                 * wrong" but "that's done" — so it offers to set it down.
+                 *
+                 * Either way it is last, quiet, and one tap: a response that
+                 * costs something is a response nobody gives.
                  */}
-                <ScalePressable
-                    onPress={() => onVerdict(false)}
-                    accessibilityRole="button"
-                    style={styles.reject}
-                >
-                    <Text variant="label" tone="tertiary">
-                        That&rsquo;s not it
-                    </Text>
-                </ScalePressable>
+                {canBeWrong ? (
+                    <ScalePressable
+                        onPress={() => onVerdict(false)}
+                        accessibilityRole="button"
+                        style={styles.reject}
+                    >
+                        <Text variant="label" tone="tertiary">
+                            That&rsquo;s not it
+                        </Text>
+                    </ScalePressable>
+                ) : onArchiveSubject ? (
+                    <ScalePressable
+                        onPress={onArchiveSubject}
+                        accessibilityRole="button"
+                        style={styles.reject}
+                    >
+                        <Text variant="label" tone="tertiary">
+                            Archive &mdash; it has served its purpose
+                        </Text>
+                    </ScalePressable>
+                ) : null}
             </ScrollView>
         </Screen>
     );

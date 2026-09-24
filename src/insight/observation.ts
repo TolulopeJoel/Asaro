@@ -313,6 +313,46 @@ export async function getRecentObservations(limit = 30): Promise<StoredObservati
     });
 }
 
+/**
+ * Withdraw findings that have stopped being true.
+ *
+ * Detectors only ever write. Nothing retracted, so a finding recorded last
+ * week went on waiting to be shown however much the journal had moved
+ * underneath it — a commitment promoted to a practice still queued as a
+ * commitment, a passage the reader has since written about still queued as one
+ * they never had. The first is merely stale; the second is a card that would
+ * state something false about them, which is the one failure this feature
+ * cannot afford.
+ *
+ * Only PENDING rows go. Anything shown, dismissed or judged is history: the
+ * verdict is the only ground truth the app ever collects, and deleting it to
+ * tidy a queue would throw away the thing hardest to get back.
+ *
+ * `validKeys` is every finding that still holds — not just the ones this run
+ * chose to record. A detector that keeps its best three would otherwise retract
+ * the fourth every run and rediscover it the next.
+ */
+export async function retractObservations(
+    detector: DetectorName,
+    validKeys: string[],
+): Promise<number> {
+    return withDatabase(async database => {
+        const pending = await database.getAllAsync<{ id: number; dedupe_key: string }>(
+            `SELECT id, dedupe_key FROM observations
+             WHERE detector = ?
+               AND shown_at IS NULL AND dismissed_at IS NULL AND feedback IS NULL`,
+            [detector],
+        );
+
+        const keep = new Set(validKeys);
+        const stale = pending.filter(row => !keep.has(row.dedupe_key));
+        for (const row of stale) {
+            await database.runAsync(`DELETE FROM observations WHERE id = ?`, [row.id]);
+        }
+        return stale.length;
+    });
+}
+
 export async function getObservation(id: number): Promise<StoredObservation | null> {
     return withDatabase(async database => {
         const row = await database.getFirstAsync<any>(`SELECT * FROM observations WHERE id = ?`, [id]);

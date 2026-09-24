@@ -88,7 +88,7 @@ export function ObservationCard({ observation, onOpen, onDismiss }: Props) {
                     {observation.subject}
                 </Text>
                 <Text variant="label" tone="accent">
-                    Show me why
+                    {observation.openLabel}
                 </Text>
             </View>
         </>

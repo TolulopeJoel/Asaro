@@ -37,6 +37,16 @@ export interface RenderedObservation {
     /** What the card lands on — a passage, or the reader's own resolution. */
     subject: string;
     /**
+     * What the card calls its own receipts.
+     *
+     * "Show me why" asks a finding to justify itself, which only makes sense
+     * where it inferred something. A card that quotes the reader back has
+     * nothing to justify, so it names what is actually behind the tap instead.
+     * Kept here with the rest of the words rather than in the card, which
+     * should not have to know one detector from another.
+     */
+    openLabel: string;
+    /**
      * Only when the subject is scripture.
      *
      * Absent for detectors whose subject is something the reader wrote, which
@@ -83,6 +93,7 @@ function renderConvergence(claim: Record<string, unknown>): RenderedObservation 
         claim: claimText,
         subject: formatVerseId(hubVerseId),
         subjectVerseId: hubVerseId,
+        openLabel: 'Show me why',
     };
 }
 
@@ -144,6 +155,12 @@ function renderCommitment(claim: Record<string, unknown>): RenderedObservation {
         evidence: passage ? [passage] : [],
         claim: `You wrote this down ${ago.toLowerCase()}, and gave a reason: \u201c${trimQuote(motivation)}\u201d`,
         subject: action,
+        /*
+         * Not "show me why" — the why is already on the card, in the reader's
+         * own words. What the tap actually opens is the whole reason
+         * untruncated and the entry it was written in, so it says that.
+         */
+        openLabel: 'See the entry',
     };
 }
 

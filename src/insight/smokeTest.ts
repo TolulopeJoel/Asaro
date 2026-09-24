@@ -21,6 +21,7 @@ import { withDatabase } from '../data/db';
 import { loadGraph, unloadGraph } from '../bible/graph';
 import { formatVerseId } from '../bible/ref';
 import { detectConvergence, findConvergence, loadSeedEntries } from './detectors/convergence';
+import { renderObservation } from './render';
 import { detectCommitments, loadCommitments, rankCommitments } from './detectors/commitment';
 import {
     getObservation,
@@ -195,7 +196,7 @@ export async function runPhase0SmokeTest(): Promise<string> {
     }
 
     // ── make it visible ──────────────────────────────────────────────────────
-    say('\nRecording, and clearing the pacing throttles');
+    say('\nRe-arming for a look');
     try {
         const ids = await detectConvergence();
         ok('convergences recorded', `${ids.length}`);
@@ -203,22 +204,50 @@ export async function runPhase0SmokeTest(): Promise<string> {
         const open = await loadCommitments();
         const worth = rankCommitments(open);
         ok('standing commitments', `${open.length} total, ${worth.length} worth handing back`);
-        for (const r of worth) {
-            say(`      ${Math.round(r.ageDays)}d  ${r.action.slice(0, 58)}`);
-        }
         const commitmentIds = await detectCommitments();
         ok('commitments recorded', `${commitmentIds.length}`);
 
         /*
-         * Home shows at most one noticing every three days and only re-runs
-         * detection daily. Both are right in use and useless while building,
-         * so the dev harness resets them — the next Home visit will show a
-         * card if there is one.
+         * Reset what has been SEEN, not what was found.
+         *
+         * Every observation is already marked shown, which is correct in use
+         * and useless while building — nothing is pending, so both surfaces
+         * render nothing and it looks broken rather than quiet. Verdicts go
+         * too, because a rejected finding is excluded from pending and there
+         * would be no way to see it again; how many were cleared is reported
+         * rather than swallowed, since that is real feedback being discarded.
          */
+        const verdicts = await withDatabase(async db =>
+            (await db.getFirstAsync<any>('SELECT COUNT(*) n FROM observations WHERE feedback IS NOT NULL'))?.n ?? 0,
+        );
+        await withDatabase(db =>
+            db.runAsync(
+                `UPDATE observations
+                    SET shown_at = NULL, opened_at = NULL, dismissed_at = NULL, feedback = NULL`,
+            ),
+        );
+        ok('observations re-armed', verdicts > 0 ? `${verdicts} verdict(s) cleared` : 'no verdicts to clear');
+
         await AsyncStorage.multiRemove(['insight_last_detection', 'insight_last_shown']);
-        ok('throttles cleared — open Home to see the card');
+        ok('pacing throttles cleared');
+
+        /*
+         * What each surface would actually draw, so a quiet screen can be told
+         * apart from a broken one without hunting through the app.
+         */
+        for (const surface of ['home', 'afterSave'] as const) {
+            const pending = await getPendingObservations(3, surface);
+            const legible = pending.map(renderObservation).filter(Boolean);
+            if (legible.length === 0) {
+                say(`      ${surface.padEnd(9)} → nothing`);
+                continue;
+            }
+            say(`      ${surface.padEnd(9)} → ${legible.length} waiting`);
+            for (const r of legible) say(`                    ${r!.kind}: ${r!.subject.slice(0, 46)}`);
+        }
+        say('\n  Home shows the first; the save screen shows the other.');
     } catch (error: any) {
-        bad('recording threw', error?.message);
+        bad('re-arming threw', error?.message);
     }
 
     unloadGraph();
