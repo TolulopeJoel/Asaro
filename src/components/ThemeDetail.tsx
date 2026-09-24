@@ -1,3 +1,25 @@
+/**
+ * One cluster, opened.
+ *
+ * design/all-screens.html #themedetail draws this in both styles: the name,
+ * the size of the thing under it, the verses the writer cited, then every
+ * entry the theme rests on, oldest first.
+ *
+ * Cloth gives the name its band and hangs the two header controls in the top
+ * row; Colossal spends its one giant on the name itself. That is unusual —
+ * the giant is normally a numeral — and it is the right call here: the name is
+ * the claim the clustering is making and the entry count is the evidence for
+ * it, so enlarging the count would put the weight on a fact about the
+ * database. `themeQuality.ts` already writes down why that is the least
+ * interesting true thing about a theme.
+ *
+ * Answers are grouped by entry rather than listed flat. One entry often
+ * contributes two answers to a theme — what it says about Jehovah, and what to
+ * do about it — and showing those as two cards reads like a duplicate.
+ *
+ * It is a modal over the Library tab, so it draws no tab bar and the way out
+ * is an X rather than a back arrow: there is no stack to pop.
+ */
 import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { X, Pencil } from 'lucide-react-native';
@@ -9,7 +31,7 @@ import { HyperlinkedText } from './HyperlinkedText';
 import { Cluster } from '../ml/clustering';
 import { spanLabel } from '../ml/themeQuality';
 import { StoredEmbedding, EMBEDDABLE_FIELDS, ACTION_FIELD } from '../data/embeddingRepository';
-import { Screen, Text } from './ui';
+import { Card, Hero, Screen, Text, textStyle } from './ui';
 
 const FIELD_LABELS: Record<string, string> = {
     ...Object.fromEntries(EMBEDDABLE_FIELDS.map(f => [f.column, f.label])),
@@ -47,7 +69,7 @@ function formatDate(raw: string): string {
 }
 
 export function ThemeDetail({ cluster, name, onClose, onRename, onOpenEntry }: Props) {
-    const { colors } = useTheme();
+    const { colors, isLockedIn, style: themeStyle } = useTheme();
 
     /**
      * Group by entry: one entry often contributes two answers to a theme (what
@@ -89,79 +111,128 @@ export function ThemeDetail({ cluster, name, onClose, onRename, onOpenEntry }: P
         return spanLabel(days) ?? 'within a month';
     }, [cluster]);
 
+    const title = name ?? 'Unnamed theme';
+    const meta =
+        `${cluster.entryCount} ${cluster.entryCount === 1 ? 'entry' : 'entries'}` +
+        (span ? ` · ${span}` : '');
+
+    /*
+     * Rename first, close second, both hard right. Renaming is here at all
+     * because the name is a guess the app made, and the reader is the only one
+     * who can correct it — but it is never the reason anyone opened this, so
+     * it takes the quieter of the two positions and the smaller glyph.
+     */
+    const controls = (
+        <View style={styles.controls}>
+            <ScalePressable
+                onPress={onRename}
+                hitSlop={Spacing.md}
+                accessibilityRole="button"
+                accessibilityLabel="Rename this theme"
+            >
+                <Pencil size={17} color={colors.accent} strokeWidth={1.9} />
+            </ScalePressable>
+            <ScalePressable
+                onPress={onClose}
+                hitSlop={Spacing.md}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+            >
+                <X
+                    size={19}
+                    color={isLockedIn ? colors.textTertiary : colors.textOnHero}
+                    strokeWidth={1.9}
+                />
+            </ScalePressable>
+        </View>
+    );
+
+    /*
+     * The tags are the writer's own index — pulled out of the [[Isaiah 55:9]]
+     * markers they typed while writing — which is a better handle on a theme
+     * than the chapter ranges the entries happen to sit in: the ranges say
+     * what was read, the tags say what was reached for. Square and outlined in
+     * both styles, never filled: a tag that reads as a button invites a tap
+     * this screen does not answer. The reference inside is still a link.
+     */
+    const tags = verses.length > 0 && (
+        <View style={styles.tagRow}>
+            {verses.map(verse => (
+                <View key={verse} style={[styles.tag, { borderColor: colors.accent }]}>
+                    <HyperlinkedText
+                        style={[textStyle(themeStyle, 'caption'), { color: colors.accent }]}
+                        text={`[[${verse}]]`}
+                    />
+                </View>
+            ))}
+        </View>
+    );
+
     return (
-        <Screen>
-            <View style={styles.header}>
-                <ScalePressable
-                    onPress={onRename}
-                    style={[styles.iconBtn, { backgroundColor: colors.backgroundSubtle }]}
-                >
-                    <Pencil size={18} color={colors.textSecondary} />
-                </ScalePressable>
-                <ScalePressable
-                    onPress={onClose}
-                    style={[styles.iconBtn, { backgroundColor: colors.backgroundSubtle }]}
-                >
-                    <X size={20} color={colors.textSecondary} />
-                </ScalePressable>
-            </View>
+        <Screen edges={isLockedIn ? ['top'] : []}>
+            {isLockedIn ? (
+                <View style={styles.colossalTop}>{controls}</View>
+            ) : (
+                <Hero ownsTopInset>
+                    {controls}
+                    <Text variant="display" tone="onBand" style={styles.clothTitle}>
+                        {title}
+                    </Text>
+                    <Text variant="sub" tone="onHero" style={styles.clothSub}>
+                        {meta}
+                    </Text>
+                </Hero>
+            )}
 
-            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-                <Text variant="display">
-                    {name ?? 'Unnamed theme'}
-                </Text>
-                <Text variant="bodySmall" tone="tertiary">
-                    {cluster.entryCount} {cluster.entryCount === 1 ? 'entry' : 'entries'}
-                    {span ? ` · ${span}` : ''}
-                </Text>
-
-                {verses.length > 0 && (
-                    <View style={styles.verseWrap}>
-                        {verses.map(verse => (
-                            <View
-                                key={verse}
-                                style={[styles.verseChip, { backgroundColor: colors.accent + '15' }]}
-                            >
-                                <HyperlinkedText
-                                    style={[styles.verseText, { color: colors.accent }]}
-                                    text={`[[${verse}]]`}
-                                />
-                            </View>
-                        ))}
-                    </View>
+            <ScrollView
+                contentContainerStyle={[
+                    styles.content,
+                    { paddingHorizontal: isLockedIn ? Spacing.layout.screenPaddingTight : Spacing.layout.screenPadding },
+                ]}
+                showsVerticalScrollIndicator={false}
+            >
+                {isLockedIn && (
+                    <>
+                        <Text variant="display">{title}</Text>
+                        <Text variant="label" style={styles.giantLabel}>{meta}</Text>
+                    </>
                 )}
+
+                {tags}
+
+                {/* `.co-hr` — Colossal opens the list with a rule; Cloth's filled
+                    panels separate themselves and need none. */}
+                {isLockedIn && <View style={[styles.rule, { backgroundColor: colors.border }]} />}
 
                 {entries.map(group => (
                     <ScalePressable
                         key={group[0].entryId}
                         onPress={() => onOpenEntry(group[0].entryId)}
-                        style={[
-                            styles.card,
-                            { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder },
-                        ]}
+                        accessibilityRole="button"
+                        accessibilityHint="Opens this entry"
+                        style={!isLockedIn && styles.clothCardGap}
                     >
-                        <View style={styles.cardHeader}>
-                            <View style={[styles.refBadge, { backgroundColor: colors.accent + '12' }]}>
-                                <Text variant="caption" tone="accent">
-                                    {chapterRef(group[0])}
-                                </Text>
+                        <Card>
+                            <View style={styles.cardHeader}>
+                                <Text variant="label" tone="accent">{chapterRef(group[0])}</Text>
+                                <Text variant="meta">{formatDate(group[0].createdAt)}</Text>
                             </View>
-                            <Text variant="caption" tone="tertiary">
-                                {formatDate(group[0].createdAt)}
-                            </Text>
-                        </View>
 
-                        {group.map((member, i) => (
-                            <View key={`${member.field}-${i}`} style={styles.answer}>
-                                <Text variant="label" tone="tertiary">
-                                    {FIELD_LABELS[member.field] ?? member.field}
-                                </Text>
-                                <HyperlinkedText
-                                    style={[styles.answerText, { color: colors.textSecondary }]}
-                                    text={member.text}
-                                />
-                            </View>
-                        ))}
+                            {group.map((member, i) => (
+                                <View key={`${member.field}-${i}`} style={styles.answer}>
+                                    <Text variant="label" tone="tertiary">
+                                        {FIELD_LABELS[member.field] ?? member.field}
+                                    </Text>
+                                    <HyperlinkedText
+                                        style={[
+                                            textStyle(themeStyle, 'bodySmall'),
+                                            { color: colors.textSecondary },
+                                        ]}
+                                        text={member.text}
+                                    />
+                                </View>
+                            ))}
+                        </Card>
                     </ScalePressable>
                 ))}
             </ScrollView>
@@ -170,21 +241,51 @@ export function ThemeDetail({ cluster, name, onClose, onRename, onOpenEntry }: P
 }
 
 const styles = StyleSheet.create({
-    header: {
+    /** `.cl-top` / `.co-top` — both controls hard right, nothing else in the row. */
+    controls: {
         flexDirection: 'row',
         justifyContent: 'flex-end',
-        gap: 8,
-        paddingHorizontal: Spacing.layout.screenPadding,
+        alignItems: 'center',
+        gap: Spacing.lg,
+    },
+    colossalTop: {
+        paddingHorizontal: Spacing.layout.screenPaddingTight,
         paddingTop: Spacing.sm,
     },
-    iconBtn: { width: 40, height: 40, borderRadius: Spacing.borderRadius.lg, alignItems: 'center', justifyContent: 'center' },
-    content: { padding: Spacing.layout.screenPadding, paddingBottom: 60, gap: Spacing.sm },
-    verseWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingVertical: Spacing.sm },
-    verseChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: Spacing.borderRadius.lg },
-    verseText: { fontSize: 12, fontWeight: '700' },
-    card: { borderWidth: 1, borderRadius: Spacing.borderRadius.lg, padding: Spacing.lg, gap: Spacing.sm },
-    cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    refBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: Spacing.borderRadius.lg },
-    answer: { gap: 3 },
-    answerText: { fontSize: 14, lineHeight: 21 },
+    /** `.cl-htitle{margin-top:8px}` under the control row. */
+    clothTitle: { marginTop: Spacing.sm },
+    /** `.cl-hsub{margin:8px 0 0}` */
+    clothSub: { marginTop: Spacing.sm },
+    /** `.co-giantl` sits 10px under what it labels. */
+    giantLabel: { marginTop: 10 },
+
+    content: {
+        paddingTop: Spacing.layout.cardPadding,
+        paddingBottom: Spacing.xxxl + Spacing.xl,
+    },
+    tagRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 6,
+        paddingBottom: Spacing.layout.cardPadding,
+    },
+    tag: {
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderWidth: Spacing.border.hairline,
+    },
+    /** `.co-hr{margin:26px 0}`, less the padding the tag row already spent. */
+    rule: {
+        height: Spacing.border.hairline,
+        marginBottom: Spacing.sm,
+    },
+    /** Cloth panels stack with air between them; Colossal's hairline is the gap. */
+    clothCardGap: { marginBottom: Spacing.lg },
+    cardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: Spacing.sm,
+    },
+    answer: { marginTop: Spacing.md, gap: 3 },
 });
