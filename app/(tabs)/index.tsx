@@ -27,6 +27,8 @@ import { deleteJournalEntry } from '@/src/data/database';
 import { fetchWeeklyStreakData, DayStatus } from '@/src/components/WeeklyStreak';
 import { fetchFlashbackData } from '@/src/components/Flashback';
 import { useObservation } from '@/src/insight/useObservation';
+import { useToday } from '@/src/hooks/useToday';
+import { TodayStrip } from '@/src/components/home/TodayStrip';
 import { ObservationCard } from '@/src/components/insight/ObservationCard';
 import { ObservationReceipts } from '@/src/components/insight/ObservationReceipts';
 import { AnimatedModal } from '@/src/components/AnimatedModal';
@@ -174,6 +176,44 @@ export default function Index() {
                 onDismiss={() => echo.dismiss()}
             />
         ) : null;
+
+    /*
+     * What is live today. Absent on most days — a practice already kept and an
+     * application are both silent, so this renders nothing unless there is
+     * genuinely something to do in fifteen seconds.
+     */
+    const today = useToday(!isLoading);
+    const todayStrip =
+        today.items.length > 0 ? (
+            <TodayStrip
+                items={today.items}
+                onKeep={entry => today.keep(entry.item)}
+                // The strip is a prompt, not a place — tapping through goes
+                // to where these actually live.
+                onOpen={() => router.push({ pathname: '/(tabs)/library', params: { view: 'actions' } })}
+            />
+        ) : null;
+
+    /*
+     * Progress through the plan, replacing the entry count.
+     *
+     * A count of entries only goes up and nothing follows from it. "34 of 364"
+     * is a goal with an end, and it is the core activity rather than a
+     * by-product of it.
+     */
+    const [planProgress, setPlanProgress] = useState<{ completed: number; total: number; percent: number } | null>(null);
+    useEffect(() => {
+        (async () => {
+            try {
+                const done = await getReadingProgress();
+                const total = READING_PLAN_DATA.length;
+                const completed = done.length;
+                setPlanProgress({ completed, total, percent: Math.round((completed / total) * 100) });
+            } catch {
+                setPlanProgress(null);
+            }
+        })();
+    }, [isLoading]);
 
     /*
      * The receipts, as an element rather than a component.
@@ -486,7 +526,9 @@ export default function Index() {
                         reading={nextReading}
                         readingNumber={nextReading?.id}
                         weekDays={weekDays}
-                        flashback={flashbackForLockedIn}
+                        flashback={observationCard ? null : flashbackForLockedIn}
+                        today={todayStrip}
+                        planProgress={planProgress}
                         onBeginReflection={handleBeginReflection}
                         onSettings={() => router.push('/settings')}
                         onWeekPress={() => router.push('/stats')}
@@ -537,7 +579,9 @@ export default function Index() {
                         readingNumber={nextReading?.id}
                         weekDays={weekDays}
                         entryCount={stats.totalEntries}
-                        flashback={flashbackForLockedIn}
+                        flashback={observationCard ? null : flashbackForLockedIn}
+                        today={todayStrip}
+                        planProgress={planProgress}
                         onBeginReflection={handleBeginReflection}
                         onSettings={() => router.push('/settings')}
                         onWeekPress={() => router.push('/stats')}

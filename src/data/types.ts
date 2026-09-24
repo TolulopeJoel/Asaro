@@ -15,6 +15,14 @@ export interface ActionItem {
     cadence?: string | null;
     /** Set makes this an action with a deadline. */
     due_at?: string | null;
+    /**
+     * When it was archived, or null while it still stands.
+     *
+     * Archived is not deleted: the item stays on its entry, a practice keeps
+     * its completions, and only the surfaces that ask "what am I working on"
+     * stop showing it.
+     */
+    archived_at?: string | null;
 }
 
 export interface JournalEntry {
@@ -47,7 +55,13 @@ export interface JournalEntryInput {
     notes?: string;
     studyFurther?: string;
     studyFurtherReminder?: string;
-    actionItems?: { action: string; motivation: string; cadence?: string | null; due_at?: string | null }[];
+    actionItems?: {
+        action: string;
+        motivation: string;
+        cadence?: string | null;
+        due_at?: string | null;
+        archived_at?: string | null;
+    }[];
     readingItemId?: number;
 }
 

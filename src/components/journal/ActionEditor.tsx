@@ -15,7 +15,7 @@
 
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
-import { Trash2, X } from 'lucide-react-native';
+import { Archive, ArchiveRestore, X } from 'lucide-react-native';
 
 import { useTheme } from '../../theme/ThemeContext';
 import { Spacing } from '../../theme/spacing';
@@ -34,7 +34,7 @@ interface Props {
         cadence?: string | null;
         due_at?: string | null;
     }) => Promise<void>;
-    onDelete: () => Promise<void>;
+    onArchive: (archived: boolean) => Promise<void>;
 }
 
 /** What the reader has made, said back to them as they change it. */
@@ -45,14 +45,14 @@ const KIND_NOTE: Record<ActionKind, string> = {
     action: 'A one-off with a date. It ticks once and stays ticked.',
 };
 
-export function ActionEditor({ item, onClose, onSave, onDelete }: Props) {
+export function ActionEditor({ item, onClose, onSave, onArchive }: Props) {
     const { colors, style: themeStyle } = useTheme();
 
     const [action, setAction] = useState(item.action ?? '');
     const [motivation, setMotivation] = useState(item.motivation ?? '');
     const [kind, setKind] = useState({ cadence: item.cadence ?? null, due_at: item.due_at ?? null });
     const [saving, setSaving] = useState(false);
-    const [confirmingDelete, setConfirmingDelete] = useState(false);
+    const archived = !!item.archived_at;
 
     const derived = actionKindOf(kind);
 
@@ -134,24 +134,27 @@ export function ActionEditor({ item, onClose, onSave, onDelete }: Props) {
                     />
 
                     {/*
-                      * Two taps to delete, and the second one says what goes.
-                      * A practice carries its completion history, which is the
-                      * part nobody expects to lose.
+                      * Archive, never delete. The item stays on its entry and a
+                      * practice keeps every completion it logged — what changes
+                      * is only whether it counts as something you are working
+                      * on. Nothing here can rewrite what the journal says, so
+                      * it needs no confirmation.
                       */}
                     <ScalePressable
-                        onPress={() => (confirmingDelete ? onDelete() : setConfirmingDelete(true))}
+                        onPress={() => onArchive(!archived)}
                         accessibilityRole="button"
-                        style={styles.delete}
+                        style={styles.archive}
                     >
-                        <Trash2 size={14} color={confirmingDelete ? colors.danger : colors.textTertiary} />
-                        <Text variant="label" tone="tertiary" style={confirmingDelete ? { color: colors.danger } : undefined}>
-                            {confirmingDelete
-                                ? derived === 'practice'
-                                    ? 'Delete this and its history?'
-                                    : 'Delete this?'
-                                : 'Delete'}
+                        {archived ? (
+                            <ArchiveRestore size={14} color={colors.accent} />
+                        ) : (
+                            <Archive size={14} color={colors.textTertiary} />
+                        )}
+                        <Text variant="label" tone={archived ? 'accent' : 'tertiary'}>
+                            {archived ? 'Bring this back' : 'Archive — it has served its purpose'}
                         </Text>
                     </ScalePressable>
+
                 </ScrollView>
             </KeyboardAvoidingView>
         </Screen>
@@ -189,7 +192,7 @@ const styles = StyleSheet.create({
     kind: { gap: Spacing.sm },
     note: { marginTop: 2 },
     save: { marginTop: Spacing.sm },
-    delete: {
+    archive: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',

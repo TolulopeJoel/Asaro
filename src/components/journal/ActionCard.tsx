@@ -93,9 +93,15 @@ export const ActionCard = React.memo(({ item, onEntryPress, handleTogglePin, han
      * today and unticks tomorrow. Only an action, which has a deadline, ticks
      * once and stays ticked.
      */
+    /*
+     * Archived is dimmed and loses its checkbox whatever kind it is. It has
+     * served its purpose, so nothing is being asked of it — but it is still
+     * legible, because it is still part of what that entry said.
+     */
+    const isArchived = !!item.archived_at;
     const kind: ActionKind = actionKindOf(item);
     const done = kind === 'practice' ? !!progress?.doneNow : !!item.is_completed;
-    const showsCheckbox = completes(kind);
+    const showsCheckbox = completes(kind) && !isArchived;
     const streak = kind === 'practice' ? streakLabel(progress?.streak ?? 0, item.cadence) : null;
     const due = kind === 'action' ? dueLabel(item.due_at) : null;
     /* Only an action stays struck through — a practice ticked today is not finished. */
@@ -112,7 +118,7 @@ export const ActionCard = React.memo(({ item, onEntryPress, handleTogglePin, han
 
     if (isLockedIn) {
         return (
-            <View style={[styles.colossalRow, { borderBottomColor: colors.border }, struckOut && styles.done]}>
+            <View style={[styles.colossalRow, { borderBottomColor: colors.border }, struckOut && styles.done, isArchived && styles.archived]}>
                 {showsCheckbox ? (
                     <ActionCheckbox done={done} onPress={() => handleToggleAction(item)} />
                 ) : (
@@ -193,6 +199,7 @@ export const ActionCard = React.memo(({ item, onEntryPress, handleTogglePin, han
                 { backgroundColor: colors.backgroundSubtle },
                 item.is_pinned && { borderLeftWidth: Spacing.border.marker, borderLeftColor: colors.accent },
                 struckOut && styles.clothDone,
+                isArchived && styles.archived,
             ]}
         >
             <View style={styles.clothRow}>
@@ -263,6 +270,7 @@ const styles = StyleSheet.create({
     },
     /* Keeps an application's text on the same left edge as everything else. */
     checkboxSpacer: { width: 18 },
+    archived: { opacity: 0.5 },
     metaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10 },
     checkbox: {
         width: 18,

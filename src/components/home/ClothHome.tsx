@@ -52,6 +52,17 @@ export interface ClothHomeProps {
      * and there is one card rather than two that must be kept in step.
      */
     observation?: React.ReactNode;
+    /** What is live today. Absent on most days — see `TodayStrip`. */
+    today?: React.ReactNode;
+    /**
+     * Progress through the reading plan.
+     *
+     * Replaces the entry count, which only ever went up. "34 of 364" is a goal
+     * with an end, and finishing the Bible in a year is a real one for this
+     * reader; a monotonic counter of entries written is a fact about the
+     * database that nothing follows from.
+     */
+    planProgress?: { completed: number; total: number; percent: number } | null;
 }
 
 /**
@@ -117,6 +128,8 @@ export function ClothHome({
     onWeekPress,
     onFlashbackPress,
     observation,
+    today,
+    planProgress,
 }: ClothHomeProps) {
     const { colors } = useTheme();
 
@@ -166,7 +179,26 @@ export function ClothHome({
 
                 <WeekPanels days={weekDays} onPress={onWeekPress} />
 
-                <View style={[styles.panel, styles.stat, { backgroundColor: colors.backgroundSubtle }]}>
+                {today}
+
+                {planProgress && (
+                    <View style={[styles.panel, { backgroundColor: colors.backgroundSubtle }]}>
+                        <View style={styles.progressTop}>
+                            <Text variant="label">{`${planProgress.completed} of ${planProgress.total} readings`}</Text>
+                            <Text variant="label" tone="accent">{`${planProgress.percent}%`}</Text>
+                        </View>
+                        <View style={[styles.progressTrack, { backgroundColor: colors.border }]}>
+                            <View
+                                style={[
+                                    styles.progressFill,
+                                    { backgroundColor: colors.accent, width: `${Math.min(100, planProgress.percent)}%` },
+                                ]}
+                            />
+                        </View>
+                    </View>
+                )}
+
+                <View style={[styles.panel, styles.stat, styles.hiddenStat, { backgroundColor: colors.backgroundSubtle }]}>
                     <Text variant="hero">{entryCount}</Text>
                     {/*
                       * `.cl-statl` is the caption role set in caps — the only
@@ -198,6 +230,13 @@ export function ClothHome({
 }
 
 const styles = StyleSheet.create({
+    /* The entry count is kept in the tree but not drawn — plan progress says
+     * the same encouraging thing with an end in sight. Removed rather than
+     * deleted so the decision is visible if it turns out to be wrong. */
+    hiddenStat: { display: 'none' },
+    progressTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+    progressTrack: { height: 6, marginTop: 10, flexDirection: 'row' },
+    progressFill: { height: 6 },
     heroTop: {
         flexDirection: 'row',
         justifyContent: 'space-between',

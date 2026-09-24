@@ -17,7 +17,7 @@ import { ActionKind, actionKindOf } from '../data/actionKind';
 import { ActionEditor } from './journal/ActionEditor';
 import { AnimatedModal } from './AnimatedModal';
 import { PracticeProgress, markPracticeDone, practiceProgress, unmarkPracticeDone } from '../data/practiceRepository';
-import { deleteActionItem, updateActionItem } from '../data/journalRepository';
+import { setActionItemArchived, updateActionItem } from '../data/journalRepository';
 import { TopicCard } from './journal/TopicCard';
 import { BookCard, BookWithCount } from './journal/BookCard';
 import { ActionSectionHeader, DateGroupHeader, TopicHeader } from './journal/JournalHeaders';
@@ -214,6 +214,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
              */
             onOpenActionCountChange?.(
                 data.filter(item => {
+                    if (item.archived_at) return false;
                     const kind = actionKindOf(item);
                     if (kind === 'application') return false;
                     if (kind === 'action') return !item.is_completed;
@@ -495,13 +496,20 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
              * journal of nothing but applications — which every journal is at
              * first — sees no taxonomy it did not ask for.
              */
-            const groups: { kind: ActionKind; title: string; rows: EnhancedActionItem[] }[] = [
+            const groups: { kind: ActionKind | 'archived'; title: string; rows: EnhancedActionItem[] }[] = [
                 { kind: 'practice', title: 'Practices', rows: [] },
                 { kind: 'action', title: 'With a date', rows: [] },
                 { kind: 'application', title: 'Applying', rows: [] },
+                /*
+                 * Last, and never mixed in. Archived means it has served its
+                 * purpose, not that it never happened — it stays reachable
+                 * here and on its entry, out of the way of what still stands.
+                 */
+                { kind: 'archived', title: 'Archived', rows: [] },
             ];
             for (const action of rest) {
-                groups.find(g => g.kind === actionKindOf(action))!.rows.push(action);
+                const bucket = action.archived_at ? 'archived' : actionKindOf(action);
+                groups.find(g => g.kind === bucket)!.rows.push(action);
             }
 
             const populated = groups.filter(g => g.rows.length > 0);
@@ -793,8 +801,8 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
                             setEditingAction(null);
                             loadActions();
                         }}
-                        onDelete={async () => {
-                            await deleteActionItem(editingAction.id!);
+                        onArchive={async archived => {
+                            await setActionItemArchived(editingAction.id!, archived);
                             setEditingAction(null);
                             loadActions();
                         }}

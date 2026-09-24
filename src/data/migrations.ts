@@ -1,6 +1,6 @@
 import { withDatabase, getDbVersion, setDbVersion } from './db';
 
-const CURRENT_DB_VERSION = 12;
+const CURRENT_DB_VERSION = 13;
 
 export const initializeDatabase = async (): Promise<boolean> => {
     try {
@@ -379,6 +379,27 @@ export const initializeDatabase = async (): Promise<boolean> => {
                     CREATE INDEX IF NOT EXISTS idx_completions_item
                         ON action_item_completions(action_item_id, completed_on DESC);
                 `);
+            }
+
+            if (currentVersion < 13) {
+                /*
+                 * Migration to v13: archiving, which replaces deleting.
+                 *
+                 * An action item is part of what someone wrote on a given day.
+                 * Deleting one does not tidy a list — it rewrites the entry, so
+                 * the journal no longer says what it said. A commitment that
+                 * has served its purpose has not stopped having been made.
+                 *
+                 * `archived_at` rather than a flag, matching `pinned_at`: when
+                 * something was set down is worth keeping, and a practice keeps
+                 * its completion history either way. Archiving hides a thing
+                 * from what you are working on; it never edits the past.
+                 */
+                try {
+                    await database.runAsync(`ALTER TABLE action_items ADD COLUMN archived_at DATETIME`);
+                } catch {
+                    /* already present */
+                }
             }
 
             // Set to current version

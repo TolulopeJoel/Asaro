@@ -19,6 +19,8 @@ export interface ActionItemPair {
     cadence?: string | null;
     /** Set makes this an action with a deadline. */
     due_at?: string | null;
+    /** Carried through an edit so re-saving an entry cannot un-archive. */
+    archived_at?: string | null;
 }
 
 interface ActionItemsInputProps {

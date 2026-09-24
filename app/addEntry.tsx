@@ -80,6 +80,7 @@ export default function MeditationSessionScreen() {
                                 motivation: item.motivation,
                                 cadence: item.cadence ?? null,
                                 due_at: item.due_at ?? null,
+                                archived_at: item.archived_at ?? null,
                             }))
                             : [{ action: '', motivation: '' }],
                         reflection4: entry.reflection_4 || '',

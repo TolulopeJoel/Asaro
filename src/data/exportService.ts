@@ -134,9 +134,9 @@ export const importJournalEntriesFromJson = async (json: string): Promise<{
                             // flatten every practice and action back into an
                             // application. Absent from pre-v11 backups, which
                             // is correct — those journals were all applications.
-                            `INSERT INTO action_items (entry_id, action, motivation, sort_order, is_completed, is_pinned, cadence, due_at)
-                             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-                            [newEntryId, item.action ?? '', item.motivation ?? '', item.sort_order ?? i, item.is_completed ? 1 : 0, item.is_pinned ? 1 : 0, item.cadence ?? null, item.due_at ?? null]
+                            `INSERT INTO action_items (entry_id, action, motivation, sort_order, is_completed, is_pinned, cadence, due_at, archived_at)
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                            [newEntryId, item.action ?? '', item.motivation ?? '', item.sort_order ?? i, item.is_completed ? 1 : 0, item.is_pinned ? 1 : 0, item.cadence ?? null, item.due_at ?? null, item.archived_at ?? null]
                         );
                     }
                 }

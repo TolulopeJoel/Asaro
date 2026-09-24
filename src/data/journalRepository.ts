@@ -138,9 +138,9 @@ export const createJournalEntry = async (data: JournalEntryInput) => {
                 const item = data.actionItems[i];
                 if (item.action.trim() || item.motivation.trim()) {
                     await database.runAsync(
-                        `INSERT INTO action_items (entry_id, action, motivation, sort_order, cadence, due_at)
-                         VALUES (?, ?, ?, ?, ?, ?)`,
-                        [entryId, item.action, item.motivation, i, item.cadence ?? null, item.due_at ?? null]
+                        `INSERT INTO action_items (entry_id, action, motivation, sort_order, cadence, due_at, archived_at)
+                         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                        [entryId, item.action, item.motivation, i, item.cadence ?? null, item.due_at ?? null, item.archived_at ?? null]
                     );
                 }
             }
@@ -210,9 +210,9 @@ export const updateJournalEntry = async (id: number, data: JournalEntryInput) =>
                 const item = data.actionItems[i];
                 if (item.action.trim() || item.motivation.trim()) {
                     await database.runAsync(
-                        `INSERT INTO action_items (entry_id, action, motivation, sort_order, cadence, due_at)
-                         VALUES (?, ?, ?, ?, ?, ?)`,
-                        [id, item.action, item.motivation, i, item.cadence ?? null, item.due_at ?? null]
+                        `INSERT INTO action_items (entry_id, action, motivation, sort_order, cadence, due_at, archived_at)
+                         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                        [id, item.action, item.motivation, i, item.cadence ?? null, item.due_at ?? null, item.archived_at ?? null]
                     );
                 }
             }
@@ -657,10 +657,20 @@ export const updateActionItem = async (
     });
 };
 
-/** Remove an action item and, with it, any practice completions it logged. */
-export const deleteActionItem = async (id: number): Promise<void> => {
+/**
+ * Archive a commitment, or bring it back.
+ *
+ * There is deliberately no delete. Removing an action item would edit the
+ * entry it belongs to — the journal would stop saying what it said — and a
+ * commitment that has served its purpose has not stopped having been made.
+ * Practice completions survive archiving, because the history is most of the
+ * point of having kept one.
+ */
+export const setActionItemArchived = async (id: number, archived: boolean): Promise<void> => {
     await withDatabase(async (database) => {
-        await database.runAsync(`DELETE FROM action_items WHERE id = ?`, [id]);
+        await database.runAsync(
+            `UPDATE action_items SET archived_at = ${archived ? 'CURRENT_TIMESTAMP' : 'NULL'} WHERE id = ?`,
+            [id],
+        );
     });
 };
-;
