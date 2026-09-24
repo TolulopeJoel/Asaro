@@ -60,6 +60,17 @@ export function ThemedButton({
 
     const inactive = disabled || loading;
 
+    /*
+     * A refusing button is a muted surface, not the fill turned down.
+     *
+     * Opacity keeps the hue: the accent at 45% still reads as ochre, still
+     * reads as the thing to press, and on Cloth's warm ground it reads as
+     * ochre gone wrong rather than ochre withheld. The mockup draws the
+     * hairline colour carrying tertiary text — one flat block that is plainly
+     * not the primary action — and that is the same pair in both styles.
+     */
+    const mutedSurface: ViewStyle = { backgroundColor: colors.border, borderWidth: 0 };
+
     return (
         <Animated.View style={[{ transform: [{ scale }] }, block && styles.block, style]}>
             <Pressable
@@ -77,12 +88,19 @@ export function ThemedButton({
                     { borderRadius: shape.button },
                     surface,
                     block && styles.block,
-                    inactive && styles.inactive,
+                    inactive && mutedSurface,
                 ]}
             >
                 {loading
-                    ? <ActivityIndicator size="small" color={labelColor} />
-                    : <Text variant="button" style={{ color: labelColor }}>{label}</Text>}
+                    ? <ActivityIndicator size="small" color={colors.textTertiary} />
+                    : (
+                        <Text
+                            variant="button"
+                            style={{ color: inactive ? colors.textTertiary : labelColor }}
+                        >
+                            {label}
+                        </Text>
+                    )}
             </Pressable>
         </Animated.View>
     );
@@ -99,5 +117,4 @@ const styles = StyleSheet.create({
     // co-btn is a uniform 17px box in the mockup, not a wider pill.
     padColossal: { paddingVertical: Spacing.lg + 1, paddingHorizontal: Spacing.lg + 1 },
     block: { width: '100%', alignSelf: 'stretch' },
-    inactive: { opacity: 0.45 },
 });

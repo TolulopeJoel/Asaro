@@ -11,6 +11,11 @@
  * So this is deliberately small: the two texts, the kind, and a way out. It is
  * not a second writing surface. The wizard still owns composing an entry; this
  * owns correcting one thing you are already looking at.
+ *
+ * design/all-screens.html #actionedit draws it in both styles, and draws it in
+ * the state worth agreeing on: the reason missing, the label saying so, and
+ * Save refusing. No colossal element — a form has no fact to enlarge, and the
+ * giant would land on a field label.
  */
 
 import React, { useState } from 'react';
@@ -47,12 +52,21 @@ const KIND_NOTE: Record<ActionKind, string> = {
 };
 
 export function ActionEditor({ item, onClose, onSave, onArchive }: Props) {
-    const { colors, style: themeStyle } = useTheme();
+    const { colors, isLockedIn, style: themeStyle } = useTheme();
 
     const [action, setAction] = useState(item.action ?? '');
     const [motivation, setMotivation] = useState(item.motivation ?? '');
     const [kind, setKind] = useState({ cadence: item.cadence ?? null, due_at: item.due_at ?? null });
     const [saving, setSaving] = useState(false);
+    /*
+     * Whether the reader has asked to save yet.
+     *
+     * Nothing is flagged before they do. An empty reason on a form you have
+     * only just opened is not a mistake — it is a field you were on your way
+     * to filling in — and colouring it red on arrival accuses someone of an
+     * error they have not made. The flag belongs to the attempt.
+     */
+    const [tried, setTried] = useState(false);
     const archived = !!item.archived_at;
 
     const derived = actionKindOf(kind);
@@ -62,9 +76,24 @@ export function ActionEditor({ item, onClose, onSave, onArchive }: Props) {
      * back and take it out.
      */
     const reasonMissing = !hasReason({ action, motivation });
+    const actionMissing = !action.trim();
 
+    /*
+     * Save stays live and refuses, rather than sitting dead.
+     *
+     * A disabled primary explains nothing: the reader is left comparing a grey
+     * button against three filled-in-looking fields with no way to ask what is
+     * wrong. Pressing it is how they ask, so pressing it has to answer — it
+     * marks the field that is missing and leaves the button alone. Only the
+     * write itself disables it, because that one is about the app being busy
+     * rather than the reader being wrong.
+     */
     const save = async () => {
-        if (saving || !action.trim() || reasonMissing) return;
+        if (saving) return;
+        if (actionMissing || reasonMissing) {
+            setTried(true);
+            return;
+        }
         setSaving(true);
         try {
             await onSave({ action, motivation, ...kind });
@@ -73,19 +102,33 @@ export function ActionEditor({ item, onClose, onSave, onArchive }: Props) {
         }
     };
 
+    /*
+     * `.cl-input` / `.co-input`: square, filled with the panel colour, one
+     * hairline. A field asked for and not given turns `danger` in both its
+     * label and its box, so the refusal is attached to the thing that causes
+     * it rather than only to the button that reported it — and it clears the
+     * moment the field is answered, without waiting for another attempt.
+     */
     const field = (
         label: string,
         value: string,
         onChangeText: (t: string) => void,
         placeholder: string,
+        wanting = false,
     ) => (
         <View style={styles.field}>
-            <Text variant="label" tone="tertiary">{label}</Text>
+            <Text variant="label" tone={wanting ? 'danger' : undefined}>
+                {wanting ? `${label} — needed` : label}
+            </Text>
             <TextInput
                 style={[
                     styles.input,
                     textStyle(themeStyle, 'body'),
-                    { color: colors.textPrimary, borderColor: colors.border },
+                    {
+                        color: colors.textPrimary,
+                        backgroundColor: colors.cardBackground,
+                        borderColor: wanting ? colors.danger : colors.cardBorder,
+                    },
                 ]}
                 value={value}
                 onChangeText={onChangeText}
@@ -102,11 +145,11 @@ export function ActionEditor({ item, onClose, onSave, onArchive }: Props) {
             <View style={styles.header}>
                 <ScalePressable
                     onPress={onClose}
+                    hitSlop={Spacing.md}
                     accessibilityRole="button"
                     accessibilityLabel="Close"
-                    style={[styles.iconBtn, { backgroundColor: colors.backgroundSubtle }]}
                 >
-                    <X size={20} color={colors.textSecondary} />
+                    <X size={19} color={colors.textSecondary} strokeWidth={1.9} />
                 </ScalePressable>
             </View>
 
@@ -114,59 +157,70 @@ export function ActionEditor({ item, onClose, onSave, onArchive }: Props) {
                 style={styles.fill}
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             >
-                <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-                    {field('action', action, setAction, 'I will...')}
+                <ScrollView
+                    contentContainerStyle={[
+                        styles.content,
+                        {
+                            paddingHorizontal: isLockedIn
+                                ? Spacing.layout.screenPaddingTight
+                                : Spacing.layout.screenPadding,
+                        },
+                    ]}
+                    showsVerticalScrollIndicator={false}
+                >
+                    {field('action', action, setAction, 'I will...', tried && actionMissing)}
                     {field(
-                        reasonMissing ? 'motivated by — needed' : 'motivated by',
+                        'motivated by',
                         motivation,
                         setMotivation,
                         'Because...',
+                        tried && reasonMissing,
                     )}
 
                     <View style={styles.kind}>
-                        <Text variant="label" tone="tertiary">kind</Text>
+                        <Text variant="label">kind</Text>
                         <KindChips value={kind} onChange={next => setKind({ cadence: next.cadence ?? null, due_at: next.due_at ?? null })} />
                         {/*
                           * The chips say what you can pick; this says what you
                           * have picked. Without it "nothing selected" reads as
                           * an unanswered question rather than as the answer.
                           */}
-                        <Text variant="bodySmall" tone="secondary" style={styles.note}>
+                        <Text variant="sub" style={styles.note}>
                             {KIND_NOTE[derived]}
                         </Text>
                     </View>
 
-                    <ThemedButton
-                        label={saving ? 'Saving…' : 'Save'}
-                        variant="accent"
-                        block
-                        disabled={saving || !action.trim() || reasonMissing}
-                        onPress={save}
-                        style={styles.save}
-                    />
+                    <View style={styles.footer}>
+                        <ThemedButton
+                            label={saving ? 'Saving…' : 'Save'}
+                            variant="accent"
+                            block
+                            disabled={saving}
+                            onPress={save}
+                        />
 
-                    {/*
-                      * Archive, never delete. The item stays on its entry and a
-                      * practice keeps every completion it logged — what changes
-                      * is only whether it counts as something you are working
-                      * on. Nothing here can rewrite what the journal says, so
-                      * it needs no confirmation.
-                      */}
-                    <ScalePressable
-                        onPress={() => onArchive(!archived)}
-                        accessibilityRole="button"
-                        style={styles.archive}
-                    >
-                        {archived ? (
-                            <ArchiveRestore size={14} color={colors.accent} />
-                        ) : (
-                            <Archive size={14} color={colors.textTertiary} />
-                        )}
-                        <Text variant="label" tone={archived ? 'accent' : 'tertiary'}>
-                            {archived ? 'Bring this back' : 'Archive — it has served its purpose'}
-                        </Text>
-                    </ScalePressable>
-
+                        {/*
+                          * Archive, never delete. The item stays on its entry
+                          * and a practice keeps every completion it logged —
+                          * what changes is only whether it counts as something
+                          * you are working on. Nothing here can rewrite what
+                          * the journal says, so it needs no confirmation.
+                          */}
+                        <ScalePressable
+                            onPress={() => onArchive(!archived)}
+                            accessibilityRole="button"
+                            style={styles.archive}
+                        >
+                            {archived ? (
+                                <ArchiveRestore size={14} color={colors.accent} />
+                            ) : (
+                                <Archive size={14} color={colors.textTertiary} />
+                            )}
+                            <Text variant="label" tone={archived ? 'accent' : 'tertiary'}>
+                                {archived ? 'Bring this back' : 'Archive — it has served its purpose'}
+                            </Text>
+                        </ScalePressable>
+                    </View>
                 </ScrollView>
             </KeyboardAvoidingView>
         </Screen>
@@ -181,35 +235,33 @@ const styles = StyleSheet.create({
         paddingHorizontal: Spacing.layout.screenPadding,
         paddingTop: Spacing.sm,
     },
-    iconBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: Spacing.borderRadius.lg,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
     content: {
-        padding: Spacing.layout.screenPadding,
-        paddingBottom: 60,
-        gap: Spacing.lg,
+        paddingTop: Spacing.layout.cardPadding,
+        paddingBottom: Spacing.layout.tabBarPadding,
+        gap: Spacing.xl - 2,
+        // Short content still puts the two controls at the foot of the screen,
+        // the way the drawing has them, without pinning a footer the keyboard
+        // would then have to fight.
+        flexGrow: 1,
     },
-    field: { gap: Spacing.xs },
+    field: { gap: Spacing.sm },
+    /** `.cl-input{padding:12px 14px}` — square, and tall enough for two lines. */
     input: {
-        borderWidth: 1,
-        borderRadius: Spacing.borderRadius.lg,
-        padding: Spacing.md,
-        minHeight: 90,
+        borderWidth: Spacing.border.hairline,
+        paddingHorizontal: Spacing.md + 2,
+        paddingVertical: Spacing.md + 2,
+        minHeight: 76,
         textAlignVertical: 'top',
     },
     kind: { gap: Spacing.sm },
     note: { marginTop: 2 },
-    save: { marginTop: Spacing.sm },
+    footer: { marginTop: 'auto', paddingTop: Spacing.lg },
     archive: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
-        marginTop: Spacing.lg,
+        marginTop: Spacing.xs,
         paddingVertical: Spacing.md,
     },
 });

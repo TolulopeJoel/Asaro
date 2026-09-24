@@ -79,12 +79,12 @@ export function KindChips({ value, onChange, disabled = false }: Props) {
                         style={[
                             styles.chip,
                             {
-                                borderColor: on ? colors.accent : colors.border,
-                                backgroundColor: on ? colors.accent + '14' : 'transparent',
+                                backgroundColor: on ? colors.textPrimary : colors.cardBackground,
+                                borderColor: on ? colors.textPrimary : colors.cardBorder,
                             },
                         ]}
                     >
-                        <Text variant="label" tone={on ? 'accent' : 'tertiary'}>
+                        <Text variant="cell" tone={on ? 'inverse' : 'primary'}>
                             {chip.key === 'due' ? dueLabel : chip.label}
                         </Text>
                     </ScalePressable>
@@ -111,11 +111,23 @@ export function KindChips({ value, onChange, disabled = false }: Props) {
 const styles = StyleSheet.create({
     /* A quiet row, not a form — the writing is the point and this only names
      * what the writing already is. */
-    row: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+    row: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+    /*
+     * `.cl-pill` / `.co-pill` — 44px tall with a 15px gutter, which is also
+     * the touch minimum. The old chip was 22px including its border: legible,
+     * and half the height a thumb needs.
+     *
+     * Set is the pill's filled state (`.cl-pill.back` / `.co-pill.back`):
+     * indigo on ecru, white on black. Not the woven mark — that belongs to a
+     * cell in a grid of many, where the eye has to find the chosen few. A chip
+     * sits in a row of three and the fill is the plainer answer.
+     */
     chip: {
-        borderWidth: 1,
-        borderRadius: Spacing.borderRadius.lg,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
+        height: 44,
+        paddingHorizontal: 15,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: Spacing.border.hairline,
+        overflow: 'hidden',
     },
 });
