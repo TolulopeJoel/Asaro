@@ -1,30 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { JournalEntryDetail } from '@/src/components/JournalEntryDetail';
 import { JournalEntry, getEntryById, deleteJournalEntry } from '@/src/data/database';
 import { LoadingView } from '@/src/components/LoadingView';
-import { Spacing } from '@/src/theme/spacing';
 import { Share } from 'react-native';
 import { useAlert } from '@/src/context/AlertContext';
-import { CardFAB } from '@/src/components/CardFAB';
-import { Screen } from '@/src/components/ui';
 
 export default function JournalEntryDetailScreen() {
     const { id } = useLocalSearchParams();
     const router = useRouter();
     const { colors } = useTheme();
-    const insets = useSafeAreaInsets();
     const [entry, setEntry] = useState<JournalEntry | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isSharing, setIsSharing] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const { showAlert } = useAlert();
-
-    // Tab bar height (60) + bottom inset + extra spacing (Spacing.xl = 24)
-    const bottomPosition = 60 + insets.bottom + Spacing.xl;
 
     useEffect(() => {
         const loadEntry = async () => {
@@ -114,31 +106,25 @@ export default function JournalEntryDetailScreen() {
     }
 
     return (
-        <Screen style={styles.container}>
+        <>
             <Stack.Screen options={{ headerShown: false }} />
+            {/* The detail owns the whole surface — band, content and the bar
+                at its foot — so there is no <Screen> to wrap it in here. */}
             <JournalEntryDetail
                 entry={entry}
                 onEdit={handleEdit}
                 onDelete={() => handleDelete(entry)}
                 onClose={handleClose}
-            />
-
-            <CardFAB
                 onShare={() => handleShare(entry)}
-                onEdit={() => handleEdit(entry)}
-                onDelete={() => handleDelete(entry)}
                 isSharing={isSharing}
                 isDeleting={isDeleting}
-                bottom={bottomPosition}
+                aboveTabBar
             />
-        </Screen>
+        </>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
     center: {
         flex: 1,
         justifyContent: 'center',

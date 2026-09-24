@@ -1,3 +1,27 @@
+/**
+ * One entry, read back.
+ *
+ * design/all-screens.html #entrydetail draws it in both styles. It opens over
+ * Home, over Book detail and over a theme, which makes it the most-reached
+ * surface in the app.
+ *
+ * Confirmation and receipt are one element. Cloth puts the reference in the
+ * band with the timestamp under it and Colossal spends its giant on the same
+ * reference, which retires the rounded date chip the built version carried: a
+ * chip is how you label something inside a screen, and this is the screen.
+ *
+ * The rule down the left of each answer is `accentSecondary` — indigo in
+ * Cloth, white in Colossal — not the accent. Six ochre rules down one page
+ * would spend the accent on structure and leave nothing for the share
+ * affordance and the reminder.
+ *
+ * The per-answer share icon stays beside its question and the bar at the foot
+ * acts on the whole entry: you share *an answer*, you delete *an entry*.
+ *
+ * It owns its own <Screen> and its own action bar, because the Cloth band has
+ * to reach the top of the display (<Hero ownsTopInset>) and the bar has to sit
+ * on the foot — neither of which a caller can supply from outside.
+ */
 import { JournalEntry } from '@/src/data/database';
 import { shareReflectionToGroup } from '@/src/services/groupActivityService';
 import { getDaysDifference, getLocalMidnight } from '@/src/utils/dateUtils';
@@ -7,16 +31,22 @@ import { Share2, Bell, X } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { useAlert } from '../context/AlertContext';
 import { Spacing } from '../theme/spacing';
-import { Typography } from '../theme/typography';
 import { ScalePressable } from './ScalePressable';
 import { HyperlinkedText } from './HyperlinkedText';
-import { Text, textStyle } from './ui';
+import { CardFAB } from './CardFAB';
+import { Hero, Screen, Text, textStyle } from './ui';
 
 interface JournalEntryDetailProps {
     entry: JournalEntry;
     onEdit?: (entry: JournalEntry) => void;
     onDelete?: () => void;
     onClose?: () => void;
+    /** Sharing the whole entry, from the bar. Absent where there is nowhere to share to. */
+    onShare?: () => void;
+    isSharing?: boolean;
+    isDeleting?: boolean;
+    /** True when the app's tab bar sits below this screen rather than a modal edge. */
+    aboveTabBar?: boolean;
 }
 
 const REFLECTION_QUESTIONS = [
@@ -36,10 +66,14 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
     onEdit,
     onDelete,
     onClose,
+    onShare,
+    isSharing = false,
+    isDeleting = false,
+    aboveTabBar = false,
 }) => {
-    const { colors, style: themeStyle } = useTheme();
+    const { colors, isLockedIn, style: themeStyle } = useTheme();
     const { showAlert } = useAlert();
-    const [isSharing, setIsSharing] = useState(false);
+    const [isSharingAnswer, setIsSharingAnswer] = useState(false);
 
     const formatDate = (dateString: string): string => {
         // SQLite local time string 'YYYY-MM-DD HH:MM:SS' needs 'T' for reliable JS parsing
@@ -119,7 +153,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                 {
                     text: 'Share',
                     onPress: async () => {
-                        setIsSharing(true);
+                        setIsSharingAnswer(true);
                         try {
                             const success = await shareReflectionToGroup(entry, reflectionText.trim(), REFLECTION_QUESTIONS[questionIndex]);
                             if (success) {
@@ -130,7 +164,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                         } catch (e) {
                             showAlert({ title: 'Error', message: 'An error occurred while sharing.' });
                         } finally {
-                            setIsSharing(false);
+                            setIsSharingAnswer(false);
                         }
                     }
                 }
@@ -156,62 +190,69 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
         }
     };
 
-    /*
-     * The answer, action and motivation copy used to render in raw
-     * react-native Text with only a size and weight — the platform system
-     * face in both styles, since HyperlinkedText's own Text never set one
-     * either. Reading the family off the design system's `body` role (Work
-     * Sans in Cloth, Archivo in Colossal) is what this line supplies; the
-     * custom sizes/weights below it are kept, since neither mockup declares
-     * an entry-detail screen for this copy to match against exactly.
-     */
-    const bodyFace = { fontFamily: textStyle(themeStyle, 'body').fontFamily };
+    /** Running answer copy, in the design system's `body` face for the style. */
+    const bodyFace = [textStyle(themeStyle, 'body'), { color: colors.textPrimary }];
+
+    /** The question, and the one thing you can do to this answer alone. */
+    const blockHead = (questionIndex: number, onSharePress?: () => void) => (
+        <View style={styles.blockHead}>
+            <Text variant="label" style={styles.question}>
+                {REFLECTION_QUESTIONS[questionIndex]}
+            </Text>
+            {onSharePress && (
+                <ScalePressable
+                    onPress={onSharePress}
+                    disabled={isSharingAnswer}
+                    hitSlop={Spacing.sm}
+                    accessibilityRole="button"
+                    accessibilityLabel="Share this answer with your group"
+                >
+                    <Share2 size={16} color={colors.textTertiary} strokeWidth={1.9} />
+                </ScalePressable>
+            )}
+        </View>
+    );
 
     const renderReflection = (reflection: string | undefined, questionIndex: number) => {
+        const rule = { borderLeftColor: colors.accentSecondary };
+
         if (questionIndex === ACTION_QUESTION_INDEX) {
             if (!entry.action_items || entry.action_items.length === 0) return null;
-            const hasContent = entry.action_items.some(item => item.action.trim() || item.motivation.trim());
-            if (!hasContent) return null;
 
-            const validActions = (entry.action_items || []).filter(
+            const validActions = entry.action_items.filter(
                 item => item.action.trim() || item.motivation.trim()
             );
-            const isSingleAction = validActions.length === 1;
+            if (validActions.length === 0) return null;
 
             return (
-                <View key={questionIndex} style={[styles.reflectionCard, { borderLeftColor: colors.accentSecondary }]}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: Spacing.md }}>
-                        <Text variant="label" style={{ flex: 1 }}>{REFLECTION_QUESTIONS[questionIndex]}</Text>
-                        <ScalePressable onPress={handleShareActionItems} style={{ padding: Spacing.sm, marginTop: -Spacing.sm, marginRight: -Spacing.sm }}>
-                            <Share2 size={20} color={colors.textTertiary} />
-                        </ScalePressable>
-                    </View>
-                    <View style={styles.answerContainer}>
-                        {validActions.map((item, i) => (
-                            <View
-                                key={i}
-                                style={[
-                                    !isSingleAction && styles.actionItemCard,
-                                    !isSingleAction && { backgroundColor: colors.cardBackground, borderColor: colors.border }
-                                ]}
-                            >
-                                {item.action.trim() ? (
-                                    <HyperlinkedText
-                                        style={[styles.actionText, bodyFace, { color: colors.textPrimary }]}
-                                        text={item.action.trim()}
-                                    />
-                                ) : null}
-                                {item.motivation.trim() ? (
-                                    <View style={styles.motivationRow}>
-                                        <HyperlinkedText
-                                            style={[styles.motivationText, bodyFace, { color: colors.textSecondary }]}
-                                            text={item.motivation.trim()}
-                                        />
-                                    </View>
-                                ) : null}
-                            </View>
-                        ))}
-                    </View>
+                <View key={questionIndex} style={[styles.block, rule]}>
+                    {blockHead(questionIndex, handleShareActionItems)}
+                    {validActions.map((item, i) => (
+                        <View
+                            key={i}
+                            style={[
+                                styles.answer,
+                                // More than one commitment came out of this answer:
+                                // a hairline between them, not a box around each.
+                                i > 0 && styles.nextAction,
+                                i > 0 && { borderTopColor: colors.border },
+                            ]}
+                        >
+                            {item.action.trim() ? (
+                                <Text variant="subtitle">{item.action.trim()}</Text>
+                            ) : null}
+                            {item.motivation.trim() ? (
+                                <HyperlinkedText
+                                    style={[
+                                        textStyle(themeStyle, 'sub'),
+                                        styles.motivation,
+                                        { color: colors.textSecondary },
+                                    ]}
+                                    text={item.motivation.trim()}
+                                />
+                            ) : null}
+                        </View>
+                    ))}
                 </View>
             );
         }
@@ -220,27 +261,26 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
             if (!entry.study_further || !entry.study_further.trim()) return null;
 
             const paragraphs = entry.study_further.trim().split('\n\n').filter(p => p.trim());
+            const reminder = entry.study_further_reminder;
 
             return (
-                <View key={questionIndex} style={[styles.reflectionCard, { borderLeftColor: colors.accentSecondary }]}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: Spacing.md }}>
-                        <Text variant="label" style={{ flex: 1 }}>{REFLECTION_QUESTIONS[questionIndex]}</Text>
-                    </View>
-                    <View style={styles.answerContainer}>
+                <View key={questionIndex} style={[styles.block, rule]}>
+                    {blockHead(questionIndex)}
+                    <View style={styles.answer}>
                         {paragraphs.map((paragraph, pIndex) => (
-                            <HyperlinkedText key={pIndex} style={[
-                                styles.answerText,
-                                bodyFace,
-                                { color: colors.textPrimary },
-                                pIndex > 0 && styles.answerParagraph
-                            ]} text={paragraph.trim()} />
+                            <HyperlinkedText key={pIndex} style={bodyFace} text={paragraph.trim()} />
                         ))}
                     </View>
-                    {entry.study_further_reminder && new Date(entry.study_further_reminder) > new Date() && (
-                        <View style={[styles.reminderChip, { backgroundColor: colors.backgroundSubtle, borderColor: colors.border }]}>
-                            <Bell size={14} color={colors.textSecondary} />
+                    {reminder && new Date(reminder) > new Date() && (
+                        <View
+                            style={[
+                                styles.reminder,
+                                { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder },
+                            ]}
+                        >
+                            <Bell size={13} color={colors.textSecondary} strokeWidth={1.9} />
                             <Text variant="label" tone="secondary">
-                                Reminder set for {new Date(entry.study_further_reminder).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                                {`Reminder set for ${new Date(reminder).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}`}
                             </Text>
                         </View>
                     )}
@@ -248,27 +288,17 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
             );
         }
 
-        const actualReflection = (questionIndex === 5) ? entry.notes : reflection;
+        const actualReflection = questionIndex === 5 ? entry.notes : reflection;
         if (!actualReflection || !actualReflection.trim()) return null;
 
         const paragraphs = actualReflection.trim().split('\n\n').filter(p => p.trim());
 
         return (
-            <View key={questionIndex} style={[styles.reflectionCard, { borderLeftColor: colors.accentSecondary }]}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: Spacing.md }}>
-                    <Text variant="label" style={{ flex: 1 }}>{REFLECTION_QUESTIONS[questionIndex]}</Text>
-                    <ScalePressable onPress={() => handleShareReflection(actualReflection, questionIndex)} style={{ padding: Spacing.sm, marginTop: -Spacing.sm, marginRight: -Spacing.sm }}>
-                        <Share2 size={20} color={colors.textTertiary} />
-                    </ScalePressable>
-                </View>
-                <View style={styles.answerContainer}>
+            <View key={questionIndex} style={[styles.block, rule]}>
+                {blockHead(questionIndex, () => handleShareReflection(actualReflection, questionIndex))}
+                <View style={styles.answer}>
                     {paragraphs.map((paragraph, pIndex) => (
-                        <HyperlinkedText key={pIndex} style={[
-                            styles.answerText,
-                            bodyFace,
-                            { color: colors.textPrimary },
-                            pIndex > 0 && styles.answerParagraph
-                        ]} text={paragraph.trim()} />
+                        <HyperlinkedText key={pIndex} style={bodyFace} text={paragraph.trim()} />
                     ))}
                 </View>
             </View>
@@ -289,171 +319,137 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
         return textReflections.length > 0 || !!hasActions;
     }, [entry.reflection_1, entry.reflection_2, entry.reflection_4, entry.study_further, entry.action_items, entry.notes]);
 
+    const reference = `${entry.book_name} ${formatChapterAndVerses()}`.trim();
+    const when = formatDate(entry.created_at);
+
+    const close = onClose && (
+        <ScalePressable
+            onPress={onClose}
+            hitSlop={Spacing.md}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+        >
+            <X
+                size={19}
+                color={isLockedIn ? colors.textTertiary : colors.textOnHero}
+                strokeWidth={1.9}
+            />
+        </ScalePressable>
+    );
+
     return (
-        <View style={[styles.container, { backgroundColor: colors.background }]}>
-            <ScrollView
-                style={styles.scrollView}
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.scrollContent}
-            >
-                {/* Hero Header */}
-                <View style={[styles.heroHeader, { backgroundColor: colors.background }]}>
-                    <View style={styles.topRow}>
-                        <View style={[styles.dateChip, { backgroundColor: colors.badge, borderColor: colors.badgeBorder }]}>
-                            <Text variant="caption" tone="accent">{formatDate(entry.created_at)}</Text>
-                        </View>
-
-                        {onClose && (
-                            <ScalePressable style={[styles.closeButton, { backgroundColor: colors.backgroundSubtle }]} onPress={onClose}>
-                                <X size={20} color={colors.textSecondary} />
-                            </ScalePressable>
-                        )}
-                    </View>
-
-                    <Text variant="display" style={styles.reference}>
-                        {entry.book_name}{' '}
-                        <Text variant="body">
-                            {formatChapterAndVerses()}
+        <Screen edges={isLockedIn ? ['top'] : []}>
+            {isLockedIn ? (
+                <View style={styles.colossalTop}>
+                    <Text variant="tab" style={styles.mark}>{when}</Text>
+                    {close}
+                </View>
+            ) : (
+                <Hero ownsTopInset>
+                    <View style={styles.bandTop}>
+                        <Text variant="display" tone="onBand" style={styles.bandTitle}>
+                            {reference}
                         </Text>
-                    </Text>
-                </View>
+                        {close}
+                    </View>
+                    <Text variant="sub" tone="onHero" style={styles.bandSub}>{when}</Text>
+                </Hero>
+            )}
 
-                {/* Content */}
-                <View style={styles.contentSection}>
-                    {hasReflections ? (
-                        <View style={styles.reflectionsContainer}>
-                            {[
-                                entry.reflection_1,
-                                entry.reflection_2,
-                                entry.reflection_3,
-                                entry.reflection_4,
-                                entry.study_further,
-                                entry.notes,
-                            ].map((reflection, index) => renderReflection(reflection, index))}
-                        </View>
-                    ) : (
-                        <View style={[styles.emptyState, { borderLeftColor: colors.border }]}>
-                            <Text variant="quote" tone="tertiary">awaiting your reflection</Text>
-                        </View>
-                    )}
-                </View>
+            <ScrollView
+                style={styles.scroll}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={[
+                    styles.content,
+                    {
+                        paddingHorizontal: isLockedIn
+                            ? Spacing.layout.screenPaddingTight
+                            : Spacing.layout.screenPadding,
+                    },
+                ]}
+            >
+                {isLockedIn && (
+                    <>
+                        <Text variant="display">{reference}</Text>
+                        <View style={[styles.rule, { backgroundColor: colors.border }]} />
+                    </>
+                )}
 
-                <View style={styles.bottomSpacer} />
+                {hasReflections ? (
+                    [
+                        entry.reflection_1,
+                        entry.reflection_2,
+                        entry.reflection_3,
+                        entry.reflection_4,
+                        entry.study_further,
+                        entry.notes,
+                    ].map((reflection, index) => renderReflection(reflection, index))
+                ) : (
+                    /* The rule goes quiet rather than away: an entry with
+                       nothing in it is still an entry. */
+                    <View style={[styles.block, styles.empty, { borderLeftColor: colors.border }]}>
+                        <Text variant="quote" tone="tertiary">awaiting your reflection</Text>
+                    </View>
+                )}
             </ScrollView>
-        </View>
+
+            <CardFAB
+                onShare={onShare}
+                onEdit={onEdit && (() => onEdit(entry))}
+                onDelete={onDelete}
+                isSharing={isSharing}
+                isDeleting={isDeleting}
+                aboveTabBar={aboveTabBar}
+            />
+        </Screen>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    scrollView: {
-        flex: 1,
-    },
-    scrollContent: {
-        paddingBottom: Spacing.xxxl + Spacing.sm,
-    },
-    heroHeader: {
-        paddingBottom: 0,
-        paddingHorizontal: Spacing.layout.screenPadding,
-        paddingTop: Spacing.md,
-    },
-    topRow: {
+    /** `.cl-top` — the title takes the row and the way out sits hard right. */
+    bandTop: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+    bandTitle: { flex: 1 },
+    /** `.cl-hsub{margin:8px 0 0}` */
+    bandSub: { marginTop: Spacing.sm },
+    /** `.co-top` — the timestamp is the mark on this screen. */
+    colossalTop: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: Spacing.lg + Spacing.xs,
+        gap: Spacing.md,
+        paddingHorizontal: Spacing.layout.screenPaddingTight,
+        paddingTop: Spacing.sm,
     },
-    closeButton: {
-        width: 36,
-        height: 36,
-        borderRadius: Spacing.borderRadius.round,
-        justifyContent: 'center',
+    mark: { flex: 1 },
+
+    scroll: { flex: 1 },
+    content: {
+        paddingTop: Spacing.layout.cardPadding,
+        paddingBottom: Spacing.xxl,
+        gap: Spacing.xl - 2,
+    },
+    /** `.co-hr` under the Colossal head. */
+    rule: { height: Spacing.border.hairline, marginTop: Spacing.lg },
+
+    /*
+     * Each answer hangs off a 3px rule. `borderLeftColor` is supplied per
+     * block so the empty state can take the hairline colour instead.
+     */
+    block: { borderLeftWidth: 3, paddingLeft: Spacing.lg - 1 },
+    blockHead: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.md },
+    question: { flex: 1 },
+    answer: { marginTop: Spacing.md - 1, gap: Spacing.md },
+    nextAction: { marginTop: Spacing.md, paddingTop: Spacing.md, borderTopWidth: Spacing.border.hairline },
+    motivation: { marginTop: Spacing.sm - 1 },
+    /** A square box on a hairline, not a rounded chip. */
+    reminder: {
+        flexDirection: 'row',
         alignItems: 'center',
-    },
-    dateChip: {
         alignSelf: 'flex-start',
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.xs + 2,
-        borderRadius: Spacing.borderRadius.sm,
-        borderWidth: 1,
+        gap: 7,
+        marginTop: Spacing.md - 1,
+        paddingHorizontal: Spacing.md - 1,
+        paddingVertical: Spacing.sm - 1,
+        borderWidth: Spacing.border.hairline,
     },
-    reference: { marginBottom: Spacing.xxl },
-    contentSection: {
-        paddingHorizontal: Spacing.lg + Spacing.xs,
-    },
-    reflectionsContainer: {
-        gap: Spacing.xxl + Spacing.xs,
-    },
-    reflectionCard: {
-        paddingLeft: Spacing.lg,
-        borderLeftWidth: 3,
-        paddingBottom: Spacing.sm,
-    },
-    questionText: {
-        fontSize: Typography.size.md,
-        fontWeight: Typography.weight.medium,
-        lineHeight: Typography.lineHeight.lg + 4,
-        letterSpacing: Typography.letterSpacing.normal,
-        marginBottom: Spacing.md,
-    },
-    answerContainer: {
-        gap: Spacing.md + 2,
-    },
-    answerText: {
-        fontSize: Typography.size.lg - 1,
-        lineHeight: Typography.lineHeight.xl,
-        fontWeight: Typography.weight.regular,
-        letterSpacing: Typography.letterSpacing.normal,
-    },
-    answerParagraph: {
-        marginTop: 0,
-    },
-    actionItemCard: {
-        borderRadius: Spacing.borderRadius.md,
-        padding: Spacing.md,
-        paddingLeft: Spacing.lg,
-        borderWidth: 1,
-    },
-    actionText: {
-        fontSize: Typography.size.lg - 1,
-        lineHeight: Typography.lineHeight.xl,
-        fontWeight: Typography.weight.semibold,
-        letterSpacing: Typography.letterSpacing.normal,
-    },
-    motivationRow: {
-        flexDirection: 'row',
-        marginTop: Spacing.sm,
-        gap: 8,
-        alignItems: 'flex-start',
-    },
-    motivationText: {
-        flex: 1,
-        fontSize: Typography.size.md,
-        lineHeight: Typography.lineHeight.lg,
-        fontWeight: Typography.weight.regular,
-        letterSpacing: Typography.letterSpacing.normal,
-        marginTop: Spacing.xs,
-        fontStyle: 'italic',
-    },
-    emptyState: {
-        paddingVertical: Spacing.xxxl + Spacing.xxl,
-        paddingLeft: Spacing.lg,
-        borderLeftWidth: 3,
-    },
-    bottomSpacer: {
-        height: 160, // Increased to account for the floating bar plus some breathing room
-    },
-    reminderChip: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.xs + 2,
-        borderRadius: Spacing.borderRadius.round,
-        borderWidth: 1,
-        alignSelf: 'flex-start',
-        marginTop: Spacing.sm,
-        gap: Spacing.xs,
-    },
+    empty: { paddingVertical: Spacing.xxxl },
 });

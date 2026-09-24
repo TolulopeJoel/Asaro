@@ -1,21 +1,40 @@
+/**
+ * The bar under an entry: share it, edit it, throw it away.
+ *
+ * design/all-screens.html #entrydetail anchors it to the foot of the screen
+ * behind a hairline. It used to float 60px + inset above the tab bar on a 12px
+ * shadow at 15%, in a design set that has no shadows anywhere — and the shadow
+ * was the only thing saying it was always there, which sitting it on the foot
+ * says for free.
+ *
+ * Share carries a word because it is the one anyone looks for; edit and delete
+ * are glyphs, and delete takes the quietest tone of the three. Nothing here is
+ * destructive without the alert that follows it.
+ */
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Share2, Edit2, Trash2 } from 'lucide-react-native';
+
 import { useTheme } from '@/src/theme/ThemeContext';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { Spacing } from '@/src/theme/spacing';
-import { Typography } from '@/src/theme/typography';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Share2, Edit2, Trash2 } from 'lucide-react-native';
 import { Text } from './ui';
 
 interface CardFABProps {
-    onShare: () => void;
-    onEdit: () => void;
-    onDelete: () => void;
+    onShare?: () => void;
+    onEdit?: () => void;
+    onDelete?: () => void;
     isSharing?: boolean;
     isDeleting?: boolean;
-    bottom?: number;
-    rounded?: boolean;
+    /**
+     * True when the app's tab bar sits directly below this one.
+     *
+     * The tab bar already carries the 30px foot and the home indicator, so the
+     * bar only needs its own padding; standing alone in a modal it carries
+     * them itself.
+     */
+    aboveTabBar?: boolean;
 }
 
 export const CardFAB: React.FC<CardFABProps> = ({
@@ -24,110 +43,92 @@ export const CardFAB: React.FC<CardFABProps> = ({
     onDelete,
     isSharing = false,
     isDeleting = false,
-    bottom,
-    rounded = false,
+    aboveTabBar = false,
 }) => {
-    const { colors, shape } = useTheme();
+    const { colors } = useTheme();
     const insets = useSafeAreaInsets();
 
-    // Default bottom position if not provided:
-    // Tab bar height (60) + bottom inset + extra spacing (Spacing.xl = 24)
-    const defaultBottom = 60 + insets.bottom + Spacing.xl;
-    const finalBottom = bottom !== undefined ? bottom : defaultBottom;
+    const divider = <View style={[styles.divider, { backgroundColor: colors.border }]} />;
 
     return (
-        <View style={[
-            styles.floatingActions,
-            {
-                backgroundColor: colors.cardBackground,
-                borderColor: colors.border,
-                bottom: finalBottom,
-                borderRadius: shape.card,
-            }
-        ]}>
-            <ScalePressable
-                style={[styles.shareFloatingButton, { backgroundColor: colors.backgroundSubtle }]}
-                onPress={onShare}
-                disabled={isSharing}
-            >
-                <View style={styles.buttonContent}>
-                    <Share2 size={16} color={colors.textSecondary} strokeWidth={2.5} />
-                    <Text variant="bodySmall" tone="secondary" style={styles.shareFloatingText}>
-                        {isSharing ? 'sharing' : 'share'}
+        <View
+            style={[
+                styles.bar,
+                {
+                    backgroundColor: colors.cardBackground,
+                    borderTopColor: colors.border,
+                    paddingBottom: aboveTabBar
+                        ? Spacing.md
+                        : Math.max(insets.bottom, Spacing.layout.tabBarPadding),
+                },
+            ]}
+        >
+            {onShare && (
+                <ScalePressable
+                    style={styles.share}
+                    onPress={onShare}
+                    disabled={isSharing}
+                    accessibilityRole="button"
+                    accessibilityLabel="Share this entry"
+                >
+                    <Share2 size={15} color={colors.textSecondary} strokeWidth={2.2} />
+                    <Text variant="button" tone="secondary">
+                        {isSharing ? 'Sharing' : 'Share'}
                     </Text>
-                </View>
-            </ScalePressable>
+                </ScalePressable>
+            )}
 
-            <View style={[styles.actionDivider, { backgroundColor: colors.border }]} />
+            {onShare && onEdit && divider}
 
-            <ScalePressable
-                style={styles.iconButton}
-                onPress={onEdit}
-            >
-                <View style={styles.buttonContent}>
-                    <Edit2 size={16} color={colors.textSecondary} strokeWidth={2} />
-                </View>
-            </ScalePressable>
+            {onEdit && (
+                <ScalePressable
+                    style={styles.icon}
+                    onPress={onEdit}
+                    accessibilityRole="button"
+                    accessibilityLabel="Edit this entry"
+                >
+                    <Edit2 size={16} color={colors.textSecondary} strokeWidth={1.9} />
+                </ScalePressable>
+            )}
 
-            <View style={[styles.actionDivider, { backgroundColor: colors.border }]} />
+            {onEdit && onDelete && divider}
 
-            <ScalePressable
-                style={styles.iconButton}
-                onPress={onDelete}
-                disabled={isDeleting}
-            >
-                <View style={styles.buttonContent}>
-                    <Trash2 size={16} color={colors.textTertiary} strokeWidth={2} />
-                </View>
-            </ScalePressable>
+            {onDelete && (
+                <ScalePressable
+                    style={styles.icon}
+                    onPress={onDelete}
+                    disabled={isDeleting}
+                    accessibilityRole="button"
+                    accessibilityLabel="Delete this entry"
+                >
+                    <Trash2 size={16} color={colors.textTertiary} strokeWidth={1.9} />
+                </ScalePressable>
+            )}
         </View>
     );
 };
 
 const styles = StyleSheet.create({
-    floatingActions: {
-        position: 'absolute',
-        left: Spacing.lg,
-        right: Spacing.lg,
-        marginBottom: 4,
-        marginHorizontal: 1.5,
-        borderRadius: Spacing.borderRadius.lg,
+    bar: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: Spacing.md,
-        paddingHorizontal: Spacing.xs + 2,
-        borderWidth: 1,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-        elevation: 1.5,
+        borderTopWidth: Spacing.border.hairline,
+        paddingHorizontal: Spacing.md + 2,
+        paddingTop: Spacing.md,
     },
-    shareFloatingButton: {
+    /** Share takes the room; the two glyphs take only what they need. */
+    share: {
         flex: 1,
-        paddingVertical: Spacing.md,
-        paddingHorizontal: Spacing.lg,
-        borderRadius: Spacing.borderRadius.md,
-        alignItems: 'center',
-    },
-    shareFloatingText: { marginLeft: 6 },
-    buttonContent: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
+        gap: 7,
+        paddingVertical: Spacing.md + 1,
     },
-    actionDivider: {
-        width: 1,
-        height: Spacing.lg + Spacing.xs,
-        marginHorizontal: Spacing.sm,
-    },
-    iconButton: {
-        paddingVertical: Spacing.md,
-        paddingHorizontal: Spacing.lg,
+    icon: {
+        paddingVertical: Spacing.md + 1,
+        paddingHorizontal: Spacing.xl - 2,
         alignItems: 'center',
     },
-    iconButtonText: {
-        fontSize: Typography.size.sm + 1,
-        fontWeight: Typography.weight.regular,
-        marginLeft: 6,
-    },
+    divider: { width: Spacing.border.hairline, height: 22 },
 });

@@ -29,7 +29,7 @@ import { AnimatedModal } from './AnimatedModal';
 import { ThemeDetail } from './ThemeDetail';
 import { JournalEntryDetail } from './JournalEntryDetail';
 import { getEntryById, JournalEntry } from '../data/database';
-import { Screen, Text as UIText, ThemedButton, textStyle } from './ui';
+import { Text as UIText, ThemedButton, textStyle } from './ui';
 
 const FIELD_LABELS: Record<string, string> = {
     ...Object.fromEntries(EMBEDDABLE_FIELDS.map(f => [f.column, f.label])),
@@ -677,20 +677,18 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
 
         <AnimatedModal visible={openEntry !== null} onRequestClose={() => setOpenEntry(null)}>
             {openEntry && (
-                <Screen edges={['top', 'bottom', 'left', 'right']}>
-                    <JournalEntryDetail
-                        entry={openEntry}
-                        onClose={() => setOpenEntry(null)}
-                        onEdit={entry => {
-                            setOpenEntry(null);
-                            setOpenIndex(null);
-                            router.push({
-                                pathname: '/addEntry',
-                                params: { entryId: entry.id!.toString() },
-                            });
-                        }}
-                    />
-                </Screen>
+                <JournalEntryDetail
+                    entry={openEntry}
+                    onClose={() => setOpenEntry(null)}
+                    onEdit={entry => {
+                        setOpenEntry(null);
+                        setOpenIndex(null);
+                        router.push({
+                            pathname: '/addEntry',
+                            params: { entryId: entry.id!.toString() },
+                        });
+                    }}
+                />
             )}
         </AnimatedModal>
         </>

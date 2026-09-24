@@ -20,7 +20,6 @@ import { JournalEntryDetail } from '@/src/components/JournalEntryDetail';
 import { WavyAddIcon } from '@/src/components/WavyAddIcon';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { LoadingView } from '@/src/components/LoadingView';
-import { CardFAB } from '@/src/components/CardFAB';
 import { Share } from 'react-native';
 import { useAlert } from '@/src/context/AlertContext';
 import { deleteJournalEntry } from '@/src/data/database';
@@ -371,11 +370,6 @@ export default function Index() {
         }, [loadHomeData, checkDraft, isLoading])
     );
 
-    // Bottom position for FAB in the modal:
-    // Insets bottom + extra spacing
-    const insets = useSafeAreaInsets();
-    const fabBottomPosition = insets.bottom + Spacing.xl;
-
     const handleShare = async (entry: JournalEntry) => {
         setIsSharing(true);
         try {
@@ -469,39 +463,23 @@ export default function Index() {
             visible={isDetailModalVisible}
             onRequestClose={() => setIsDetailModalVisible(false)}
         >
-            <Screen edges={['top', 'bottom', 'left', 'right']}>
-                {selectedEntry && (
-                    <>
-                        <JournalEntryDetail
-                            entry={selectedEntry}
-                            onEdit={(entry) => {
-                                setIsDetailModalVisible(false);
-                                router.push({
-                                    pathname: '/addEntry',
-                                    params: { entryId: entry.id!.toString() }
-                                });
-                            }}
-                            onDelete={() => handleDelete(selectedEntry)}
-                            onClose={() => setIsDetailModalVisible(false)}
-                        />
-                        <CardFAB
-                            onShare={() => handleShare(selectedEntry)}
-                            onEdit={() => {
-                                setIsDetailModalVisible(false);
-                                router.push({
-                                    pathname: '/addEntry',
-                                    params: { entryId: selectedEntry.id!.toString() }
-                                });
-                            }}
-                            onDelete={() => handleDelete(selectedEntry)}
-                            isSharing={isSharing}
-                            isDeleting={isDeleting}
-                            bottom={fabBottomPosition}
-                            rounded={true}
-                        />
-                    </>
-                )}
-            </Screen>
+            {selectedEntry && (
+                <JournalEntryDetail
+                    entry={selectedEntry}
+                    onEdit={(entry) => {
+                        setIsDetailModalVisible(false);
+                        router.push({
+                            pathname: '/addEntry',
+                            params: { entryId: entry.id!.toString() }
+                        });
+                    }}
+                    onDelete={() => handleDelete(selectedEntry)}
+                    onClose={() => setIsDetailModalVisible(false)}
+                    onShare={() => handleShare(selectedEntry)}
+                    isSharing={isSharing}
+                    isDeleting={isDeleting}
+                />
+            )}
         </AnimatedModal>
         </>
     );
