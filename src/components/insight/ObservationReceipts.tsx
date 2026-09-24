@@ -103,11 +103,18 @@ export function ObservationReceipts({
     const [entries, setEntries] = useState<JournalEntry[]>([]);
 
     /*
-     * Whether this finding is an inference or a quotation. Derived from the
-     * detector rather than passed in, so a new detector cannot ship asking the
-     * reader to refute their own handwriting.
+     * Whether this finding is an inference, or something that cannot be wrong.
+     * Derived from the detector rather than passed in, so a new detector cannot
+     * ship asking the reader to refute their own handwriting.
+     *
+     * Commitment quotes them back. Absence states two counts of their own
+     * entries. Neither is a claim about what anything MEANS, so there is
+     * nothing for "that's not it" to deny — offering the button would invite a
+     * reader to argue with arithmetic and teach them the verdict is decorative.
+     * Convergence is the opposite: it asserts that these entries point at that
+     * passage, which is exactly the kind of thing that can be wrong.
      */
-    const canBeWrong = observation.detector !== 'commitment';
+    const canBeWrong = observation.detector !== 'commitment' && observation.detector !== 'absence';
 
     useEffect(() => {
         let alive = true;

@@ -23,6 +23,7 @@ import { formatVerseId } from '../bible/ref';
 import { detectConvergence, findConvergence, loadSeedEntries } from './detectors/convergence';
 import { renderObservation } from './render';
 import { detectCommitments, loadCommitments, rankCommitments } from './detectors/commitment';
+import { detectAbsence, diagnoseAbsence, loadAbsenceEntries } from './detectors/absence';
 import {
     DETECTORS,
     getObservation,
@@ -32,6 +33,7 @@ import {
     recordFeedback,
     recordObservation,
     surfaceOf,
+    DetectorName,
 } from './observation';
 
 /**
@@ -49,6 +51,24 @@ import {
  * card back, then turn it off again.
  */
 const REARM = false;
+
+/**
+ * Force ONE named detector's finding back, regardless of the rotation above.
+ *
+ * `REARM` picks the least recently touched row per surface, which is right for
+ * cycling through everything and useless when you want to look at one specific
+ * detector — on the save screen it is as likely to hand back a commitment as
+ * the thing you just built.
+ *
+ * It exists because a finding is marked shown the instant `useObservation`
+ * SELECTS it, not when anyone looks at it. Reaching the summary step of the
+ * entry wizard is enough to spend one, so a detector resting thirty days can
+ * be burned by a screen nobody read. Until that is settled, testing needs a
+ * way to put a specific card back.
+ *
+ * Set to null once you have seen what you came to see.
+ */
+const REARM_DETECTOR: DetectorName | null = 'absence';
 
 export async function runPhase0SmokeTest(): Promise<string> {
     const out: string[] = [];
@@ -239,6 +259,50 @@ export async function runPhase0SmokeTest(): Promise<string> {
         ok('commitments recorded', `${commitmentIds.length}`);
 
         /*
+         * Absence reports its counts even when it declines to fire. A detector
+         * that is silent because the journal is balanced and one that is silent
+         * because it is reading the wrong column look identical from outside,
+         * and this is the surface where that difference would otherwise hide.
+         */
+        const answered = await loadAbsenceEntries();
+        const tally = { jehovah: 0, message: 0, apply: 0, others: 0 };
+        for (const entry of answered) for (const key of entry.answered) tally[key] += 1;
+        ok(
+            'questions answered',
+            `Jehovah ${tally.jehovah} · message ${tally.message} · apply ${tally.apply} · others ${tally.others} (of ${answered.length})`,
+        );
+        const gap = diagnoseAbsence(answered);
+        ok(
+            'widest gap',
+            gap.blocked
+                ? `none — ${gap.blocked}`
+                : `${gap.poorKey} ${gap.poorCount} vs ${gap.richKey} ${gap.richCount} (ratio ${gap.ratio?.toFixed(2)})`,
+        );
+        const absenceIds = await detectAbsence();
+        ok('absences recorded', `${absenceIds.length}`);
+
+        /*
+         * What is actually in the table, per detector. "afterSave → nothing"
+         * has two completely different causes — no row was ever written, or a
+         * row exists but the pending query will not return it — and they are
+         * indistinguishable from the surface probe alone.
+         */
+        const stored = await withDatabase(db =>
+            db.getAllAsync<any>(
+                `SELECT detector, COUNT(*) AS n,
+                        SUM(CASE WHEN shown_at IS NULL THEN 1 ELSE 0 END) AS unshown,
+                        SUM(CASE WHEN feedback = 0 THEN 1 ELSE 0 END) AS rejected,
+                        SUM(CASE WHEN dismissed_at IS NOT NULL THEN 1 ELSE 0 END) AS dismissed
+                   FROM observations GROUP BY detector`,
+            ),
+        );
+        say('\n  Rows in the table:');
+        if (stored.length === 0) say('    (none)');
+        for (const row of stored) {
+            say(`    ${String(row.detector).padEnd(12)} ${row.n} total · ${row.unshown} never shown · ${row.rejected} rejected · ${row.dismissed} dismissed`);
+        }
+
+        /*
          * Re-arm ONE finding per surface, not all of them.
          *
          * Clearing everything looked right and quietly broke the thing it was
@@ -280,6 +344,22 @@ export async function runPhase0SmokeTest(): Promise<string> {
             ok('re-armed', rearmed.join(', ') || 'nothing to re-arm');
         } else {
             ok('not re-arming', 'set REARM = true in smokeTest.ts to force a card back');
+        }
+
+        if (REARM_DETECTOR) {
+            const forced = await withDatabase(db =>
+                db.runAsync(
+                    `UPDATE observations
+                        SET shown_at = NULL, opened_at = NULL, dismissed_at = NULL,
+                            feedback = NULL, followed_at = NULL
+                      WHERE detector = ?`,
+                    [REARM_DETECTOR],
+                ),
+            );
+            ok(
+                `forced ${REARM_DETECTOR} back`,
+                `${forced.changes} row(s) — set REARM_DETECTOR = null when done`,
+            );
         }
 
         // Safe to clear regardless: these only decide WHEN Home may speak,

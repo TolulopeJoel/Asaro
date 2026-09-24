@@ -110,24 +110,57 @@ export function countChannels(entries: AbsenceEntry[]): Record<Channel['key'], n
 }
 
 /**
- * The single widest gap, or null if the journal has nothing to say yet.
+ * Why the detector did or did not fire, in full.
  *
- * One candidate rather than every pair below the threshold. Three cards each
- * naming a question the reader skips is a performance review, and the point of
- * the finding is that it is a surprise, which only the widest gap is.
+ * Separated from `rankAbsence` so the two can never disagree: the ranker reads
+ * this and returns a candidate only when nothing blocked it. A detector that
+ * declines is indistinguishable from one that is broken — reading the wrong
+ * column, say — and that is not a thing to discover on a device, so the reason
+ * is a first-class result rather than a comment.
  */
-export function rankAbsence(
+export interface AbsenceDiagnosis {
+    total: number;
+    counts: Record<Channel['key'], number>;
+    richKey: Channel['key'] | null;
+    richCount: number;
+    poorKey: Channel['key'] | null;
+    poorCount: number;
+    ratio: number | null;
+    /** Null when a candidate stands; otherwise the gate that stopped it. */
+    blocked: string | null;
+}
+
+export function diagnoseAbsence(
     entries: AbsenceEntry[],
     config: AbsenceConfig = DEFAULT_ABSENCE_CONFIG,
-): AbsenceCandidate | null {
-    if (entries.length < config.minEntries) return null;
-
+): AbsenceDiagnosis {
     const counts = countChannels(entries);
-    const keys = CHANNELS.map(channel => channel.key);
+    const base: AbsenceDiagnosis = {
+        total: entries.length,
+        counts,
+        richKey: null,
+        richCount: 0,
+        poorKey: null,
+        poorCount: 0,
+        ratio: null,
+        blocked: null,
+    };
 
+    if (entries.length < config.minEntries) {
+        return { ...base, blocked: `too few entries: ${entries.length} < ${config.minEntries}` };
+    }
+
+    const keys = CHANNELS.map(channel => channel.key);
     const richKey = keys.reduce((best, key) => (counts[key] > counts[best] ? key : best), keys[0]);
     const richCount = counts[richKey];
-    if (richCount < config.minRichest) return null;
+    if (richCount < config.minRichest) {
+        return {
+            ...base,
+            richKey,
+            richCount,
+            blocked: `busiest question too quiet: ${richKey} ${richCount} < ${config.minRichest}`,
+        };
+    }
 
     /*
      * Never-answered questions are excluded from the contest, not treated as
@@ -140,16 +173,53 @@ export function rankAbsence(
      * Dropping a channel has to mean dropping the channel.
      */
     const eligible = keys.filter(key => counts[key] >= config.minPoorest);
-    if (eligible.length === 0) return null;
+    if (eligible.length === 0) {
+        return { ...base, richKey, richCount, blocked: 'no question answered even once' };
+    }
 
     const poorKey = eligible.reduce(
         (worst, key) => (counts[key] < counts[worst] ? key : worst),
         eligible[0],
     );
-    if (richKey === poorKey) return null;
-
     const poorCount = counts[poorKey];
-    if (poorCount / richCount >= config.maxRatio) return null;
+    if (richKey === poorKey) {
+        return {
+            ...base,
+            richKey,
+            richCount,
+            poorKey,
+            poorCount,
+            blocked: 'only one question has any answers',
+        };
+    }
+
+    const ratio = poorCount / richCount;
+    const full = { ...base, richKey, richCount, poorKey, poorCount, ratio };
+    if (ratio >= config.maxRatio) {
+        return {
+            ...full,
+            blocked: `gap too narrow: ${poorCount}/${richCount} = ${ratio.toFixed(2)} >= ${config.maxRatio.toFixed(2)}`,
+        };
+    }
+
+    return full;
+}
+
+/**
+ * The single widest gap, or null if the journal has nothing to say yet.
+ *
+ * One candidate rather than every pair below the threshold. Three cards each
+ * naming a question the reader skips is a performance review, and the point of
+ * the finding is that it is a surprise, which only the widest gap is.
+ */
+export function rankAbsence(
+    entries: AbsenceEntry[],
+    config: AbsenceConfig = DEFAULT_ABSENCE_CONFIG,
+): AbsenceCandidate | null {
+    const d = diagnoseAbsence(entries, config);
+    if (d.blocked !== null || d.richKey === null || d.poorKey === null) return null;
+
+    const poorKey = d.poorKey;
 
     /*
      * Receipts are the times they DID answer it — the rare ones. The claim is
@@ -163,13 +233,13 @@ export function rankAbsence(
         .map(entry => entry.entryId);
 
     return {
-        richKey,
-        richQuestion: QUESTION_OF[richKey],
-        richCount,
+        richKey: d.richKey,
+        richQuestion: QUESTION_OF[d.richKey],
+        richCount: d.richCount,
         poorKey,
         poorQuestion: QUESTION_OF[poorKey],
-        poorCount,
-        totalEntries: entries.length,
+        poorCount: d.poorCount,
+        totalEntries: d.total,
         entryIds,
     };
 }

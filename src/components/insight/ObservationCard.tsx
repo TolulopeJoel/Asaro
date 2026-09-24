@@ -70,10 +70,17 @@ export function ObservationCard({ observation, onOpen, onDismiss }: Props) {
                 </ScalePressable>
             </View>
 
-            {/* The evidence, oldest first — the count made visible rather than stated. */}
-            <Text variant="caption" tone="tertiary" style={styles.evidence}>
-                {observation.evidence.join('  ·  ')}
-            </Text>
+            {/*
+              * The evidence, oldest first — the count made visible rather than
+              * stated. Omitted entirely when a detector has no passages to
+              * list: absence rests on counts rather than places, and an empty
+              * strip would leave a gap the reader reads as a loading failure.
+              */}
+            {observation.evidence.length > 0 && (
+                <Text variant="caption" tone="tertiary" style={styles.evidence}>
+                    {observation.evidence.join('  ·  ')}
+                </Text>
+            )}
 
             <Text variant="body" tone="secondary" style={styles.claim}>
                 {observation.claim}

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { ChevronLeft, X } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
@@ -9,7 +9,6 @@ import { ReflectionAnswers, ReflectionForm } from '../ReflectionForm';
 import { ScalePressable } from '../ScalePressable';
 import { BookPicker, countMatches } from '../BookPicker';
 import { ChapterPicker } from '../ChapterPicker';
-import { Confetti, ConfettiRef } from '../Confetti';
 import { Hero, Text, ThemedButton, textStyle } from '../ui';
 import { formatRange, spell } from '../../utils/reference';
 
@@ -371,21 +370,10 @@ export const SummaryStep = React.memo(({
     observation,
 }: SummaryStepProps) => {
     const { colors, isLockedIn } = useTheme();
-    const confettiRef = useRef<ConfettiRef>(null);
-
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            confettiRef.current?.start();
-        }, 300);
-        return () => clearTimeout(timer);
-    }, []);
-
     const meta = `${spell(answerCount)} ${answerCount === 1 ? 'answer' : 'answers'} · ${formattedDate}`;
 
     return (
         <View style={styles.stepContainer}>
-            <Confetti ref={confettiRef} />
-
             {isLockedIn ? (
                 <View
                     style={[

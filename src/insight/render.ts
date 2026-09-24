@@ -112,6 +112,47 @@ function renderConvergence(claim: Record<string, unknown>): RenderedObservation 
     };
 }
 
+function renderAbsence(claim: Record<string, unknown>): RenderedObservation {
+    const poorQuestion = String(claim.poorQuestion ?? '');
+    const poorCount = Number(claim.poorCount) || 0;
+    const richCount = Number(claim.richCount) || 0;
+    const total = Number(claim.totalEntries) || 0;
+    const times = poorCount === 1 ? 'once' : `${poorCount} times`;
+
+    /*
+     * Two counts and a total. Nothing else is provable.
+     *
+     * What the detector measured is how often a question was *answered in
+     * writing* — not how much the reader cares about it, and certainly not how
+     * they live. Somebody may help others constantly and never journal about
+     * it. So the sentence states the record and stops, which is what the plan
+     * asked for; the temptation to end it with "have you?" belongs to a later
+     * phase where a question is a verified choice rather than a tone.
+     *
+     * The neglected question is the subject rather than the lead, so the card
+     * lands on the thing itself — an invitation to answer it next time, in the
+     * slot where convergence puts a passage worth reading.
+     */
+    return {
+        /*
+         * His record-keeping, finally useful. "I'm keeping absolute record.
+         * Every single day you miss, I'm writing it down" is a threat in a
+         * notification and a straight description of this detector here.
+         */
+        kind: 'I have been counting',
+        evidence: [],
+        claim: `Across ${total} entries you have answered this one ${times}. The question you answer most often, ${richCount}.`,
+        subject: poorQuestion,
+        /*
+         * Names the receipts for what they are: the times they DID answer it.
+         * A deficit framing with a "show me why" on it would be the app asking
+         * the reader to sit through proof of a shortfall; this offers them the
+         * exceptions instead, which is the same evidence read the other way up.
+         */
+        openLabel: poorCount === 1 ? 'See the one time' : `See the ${poorCount} times`,
+    };
+}
+
 /** "Five months ago", "Eleven weeks ago" — how long since they wrote it. */
 function agoPhrase(ageDays: number): string {
     const months = ageDays / 30.4;
@@ -199,6 +240,8 @@ export function renderObservation(observation: StoredObservation): RenderedObser
             return renderConvergence(observation.claim);
         case 'commitment':
             return renderCommitment(observation.claim);
+        case 'absence':
+            return renderAbsence(observation.claim);
         default:
             return null;
     }

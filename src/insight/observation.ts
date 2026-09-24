@@ -62,8 +62,17 @@ export type DetectorName = (typeof DETECTORS)[number];
  * already own reads as clutter rather than as a record.
  *
  * So the rule is: archive discoveries, not echoes of what is already yours.
+ *
+ * Absence fails the rule for a third reason, and a sharper one: its claim is
+ * not permanent. "You have answered this 9 times" stops being true the next
+ * time someone answers it, which is why that detector retracts on every run.
+ * A permanent record of a retractable claim is a contradiction — the row would
+ * sit in the library insisting on a shortfall the reader had already closed.
+ * It would also read badly even while true. An archive of discoveries is
+ * something to browse; an archive of questions you neglect is a standing
+ * performance review, which is not what that tab is for.
  */
-const EPHEMERAL: DetectorName[] = ['commitment'];
+const EPHEMERAL: DetectorName[] = ['commitment', 'absence'];
 
 /**
  * Where a finding belongs, which is a question about timing as much as place.
@@ -81,10 +90,17 @@ const EPHEMERAL: DetectorName[] = ['commitment'];
  *
  * On Home it would compete with the reading, the day's practices and the plan,
  * and lose to all three. On the save screen it is the only thing there.
+ *
+ * Absence belongs there for a reason of its own. It is a fact about how the
+ * reader answers the wizard's four questions, and the save screen is the one
+ * moment they have just finished answering them — so the card arrives while
+ * the thing it describes is still in their hands, and what it suggests is
+ * something they can simply do differently next time. The same sentence on
+ * Home is an audit delivered to someone who came to read.
  */
 export type Surface = 'home' | 'afterSave';
 
-const AFTER_SAVE: DetectorName[] = ['commitment'];
+const AFTER_SAVE: DetectorName[] = ['commitment', 'absence'];
 
 export function surfaceOf(detector: DetectorName): Surface {
     return AFTER_SAVE.includes(detector) ? 'afterSave' : 'home';
@@ -107,12 +123,39 @@ export function surfaceOf(detector: DetectorName): Surface {
  * spacing tunes itself to how much someone has written down, and the same one
  * never lands twice running.
  *
- * `MIN_REST_DAYS` is only a floor under that — it stops a reader who writes
- * four entries in an afternoon burning through the whole rotation before
- * lunch. The rotation does the work; this stops it sprinting.
+ * `REST_DAYS` is only a floor under that — it stops a reader who writes four
+ * entries in an afternoon burning through the whole rotation before lunch. For
+ * commitments the rotation does the work and the rest merely stops it
+ * sprinting; for absence there is no rotation, so the rest IS the pacing.
  */
-const REPEATS: DetectorName[] = ['commitment'];
-const MIN_REST_DAYS = 7;
+const REPEATS: DetectorName[] = ['commitment', 'absence'];
+
+/**
+ * How long each recurring detector rests, in days.
+ *
+ * Per detector rather than one constant, because rotation does not do the same
+ * work for both. Commitments rotate among themselves — six of them means each
+ * comes round every sixth card — so seven days is only a floor under a
+ * mechanism that is already spacing things out.
+ *
+ * Absence has no rotation to hide in. It produces exactly one candidate at a
+ * time, the single widest gap, so the rest interval is the ONLY thing standing
+ * between a monthly observation and the same sentence about the same question
+ * after every entry someone writes. That is the difference between a nudge and
+ * nagging, and this app has written down that it does not nag.
+ *
+ * Self-correcting in the other direction too: if the reader takes the hint,
+ * the detector retracts the finding and it never comes back at all.
+ */
+const REST_DAYS: Partial<Record<DetectorName, number>> = {
+    commitment: 7,
+    absence: 30,
+};
+const DEFAULT_REST_DAYS = 7;
+
+export function restDaysOf(detector: DetectorName): number {
+    return REST_DAYS[detector] ?? DEFAULT_REST_DAYS;
+}
 
 export function repeats(detector: DetectorName): boolean {
     return REPEATS.includes(detector);
@@ -325,13 +368,20 @@ export async function getPendingObservations(
             );
             params.push(...once);
         }
-        if (recurring.length > 0) {
+        /*
+         * One clause per recurring detector, because each rests for its own
+         * span. Grouping them into a single IN(...) was correct only while
+         * every recurring detector shared one interval, and it would have
+         * quietly given absence the commitment cadence.
+         */
+        for (const name of recurring) {
+            const rest = `-${restDaysOf(name)} days`;
             clauses.push(
-                `(detector IN (${recurring.map(() => '?').join(',')})
+                `(detector = ?
                   AND (shown_at IS NULL OR shown_at <= datetime('now', ?))
                   AND (dismissed_at IS NULL OR dismissed_at <= datetime('now', ?)))`,
             );
-            params.push(...recurring, `-${MIN_REST_DAYS} days`, `-${MIN_REST_DAYS} days`);
+            params.push(name, rest, rest);
         }
         if (clauses.length === 0) return [];
 
