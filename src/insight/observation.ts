@@ -26,7 +26,7 @@ import { VerseId } from '../bible/ref';
 /** Which detector found it. Also the key the pacing rules group by. */
 export type DetectorName =
     | 'convergence'
-    | 'unfinished'
+    | 'commitment'
     | 'absence'
     | 'divineName'
     | 'recurrence'

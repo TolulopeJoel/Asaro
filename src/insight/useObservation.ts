@@ -25,6 +25,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { detectConvergence } from './detectors/convergence';
+import { detectCommitments } from './detectors/commitment';
 import {
     StoredObservation,
     getPendingObservations,
@@ -86,7 +87,14 @@ export function useObservation(enabled: boolean): ObservationSlot {
         (async () => {
             try {
                 if ((await millisSince(LAST_RUN_KEY)) > DETECT_EVERY_MS) {
+                    /*
+                     * Sequential, not parallel. Both write to the same table
+                     * through one SQLite connection, and the whole pass is a
+                     * few hundred milliseconds on a journal of any realistic
+                     * size — there is nothing to win by interleaving them.
+                     */
                     await detectConvergence();
+                    await detectCommitments();
                     await stamp(LAST_RUN_KEY);
                 }
 

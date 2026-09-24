@@ -117,12 +117,18 @@ export function ObservationReceipts({
         };
     }, [observation]);
 
+    /*
+     * Only some findings point at scripture. A resolution the reader wrote has
+     * nothing to open, so the button is absent rather than disabled — an
+     * action that does nothing is worse than an action that isn't offered.
+     */
+    const passageId = rendered.subjectVerseId;
     const readPassage = () => {
-        const id = rendered.subjectVerseId;
+        if (passageId === undefined) return;
         openBibleReference(
-            bookNameFromNumber(bookNumberOf(id)),
-            chapterOf(id),
-            verseOf(id) || undefined,
+            bookNameFromNumber(bookNumberOf(passageId)),
+            chapterOf(passageId),
+            verseOf(passageId) || undefined,
         );
     };
 
@@ -144,21 +150,32 @@ export function ObservationReceipts({
                     {rendered.kind.toUpperCase()}
                 </Text>
 
-                <Text variant="display" style={styles.subject}>
+                {/*
+                  * `display` for a verse reference, `title` for a resolution:
+                  * "1 Chronicles 16:26" is three words and carries the weight,
+                  * while "I want to write at least 3 things I'm grateful for
+                  * each day" at display size is a wall.
+                  */}
+                <Text
+                    variant={rendered.subjectVerseId === undefined ? 'title' : 'display'}
+                    style={styles.subject}
+                >
                     {rendered.subject}
                 </Text>
                 <Text variant="body" tone="secondary">
                     {rendered.claim}
                 </Text>
 
-                <ThemedButton
-                    label="Read it"
-                    variant="accent"
-                    block
-                    onPress={readPassage}
-                    style={styles.read}
-                    accessibilityHint="Opens the passage on jw.org"
-                />
+                {passageId !== undefined && (
+                    <ThemedButton
+                        label="Read it"
+                        variant="accent"
+                        block
+                        onPress={readPassage}
+                        style={styles.read}
+                        accessibilityHint="Opens the passage on jw.org"
+                    />
+                )}
 
                 <Text variant="label" tone="tertiary" style={styles.sectionLabel}>
                     {`What this rests on · ${entries.length} ${entries.length === 1 ? 'entry' : 'entries'}`}

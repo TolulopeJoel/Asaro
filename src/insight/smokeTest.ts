@@ -21,6 +21,7 @@ import { withDatabase } from '../data/db';
 import { loadGraph, unloadGraph } from '../bible/graph';
 import { formatVerseId } from '../bible/ref';
 import { detectConvergence, findConvergence, loadSeedEntries } from './detectors/convergence';
+import { detectCommitments, loadCommitments, rankCommitments } from './detectors/commitment';
 import {
     getObservation,
     getPendingObservations,
@@ -197,7 +198,16 @@ export async function runPhase0SmokeTest(): Promise<string> {
     say('\nRecording, and clearing the pacing throttles');
     try {
         const ids = await detectConvergence();
-        ok('observations recorded', `${ids.length}`);
+        ok('convergences recorded', `${ids.length}`);
+
+        const open = await loadCommitments();
+        const worth = rankCommitments(open);
+        ok('standing commitments', `${open.length} total, ${worth.length} worth handing back`);
+        for (const r of worth) {
+            say(`      ${Math.round(r.ageDays)}d  ${r.action.slice(0, 58)}`);
+        }
+        const commitmentIds = await detectCommitments();
+        ok('commitments recorded', `${commitmentIds.length}`);
 
         /*
          * Home shows at most one noticing every three days and only re-runs

@@ -33,9 +33,15 @@ export interface RenderedObservation {
     evidence: string[];
     /** The claim, in one or two sentences. */
     claim: string;
-    /** The passage being offered, and its id for the jw.org link. */
+    /** What the card lands on — a passage, or the reader's own resolution. */
     subject: string;
-    subjectVerseId: VerseId;
+    /**
+     * Only when the subject is scripture.
+     *
+     * Absent for detectors whose subject is something the reader wrote, which
+     * is what stops the receipts offering a "Read it" button pointing nowhere.
+     */
+    subjectVerseId?: VerseId;
 }
 
 /**
@@ -79,6 +85,60 @@ function renderConvergence(claim: Record<string, unknown>): RenderedObservation 
     };
 }
 
+/** "Five months ago", "Eleven weeks ago" — how long since they wrote it. */
+function agoPhrase(ageDays: number): string {
+    const months = ageDays / 30.4;
+    if (months < 2) {
+        const weeks = Math.max(1, Math.round(ageDays / 7));
+        return `${weeks === 1 ? 'A week' : `${weeks} weeks`} ago`;
+    }
+    if (months < 12) return `${Math.round(months)} months ago`;
+    const years = months / 12;
+    return years < 2 ? 'A year ago' : `${Math.round(years)} years ago`;
+}
+
+/**
+ * Trim a motivation to what a card can hold, on a word boundary.
+ *
+ * The whole thing is in the receipts. Cutting mid-word would make the reader's
+ * own sentence look careless, which is the opposite of the effect wanted when
+ * handing it back to them.
+ */
+function trimQuote(text: string, limit = 180): string {
+    const clean = text.replace(/\s+/g, ' ').trim();
+    if (clean.length <= limit) return clean;
+    const cut = clean.slice(0, limit);
+    return `${cut.slice(0, cut.lastIndexOf(' ')).replace(/[,;:.]$/, '')}…`;
+}
+
+function renderCommitment(claim: Record<string, unknown>): RenderedObservation {
+    const action = String(claim.action ?? '');
+    const motivation = String(claim.motivation ?? '');
+    const passage = String(claim.passage ?? '');
+    const ago = agoPhrase(Number(claim.ageDays) || 0);
+
+    /*
+     * Present tense, and no verdict.
+     *
+     * An action item here is not a task someone failed to tick — it is a
+     * standing commitment about character: "I will be kinder to my parents",
+     * "I want to give Jehovah my best". Nobody completes those, so framing one
+     * as overdue would be inventing a failure out of a checkbox the writer was
+     * never really using.
+     *
+     * Age earns its place for a different reason. The resolution is the part
+     * people remember; the reason behind it is the part that fades. So the
+     * quote is the payload, the time is why it is worth repeating now, and the
+     * commitment itself lands last — handed back, not chased up.
+     */
+    return {
+        kind: 'Something you are working on',
+        evidence: passage ? [passage] : [],
+        claim: `You wrote this down ${ago.toLowerCase()}, and gave a reason: \u201c${trimQuote(motivation)}\u201d`,
+        subject: action,
+    };
+}
+
 /**
  * Render an observation, or null if this build has no words for its detector.
  *
@@ -91,6 +151,8 @@ export function renderObservation(observation: StoredObservation): RenderedObser
     switch (observation.detector) {
         case 'convergence':
             return renderConvergence(observation.claim);
+        case 'commitment':
+            return renderCommitment(observation.claim);
         default:
             return null;
     }
