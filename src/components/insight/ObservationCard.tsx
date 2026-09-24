@@ -22,11 +22,20 @@
  * a reward rather than a label. Reading it top to bottom is a small argument
  * that ends somewhere the reader has not been.
  *
- * One tap target, like Flashback beside it: the card opens its receipts. The
- * heavy actions — read the passage, or say it is wrong — live in there, where
- * there is room and where the reader has seen the evidence before they judge
- * it. The only thing on the card itself is a quiet dismiss, because "not now"
- * and "not true" are different answers and the schema keeps them apart.
+ * At most one tap target, like Flashback beside it: the card opens its
+ * receipts. The heavy actions — read the passage, or say it is wrong — live in
+ * there, where there is room and where the reader has seen the evidence before
+ * they judge it. The only thing on the card itself is a quiet dismiss, because
+ * "not now" and "not true" are different answers and the schema keeps them
+ * apart.
+ *
+ * At most, because some findings have nothing worth opening. A convergence
+ * inferred something and its entries are the proof; absence reports counts of
+ * the reader's own writing and its "evidence" would tell them nothing they did
+ * not already have. Those cards are flat and unpressable, and carry a closing
+ * remark where the button would have been — a card that lifts under the thumb
+ * and then does nothing teaches the reader that these cards are unreliable,
+ * which is expensive for the ones that genuinely do open.
  */
 
 import React from 'react';
@@ -94,35 +103,49 @@ export function ObservationCard({ observation, onOpen, onDismiss }: Props) {
                 >
                     {observation.subject}
                 </Text>
-                <Text variant="label" tone="accent">
-                    {observation.openLabel}
-                </Text>
+                {observation.openLabel && (
+                    <Text variant="label" tone="accent">
+                        {observation.openLabel}
+                    </Text>
+                )}
             </View>
+
+            {/*
+              * Where the button would have been, on a card that has none.
+              * Given its own line rather than the subject row because it is a
+              * remark, not a label — it is a sentence, and squeezing it beside
+              * a two-line question would wrap it into nonsense.
+              */}
+            {!observation.openLabel && observation.aside && (
+                <Text variant="caption" tone="tertiary" style={styles.aside}>
+                    {observation.aside}
+                </Text>
+            )}
         </>
     );
 
-    if (isLockedIn) {
-        return (
-            <ScalePressable
-                onPress={onOpen}
-                accessibilityRole="button"
-                accessibilityHint="Opens the entries behind this"
-                style={[styles.colossal, { borderTopColor: colors.border }]}
-            >
-                {body}
-            </ScalePressable>
-        );
-    }
+    /*
+     * A card only behaves like a button when there is something behind it.
+     *
+     * Absence has no receipts worth opening, and a card that lifts under the
+     * thumb and then does nothing is worse than a flat one — it teaches the
+     * reader that this app's cards are unreliable, which is expensive for the
+     * ones that genuinely do open.
+     */
+    const canOpen = !!observation.openLabel;
+
+    const surface = isLockedIn
+        ? [styles.colossal, { borderTopColor: colors.border }]
+        : [styles.cloth, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }];
+
+    if (!canOpen) return <View style={surface}>{body}</View>;
 
     return (
         <ScalePressable
             onPress={onOpen}
             accessibilityRole="button"
             accessibilityHint="Opens the entries behind this"
-            style={[
-                styles.cloth,
-                { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder },
-            ]}
+            style={surface}
         >
             {body}
         </ScalePressable>
@@ -164,5 +187,9 @@ const styles = StyleSheet.create({
     },
     subject: {
         flexShrink: 1,
+    },
+    aside: {
+        marginTop: Spacing.sm,
+        fontStyle: 'italic',
     },
 });

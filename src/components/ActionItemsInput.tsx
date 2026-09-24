@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, ScrollView, StatusBar, StyleSheet, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, ScrollView, StatusBar, StyleSheet, TextInput, View } from 'react-native';
 import { Button } from './Button';
 import { ScalePressable } from './ScalePressable';
 import { XCircle, X, Plus, Maximize } from 'lucide-react-native';
@@ -12,6 +12,7 @@ import { useRefPicker } from '../context/RefPickerContext';
 import { Screen, Text } from './ui';
 import { KindChips } from './journal/KindChips';
 import { hasReason, isBlank } from '../data/actionValidation';
+import { KEYBOARD_BEHAVIOR } from '../utils/keyboard';
 
 export interface ActionItemPair {
     action: string;
@@ -459,7 +460,7 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                 <Screen edges={['top', 'bottom', 'left', 'right']} style={fullScreenStyles.container}>
                     <KeyboardAvoidingView
                         style={fullScreenStyles.keyboardView}
-                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        behavior={KEYBOARD_BEHAVIOR}
                     >
                         <View style={[fullScreenStyles.header, { borderBottomColor: colors.border }]}>
                             <View style={fullScreenStyles.headerLeft}>

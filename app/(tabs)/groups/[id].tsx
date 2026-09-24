@@ -1315,7 +1315,7 @@ export default function GroupDetailScreen() {
                                 <View style={[styles.milestoneHero, { borderColor: colors.accent, backgroundColor: colors.accent + '10' }]}>
                                     <View style={styles.milestoneHeroTop}>
                                         <Text style={styles.milestoneHeroBadge}>{pinnedMilestone.badgeEmoji}</Text>
-                                        <View style={styles.milestoneHeroConfetti}>
+                                        <View style={styles.milestoneHeroLabel}>
                                             <Text variant="title" tone="accent">
                                                 {pinnedMilestone.badgeLabel.toUpperCase()}
                                             </Text>
@@ -1708,7 +1708,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     milestoneHero: { borderRadius: Spacing.borderRadius.lg, padding: Spacing.xl, marginBottom: Spacing.xl, gap: Spacing.md, borderWidth: 1.5 },
     milestoneHeroTop: { flexDirection: 'row', alignItems: 'center', gap: Spacing.lg },
     milestoneHeroBadge: { fontSize: Typography.size.xxxl, lineHeight: Typography.lineHeight.xxxl },
-    milestoneHeroConfetti: { flex: 1 },
+    milestoneHeroLabel: { flex: 1 },
     milestoneHeroTime: { marginTop: 4, opacity: 0.6 },
     tabContainer: { marginBottom: Spacing.lg },
     tabBackground: { flexDirection: 'row', backgroundColor: 'transparent', position: 'relative', borderBottomWidth: 0.5, borderColor: colors.border },

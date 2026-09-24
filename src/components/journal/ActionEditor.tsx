@@ -19,7 +19,7 @@
  */
 
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { Archive, ArchiveRestore, X } from 'lucide-react-native';
 
 import { useTheme } from '../../theme/ThemeContext';
@@ -30,6 +30,7 @@ import { KindChips } from './KindChips';
 import { ActionKind, actionKindOf } from '../../data/actionKind';
 import { EnhancedActionItem } from '../../data/database';
 import { hasReason } from '../../data/actionValidation';
+import { KEYBOARD_BEHAVIOR } from '../../utils/keyboard';
 
 interface Props {
     item: EnhancedActionItem;
@@ -155,7 +156,7 @@ export function ActionEditor({ item, onClose, onSave, onArchive }: Props) {
 
             <KeyboardAvoidingView
                 style={styles.fill}
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                behavior={KEYBOARD_BEHAVIOR}
             >
                 <ScrollView
                     contentContainerStyle={[

@@ -27,6 +27,7 @@ import Animated, {
 import React from 'react';
 import { Text } from '@/src/components/ui';
 import { Hero, Screen } from '@/src/components/ui';
+import { KEYBOARD_BEHAVIOR } from '@/src/utils/keyboard';
 
 const GenderOption = ({
     selected,
@@ -170,7 +171,7 @@ export default function AuthScreen() {
                 </Text>
             </Hero>
             <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                behavior={KEYBOARD_BEHAVIOR}
                 style={{ flex: 1 }}
             >
                 <View style={styles.content}>

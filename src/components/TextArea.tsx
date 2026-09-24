@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
     KeyboardAvoidingView,
     Modal,
-    Platform,
     StatusBar,
     StyleSheet,
     Text,
@@ -19,6 +18,7 @@ import { ScalePressable } from './ScalePressable';
 import { Spacing } from '../theme/spacing';
 import { Screen, textStyle } from './ui';
 import Svg, { Defs, Line, Pattern, Rect } from 'react-native-svg';
+import { KEYBOARD_BEHAVIOR } from '../utils/keyboard';
 
 /**
  * Cloth's ruled paper — a hairline every 28px, matching the mockup's
@@ -201,7 +201,7 @@ const TextArea: React.FC<{
                     <Screen edges={['top', 'bottom', 'left', 'right']} style={fullScreenStyles.container}>
                         <KeyboardAvoidingView
                             style={fullScreenStyles.keyboardView}
-                            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                            behavior={KEYBOARD_BEHAVIOR}
                         >
                             {/* ── Header ── */}
                             <View style={[fullScreenStyles.header, { borderBottomColor: colors.border }]}>

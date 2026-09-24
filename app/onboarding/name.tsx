@@ -4,8 +4,7 @@ import {
     TextInput,
     StyleSheet,
     KeyboardAvoidingView,
-    Platform,
-} from 'react-native';
+    } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -14,6 +13,7 @@ import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { Asaro, Hero, Screen, Text, ThemedButton, textStyle } from '@/src/components/ui';
+import { KEYBOARD_BEHAVIOR } from '@/src/utils/keyboard';
 
 
 export default function NameScreen() {
@@ -55,7 +55,7 @@ export default function NameScreen() {
                 </View>
 
                 <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    behavior={KEYBOARD_BEHAVIOR}
                     style={styles.keyboardView}
                 >
                     <View style={styles.colossalBody}>
@@ -100,7 +100,7 @@ export default function NameScreen() {
                 <Text variant="display" tone="onBand">Hello.</Text>
             </Hero>
             <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                behavior={KEYBOARD_BEHAVIOR}
                 style={styles.keyboardView}
             >
                 <View style={styles.content}>

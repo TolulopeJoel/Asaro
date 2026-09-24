@@ -5,7 +5,7 @@ import { STORAGE_KEYS } from '@/src/storage/storageKeys';
 import { getAuth } from '@react-native-firebase/auth';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, AppState, KeyboardAvoidingView, Platform, Share, StyleSheet, View } from 'react-native';
+import { Animated, AppState, KeyboardAvoidingView, Share, StyleSheet, View } from 'react-native';
 import { ReflectionAnswers } from '../src/components/ReflectionForm';
 import { LoadingView } from '../src/components/LoadingView';
 import { BibleBook, getBookByName } from '../src/data/bibleBooks';
@@ -22,6 +22,7 @@ import { useAuth } from '@/src/context/AuthContext';
 import { useAutoSave, useStepFade, Step, DraftData, ChapterRange, VerseRange } from '../src/hooks/useEntryHooks';
 import { BookStep, ChapterStep, ReflectionStep, SummaryStep } from '../src/components/entry/EntrySteps';
 import { Screen } from '@/src/components/ui';
+import { KEYBOARD_BEHAVIOR } from '../src/utils/keyboard';
 
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -476,7 +477,7 @@ export default function MeditationSessionScreen() {
     return (
         <Screen edges={bandOwnsTop ? [] : ['top']}>
             <Stack.Screen options={{ headerShown: false }} />
-            <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+            <KeyboardAvoidingView style={{ flex: 1 }} behavior={KEYBOARD_BEHAVIOR}>
                 <Animated.View style={[{ flex: 1 }, { opacity }]}>
                     {renderCurrentStep()}
                 </Animated.View>

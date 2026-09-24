@@ -43,20 +43,47 @@ import { recordObservation, retractObservations } from '../observation';
 export interface Channel {
     key: 'jehovah' | 'message' | 'apply' | 'others';
     question: string;
+    /**
+     * The question as a verb phrase, for naming it mid-sentence.
+     *
+     * The card contrasts two questions, and setting the busy one out in full
+     * would put ninety characters of someone else's wording inside a sentence
+     * about counting. These are what a person would call the question if they
+     * were describing it to a friend.
+     */
+    short: string;
 }
 
 export const CHANNELS: Channel[] = [
-    { key: 'jehovah', question: 'What does this tell me about Jehovah?' },
+    {
+        key: 'jehovah',
+        question: 'What does this tell me about Jehovah?',
+        short: 'talk about Jehovah',
+    },
     {
         key: 'message',
         question: "How does this section of the Scriptures contribute to the Bible's message?",
+        short: "say how it fits the Bible's message",
     },
-    { key: 'apply', question: 'How can I realistically apply this in my life?' },
-    { key: 'others', question: 'How can I use these verses to help others?' },
+    {
+        key: 'apply',
+        question: 'How can I realistically apply this in my life?',
+        short: 'say how you will apply it',
+    },
+    {
+        key: 'others',
+        question: 'How can I use these verses to help others?',
+        short: 'say how it could help others',
+    },
 ];
 
 const QUESTION_OF: Record<Channel['key'], string> = CHANNELS.reduce(
     (map, channel) => ({ ...map, [channel.key]: channel.question }),
+    {} as Record<Channel['key'], string>,
+);
+
+const SHORT_OF: Record<Channel['key'], string> = CHANNELS.reduce(
+    (map, channel) => ({ ...map, [channel.key]: channel.short }),
     {} as Record<Channel['key'], string>,
 );
 
@@ -317,6 +344,7 @@ export async function detectAbsence(options: AbsenceOptions = {}): Promise<numbe
         dedupeKey,
         claim: {
             richQuestion: candidate.richQuestion,
+            richShort: SHORT_OF[candidate.richKey],
             richCount: candidate.richCount,
             poorQuestion: candidate.poorQuestion,
             poorCount: candidate.poorCount,

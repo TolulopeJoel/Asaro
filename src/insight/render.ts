@@ -37,15 +37,28 @@ export interface RenderedObservation {
     /** What the card lands on — a passage, or the reader's own resolution. */
     subject: string;
     /**
-     * What the card calls its own receipts.
+     * What the card calls its own receipts, or absent when it has none to show.
      *
      * "Show me why" asks a finding to justify itself, which only makes sense
      * where it inferred something. A card that quotes the reader back has
      * nothing to justify, so it names what is actually behind the tap instead.
      * Kept here with the rest of the words rather than in the card, which
      * should not have to know one detector from another.
+     *
+     * Undefined makes the card unpressable, which is the honest state for a
+     * finding whose evidence would tell the reader nothing they did not
+     * already have — see `renderAbsence`.
      */
-    openLabel: string;
+    openLabel?: string;
+    /**
+     * A closing remark, where a card with no receipts would have had a button.
+     *
+     * Only for findings that cannot be opened. It is the one line on such a
+     * card that is neither a measurement nor a subject, so it is where Àṣàrò
+     * gets to speak — and on a card the reader cannot tap, it is the whole
+     * reason the card is worth reading rather than just true.
+     */
+    aside?: string;
     /**
      * Only when the subject is scripture.
      *
@@ -114,24 +127,33 @@ function renderConvergence(claim: Record<string, unknown>): RenderedObservation 
 
 function renderAbsence(claim: Record<string, unknown>): RenderedObservation {
     const poorQuestion = String(claim.poorQuestion ?? '');
+    const richShort = String(claim.richShort ?? '');
     const poorCount = Number(claim.poorCount) || 0;
     const richCount = Number(claim.richCount) || 0;
     const total = Number(claim.totalEntries) || 0;
-    const times = poorCount === 1 ? 'once' : `${poorCount} times`;
+    const times = poorCount === 1 ? 'just once' : `just ${poorCount} times`;
 
     /*
-     * Two counts and a total. Nothing else is provable.
+     * Two counts, a total, and no inference at all.
      *
-     * What the detector measured is how often a question was *answered in
-     * writing* — not how much the reader cares about it, and certainly not how
-     * they live. Somebody may help others constantly and never journal about
-     * it. So the sentence states the record and stops, which is what the plan
-     * asked for; the temptation to end it with "have you?" belongs to a later
-     * phase where a question is a verified choice rather than a tone.
+     * "If it's to X, you will Y" is the construction Àṣàrò would actually
+     * reach for, and it happens to be the safest thing on the card: it is the
+     * two measured numbers set side by side, carrying attitude purely through
+     * word order. Nothing is added to what was counted.
      *
-     * The neglected question is the subject rather than the lead, so the card
-     * lands on the thing itself — an invitation to answer it next time, in the
-     * slot where convergence puts a passage worth reading.
+     * The second number keeps its unit. An earlier draft ended "— 38", where
+     * the dash stood in for the verb and left the figure to fend for itself;
+     * a reader who has not already worked out what is being counted has no
+     * way in. "38 times" inherits the frame the first sentence set up, and
+     * costs one word.
+     *
+     * What is deliberately NOT here is any claim about how the reader studies.
+     * A draft asked "are you sure you are reading your Bible well?", which is
+     * the one sentence this data cannot support — the detector knows which
+     * text fields get typed into, and nothing whatsoever about the quality of
+     * anyone's reading. Somebody can study deeply and never use that field.
+     * Asserting the link would be the horoscope failure this whole surface is
+     * built to avoid, and the rule at the top of this file forbids it outright.
      */
     return {
         /*
@@ -141,15 +163,26 @@ function renderAbsence(claim: Record<string, unknown>): RenderedObservation {
          */
         kind: 'I have been counting',
         evidence: [],
-        claim: `Across ${total} entries you have answered this one ${times}. The question you answer most often, ${richCount}.`,
+        claim: `Out of ${total} entries, you have answered this one ${times}. If it's to ${richShort}, ${richCount} times.`,
         subject: poorQuestion,
         /*
-         * Names the receipts for what they are: the times they DID answer it.
-         * A deficit framing with a "show me why" on it would be the app asking
-         * the reader to sit through proof of a shortfall; this offers them the
-         * exceptions instead, which is the same evidence read the other way up.
+         * No receipts, and so nothing to tap.
+         *
+         * Convergence opens because it INFERRED something — that these entries
+         * point at that passage — and the entries are what stop it being a
+         * horoscope. This card infers nothing. It reports two counts of the
+         * reader's own writing, which they could check by scrolling their own
+         * journal, so sending them through to nine old entries would be
+         * proving something nobody disputes and charging a tap for it.
+         *
+         * Which leaves the card to be worth reading on its own, and that is
+         * what the aside is for. The tease is aimed at the question rather
+         * than at the reader's spiritual life, which is both the safe target
+         * and the funnier one — and it keeps him to the line the notification
+         * copy holds, where he is allowed to be affronted on his own behalf
+         * and never on Jehovah's.
          */
-        openLabel: poorCount === 1 ? 'See the one time' : `See the ${poorCount} times`,
+        aside: 'Hmm. So this question has offended you?',
     };
 }
 

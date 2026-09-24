@@ -6,7 +6,6 @@ import {
     Keyboard,
     TouchableWithoutFeedback,
     KeyboardAvoidingView,
-    Platform,
     TouchableOpacity,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -15,6 +14,7 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { Hero, Screen, Text, ThemedButton, textStyle } from '@/src/components/ui';
+import { KEYBOARD_BEHAVIOR } from '@/src/utils/keyboard';
 
 export default function SleepTimeScreen() {
     const router = useRouter();
@@ -165,7 +165,7 @@ export default function SleepTimeScreen() {
                     </View>
 
                     <KeyboardAvoidingView
-                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        behavior={KEYBOARD_BEHAVIOR}
                         style={styles.keyboardView}
                     >
                         <View style={styles.colossalBody}>
@@ -245,7 +245,7 @@ export default function SleepTimeScreen() {
                     <Text variant="display" tone="onBand">When do you{'\n'}turn in?</Text>
                 </Hero>
                 <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    behavior={KEYBOARD_BEHAVIOR}
                     style={styles.keyboardView}
                 >
                     <View style={styles.clothBody}>

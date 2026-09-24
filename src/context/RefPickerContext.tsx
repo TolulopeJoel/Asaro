@@ -61,7 +61,18 @@ export const RefPickerProvider: React.FC<{ children: ReactNode }> = ({ children 
         <RefPickerContext.Provider value={{ showPicker, hidePicker, updateQuery, isVisible: visible }}>
             {children}
 
-            {/* Root-level Portal for Inline Bible Reference Picker */}
+            {/*
+              * Root-level portal for the inline reference picker.
+              *
+              * This one keeps `padding` on both platforms, and is the only
+              * KeyboardAvoidingView in the app that does — do not put it on
+              * KEYBOARD_BEHAVIOR. Every other one is getting a writing surface
+              * out of the keyboard's way; this one is riding on top of it. The
+              * strip has to sit against the top of the keyboard while the
+              * writer types, because picking a reference is book, then
+              * chapter, then verse — three taps with the keyboard up. Lose the
+              * lift and each one costs a dismiss and a re-focus.
+              */}
             <KeyboardAvoidingView
                 behavior="padding"
                 pointerEvents="box-none"
