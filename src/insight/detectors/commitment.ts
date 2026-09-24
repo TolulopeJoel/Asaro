@@ -35,7 +35,7 @@
 import { withDatabase } from '../../data/db';
 import { actionKindOf } from '../../data/actionKind';
 import { stripReferences } from '../../utils/reference';
-import { recordObservation } from '../observation';
+import { recordObservation, retractObservations } from '../observation';
 
 const DAY_MS = 86_400_000;
 
@@ -86,17 +86,31 @@ const DEFAULTS: Required<CommitmentOptions> = {
 };
 
 /** Rank what is worth handing back first. */
+/**
+ * Everything that still holds, before any of it is ranked.
+ *
+ * Separate from `rankCommitments` because retraction needs the whole set: a
+ * detector that records its best two would otherwise withdraw the third every
+ * run and find it again the next.
+ */
+export function qualifyingCommitments(
+    open: StandingCommitment[],
+    options: CommitmentOptions = {},
+): StandingCommitment[] {
+    const config = { ...DEFAULTS, ...options };
+    return open.filter(
+        item =>
+            item.ageDays >= config.minAgeDays &&
+            stripReferences(item.motivation).trim().length >= config.minMotivationChars,
+    );
+}
+
 export function rankCommitments(
     open: StandingCommitment[],
     options: CommitmentOptions = {},
 ): StandingCommitment[] {
     const config = { ...DEFAULTS, ...options };
-
-    const qualifying = open.filter(
-        item =>
-            item.ageDays >= config.minAgeDays &&
-            stripReferences(item.motivation).trim().length >= config.minMotivationChars,
-    );
+    const qualifying = qualifyingCommitments(open, options);
 
     /*
      * Length of the reason, with age as a gentle tilt rather than the driver.
@@ -173,6 +187,19 @@ export async function loadCommitments(now: number = Date.now()): Promise<Standin
  */
 export async function detectCommitments(options: CommitmentOptions = {}): Promise<number[]> {
     const open = await loadCommitments();
+
+    /*
+     * `loadCommitments` already excludes anything that has become a practice,
+     * gained a date, or been archived — so whatever it no longer returns is
+     * exactly what should no longer be queued. Without this a commitment
+     * promoted to a practice went on waiting as a commitment, because
+     * detectors only ever wrote and nothing ever withdrew.
+     */
+    await retractObservations(
+        'commitment',
+        qualifyingCommitments(open, options).map(item => `action:${item.actionItemId}`),
+    );
+
     const chosen = rankCommitments(open, options);
 
     const ids: number[] = [];

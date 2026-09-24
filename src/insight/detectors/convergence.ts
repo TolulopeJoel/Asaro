@@ -29,7 +29,7 @@ import {
     citationsIn,
     verseOf,
 } from '../../bible/ref';
-import { recordObservation } from '../observation';
+import { recordObservation, retractObservations } from '../observation';
 
 /** Reflection columns scanned for `[[...]]` citations. */
 const CITATION_FIELDS = ['reflection_1', 'reflection_2', 'reflection_3', 'reflection_4', 'notes'];
@@ -480,6 +480,25 @@ export async function loadSeedEntries(limit = 200): Promise<SeedEntry[]> {
  */
 export async function detectConvergence(options: ConvergenceOptions = {}): Promise<number[]> {
     const [entries, graph] = await Promise.all([loadSeedEntries(), loadGraph()]);
+
+    /*
+     * The half of the claim that decays.
+     *
+     * "You have never written about it" is true when recorded and can stop
+     * being true the moment the reader opens that passage — which is, after
+     * all, what the card asked them to do. A queued finding is not re-derived
+     * before it is shown, so without this the app would eventually tell
+     * someone they had never read something it had sent them to read.
+     *
+     * Everything still unvisited is kept, not just what this run ranked
+     * highest: the retraction is about truth, not about placing.
+     */
+    const stillUnwritten = findConvergence(entries, graph, {
+        ...options,
+        maxCandidates: Number.MAX_SAFE_INTEGER,
+    }).map(candidate => `hub:${candidate.hubVerseId}`);
+    await retractObservations('convergence', stillUnwritten);
+
     const candidates = findConvergence(entries, graph, options);
 
     const ids: number[] = [];
