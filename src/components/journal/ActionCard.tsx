@@ -17,12 +17,36 @@ import { ScalePressable } from '../ScalePressable';
 import { HyperlinkedText } from '../HyperlinkedText';
 import { Spacing } from '../../theme/spacing';
 import { Text, textStyle } from '../ui';
+import { ActionKind, actionKindOf, completes } from '../../data/actionKind';
+import { PracticeProgress } from '../../data/practiceRepository';
 
 interface ActionCardProps {
     item: EnhancedActionItem;
     onEntryPress: (entry: JournalEntry) => void;
     handleTogglePin: (item: EnhancedActionItem) => void;
     handleToggleAction: (item: EnhancedActionItem) => void;
+    /** Only for practices — how the rhythm has been kept. */
+    progress?: PracticeProgress;
+    /** Tapping the body opens the editor. The row's text was previously uneditable. */
+    onEdit?: (item: EnhancedActionItem) => void;
+}
+
+/** "12 days", "3 weeks" — how long a practice has been kept. */
+function streakLabel(streak: number, cadence: string | null | undefined): string | null {
+    if (streak < 2) return null;
+    const unit = cadence === 'weekly' ? 'week' : 'day';
+    return `${streak} ${unit}s`;
+}
+
+/** "Due 3 Oct", or "Overdue" once the day has passed. */
+function dueLabel(dueAt: string | null | undefined): string | null {
+    if (!dueAt) return null;
+    const due = new Date(dueAt);
+    if (Number.isNaN(due.getTime())) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const when = due.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    return due < today ? `Was due ${when}` : `Due ${when}`;
 }
 
 /** "Genesis 18", "Genesis 12–15" — the reading an action came out of. */
@@ -57,8 +81,25 @@ function ActionCheckbox({ done, onPress }: { done: boolean; onPress: () => void 
     );
 }
 
-export const ActionCard = React.memo(({ item, onEntryPress, handleTogglePin, handleToggleAction }: ActionCardProps) => {
+export const ActionCard = React.memo(({ item, onEntryPress, handleTogglePin, handleToggleAction, progress, onEdit }: ActionCardProps) => {
     const { colors, isLockedIn, style: themeStyle } = useTheme();
+
+    /*
+     * What this item is decides whether a checkbox appears at all.
+     *
+     * An application — "I will be kinder to my parents" — has no end, so
+     * offering a box to tick invites the reader to feel they failed at
+     * something the app never had standing to judge. A practice ticks for
+     * today and unticks tomorrow. Only an action, which has a deadline, ticks
+     * once and stays ticked.
+     */
+    const kind: ActionKind = actionKindOf(item);
+    const done = kind === 'practice' ? !!progress?.doneNow : !!item.is_completed;
+    const showsCheckbox = completes(kind);
+    const streak = kind === 'practice' ? streakLabel(progress?.streak ?? 0, item.cadence) : null;
+    const due = kind === 'action' ? dueLabel(item.due_at) : null;
+    /* Only an action stays struck through — a practice ticked today is not finished. */
+    const struckOut = kind === 'action' && done;
 
     const openEntry = async () => {
         try {
@@ -70,16 +111,25 @@ export const ActionCard = React.memo(({ item, onEntryPress, handleTogglePin, han
     };
 
     if (isLockedIn) {
-        const done = !!item.is_completed;
         return (
-            <View style={[styles.colossalRow, { borderBottomColor: colors.border }, done && styles.done]}>
-                <ActionCheckbox done={done} onPress={() => handleToggleAction(item)} />
-                <View style={styles.colossalMain}>
+            <View style={[styles.colossalRow, { borderBottomColor: colors.border }, struckOut && styles.done]}>
+                {showsCheckbox ? (
+                    <ActionCheckbox done={done} onPress={() => handleToggleAction(item)} />
+                ) : (
+                    <View style={styles.checkboxSpacer} />
+                )}
+                <ScalePressable
+                    style={styles.colossalMain}
+                    onPress={onEdit ? () => onEdit(item) : undefined}
+                    disabled={!onEdit}
+                    accessibilityRole={onEdit ? 'button' : undefined}
+                    accessibilityHint={onEdit ? 'Edit this' : undefined}
+                >
                     <HyperlinkedText
                         style={[
                             textStyle(themeStyle, 'subtitle'),
                             { color: colors.textPrimary },
-                            done && styles.struck,
+                            struckOut && styles.struck,
                         ]}
                         text={item.action}
                     />
@@ -97,10 +147,14 @@ export const ActionCard = React.memo(({ item, onEntryPress, handleTogglePin, han
                             />
                         </View>
                     ) : null}
-                    <ScalePressable onPress={openEntry} accessibilityRole="button" accessibilityLabel={`Open ${reference(item)}`}>
-                        <Text variant="meta" style={styles.colossalRef}>{reference(item)}</Text>
-                    </ScalePressable>
-                </View>
+                    <View style={styles.metaRow}>
+                        <ScalePressable onPress={openEntry} accessibilityRole="button" accessibilityLabel={`Open ${reference(item)}`}>
+                            <Text variant="meta" style={styles.colossalRef}>{reference(item)}</Text>
+                        </ScalePressable>
+                        {streak && <Text variant="meta" tone="accent">{streak}</Text>}
+                        {due && <Text variant="meta" tone="accent">{due}</Text>}
+                    </View>
+                </ScalePressable>
                 {/*
                   * The mockup draws no pin here — it expresses pinning with the
                   * "Pinned" section above. Keeping a control means keeping the
@@ -132,24 +186,33 @@ export const ActionCard = React.memo(({ item, onEntryPress, handleTogglePin, han
      * carries a 3px ochre rail down its left edge — the one place ochre appears
      * on this screen besides the "Pinned" label itself.
      */
-    const done = !!item.is_completed;
     return (
         <View
             style={[
                 styles.clothPanel,
                 { backgroundColor: colors.backgroundSubtle },
                 item.is_pinned && { borderLeftWidth: Spacing.border.marker, borderLeftColor: colors.accent },
-                done && styles.clothDone,
+                struckOut && styles.clothDone,
             ]}
         >
             <View style={styles.clothRow}>
-                <ActionCheckbox done={done} onPress={() => handleToggleAction(item)} />
-                <View style={styles.colossalMain}>
+                {showsCheckbox ? (
+                    <ActionCheckbox done={done} onPress={() => handleToggleAction(item)} />
+                ) : (
+                    <View style={styles.checkboxSpacer} />
+                )}
+                <ScalePressable
+                    style={styles.colossalMain}
+                    onPress={onEdit ? () => onEdit(item) : undefined}
+                    disabled={!onEdit}
+                    accessibilityRole={onEdit ? 'button' : undefined}
+                    accessibilityHint={onEdit ? 'Edit this' : undefined}
+                >
                     <HyperlinkedText
                         style={[
                             textStyle(themeStyle, 'subtitle'),
                             { color: colors.textPrimary },
-                            done && styles.struck,
+                            struckOut && styles.struck,
                         ]}
                         text={item.action}
                     />
@@ -159,10 +222,14 @@ export const ActionCard = React.memo(({ item, onEntryPress, handleTogglePin, han
                             text={item.motivation}
                         />
                     ) : null}
-                    <ScalePressable onPress={openEntry} accessibilityRole="button" accessibilityLabel={`Open ${reference(item)}`}>
-                        <Text variant="meta" style={styles.clothRef}>{reference(item)}</Text>
-                    </ScalePressable>
-                </View>
+                    <View style={styles.metaRow}>
+                        <ScalePressable onPress={openEntry} accessibilityRole="button" accessibilityLabel={`Open ${reference(item)}`}>
+                            <Text variant="meta" style={styles.clothRef}>{reference(item)}</Text>
+                        </ScalePressable>
+                        {streak && <Text variant="meta" tone="accent">{streak}</Text>}
+                        {due && <Text variant="meta" tone="accent">{due}</Text>}
+                    </View>
+                </ScalePressable>
                 <TouchableOpacity
                     onPress={() => handleTogglePin(item)}
                     hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -194,6 +261,9 @@ const styles = StyleSheet.create({
         flex: 1,
         minWidth: 0,
     },
+    /* Keeps an application's text on the same left edge as everything else. */
+    checkboxSpacer: { width: 18 },
+    metaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10 },
     checkbox: {
         width: 18,
         height: 18,

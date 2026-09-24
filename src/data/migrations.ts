@@ -1,6 +1,6 @@
 import { withDatabase, getDbVersion, setDbVersion } from './db';
 
-const CURRENT_DB_VERSION = 10;
+const CURRENT_DB_VERSION = 12;
 
 export const initializeDatabase = async (): Promise<boolean> => {
     try {
@@ -309,6 +309,75 @@ export const initializeDatabase = async (): Promise<boolean> => {
                     CREATE INDEX IF NOT EXISTS idx_obs_detector ON observations(detector, created_at);
                     CREATE INDEX IF NOT EXISTS idx_obs_pending ON observations(shown_at, confidence);
                     CREATE INDEX IF NOT EXISTS idx_obs_evidence ON observation_evidence(observation_id);
+                `);
+            }
+
+            if (currentVersion < 11) {
+                /*
+                 * Migration to v11: what kind of thing an action item is.
+                 *
+                 * The entry wizard asks "How can I realistically apply this in
+                 * my life?" and prompts with "I will…", which invites a
+                 * commitment about character. Everything downstream then filed
+                 * the answer as a task: a completion checkbox, an Actions tab,
+                 * reminders windowed by age. A real journal showed the cost —
+                 * ten items, not one ever ticked, because nobody finishes
+                 * being kinder to their parents.
+                 *
+                 * Three kinds genuinely live in this column, and they are told
+                 * apart by what the writer supplied rather than by a category
+                 * they were made to choose:
+                 *
+                 *   nothing   an application — standing, never completed
+                 *   cadence   a practice — recurring, completed per occurrence
+                 *   due_at    an action — a task, completed once
+                 *
+                 * Deriving the kind keeps the writing surface as it is. Both
+                 * columns are null for every existing row, so the whole
+                 * journal becomes applications, which is what it always was.
+                 */
+                // Guarded the way v4 adds columns: ALTER TABLE has no IF NOT
+                // EXISTS in SQLite, and a half-applied migration must not wedge
+                // the app on the next launch.
+                for (const column of ['cadence TEXT', 'due_at DATETIME']) {
+                    try {
+                        await database.runAsync(`ALTER TABLE action_items ADD COLUMN ${column}`);
+                    } catch {
+                        /* already present */
+                    }
+                }
+            }
+
+            if (currentVersion < 12) {
+                /*
+                 * Migration to v12: practice completions.
+                 *
+                 * A practice completes per occurrence, so `is_completed` — a
+                 * single boolean — cannot represent it. "Done today but not
+                 * yesterday" needs a log, and a log is what streaks and any
+                 * future widget both rest on.
+                 *
+                 * Keyed on a LOCAL date string, not a timestamp. A practice is
+                 * done "today", and today is wherever the reader is; deriving
+                 * the day from a UTC timestamp would move completions across
+                 * midnight for anyone east or west of it and quietly break
+                 * their streak. `reading_progress` is the same shape, so this
+                 * is a pattern the app already keeps.
+                 *
+                 * The primary key makes marking a day done idempotent, which
+                 * matters when the same tap can arrive from a card, a list and
+                 * eventually a home-screen widget.
+                 */
+                await database.execAsync(`
+                    CREATE TABLE IF NOT EXISTS action_item_completions (
+                        action_item_id INTEGER NOT NULL,
+                        completed_on TEXT NOT NULL,
+                        completed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        PRIMARY KEY (action_item_id, completed_on),
+                        FOREIGN KEY (action_item_id) REFERENCES action_items(id) ON DELETE CASCADE
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_completions_item
+                        ON action_item_completions(action_item_id, completed_on DESC);
                 `);
             }
 

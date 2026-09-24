@@ -138,8 +138,9 @@ export const createJournalEntry = async (data: JournalEntryInput) => {
                 const item = data.actionItems[i];
                 if (item.action.trim() || item.motivation.trim()) {
                     await database.runAsync(
-                        `INSERT INTO action_items (entry_id, action, motivation, sort_order) VALUES (?, ?, ?, ?)`,
-                        [entryId, item.action, item.motivation, i]
+                        `INSERT INTO action_items (entry_id, action, motivation, sort_order, cadence, due_at)
+                         VALUES (?, ?, ?, ?, ?, ?)`,
+                        [entryId, item.action, item.motivation, i, item.cadence ?? null, item.due_at ?? null]
                     );
                 }
             }
@@ -209,8 +210,9 @@ export const updateJournalEntry = async (id: number, data: JournalEntryInput) =>
                 const item = data.actionItems[i];
                 if (item.action.trim() || item.motivation.trim()) {
                     await database.runAsync(
-                        `INSERT INTO action_items (entry_id, action, motivation, sort_order) VALUES (?, ?, ?, ?)`,
-                        [id, item.action, item.motivation, i]
+                        `INSERT INTO action_items (entry_id, action, motivation, sort_order, cadence, due_at)
+                         VALUES (?, ?, ?, ?, ?, ?)`,
+                        [id, item.action, item.motivation, i, item.cadence ?? null, item.due_at ?? null]
                     );
                 }
             }
@@ -621,4 +623,44 @@ export const toggleActionItemCompletion = async (id: number, completed: boolean)
             [completed ? 1 : 0, id]
         );
     });
+}
+
+/**
+ * Edit an action item in place.
+ *
+ * The only way to change one of these used to be re-saving the whole entry
+ * through the wizard, which is the wrong moment twice over: the text is
+ * usually fixed while looking at the list, and a commitment reveals itself as
+ * a daily practice months after it was written, not while it is being written.
+ *
+ * Nulls are meaningful here rather than "leave alone" — clearing a cadence is
+ * how a practice becomes an application again, so the caller sends the whole
+ * shape it wants.
+ */
+export const updateActionItem = async (
+    id: number,
+    fields: { action: string; motivation: string; cadence?: string | null; due_at?: string | null },
+): Promise<void> => {
+    await withDatabase(async (database) => {
+        await database.runAsync(
+            `UPDATE action_items
+                SET action = ?, motivation = ?, cadence = ?, due_at = ?
+              WHERE id = ?`,
+            [
+                fields.action.trim(),
+                fields.motivation.trim(),
+                fields.cadence ?? null,
+                fields.due_at ?? null,
+                id,
+            ],
+        );
+    });
 };
+
+/** Remove an action item and, with it, any practice completions it logged. */
+export const deleteActionItem = async (id: number): Promise<void> => {
+    await withDatabase(async (database) => {
+        await database.runAsync(`DELETE FROM action_items WHERE id = ?`, [id]);
+    });
+};
+;

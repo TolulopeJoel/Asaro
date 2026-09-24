@@ -69,7 +69,18 @@ export default function MeditationSessionScreen() {
                         reflection1: entry.reflection_1 || '',
                         reflection2: entry.reflection_2 || '',
                         actionItems: entry.action_items && entry.action_items?.length > 0
-                            ? entry.action_items.map(item => ({ action: item.action, motivation: item.motivation }))
+                            /*
+                             * Carry the kind through an edit. Mapping only
+                             * action and motivation would silently reset a
+                             * practice to an application the first time
+                             * someone opened an old entry to fix a typo.
+                             */
+                            ? entry.action_items.map(item => ({
+                                action: item.action,
+                                motivation: item.motivation,
+                                cadence: item.cadence ?? null,
+                                due_at: item.due_at ?? null,
+                            }))
                             : [{ action: '', motivation: '' }],
                         reflection4: entry.reflection_4 || '',
                         studyFurther: entry.study_further || '',

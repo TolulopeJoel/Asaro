@@ -10,10 +10,15 @@ import { BibleReferencePicker } from './BibleReferencePicker';
 import { getBibleStyledParts } from '../utils/bibleUtils';
 import { useRefPicker } from '../context/RefPickerContext';
 import { Screen, Text } from './ui';
+import { KindChips } from './journal/KindChips';
 
 export interface ActionItemPair {
     action: string;
     motivation: string;
+    /** Set makes this a practice. See `actionKindOf`. */
+    cadence?: string | null;
+    /** Set makes this an action with a deadline. */
+    due_at?: string | null;
 }
 
 interface ActionItemsInputProps {
@@ -55,6 +60,7 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
     const [refQuery, setRefQuery] = useState('');
     // Single target ref — tracks which (index, field, isModal, startIndex) opened the picker.
     const refPickerTarget = useRef<RefPickerTarget | null>(null);
+
 
     // Track dynamic heights for growth
     const [actionHeights, setActionHeights] = useState<{ [key: number]: number }>({});
@@ -261,6 +267,14 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
         }
     };
 
+    /** Kind changes go through the same control the commitments list uses. */
+    const setKindValue = (index: number, isModal: boolean, next: { cadence?: string | null; due_at?: string | null }) => {
+        const list = isModal ? tempItems : items;
+        const updated = list.map((entry, i) => (i === index ? { ...entry, ...next } : entry));
+        if (isModal) setTempItems(updated);
+        else onChange(updated);
+    };
+
     const renderActionItemPair = (item: ActionItemPair, index: number, isModal: boolean) => {
         const hMotiv = isModal ? motivationHeightsModal[index] : motivationHeights[index];
 
@@ -375,6 +389,14 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                         </TextInput>
                     </View>
                 </View>
+
+                <View style={styles.kindRow}>
+                    <KindChips
+                        value={{ cadence: item.cadence, due_at: item.due_at }}
+                        onChange={next => setKindValue(index, isModal, next)}
+                        disabled={disabled}
+                    />
+                </View>
             </View>
         );
     };
@@ -476,6 +498,7 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                     </KeyboardAvoidingView>
                 </Screen>
             </Modal>
+
         </View>
     );
 };
@@ -530,6 +553,12 @@ const styles = StyleSheet.create({
         borderRadius: Spacing.borderRadius.lg,
         zIndex: 20,
     },
+    /*
+     * A quiet row, not a form. Small outline chips in the label size, sitting
+     * under the pair rather than between the two fields — the writing is the
+     * point and this only names what the writing already is.
+     */
+    kindRow: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 12 },
     addButton: {
         flexDirection: 'row',
         alignItems: 'center',

@@ -10,13 +10,14 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "build:graph": "node scripts/build-bible-graph.mjs",
-    "verify": "npm run verify:bible && npm run verify:observations && npm run verify:detectors && npm run verify:ml",
+    "verify": "npm run verify:bible && npm run verify:observations && npm run verify:detectors && npm run verify:practice && npm run verify:ml",
     "verify:bible": "node scripts/verify-bible-graph.mjs",
     "verify:observations": "node --disable-warning=ExperimentalWarning scripts/verify-observations.mjs",
-    "verify:detectors": "node scripts/verify-convergence.mjs",
+    "verify:detectors": "node scripts/verify-convergence.mjs && node scripts/verify-unfinished.mjs",
     "verify:ml": "node scripts/verify-tokenizer.mjs && node scripts/verify-theme-matching.mjs && node scripts/verify-theme-quality.mjs",
     "check:glyphs": "node scripts/check-glyphs.mjs",
-    "check:design": "node scripts/check-design.mjs"
+    "check:design": "node scripts/check-design.mjs",
+    "verify:practice": "node scripts/verify-practice.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/archivo": "^0.4.2",

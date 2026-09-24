@@ -7,6 +7,14 @@ export interface ActionItem {
     is_completed?: boolean;
     is_pinned?: boolean;
     pinned_at?: string | null;
+    /**
+     * Set makes this a practice — see `actionKindOf`. The kind is derived from
+     * these two rather than stored, so a row can never claim to be one thing
+     * while carrying the fields of another.
+     */
+    cadence?: string | null;
+    /** Set makes this an action with a deadline. */
+    due_at?: string | null;
 }
 
 export interface JournalEntry {
@@ -39,7 +47,7 @@ export interface JournalEntryInput {
     notes?: string;
     studyFurther?: string;
     studyFurtherReminder?: string;
-    actionItems?: { action: string; motivation: string }[];
+    actionItems?: { action: string; motivation: string; cadence?: string | null; due_at?: string | null }[];
     readingItemId?: number;
 }
 

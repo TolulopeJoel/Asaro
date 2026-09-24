@@ -75,7 +75,7 @@ type Section = 'entries' | 'unfinished' | 'echoes' | 'plan';
 const SECTIONS: { key: Section; label: string; icon: LucideIcon }[] = [
     { key: 'entries', label: 'Entries', icon: Clock },
     { key: 'echoes', label: 'Echoes', icon: Sparkles },
-    { key: 'unfinished', label: 'Unfinished', icon: Zap },
+    { key: 'unfinished', label: 'Working on', icon: Zap },
     { key: 'plan', label: 'Plan', icon: Library },
 ];
 
@@ -102,11 +102,13 @@ const DEFAULT_VIEW: Record<Section, Tab> = {
 /**
  * The control inside a destination.
  *
- * "To do" and "To look up" rather than Actions and Follow-ups: an action item
- * is a resolution about behaviour and a study-further note is a question to
- * research, and naming them after what the reader will do with them keeps that
- * difference visible while putting them in one place. Sections without an
- * entry here render no second row at all.
+ * "Commitments" and "Questions", not "To do" and "To look up". An action item
+ * here is not a task: "I will be kinder to my parents", "I want to give Jehovah
+ * my best" — these are standing things about character that nobody completes,
+ * written under "How can I realistically apply this in my life?" and prompted
+ * with "I will…". A to-do label files a formational answer as a chore, which is
+ * the mismatch running through every surface downstream of that question.
+ * Sections without an entry here render no second row at all.
  */
 const SUBVIEWS: Partial<Record<Section, { key: Tab; label: string }[]>> = {
     entries: [
@@ -114,8 +116,8 @@ const SUBVIEWS: Partial<Record<Section, { key: Tab; label: string }[]>> = {
         { key: 'books', label: 'By book' },
     ],
     unfinished: [
-        { key: 'actions', label: 'To do' },
-        { key: 'topics', label: 'To look up' },
+        { key: 'actions', label: 'Commitments' },
+        { key: 'topics', label: 'Questions' },
     ],
     /*
      * Themes sits under Echoes rather than beside it. They answer the same
@@ -137,7 +139,7 @@ const SUBVIEWS: Partial<Record<Section, { key: Tab; label: string }[]>> = {
  */
 const MARK: Partial<Record<Section, string>> = {
     entries: 'Library',
-    unfinished: 'Library · Unfinished',
+    unfinished: 'Library · Working on',
     echoes: 'Library · Echoes',
     plan: 'Library · Plan',
 };

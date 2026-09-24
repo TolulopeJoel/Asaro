@@ -13,6 +13,11 @@ import {
 import { ALL_BIBLE_BOOKS, BibleBook } from '../data/bibleBooks';
 import { EntryCard } from './journal/EntryCard';
 import { ActionCard } from './journal/ActionCard';
+import { ActionKind, actionKindOf } from '../data/actionKind';
+import { ActionEditor } from './journal/ActionEditor';
+import { AnimatedModal } from './AnimatedModal';
+import { PracticeProgress, markPracticeDone, practiceProgress, unmarkPracticeDone } from '../data/practiceRepository';
+import { deleteActionItem, updateActionItem } from '../data/journalRepository';
 import { TopicCard } from './journal/TopicCard';
 import { BookCard, BookWithCount } from './journal/BookCard';
 import { ActionSectionHeader, DateGroupHeader, TopicHeader } from './journal/JournalHeaders';
@@ -105,6 +110,16 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
     const [filteredEntries, setFilteredEntries] = useState<JournalEntry[]>([]);
     const [availableBooks, setAvailableBooks] = useState<BookWithCount[]>([]);
     const [actionsList, setActionsList] = useState<EnhancedActionItem[]>([]);
+    const [practiceProgressMap, setPracticeProgress] = useState<Map<number, PracticeProgress>>(new Map());
+    /*
+     * A ref beside the state: the toggle handler needs to know whether today
+     * is already done, and reading it from state would make the callback
+     * depend on the map and rebuild the whole list on every completion.
+     */
+    const practiceProgressRef = useRef(practiceProgressMap);
+    /** Which commitment is open for editing, if any. */
+    const [editingAction, setEditingAction] = useState<EnhancedActionItem | null>(null);
+    practiceProgressRef.current = practiceProgressMap;
     const [topicsList, setTopicsList] = useState<JournalEntry[]>([]);
     const [isArchiveCollapsed, setIsArchiveCollapsed] = useState(true);
     const [isLoading, setIsLoading] = useState(true);
@@ -180,7 +195,31 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
         try {
             const data = await getAllActionItems(200);
             setActionsList(data);
-            onOpenActionCountChange?.(data.filter(a => !a.is_completed).length);
+
+            /*
+             * Only practices need progress, and only practices pay for it.
+             * An application has nothing to count and an action is a single
+             * boolean already on the row.
+             */
+            const practices = data.filter(item => actionKindOf(item) === 'practice');
+            const progress = await Promise.all(
+                practices.map(async item => [item.id!, await practiceProgress(item.id!, item.cadence)] as const),
+            );
+            setPracticeProgress(new Map(progress));
+
+            /*
+             * The count is what is still open, and an application is never
+             * closed — counting them would make the number grow forever and
+             * mean nothing. Practices count when today is not yet done.
+             */
+            onOpenActionCountChange?.(
+                data.filter(item => {
+                    const kind = actionKindOf(item);
+                    if (kind === 'application') return false;
+                    if (kind === 'action') return !item.is_completed;
+                    return !new Map(progress).get(item.id!)?.doneNow;
+                }).length,
+            );
         } catch (error) {
             console.error('Error loading actions:', error);
         }
@@ -208,7 +247,18 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
 
     const handleToggleAction = useCallback(async (item: EnhancedActionItem) => {
         try {
-            await toggleActionItemCompletion(item.id!, !item.is_completed);
+            /*
+             * A practice is done for a day, not done forever. Ticking one
+             * writes today into the completion log; ticking it again takes
+             * today back out. Only an action flips the boolean on the row.
+             */
+            if (actionKindOf(item) === 'practice') {
+                const current = practiceProgressRef.current.get(item.id!);
+                if (current?.doneNow) await unmarkPracticeDone(item.id!);
+                else await markPracticeDone(item.id!);
+            } else {
+                await toggleActionItemCompletion(item.id!, !item.is_completed);
+            }
             loadActions();
         } catch (error) {
             console.error('Error toggling action:', error);
@@ -424,15 +474,49 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
             const row = (action: EnhancedActionItem) =>
                 ({ type: 'action' as const, action, id: `action-${action.id}` });
 
-            if (pinned.length === 0) return rest.map(row);
+            const items: ListItem[] = [];
+            if (pinned.length > 0) {
+                items.push({ type: 'actionHeader', title: 'Pinned', accent: true, id: 'actions-pinned' });
+                items.push(...pinned.map(row));
+            }
 
-            const items: ListItem[] = [
-                { type: 'actionHeader', title: 'Pinned', accent: true, id: 'actions-pinned' },
-                ...pinned.map(row),
+            /*
+             * Grouped by what each thing IS, and ordered by what it asks of
+             * the reader today.
+             *
+             * Practices come first because they are the only ones with
+             * something to do now; actions next because a deadline is next
+             * most urgent; applications last because they ask for nothing —
+             * they are there to be met again, not worked through. Running them
+             * together as one list was what let a formational answer read as
+             * an unfinished chore.
+             *
+             * A heading only appears when there is more than one group, so a
+             * journal of nothing but applications — which every journal is at
+             * first — sees no taxonomy it did not ask for.
+             */
+            const groups: { kind: ActionKind; title: string; rows: EnhancedActionItem[] }[] = [
+                { kind: 'practice', title: 'Practices', rows: [] },
+                { kind: 'action', title: 'With a date', rows: [] },
+                { kind: 'application', title: 'Applying', rows: [] },
             ];
-            if (rest.length > 0) {
-                items.push({ type: 'actionHeader', title: 'All actions', accent: false, id: 'actions-all' });
-                items.push(...rest.map(row));
+            for (const action of rest) {
+                groups.find(g => g.kind === actionKindOf(action))!.rows.push(action);
+            }
+
+            const populated = groups.filter(g => g.rows.length > 0);
+            const needsHeadings = populated.length > 1 || pinned.length > 0;
+
+            for (const group of populated) {
+                if (needsHeadings) {
+                    items.push({
+                        type: 'actionHeader',
+                        title: group.title,
+                        accent: false,
+                        id: `actions-${group.kind}`,
+                    });
+                }
+                items.push(...group.rows.map(row));
             }
             return items;
         }
@@ -624,6 +708,8 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
                         onEntryPress={onEntryPress}
                         handleTogglePin={handleTogglePin}
                         handleToggleAction={handleToggleAction}
+                        progress={practiceProgressMap.get(item.action.id!)}
+                        onEdit={setEditingAction}
                     />
                 );
             case 'actionHeader':
@@ -696,6 +782,25 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
                     onEndReachedThreshold={0.5}
                 />
             )}
+
+            <AnimatedModal visible={!!editingAction} onRequestClose={() => setEditingAction(null)}>
+                {editingAction && (
+                    <ActionEditor
+                        item={editingAction}
+                        onClose={() => setEditingAction(null)}
+                        onSave={async fields => {
+                            await updateActionItem(editingAction.id!, fields);
+                            setEditingAction(null);
+                            loadActions();
+                        }}
+                        onDelete={async () => {
+                            await deleteActionItem(editingAction.id!);
+                            setEditingAction(null);
+                            loadActions();
+                        }}
+                    />
+                )}
+            </AnimatedModal>
         </View>
     );
 };
