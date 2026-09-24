@@ -38,7 +38,7 @@
  * which is expensive for the ones that genuinely do open.
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { X } from 'lucide-react-native';
 
@@ -50,12 +50,31 @@ import { RenderedObservation } from '../../insight/render';
 
 interface Props {
     observation: RenderedObservation;
+    /**
+     * Called once when this card mounts, to record that it was shown.
+     *
+     * Required rather than optional on purpose. The stamp used to happen where
+     * the finding was chosen, which meant a screen merely loading could spend
+     * one — and `shown_at` decides whether a card returns, when it returns,
+     * and whether it lands in the archive as something the reader answered.
+     * Making this mandatory means a new surface cannot quietly reintroduce
+     * that by leaving a prop off.
+     */
+    onSeen: () => void;
     onOpen: () => void;
     onDismiss: () => void;
 }
 
-export function ObservationCard({ observation, onOpen, onDismiss }: Props) {
+export function ObservationCard({ observation, onSeen, onOpen, onDismiss }: Props) {
     const { colors, isLockedIn } = useTheme();
+
+    /*
+     * Keyed on the callback, which the hook rebuilds per finding — so this
+     * fires once for each card rather than once per render.
+     */
+    useEffect(() => {
+        onSeen();
+    }, [onSeen]);
 
     /*
      * Both styles say the same thing in the same order. Colossal does not get

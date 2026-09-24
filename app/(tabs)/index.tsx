@@ -167,6 +167,7 @@ export default function Index() {
         echo.rendered && !receiptsOpen ? (
             <ObservationCard
                 observation={echo.rendered}
+                onSeen={echo.seen}
                 onOpen={() => {
                     echo.open();
                     setReceiptsOpen(true);

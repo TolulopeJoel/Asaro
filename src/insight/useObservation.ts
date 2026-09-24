@@ -64,6 +64,13 @@ const stamp = (key: string) => AsyncStorage.setItem(key, String(Date.now())).cat
 export interface ObservationSlot {
     observation: StoredObservation | null;
     rendered: RenderedObservation | null;
+    /**
+     * The card is on screen. Must be called by whatever renders it.
+     *
+     * Not optional and not automatic: nothing else marks a finding shown, so a
+     * surface that forgets this will re-offer the same card for ever.
+     */
+    seen: () => Promise<void>;
     /** Mark it seen and opened — the reader is looking at the receipts. */
     open: () => Promise<void>;
     /** "Not now." Distinct from a verdict: the finding may still be true. */
@@ -131,8 +138,11 @@ export function useObservation(enabled: boolean, surface: Surface = 'home'): Obs
                     if (!words) continue;
                     setObservation(candidate);
                     setRendered(words);
-                    await markShown(candidate.id);
-                    if (surface === 'home') await stamp(LAST_SHOWN_KEY);
+                    /*
+                     * Selected, not shown. `seen()` does the stamping, and the
+                     * card calls it when it mounts — see below for why the
+                     * difference is worth a callback.
+                     */
                     return;
                 }
             } catch {
@@ -140,6 +150,42 @@ export function useObservation(enabled: boolean, surface: Surface = 'home'): Obs
             }
         })();
     }, [enabled, surface]);
+
+    /**
+     * Record that the reader was actually shown this.
+     *
+     * Stamping used to happen where the candidate is chosen, a few lines up,
+     * which quietly meant "the screen finished loading" rather than "a person
+     * saw it". Home enables this hook the moment stats arrive and the wizard
+     * enables it on reaching the summary step, so switching tabs or backing
+     * out of a draft was enough to spend a finding nobody had laid eyes on.
+     *
+     * That is more than a wasted card, because `shown_at` is doing four jobs
+     * at once: it decides whether a finding may be offered again, orders the
+     * rotation, starts a recurring detector's rest, and — the one that bites —
+     * puts the row in the archive. A convergence stamped but never rendered
+     * turns up under "You've not read these. What are you doing?", which is
+     * the app telling somebody off for ignoring a card it never showed them.
+     *
+     * Mount is not the same as visible; a card below the fold still counts.
+     * Closing that last gap needs viewport tracking, which is a great deal of
+     * machinery for the remainder — this fixes the part that was actually
+     * wrong.
+     *
+     * Idempotent per finding, so a re-render cannot inflate `shown_count`.
+     */
+    const stamped = useRef<number | null>(null);
+    const seen = useCallback(async () => {
+        if (!observation || stamped.current === observation.id) return;
+        stamped.current = observation.id;
+        await markShown(observation.id);
+        /*
+         * Home's quiet period starts when something is shown, so it belongs
+         * here too — begun on selection it would silence Home for three days
+         * over a card that never appeared.
+         */
+        if (surface === 'home') await stamp(LAST_SHOWN_KEY);
+    }, [observation, surface]);
 
     const clear = useCallback(() => {
         if (!mounted.current) return;
@@ -168,5 +214,5 @@ export function useObservation(enabled: boolean, surface: Surface = 'home'): Obs
         [observation, clear],
     );
 
-    return { observation, rendered, open, dismiss, verdict, follow };
+    return { observation, rendered, seen, open, dismiss, verdict, follow };
 }

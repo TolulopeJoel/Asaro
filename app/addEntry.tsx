@@ -52,6 +52,7 @@ export default function MeditationSessionScreen() {
         echo.rendered && !echoOpen ? (
             <ObservationCard
                 observation={echo.rendered}
+                onSeen={echo.seen}
                 onOpen={() => {
                     echo.open();
                     setEchoOpen(true);
