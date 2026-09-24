@@ -24,12 +24,31 @@ import { detectConvergence, findConvergence, loadSeedEntries } from './detectors
 import { renderObservation } from './render';
 import { detectCommitments, loadCommitments, rankCommitments } from './detectors/commitment';
 import {
+    DETECTORS,
     getObservation,
     getPendingObservations,
+    getRecentObservations,
     markShown,
     recordFeedback,
     recordObservation,
+    surfaceOf,
 } from './observation';
+
+/**
+ * Whether to put a finding back into the queue on this run.
+ *
+ * Off, and it should stay off unless you are deliberately re-testing.
+ *
+ * Re-arming was needed once, when every observation was already marked shown
+ * and both surfaces had nothing to draw. It then became the bug: it cleared
+ * `shown_at` and `followed_at` on the most recent finding, which is always the
+ * one just engaged with — so a card that had been read stayed pending on Home
+ * and never reached the archive, every reload, for ever.
+ *
+ * Leave it false to watch the real behaviour. Flip it for one run to force a
+ * card back, then turn it off again.
+ */
+const REARM = false;
 
 export async function runPhase0SmokeTest(): Promise<string> {
     const out: string[] = [];
@@ -58,6 +77,18 @@ export async function runPhase0SmokeTest(): Promise<string> {
             ),
         );
         check(tables.length === 2, 'observation tables exist', tables.map(t => t.name).join(',') || 'none');
+
+        /*
+         * `markFollowed` is fired on the way out to jw.org and nothing awaits
+         * it, so a missing column would surface as a silent unhandled
+         * rejection at exactly the moment nobody is looking at the console.
+         */
+        const columns = await withDatabase(async db =>
+            (await db.getAllAsync<{ name: string }>(`PRAGMA table_info(observations)`)).map(c => c.name),
+        );
+        for (const column of ['shown_count', 'followed_at']) {
+            check(columns.includes(column), `observations.${column} exists`);
+        }
 
         entryCount = await withDatabase(async db =>
             (await db.getFirstAsync<any>('SELECT COUNT(*) n FROM journal_entries'))?.n ?? 0,
@@ -208,26 +239,51 @@ export async function runPhase0SmokeTest(): Promise<string> {
         ok('commitments recorded', `${commitmentIds.length}`);
 
         /*
-         * Reset what has been SEEN, not what was found.
+         * Re-arm ONE finding per surface, not all of them.
          *
-         * Every observation is already marked shown, which is correct in use
-         * and useless while building — nothing is pending, so both surfaces
-         * render nothing and it looks broken rather than quiet. Verdicts go
-         * too, because a rejected finding is excluded from pending and there
-         * would be no way to see it again; how many were cleared is reported
-         * rather than swallowed, since that is real feedback being discarded.
+         * Clearing everything looked right and quietly broke the thing it was
+         * meant to help test: pending means "not yet seen" and the archive
+         * means "seen", so wiping `shown_at` across the board emptied the
+         * Echoes tab on every reload. Leaving the rest alone gives both a
+         * card to draw and a history to list.
          */
-        const verdicts = await withDatabase(async db =>
-            (await db.getFirstAsync<any>('SELECT COUNT(*) n FROM observations WHERE feedback IS NOT NULL'))?.n ?? 0,
-        );
-        await withDatabase(db =>
-            db.runAsync(
-                `UPDATE observations
-                    SET shown_at = NULL, opened_at = NULL, dismissed_at = NULL, feedback = NULL`,
-            ),
-        );
-        ok('observations re-armed', verdicts > 0 ? `${verdicts} verdict(s) cleared` : 'no verdicts to clear');
+        if (REARM) {
+            const rearmed: string[] = [];
+            for (const surface of ['home', 'afterSave'] as const) {
+                const forSurface = DETECTORS.filter(d => surfaceOf(d) === surface);
+                /*
+                 * The LEAST recently touched, not the most. Picking the newest
+                 * meant repeatedly resurrecting whatever the reader had just
+                 * dealt with, which is the opposite of cycling through.
+                 */
+                const target = await withDatabase(async db =>
+                    db.getFirstAsync<{ id: number; detector: string }>(
+                        `SELECT id, detector FROM observations
+                          WHERE detector IN (${forSurface.map(() => '?').join(',')})
+                          ORDER BY COALESCE(shown_at, created_at) ASC
+                          LIMIT 1`,
+                        forSurface as unknown as any[],
+                    ),
+                );
+                if (!target) continue;
+                await withDatabase(db =>
+                    db.runAsync(
+                        `UPDATE observations
+                            SET shown_at = NULL, opened_at = NULL, dismissed_at = NULL,
+                                feedback = NULL, followed_at = NULL
+                          WHERE id = ?`,
+                        [target.id],
+                    ),
+                );
+                rearmed.push(`${surface}:${target.detector}`);
+            }
+            ok('re-armed', rearmed.join(', ') || 'nothing to re-arm');
+        } else {
+            ok('not re-arming', 'set REARM = true in smokeTest.ts to force a card back');
+        }
 
+        // Safe to clear regardless: these only decide WHEN Home may speak,
+        // and hold no record of what the reader has done.
         await AsyncStorage.multiRemove(['insight_last_detection', 'insight_last_shown']);
         ok('pacing throttles cleared');
 
@@ -245,6 +301,29 @@ export async function runPhase0SmokeTest(): Promise<string> {
             say(`      ${surface.padEnd(9)} → ${legible.length} waiting`);
             for (const r of legible) say(`                    ${r!.kind}: ${r!.subject.slice(0, 46)}`);
         }
+        const engaged = await withDatabase(db =>
+            db.getAllAsync<any>(
+                `SELECT detector, dedupe_key, shown_count,
+                        followed_at IS NOT NULL AS followed,
+                        feedback, dismissed_at IS NOT NULL AS dismissed
+                   FROM observations
+                  WHERE followed_at IS NOT NULL OR feedback IS NOT NULL OR dismissed_at IS NOT NULL`,
+            ),
+        );
+        if (engaged.length > 0) {
+            say('\n  What you have engaged with:');
+            for (const row of engaged) {
+                const marks = [
+                    row.followed ? 'read it' : null,
+                    row.feedback === 0 ? "said that's not it" : row.feedback === 1 ? 'agreed' : null,
+                    row.dismissed ? 'dismissed' : null,
+                ].filter(Boolean);
+                say(`    ${String(row.dedupe_key).padEnd(22)} shown ${row.shown_count}\u00d7 \u00b7 ${marks.join(', ')}`);
+            }
+        }
+
+        const archive = await getRecentObservations(5);
+        say(`      archive   \u2192 ${archive.length} in Echoes \u203a Noticed`);
         say('\n  Home shows the first; the save screen shows the other.');
     } catch (error: any) {
         bad('re-arming threw', error?.message);
