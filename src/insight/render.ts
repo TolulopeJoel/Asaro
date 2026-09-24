@@ -87,13 +87,28 @@ function renderConvergence(claim: Record<string, unknown>): RenderedObservation 
         ? `${span}, and every one of these points at the same passage. You have never written about it.`
         : 'Every one of these points at the same passage. You have never written about it.';
 
+    /*
+     * Àṣàrò frames it; he does not make the claim.
+     *
+     * The rule at the top of this file — say only what the graph can prove —
+     * applies to `claim` and nothing else, so that sentence stays flat and
+     * checkable. The label and the button are not assertions, and they are
+     * the one place on this card where the app is allowed to be pleased with
+     * itself, which is the whole point of the feature.
+     *
+     * It is also the register he has never been given. Every line he owns
+     * today is pressure — "I'm keeping absolute record. Every single day you
+     * miss, I'm writing it down." That is exactly what this detector did, for
+     * ten months, and here it paid off. Same nosy man, same receipts, finally
+     * delighted rather than disappointed.
+     */
     return {
-        kind: 'Where your entries point',
+        kind: 'Look what I found',
         evidence: passages,
         claim: claimText,
         subject: formatVerseId(hubVerseId),
         subjectVerseId: hubVerseId,
-        openLabel: 'Show me why',
+        openLabel: 'Let me show you',
     };
 }
 
@@ -159,6 +174,12 @@ function renderCommitment(claim: Record<string, unknown>): RenderedObservation {
          * Not "show me why" — the why is already on the card, in the reader's
          * own words. What the tap actually opens is the whole reason
          * untruncated and the entry it was written in, so it says that.
+         *
+         * And no Àṣàrò here, unlike the convergence card above. That one is
+         * his find and he can be pleased about it; this one is the reader's
+         * own sentence about the kind of person they are trying to be, handed
+         * back. Putting a performer in front of that would make it his moment
+         * instead of theirs.
          */
         openLabel: 'See the entry',
     };
