@@ -13,7 +13,7 @@
     "verify": "npm run verify:bible && npm run verify:observations && npm run verify:detectors && npm run verify:practice && npm run verify:ml",
     "verify:bible": "node scripts/verify-bible-graph.mjs",
     "verify:observations": "node --disable-warning=ExperimentalWarning scripts/verify-observations.mjs",
-    "verify:detectors": "node scripts/verify-convergence.mjs && node scripts/verify-unfinished.mjs",
+    "verify:detectors": "node scripts/verify-convergence.mjs && node scripts/verify-commitment.mjs",
     "verify:ml": "node scripts/verify-tokenizer.mjs && node scripts/verify-theme-matching.mjs && node scripts/verify-theme-quality.mjs",
     "check:glyphs": "node scripts/check-glyphs.mjs",
     "check:design": "node scripts/check-design.mjs",

@@ -475,6 +475,7 @@ export default function MeditationSessionScreen() {
                         observation={echo.observation}
                         rendered={echo.rendered}
                         onClose={() => setEchoOpen(false)}
+                        onFollow={() => echo.follow()}
                         onVerdict={agreed => {
                             setEchoOpen(false);
                             echo.verdict(agreed);

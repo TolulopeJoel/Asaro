@@ -233,6 +233,7 @@ export default function Index() {
                     observation={echo.observation}
                     rendered={echo.rendered}
                     onClose={() => setReceiptsOpen(false)}
+                    onFollow={() => echo.follow()}
                     onVerdict={agreed => {
                         setReceiptsOpen(false);
                         echo.verdict(agreed);

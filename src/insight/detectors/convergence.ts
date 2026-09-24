@@ -20,6 +20,22 @@
  */
 
 import { withDatabase } from '../../data/db';
+
+/**
+ * Hubs the reader has already engaged with — followed through, judged, or
+ * dismissed. Read straight from the observation record rather than inferred,
+ * so "settled" means exactly what the reader did.
+ */
+async function settledHubs(): Promise<Set<VerseId>> {
+    const rows = await withDatabase(database =>
+        database.getAllAsync<{ dedupe_key: string }>(
+            `SELECT dedupe_key FROM observations
+             WHERE detector = 'convergence'
+               AND (followed_at IS NOT NULL OR feedback IS NOT NULL OR dismissed_at IS NOT NULL)`,
+        ),
+    );
+    return new Set(rows.map(row => Number(row.dedupe_key.replace('hub:', ''))));
+}
 import { BibleGraph, loadGraph } from '../../bible/graph';
 import {
     CitedRange,
@@ -499,10 +515,23 @@ export async function detectConvergence(options: ConvergenceOptions = {}): Promi
     }).map(candidate => `hub:${candidate.hubVerseId}`);
     await retractObservations('convergence', stillUnwritten);
 
+    /*
+     * A passage the reader has already met is settled, however they answered.
+     *
+     * Tapping through to read it is the obvious case. "That's not it" is the
+     * one worth spelling out: it means the card was wrong about the
+     * connection, not that the passage went unread — they looked, and decided.
+     * Either way the app has no business carrying on as though that passage
+     * were untouched, so a hub with any engagement behind it is never offered
+     * again even if the claim technically still holds.
+     */
+    const settled = await settledHubs();
+
     const candidates = findConvergence(entries, graph, options);
 
     const ids: number[] = [];
     for (const candidate of candidates) {
+        if (settled.has(candidate.hubVerseId)) continue;
         ids.push(
             await recordObservation({
                 detector: 'convergence',

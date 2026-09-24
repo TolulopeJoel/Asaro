@@ -31,6 +31,7 @@ import {
     Surface,
     getPendingObservations,
     markDismissed,
+    markFollowed,
     markOpened,
     markShown,
     recordFeedback,
@@ -68,6 +69,8 @@ export interface ObservationSlot {
     dismiss: () => Promise<void>;
     /** "That's not it", or agreement. The only ground truth this app gets. */
     verdict: (agreed: boolean) => Promise<void>;
+    /** The reader tapped through to the passage this offered. */
+    follow: () => Promise<void>;
 }
 
 /**
@@ -151,6 +154,10 @@ export function useObservation(enabled: boolean, surface: Surface = 'home'): Obs
         clear();
     }, [observation, clear]);
 
+    const follow = useCallback(async () => {
+        if (observation) await markFollowed(observation.id);
+    }, [observation]);
+
     const verdict = useCallback(
         async (agreed: boolean) => {
             if (observation) await recordFeedback(observation.id, agreed);
@@ -159,5 +166,5 @@ export function useObservation(enabled: boolean, surface: Surface = 'home'): Obs
         [observation, clear],
     );
 
-    return { observation, rendered, open, dismiss, verdict };
+    return { observation, rendered, open, dismiss, verdict, follow };
 }

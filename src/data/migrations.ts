@@ -1,6 +1,6 @@
 import { withDatabase, getDbVersion, setDbVersion } from './db';
 
-const CURRENT_DB_VERSION = 13;
+const CURRENT_DB_VERSION = 14;
 
 export const initializeDatabase = async (): Promise<boolean> => {
     try {
@@ -400,6 +400,36 @@ export const initializeDatabase = async (): Promise<boolean> => {
                 } catch {
                     /* already present */
                 }
+            }
+
+            if (currentVersion < 14) {
+                /*
+                 * Migration to v14: findings that come round again, and
+                 * knowing when one was acted on.
+                 *
+                 * `shown_at` was a one-way door — set once, and the finding was
+                 * excluded for ever. Right for a discovery, wrong for a
+                 * standing commitment: something you are trying to BE that you
+                 * meet once in a lifetime is not a reminder. It becomes "last
+                 * shown", and `shown_count` records how many times round it
+                 * has been.
+                 *
+                 * `followed_at` closes the other gap. Tapping through to read a
+                 * passage is the strongest evidence a card worked — the reader
+                 * was sent somewhere and went — and it was being discarded at
+                 * the moment it was generated.
+                 */
+                for (const column of ['shown_count INTEGER NOT NULL DEFAULT 0', 'followed_at DATETIME']) {
+                    try {
+                        await database.runAsync(`ALTER TABLE observations ADD COLUMN ${column}`);
+                    } catch {
+                        /* already present */
+                    }
+                }
+                // Anything already shown has been round exactly once.
+                await database.runAsync(
+                    `UPDATE observations SET shown_count = 1 WHERE shown_at IS NOT NULL`,
+                );
             }
 
             // Set to current version

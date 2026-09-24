@@ -90,6 +90,34 @@ export function surfaceOf(detector: DetectorName): Surface {
     return AFTER_SAVE.includes(detector) ? 'afterSave' : 'home';
 }
 
+/**
+ * Findings that come round again, and how long one rests before it can.
+ *
+ * A discovery is shown once. Re-offering a convergence the reader has already
+ * met would be repeating yourself, and it is in the archive if they want it.
+ *
+ * A commitment is the opposite case. It names something the reader is trying
+ * to BE — there is no end to it, so meeting it once in a lifetime is not a
+ * reminder, it is a coincidence. It has to recur.
+ *
+ * Which leaves the real question: how often, without nagging. The answer is
+ * not a long interval per item — that only makes the surface sparse. It is
+ * ROTATION. The least-recently-shown commitment goes next, so with six of them
+ * each comes round every sixth card, and with twenty every twentieth. The
+ * spacing tunes itself to how much someone has written down, and the same one
+ * never lands twice running.
+ *
+ * `MIN_REST_DAYS` is only a floor under that — it stops a reader who writes
+ * four entries in an afternoon burning through the whole rotation before
+ * lunch. The rotation does the work; this stops it sprinting.
+ */
+const REPEATS: DetectorName[] = ['commitment'];
+const MIN_REST_DAYS = 7;
+
+export function repeats(detector: DetectorName): boolean {
+    return REPEATS.includes(detector);
+}
+
 export function appearsInArchive(detector: DetectorName): boolean {
     return !EPHEMERAL.includes(detector);
 }
@@ -132,6 +160,10 @@ export interface StoredObservation {
     dismissedAt: string | null;
     /** null = not asked, 1 = the reader agreed, 0 = "that's not it". */
     feedback: number | null;
+    /** How many times it has come round. */
+    shownCount: number;
+    /** When the reader tapped through to the passage, if they did. */
+    followedAt: string | null;
     evidence: EvidenceItem[];
 }
 
@@ -218,6 +250,8 @@ function hydrate(
         openedAt: row.opened_at,
         dismissedAt: row.dismissed_at,
         feedback: row.feedback,
+        shownCount: row.shown_count ?? 0,
+        followedAt: row.followed_at ?? null,
         evidence,
     };
 }
@@ -266,13 +300,48 @@ export async function getPendingObservations(
         const detectors = DETECTORS.filter(name => surfaceOf(name) === surface);
         if (detectors.length === 0) return [];
 
+        const recurring = detectors.filter(repeats);
+        const once = detectors.filter(name => !repeats(name));
+
+        /*
+         * Two rules in one query.
+         *
+         * A once-only finding must never have been shown. A recurring one may
+         * have been, so long as it has rested — and then the least recently
+         * shown goes first, which is what makes the rotation a rotation.
+         * `shown_at` sorts nulls first in SQLite, so anything never shown is
+         * naturally ahead of anything that has been.
+         *
+         * Dismissal is a rest, not an ending: "not now" and "that's not it"
+         * were the same thing while both were permanent, and only a rejected
+         * finding stays gone.
+         */
+        const clauses: string[] = [];
+        const params: any[] = [];
+
+        if (once.length > 0) {
+            clauses.push(
+                `(detector IN (${once.map(() => '?').join(',')}) AND shown_at IS NULL AND dismissed_at IS NULL)`,
+            );
+            params.push(...once);
+        }
+        if (recurring.length > 0) {
+            clauses.push(
+                `(detector IN (${recurring.map(() => '?').join(',')})
+                  AND (shown_at IS NULL OR shown_at <= datetime('now', ?))
+                  AND (dismissed_at IS NULL OR dismissed_at <= datetime('now', ?)))`,
+            );
+            params.push(...recurring, `-${MIN_REST_DAYS} days`, `-${MIN_REST_DAYS} days`);
+        }
+        if (clauses.length === 0) return [];
+
         const rows = await database.getAllAsync<any>(
             `SELECT * FROM observations
-             WHERE shown_at IS NULL AND dismissed_at IS NULL AND (feedback IS NULL OR feedback = 1)
-               AND detector IN (${detectors.map(() => '?').join(',')})
-             ORDER BY confidence DESC, created_at DESC
+             WHERE (feedback IS NULL OR feedback = 1)
+               AND (${clauses.join(' OR ')})
+             ORDER BY shown_at ASC, confidence DESC, created_at DESC
              LIMIT ?`,
-            [...detectors, limit],
+            [...params, limit],
         );
 
         const evidence = await evidenceFor(database, rows.map(r => r.id));
@@ -372,12 +441,28 @@ export async function getObservation(id: number): Promise<StoredObservation | nu
  * appears — not the day someone gets round to building the model.
  */
 
+/** Record a showing. `shown_at` is the LAST one, not the first. */
 export async function markShown(id: number): Promise<void> {
     await withDatabase(database =>
         database.runAsync(
-            `UPDATE observations SET shown_at = CURRENT_TIMESTAMP WHERE id = ? AND shown_at IS NULL`,
+            `UPDATE observations
+                SET shown_at = CURRENT_TIMESTAMP, shown_count = shown_count + 1
+              WHERE id = ?`,
             [id],
         ),
+    );
+}
+
+/**
+ * The reader followed the finding through — tapped into the passage it offered.
+ *
+ * The strongest evidence a card worked, and it was being thrown away at the
+ * moment it was generated. Not a verdict: following a suggestion and agreeing
+ * with it are different, and the ranker wants both.
+ */
+export async function markFollowed(id: number): Promise<void> {
+    await withDatabase(database =>
+        database.runAsync(`UPDATE observations SET followed_at = CURRENT_TIMESTAMP WHERE id = ?`, [id]),
     );
 }
 

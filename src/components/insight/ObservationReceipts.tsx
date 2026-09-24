@@ -57,6 +57,8 @@ interface Props {
     /** Retire the thing the finding is about. Only for findings with a subject
      * the reader owns — see the bottom control. */
     onArchiveSubject?: () => void;
+    /** Called when the reader taps through to the passage. */
+    onFollow?: () => void;
 }
 
 function formatDate(raw: string): string {
@@ -95,6 +97,7 @@ export function ObservationReceipts({
     onVerdict,
     onOpenEntry,
     onArchiveSubject,
+    onFollow,
 }: Props) {
     const { colors } = useTheme();
     const [entries, setEntries] = useState<JournalEntry[]>([]);
@@ -136,6 +139,12 @@ export function ObservationReceipts({
     const passageId = rendered.subjectVerseId;
     const readPassage = () => {
         if (passageId === undefined) return;
+        /*
+         * Recorded before the hand-off, not after. Once `openBibleReference`
+         * sends the reader to jw.org this screen may never run again, and the
+         * strongest signal the card worked would go with it.
+         */
+        onFollow?.();
         openBibleReference(
             bookNameFromNumber(bookNumberOf(passageId)),
             chapterOf(passageId),

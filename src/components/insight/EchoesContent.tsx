@@ -29,6 +29,7 @@ import { Text } from '../ui';
 import {
     StoredObservation,
     getRecentObservations,
+    markFollowed,
     recordFeedback,
 } from '../../insight/observation';
 import { RenderedObservation, renderObservation } from '../../insight/render';
@@ -155,6 +156,7 @@ export function EchoesContent({ onCountChange }: { onCountChange?: (n: number) =
                         observation={open.observation}
                         rendered={open.rendered}
                         onClose={() => setOpen(null)}
+                        onFollow={() => markFollowed(open.observation.id)}
                         onVerdict={async agreed => {
                             await recordFeedback(open.observation.id, agreed);
                             setOpen(null);
