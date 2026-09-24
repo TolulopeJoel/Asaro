@@ -33,6 +33,7 @@ import {
     recordFeedback,
 } from '../../insight/observation';
 import { RenderedObservation, renderObservation } from '../../insight/render';
+import { daysWaiting, openSection } from '../../insight/echoesTone';
 import { ObservationReceipts } from './ObservationReceipts';
 
 interface Row {
@@ -129,6 +130,12 @@ function responseTo(observation: StoredObservation): Response {
  * is that no answer was given at all, the second is that one was given anyway.
  */
 const SECTIONS: { key: Response; title: string }[] = [
+    /*
+     * Placeholder. The real one comes from `openSection` at render time,
+     * because how hard he leans depends on how long the pile has been sitting
+     * there — see echoesTone.ts. Kept in the list so the ordering and the
+     * grouping still read from one place.
+     */
     { key: 'open', title: "You've not read these. What are you doing?" },
     { key: 'rejected', title: 'You said no without reading them. Hmmm.' },
     { key: 'read', title: 'You read these' },
@@ -194,9 +201,24 @@ export function EchoesContent({ onCountChange }: { onCountChange?: (n: number) =
             rows: rows.filter(row => responseTo(row.observation) === section.key),
         })).filter(group => group.rows.length > 0);
 
+        /*
+         * The unanswered heading softens with age, so it is resolved here
+         * rather than read off SECTIONS. Oldest wait in the group decides it.
+         */
+        const now = Date.now();
+        const openRows = groups.find(group => group.key === 'open')?.rows ?? [];
+        const oldestOpenDays = openRows.reduce<number | null>((oldest, row) => {
+            const days = daysWaiting(row.observation.shownAt, row.observation.createdAt, now);
+            if (days === null) return oldest;
+            return oldest === null || days > oldest ? days : oldest;
+        }, null);
+        const openHeading = openSection(oldestOpenDays);
+
         for (const group of groups) {
-            if (groups.length > 1) {
-                listRows.push({ kind: 'header', title: group.title, id: `h-${group.key}` });
+            const isOpen = group.key === 'open';
+            const title = isOpen ? openHeading.title : group.title;
+            if (groups.length > 1 || (isOpen && openHeading.showAlone)) {
+                listRows.push({ kind: 'header', title, id: `h-${group.key}` });
             }
             for (const row of group.rows) {
                 listRows.push({ kind: 'row', row, id: String(row.observation.id) });
