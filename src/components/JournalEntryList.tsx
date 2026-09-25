@@ -20,9 +20,10 @@ import { PracticeProgress, markPracticeDone, practiceProgress, unmarkPracticeDon
 import { setActionItemArchived, updateActionItem } from '../data/journalRepository';
 import { TopicCard } from './journal/TopicCard';
 import { BookCard, BookWithCount } from './journal/BookCard';
-import { ActionSectionHeader, DateGroupHeader, TopicHeader } from './journal/JournalHeaders';
+import { ActionSectionHeader, DateGroupHeader } from './journal/JournalHeaders';
 import { AHEAD_AT_TOP, BookDetailHeader, StillAhead, coveredChapters } from './journal/BookDetailHeader';
 import { READING_PLAN_DATA } from '../data/readingPlanData';
+import { planItemCoversBook } from '../data/journalRepository';
 import { getReadingProgress } from '../data/database';
 import { formatRange } from '../utils/reference';
 
@@ -55,9 +56,19 @@ type ListItem =
     | { type: 'action'; action: EnhancedActionItem; id: string }
     | { type: 'actionHeader'; title: string; accent: boolean; id: string }
     | { type: 'topic'; topic: JournalEntry; id: string }
-    | { type: 'topicHeader'; title: string; count: number; id: string }
     | { type: 'emptyState'; id: string }
     | { type: 'searchSpacer'; id: string };
+
+/**
+ * How long an answered question stays on screen before it goes.
+ *
+ * Long enough to notice the tick landed and take it back; short enough that
+ * the list is not quietly keeping a record nobody asked for. Ten seconds is
+ * the same bargain a send-undo makes, and for the same reason: the cheapest
+ * way to make a destructive-feeling action safe is to delay it rather than to
+ * confirm it.
+ */
+const LINGER_MS = 10_000;
 
 interface JournalEntryListProps {
     onEntryPress: (entry: JournalEntry) => void;
@@ -105,7 +116,31 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
     const [editingAction, setEditingAction] = useState<EnhancedActionItem | null>(null);
     practiceProgressRef.current = practiceProgressMap;
     const [topicsList, setTopicsList] = useState<JournalEntry[]>([]);
-    const [isArchiveCollapsed, setIsArchiveCollapsed] = useState(true);
+
+/*
+     * Questions you have just answered, still on screen.
+     *
+     * A ticked question leaves the list for good — you looked the thing up,
+     * and a list of answered questions is a graveyard rather than something
+     * you are working on. But leaving instantly makes a mis-tap
+     * unrecoverable, so it lingers for ten seconds first and the checkbox
+     * stays live: ticking again inside that window puts it back and cancels
+     * the exit. The window is the undo.
+     *
+     * Nothing is destroyed either way. The question is part of the entry that
+     * raised it and still reads there, under "What would I like to study
+     * further?" — this is only about what the reader is still carrying.
+     */
+    const [lingering, setLingering] = useState<Set<number>>(new Set());
+    const lingerTimers = useRef(new Map<number, ReturnType<typeof setTimeout>>());
+
+    useEffect(() => {
+        const timers = lingerTimers.current;
+        return () => {
+            timers.forEach(clearTimeout);
+            timers.clear();
+        };
+    }, []);
     const [isLoading, setIsLoading] = useState(true);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [hasMore, setHasMore] = useState(true);
@@ -205,9 +240,35 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
     }, []);
 
     const handleToggleTopic = useCallback(async (item: JournalEntry) => {
+        const id = item.id!;
+        const answering = !item.study_completed;
         try {
-            await toggleStudyTopicCompletion(item.id!, !item.study_completed);
-            // Refresh the list
+            await toggleStudyTopicCompletion(id, answering);
+
+            const existing = lingerTimers.current.get(id);
+            if (existing) {
+                clearTimeout(existing);
+                lingerTimers.current.delete(id);
+            }
+
+            if (answering) {
+                setLingering(prev => new Set(prev).add(id));
+                lingerTimers.current.set(id, setTimeout(() => {
+                    lingerTimers.current.delete(id);
+                    setLingering(prev => {
+                        const next = new Set(prev);
+                        next.delete(id);
+                        return next;
+                    });
+                }, LINGER_MS));
+            } else {
+                setLingering(prev => {
+                    const next = new Set(prev);
+                    next.delete(id);
+                    return next;
+                });
+            }
+
             loadTopics();
         } catch (error) {
             console.error('Error toggling study topic:', error);
@@ -453,35 +514,20 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
         }
 
         if (viewMode === 'topics') {
-            const activeTopics = topicsList.filter(t => !t.study_completed);
-            const completedTopics = topicsList.filter(t => !!t.study_completed);
+            /*
+             * Open questions, plus any just answered and still inside their
+             * undo window. There is no "completed" section under this any
+             * more: a question you have answered is not something you come
+             * back to, and a standing list of them turned the one place that
+             * says what you are carrying into an archive of what you are not.
+             */
+            const shown = topicsList.filter(t => !t.study_completed || lingering.has(t.id!));
 
-            const items: ListItem[] = [];
-
-            if (activeTopics.length === 0) {
-                items.push({ type: 'emptyState', id: 'empty-topics' });
-            } else {
-                activeTopics.forEach(topic => {
-                    items.push({ type: 'topic' as const, topic, id: `topic-${topic.id}` });
-                });
+            if (shown.length === 0) {
+                return [{ type: 'emptyState' as const, id: 'empty-topics' }];
             }
 
-            if (completedTopics.length > 0) {
-                items.push({
-                    type: 'topicHeader',
-                    title: 'COMPLETED FOLLOW-UPS',
-                    count: completedTopics.length,
-                    id: 'completed-topics-header'
-                });
-
-                if (!isArchiveCollapsed) {
-                    completedTopics.forEach(topic => {
-                        items.push({ type: 'topic' as const, topic, id: `topic-${topic.id}` });
-                    });
-                }
-            }
-
-            return items;
+            return shown.map(topic => ({ type: 'topic' as const, topic, id: `topic-${topic.id}` }));
         }
 
         if (viewMode === 'books') {
@@ -560,7 +606,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
         }
 
         return items;
-    }, [viewMode, filteredEntries, debouncedSearchQuery, availableBooks, bookEntries, selectedBook, groupEntriesByDate, actionsList, topicsList, isArchiveCollapsed]);
+    }, [viewMode, filteredEntries, debouncedSearchQuery, availableBooks, bookEntries, selectedBook, groupEntriesByDate, actionsList, topicsList, lingering]);
 
     /*
      * Nothing here yet.
@@ -631,12 +677,38 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
         return () => { active = false; };
     }, [viewMode, selectedBook]);
 
-    /** The plan's outstanding readings for the book on screen. */
+    /**
+     * The plan's outstanding readings for the book on screen.
+     *
+     * Matched with `planItemCoversBook` rather than `item.book === name`,
+     * because the plan groups eleven short books into shared readings —
+     * "Obadiah/Jonah", "Titus/Philemon", "2 John/3 John/Jude". No book is
+     * called "Obadiah/Jonah", so a strict comparison found nothing for any of
+     * those eleven and their screens showed no readings at all, indefinitely.
+     *
+     * The save path has always used this helper — which is why writing about
+     * Jonah correctly ticks the Obadiah/Jonah reading. Only the display side
+     * was left on the strict test, so the plan knew about these books and the
+     * screen did not.
+     *
+     * A consequence worth knowing rather than hiding: a reading shown on
+     * Jonah's page covers Obadiah too, so completing it completes both. That
+     * is the plan working as designed — they share a day — and it is better
+     * shown honestly than hidden to avoid explaining it.
+     */
     const stillAhead = React.useMemo(() => {
         if (viewMode !== 'bookDetail' || !selectedBook) return [];
         return READING_PLAN_DATA
-            .filter(item => item.book === selectedBook.name && !completedPlanIds.has(item.id))
-            .map(item => formatRange(item.chapters))
+            .filter(item => planItemCoversBook(item.book, selectedBook.name) && !completedPlanIds.has(item.id))
+            /*
+             * A reading with no chapter range covers the whole book, which is
+             * how the plan files the short ones. Mapping it to `formatRange`
+             * gave an empty string that `filter(Boolean)` then dropped — so
+             * fixing the name match alone would have left these eleven books
+             * with a strip that was still empty, for a second reason. The
+             * Plan tab has always said "Full book" here.
+             */
+            .map(item => formatRange(item.chapters) || 'Full book')
             .filter(Boolean);
     }, [viewMode, selectedBook, completedPlanIds]);
 
@@ -667,8 +739,6 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
                 return <ActionSectionHeader title={item.title} accent={item.accent} />;
             case 'topic':
                 return <TopicCard item={item.topic} onEntryPress={onEntryPress} handleToggleTopic={handleToggleTopic} />;
-            case 'topicHeader':
-                return <TopicHeader title={item.title} count={item.count} isArchiveCollapsed={isArchiveCollapsed} onToggleCollapse={() => setIsArchiveCollapsed(!isArchiveCollapsed)} />;
             case 'emptyState':
                 return renderEmptyState();
             case 'searchSpacer':
@@ -687,7 +757,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
             default:
                 return null;
         }
-    }, [colors, isArchiveCollapsed, viewMode, selectedBook, bookEntries, onEntryPress, handleTogglePin, handleToggleAction, handleToggleTopic, navigateToBookDetail, renderEmptyState]);
+    }, [colors, viewMode, selectedBook, bookEntries, onEntryPress, handleTogglePin, handleToggleAction, handleToggleTopic, navigateToBookDetail, renderEmptyState]);
 
     // Memoize the header element so FlatList receives a stable reference.
     // Passing renderListHeader() (a call) would produce a new element every render
