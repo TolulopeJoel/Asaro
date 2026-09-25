@@ -1,14 +1,34 @@
+/**
+ * One question you left open, in the Questions list.
+ *
+ * It is the same row as a commitment, on purpose. Both lists ask the reader to
+ * mark something done, and this one had drifted a long way: a round tick
+ * against a square one, a tinted pill around the reference, a bell in a second
+ * pill, and a type ramp that read the length of the text and picked a font
+ * size from it. None of those exist anywhere else in the app.
+ *
+ * The checkbox is earned rather than copied. `ActionCard` withholds a box from
+ * an application — something you are trying to be, with no end — and offers one
+ * only where there is a finish. A question has a finish: you look it up once
+ * and it is answered. That makes it the same shape as a one-off action, which
+ * is the one kind that ticks once and stays ticked.
+ *
+ * Ticked, it lingers for a moment and then leaves the list for good. See
+ * `LINGER_MS` in JournalEntryList for why, and what that moment is for. The
+ * question itself is not lost: it is part of the entry that raised it, and it
+ * reads there like every other answer.
+ */
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Bell, CheckCircle2, Check } from 'lucide-react-native';
+
 import { useTheme } from '../../theme/ThemeContext';
+import { Spacing } from '../../theme/spacing';
 import { JournalEntry } from '../../data/database';
 import { ScalePressable } from '../ScalePressable';
 import { HyperlinkedText } from '../HyperlinkedText';
-import { formatDate, getDynamicCardStyle } from './JournalCardHelpers';
-import { Spacing } from '../../theme/spacing';
-import { Typography } from '../../theme/typography';
-import { Text } from '../ui';
+import { Text, textStyle } from '../ui';
+import { Checkbox } from './Checkbox';
+import { formatDate } from './JournalCardHelpers';
 
 interface TopicCardProps {
     item: JournalEntry;
@@ -16,140 +36,99 @@ interface TopicCardProps {
     handleToggleTopic: (item: JournalEntry) => void;
 }
 
+/** "Genesis 12" / "Genesis 12–15", the way every other row writes it. */
+function reference(item: JournalEntry): string {
+    const range =
+        item.chapter_end && item.chapter_end !== item.chapter_start
+            ? `${item.chapter_start}–${item.chapter_end}`
+            : `${item.chapter_start}`;
+    return `${item.book_name} ${range}`;
+}
+
+/** A reminder still ahead of us, as a date. Past ones say nothing. */
+function reminderLabel(raw?: string | null): string | null {
+    if (!raw) return null;
+    const when = new Date(raw);
+    if (Number.isNaN(when.getTime()) || when <= new Date()) return null;
+    return when.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+}
+
 export const TopicCard = React.memo(({ item, onEntryPress, handleToggleTopic }: TopicCardProps) => {
-    const { colors } = useTheme();
-    const dynamic = getDynamicCardStyle(item.study_further || '');
-    const isCompleted = !!item.study_completed;
+    const { colors, style: themeStyle } = useTheme();
+    const done = !!item.study_completed;
+    const reminder = reminderLabel(item.study_further_reminder);
 
     return (
-        <View style={styles.bookCardWrapper}>
-            <View style={[
-                styles.entryCard,
-                {
-                    backgroundColor: colors.cardBackground,
-                    borderColor: colors.cardBorder,
-                    marginBottom: 0,
-                    padding: dynamic.padding,
-                    opacity: isCompleted ? 0.6 : 1
-                }
-            ]}>
-                <View style={[styles.entryHeader, { marginBottom: 12 }]}>
-                    <View style={styles.entryHeaderLeft}>
-                        <Text variant="caption">{formatDate(item.created_at)}</Text>
-                        <ScalePressable onPress={() => onEntryPress(item)}>
-                            <View style={[styles.refBadge, { backgroundColor: colors.accentSecondary + '15' }]}>
-                                <Text variant="label" style={{ color: colors.accentSecondary + 'A5' }}>
-                                    {item.book_name} {item.chapter_start}{item.chapter_end && item.chapter_end !== item.chapter_start ? `-${item.chapter_end}` : ''}
-                                </Text>
-                            </View>
-                        </ScalePressable>
-                    </View>
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 16 }}>
-                    <View style={{ flex: 1 }}>
-                        <View style={styles.topicContentContainer}>
-                            <HyperlinkedText
-                                style={[
-                                    styles.entryPreview,
-                                    {
-                                        color: colors.textPrimary,
-                                        fontWeight: '600',
-                                        fontSize: dynamic.fontSize,
-                                        lineHeight: dynamic.lineHeight,
-                                        marginBottom: item.study_further_reminder ? 8 : 0,
-                                        textDecorationLine: isCompleted ? 'line-through' : 'none',
-                                    }
-                                ]}
-                                text={item.study_further || ''}
-                            />
-                            {isCompleted && (
-                                <View style={[styles.strikeThroughLine, { backgroundColor: colors.textPrimary, opacity: 0.4 }]} />
-                            )}
-                        </View>
-                        {item.study_further_reminder && new Date(item.study_further_reminder) > new Date() ? (
-                            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: Spacing.borderRadius.lg, borderWidth: 1, backgroundColor: colors.backgroundSubtle, borderColor: colors.border, alignSelf: 'flex-start', marginTop: 8, gap: 4 }}>
-                                <Bell size={12} color={colors.textSecondary} />
-                                <Text style={{ fontSize: 10, fontWeight: '500', color: colors.textSecondary }}>
-                                    {new Date(item.study_further_reminder).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
-                                </Text>
-                            </View>
-                        ) : null}
-                    </View>
-
-                    <ScalePressable
-                        onPress={() => handleToggleTopic(item)}
+        <View
+            style={[
+                styles.panel,
+                { backgroundColor: colors.backgroundSubtle },
+                done && styles.done,
+            ]}
+        >
+            <View style={styles.row}>
+                <Checkbox
+                    done={done}
+                    onPress={() => handleToggleTopic(item)}
+                    label={done ? 'Put this question back' : 'Mark this question answered'}
+                />
+                <ScalePressable
+                    style={styles.rowMain}
+                    onPress={() => onEntryPress(item)}
+                    accessibilityRole="button"
+                    accessibilityHint="Opens the entry that raised this"
+                >
+                    <HyperlinkedText
                         style={[
-                            styles.checkCircle,
-                            {
-                                borderColor: isCompleted ? colors.accentSecondary : colors.border,
-                                backgroundColor: isCompleted ? colors.accentSecondary + '20' : colors.backgroundSubtle + '40'
-                            }
+                            textStyle(themeStyle, 'subtitle'),
+                            { color: colors.textPrimary },
+                            done && styles.struck,
                         ]}
-                    >
-                        {isCompleted ? (
-                            <CheckCircle2 size={14} color={colors.accentSecondary} />
-                        ) : (
-                            <Check size={14} color={colors.textTertiary} />
-                        )}
-                    </ScalePressable>
-                </View>
+                        text={item.study_further || ''}
+                    />
+                    {/*
+                      * The reference and the reminder sit where a commitment
+                      * puts its reference, streak and due date — plain meta on
+                      * one line. They were two tinted pills, which made a
+                      * question look like it carried two controls it does not.
+                      */}
+                    <View style={styles.metaRow}>
+                        <Text variant="meta">{reference(item)}</Text>
+                        <Text variant="meta">{formatDate(item.created_at)}</Text>
+                        {reminder && <Text variant="meta" tone="accent">{reminder}</Text>}
+                    </View>
+                </ScalePressable>
             </View>
         </View>
     );
 });
 
+TopicCard.displayName = 'TopicCard';
+
 const styles = StyleSheet.create({
-    bookCardWrapper: {
-        marginBottom: 12,
+    /** `.cl-panel{padding:18px}`, stacked with a 10px gap by the list. */
+    panel: {
+        padding: Spacing.layout.cardPadding,
+        marginBottom: 10,
     },
-    entryCard: {
-        borderRadius: Spacing.borderRadius.lg,
-        borderWidth: 1,
-    },
-    entryHeader: {
+    row: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        alignItems: 'flex-start',
+        gap: Spacing.md,
     },
-    entryHeaderLeft: {
+    rowMain: {
+        flex: 1,
+        minWidth: 0,
+    },
+    metaRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
+        flexWrap: 'wrap',
+        gap: 10,
+        marginTop: 9,
     },
-    refBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: Spacing.borderRadius.lg,
-    },
-    entryScripture: {
-        fontSize: 10,
-        fontWeight: '600',
-        letterSpacing: 0.5,
-    },
-    entryPreview: {
-        fontSize: Typography.size.lg,
-        lineHeight: 26,
-        fontWeight: '500',
-        letterSpacing: -0.1,
-    },
-    topicContentContainer: {
-        position: 'relative',
-        alignSelf: 'flex-start',
-    },
-    strikeThroughLine: {
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        top: '50%',
-        height: 1.5,
-        borderRadius: Spacing.borderRadius.round,
-    },
-    checkCircle: {
-        width: 24,
-        height: 24,
-        borderRadius: Spacing.borderRadius.round,
-        borderWidth: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
+    /* One strike, not two: this used to set textDecorationLine AND draw a line
+       across the text with an absolutely positioned View. */
+    struck: { textDecorationLine: 'line-through' },
+    done: { opacity: 0.55 },
 });
