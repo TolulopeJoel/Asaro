@@ -55,7 +55,6 @@ import {
     Speck,
     Sprout,
     blend,
-    bushPaths,
     edgeFringe,
     furrowPath,
     patchPath,
@@ -83,12 +82,18 @@ const BED_SIZE = 30;
 /**
  * The hedge between books.
  *
- * Heavier than a hairline on purpose. A one-point line is visible in a mockup
- * and disappears on a phone, and sixty-six holdings with invisible boundaries
- * is one undifferentiated field — being able to pick your own block out of it
- * is the entire reason the boundaries exist.
+ * It was 1.5 in near-black, set when book plots were rectangles all of one
+ * height and the line was the ONLY thing telling one from the next. It is not
+ * any more: plots are irregular now, so Genesis is an L and Mark starts on a
+ * step, and the shapes do most of the work the weight used to. A heavy line
+ * on top of that reads as a grid drawn over the land rather than as a
+ * boundary in it.
+ *
+ * Still not a hairline. One point is visible in a mockup and gone on a phone,
+ * and being able to pick your own block out of sixty-six is why boundaries
+ * exist at all.
  */
-const HEDGE = 1.5;
+const HEDGE = 1.2;
 
 /** Cells of unbroken run below which a book carries no name. */
 const MIN_NAME_SPAN = 2;
@@ -133,7 +138,7 @@ const FURROWS_PER_CELL = 4;
  * Blades of sward per planted chapter, and the point at which it thins.
  *
  * Turf wants to be close-set — that evenness is what reads as tended — so
- * this is higher than the bush's stems per clump. A reader who has written
+ * this is higher than the verge's blades per clump. A reader who has written
  * about the whole Bible has 1,189 planted cells, though, so past the
  * threshold the sowing drops two blades per cell. Nobody can count blades,
  * and everybody can feel a slow screen.
@@ -142,7 +147,7 @@ const SWARD_BLADES = 5;
 const SWARD_THIN_ABOVE = 500;
 
 /**
- * The bush around the holding.
+ * The verge around the holding.
  *
  * Deep above and below, slim down the sides. What made an earlier version
  * feel like a box was not that the land had a border — it is that the border
@@ -156,61 +161,43 @@ const SWARD_THIN_ABOVE = 500;
  * point of width there costs roughly ten times what the same point costs
  * above or below.
  */
-/* Looser than it looks like it should be: the bushes carry the verge, and
- * grass only has to fill between them. */
+/* Loose on purpose. This is untended ground: grass that stands in ranks is
+ * the one thing the verge must not look like, since evenness is what marks
+ * the field as cultivated. */
 const VERGE_PITCH = 12;
-const BUSH_PITCH = 30;
 const PATCH_PITCH = 26;
 /*
- * The sides are wider than they were. A bush needs room to be a bush — at
- * fourteen points it could only ever have been a smudge — and the verge is
- * the one place on this screen where something is meant to look untended.
+ * Deeper at the ends than down the flanks. An even border on four sides is a
+ * frame around a picture, and the side strips run the whole height of the map
+ * — three thousand points of it — so every point of width there costs roughly
+ * ten times what the same point costs above or below.
  */
-const BUSH_SIDE = 22;
-const BUSH_DEPTH = 40;
+const VERGE_SIDE = 22;
+const VERGE_DEPTH = 40;
 
 /**
  * How raggedly the verge eats into the land, and how finely.
  *
- * The real answer to a boundary that reads as ruled. Overhanging bushes hide
- * a straight line; this breaks it. `FRINGE_BITE` is the deepest the grass
- * comes in over the crop and `FRINGE_STEP` is how often the edge changes its
- * mind — small enough to read as rough ground, large enough not to look
- * serrated.
+ * The answer to a boundary that reads as ruled. Bushes along the edge were
+ * tried first and only ever hid the line; this breaks it — and once it did,
+ * the bushes had nothing left to do and were removed.
+ *
+ * `FRINGE_BITE` is the deepest the grass comes in over the crop, and
+ * `FRINGE_STEP` is how often the edge changes its mind — small enough to read
+ * as rough ground, large enough not to look serrated.
  */
 const FRINGE_BITE = 9;
 const FRINGE_STEP = 11;
 
-/**
- * How much of the two long flanks carries bushes.
- *
- * Nearly none, deliberately. Bushes were put on the boundary to stop it
- * reading as a ruled line, and the ragged fringe does that job better — so
- * what is left for them is scenery. The map is nine times taller than it is
- * wide, so an even placement spent nine bushes on the flanks for every one at
- * an end: a hundred and thirty near-identical mounds down both sides, which
- * is a printed border rather than a landscape, and the bulk of the cost.
- *
- * A few are kept rather than none. An entirely bare flank reads as mown, and
- * the occasional clump is what says nobody has been tending this part.
- */
-const BUSH_SIDE_SHARE = 0.22;
 
 /*
- * Bushes grow ALONG the field's boundary rather than anywhere in the verge.
+ * The verge is drawn OVER the land, not behind it.
  *
- * Vegetation does not stop politely at a fence, so they lean over the hedge —
- * but an earlier version got that by widening the band they were sown in,
- * which put shrubs at every point inside it, including well inside the land.
- * A bush sitting on its own in the middle of somebody's crop looks like a
- * mistake, not like an edge. `bushPaths` walks the perimeter instead, so
- * every bush is on the boundary by construction.
- *
- * Which is why they are drawn ON TOP of the field rather than behind it, and
- * the only reason the verge is split into two layers. The cost is real and
- * accepted: a bush overhanging the outermost column hides part of a chapter.
- * It is the outer edge of a map you can scroll and tap, and the edge looking
- * like an edge is worth more than those few points.
+ * It has to be: the fringe cuts an irregular bite out of the field's edge,
+ * and the grass then has to cover what it bit off. Non-interactive
+ * throughout, so a chapter under the fringe is still tappable — the data is
+ * exactly where it was, and only the last few points of the outermost
+ * chapters are hidden.
  */
 
 interface ChapterProps {
@@ -312,19 +299,10 @@ export function BibleCloth({
          * fixed depth past it puts blades on bare field wherever the bite
          * happened to be shallow. The clip settles both.
          */
-        const band = BUSH_SIDE + FRINGE_BITE;
-        const bandY = BUSH_DEPTH + FRINGE_BITE;
+        const band = VERGE_SIDE + FRINGE_BITE;
+        const bandY = VERGE_DEPTH + FRINGE_BITE;
         return {
             grass: vergePaths(meadow.width, meadow.height, VERGE_PITCH, band, bandY),
-            /* Along the boundary itself — the inset IS the field's edge. */
-            bushes: bushPaths(
-                meadow.width,
-                meadow.height,
-                BUSH_SIDE,
-                BUSH_DEPTH,
-                BUSH_PITCH,
-                BUSH_SIDE_SHARE,
-            ),
             patches: patchPath(meadow.width, meadow.height, PATCH_PITCH, band, bandY),
             /*
              * The ragged edge, cut where the field actually ends rather than
@@ -334,8 +312,8 @@ export function BibleCloth({
             fringe: edgeFringe(
                 meadow.width,
                 meadow.height,
-                BUSH_SIDE,
-                BUSH_DEPTH,
+                VERGE_SIDE,
+                VERGE_DEPTH,
                 FRINGE_STEP,
                 FRINGE_BITE,
             ),
@@ -493,7 +471,7 @@ export function BibleCloth({
                         />
                         {/*
                           * The sward on cleared ground. Fine, short and close
-                          * — everything the bush past the hedge is not, which
+                          * — everything the verge past the hedge is not, which
                           * is what makes the boundary read as cultivation
                           * rather than as a change of colour.
                           */}
@@ -556,8 +534,8 @@ export function BibleCloth({
               * exactly where it was, only the last few points of the outermost
               * chapters are hidden.
               *
-              * Order is the effect: the bite, then mottled floor, then grass,
-              * then the bushes standing in it.
+              * Order is the effect: the bite first, then the grass growing
+              * in what it took.
               */}
             {meadow.width > 0 && verge.grass.back !== '' && (
                 <Svg
@@ -579,8 +557,6 @@ export function BibleCloth({
                       * boundary, and each one shows exactly as far as the
                       * ground it grows on actually reaches.
                       *
-                      * Bushes are deliberately OUTSIDE the clip. They are
-                      * meant to lean over the hedge.
                       */}
                     <Defs>
                         <ClipPath id="verge-ground">
@@ -594,9 +570,6 @@ export function BibleCloth({
                         <Path d={verge.grass.back} stroke={TERRAIN.vergeBack} strokeWidth={1.4} strokeLinecap="round" fill="none" />
                         <Path d={verge.grass.tip} stroke={TERRAIN.vergeTip} strokeWidth={1.2} strokeLinecap="round" fill="none" />
                     </G>
-                    <Path d={verge.bushes.mass} fill={TERRAIN.bushMass} />
-                    <Path d={verge.bushes.crown} fill={TERRAIN.bushCrown} fillOpacity={0.55} />
-                    <Path d={verge.bushes.twigs} stroke={TERRAIN.bushTwig} strokeWidth={1.2} strokeLinecap="round" fill="none" />
                 </Svg>
             )}
         </View>
@@ -604,7 +577,7 @@ export function BibleCloth({
 }
 
 const styles = StyleSheet.create({
-    meadow: { paddingHorizontal: BUSH_SIDE, paddingVertical: BUSH_DEPTH },
+    meadow: { paddingHorizontal: VERGE_SIDE, paddingVertical: VERGE_DEPTH },
     field: { position: 'relative' },
     cell: { position: 'absolute' },
     lip: { position: 'absolute', top: 0, left: 0, right: 0, height: 1 },

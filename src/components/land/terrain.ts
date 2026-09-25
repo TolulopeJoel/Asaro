@@ -35,45 +35,23 @@
  */
 
 export const TERRAIN = {
-    /** Beyond the holding: the floor the bush grows out of, not the bush. */
+    /** Beyond the holding: the floor the verge grass grows out of. */
     meadow: '#3e4d2f',
 
     /**
-     * The verge past the hedge: low grass with bushes standing in it.
+     * The verge past the hedge: rough, untended grass.
      *
-     * An earlier version made the whole strip one tangle, which is
-     * undergrowth, not bush. A bush is a THING — a clump, rounded, sitting
-     * clear of its neighbours and standing a good bit higher than what grows
-     * around it. You can count them. That is why they are built as silhouettes
-     * here rather than as strokes: a mound of overlapping lobes with a lit
-     * crown on its upper side, and a few twigs breaking its outline so it does
-     * not read as a blob.
+     * It carried bushes for a while — rounded clumps standing along the
+     * boundary — and they were removed once the ragged edge existed, because
+     * that is what actually stops the boundary reading as a ruled line. The
+     * bushes were only ever hiding it.
      *
-     * Everything here is darker and cooler than the sward on cleared ground.
-     * That contrast is the whole point of the boundary — planted land should
-     * read as cultivated the moment it meets what was there before.
+     * Darker and cooler than the sward on cleared ground. That contrast is
+     * the whole point of the boundary: planted land should read as cultivated
+     * the moment it meets what was there before.
      */
     vergeBack: '#41532f',
     vergeTip: '#66814a',
-
-    /*
-     * Held deliberately close to the verge around them.
-     *
-     * The first pass made the mound near-black against the grass, which gave
-     * each bush a hard silhouette and turned the border into a row of cut-out
-     * stickers — they read as objects placed on the ground rather than as
-     * things growing out of it. A bush is the same stuff as the verge, only
-     * more of it, so the whole range here sits within a few steps of
-     * `vergeBack`: the shape comes from density and the crown, not from
-     * contrast.
-     *
-     * They still stand out where they overhang the FIELD, and that is correct
-     * — cleared ground is a different colour, which is the entire point of the
-     * boundary.
-     */
-    bushMass: '#39492a',
-    bushCrown: '#4d6435',
-    bushTwig: '#57703e',
 
     /**
      * Bare earth inside a parcel — three tones, picked per book.
@@ -95,11 +73,12 @@ export const TERRAIN = {
      * Grass on cleared, planted ground, in two depths.
      *
      * Turf rather than thicket: short, fine, close-set and near enough
-     * upright. Where bush is defined by mass and tangle, this is defined by
-     * evenness — which is exactly what makes ground look tended, and what the
-     * eye reads as the difference between a field and what surrounds it.
+     * upright. Where the verge past the hedge is rough and uneven, this is
+     * defined by evenness — which is exactly what makes ground look tended,
+     * and what the eye reads as the difference between a field and what
+     * surrounds it.
      *
-     * Brighter and warmer than the bush, so the boundary carries even where
+     * Brighter and warmer than the verge, so the boundary carries even where
      * the hedge is thin.
      */
     swardBack: '#4d8a3a',
@@ -108,8 +87,16 @@ export const TERRAIN = {
     /** The lit top edge of a parcel. What stops a tile reading as a rectangle. */
     lip: 'rgba(255, 255, 255, 0.2)',
 
-    /** The demarcation between parcels. Must read over earth AND over crop. */
-    hedge: '#3b2f1f',
+    /**
+     * The demarcation between parcels. Must read over earth AND over crop.
+     *
+     * Lifted off near-black. Against mud at `#8a6a45` the old `#3b2f1f` was a
+     * hard, almost-black rule — the strongest mark on a screen whose subject
+     * is the ground, not the fences. This is still darker than any soil it
+     * crosses, so the boundary holds, but it now reads as a hedge lying on
+     * the land rather than as ink drawn over it.
+     */
+    hedge: '#4a3b27',
 };
 
 /** Stable per-book choice among the earth tones. */
