@@ -17,8 +17,9 @@ import { ScalePressable } from '../ScalePressable';
 import { HyperlinkedText } from '../HyperlinkedText';
 import { Spacing } from '../../theme/spacing';
 import { Text, textStyle } from '../ui';
-import { ActionKind, actionKindOf, completes } from '../../data/actionKind';
+import { ActionKind, actionKindOf, completes, isCadence } from '../../data/actionKind';
 import { PracticeProgress } from '../../data/practiceRepository';
+import { PracticeHistory } from './PracticeHistory';
 
 interface ActionCardProps {
     item: EnhancedActionItem;
@@ -31,11 +32,17 @@ interface ActionCardProps {
     onEdit?: (item: EnhancedActionItem) => void;
 }
 
-/** "12 days", "3 weeks" — how long a practice has been kept. */
+/**
+ * "1 day", "12 days", "3 weeks" — how long a practice has been kept.
+ *
+ * From one, not from two. The first day kept is the most precarious a practice
+ * ever is and it used to be the single day this said nothing at all, which put
+ * the silence exactly where the encouragement was worth most.
+ */
 function streakLabel(streak: number, cadence: string | null | undefined): string | null {
-    if (streak < 2) return null;
+    if (streak < 1) return null;
     const unit = cadence === 'weekly' ? 'week' : 'day';
-    return `${streak} ${unit}s`;
+    return `${streak} ${unit}${streak === 1 ? '' : 's'}`;
 }
 
 /** "Due 3 Oct", or "Overdue" once the day has passed. */
@@ -103,6 +110,14 @@ export const ActionCard = React.memo(({ item, onEntryPress, handleTogglePin, han
     const done = kind === 'practice' ? !!progress?.doneNow : !!item.is_completed;
     const showsCheckbox = completes(kind) && !isArchived;
     const streak = kind === 'practice' ? streakLabel(progress?.streak ?? 0, item.cadence) : null;
+    /*
+     * The cells sit under the meta row rather than beside the streak, because
+     * they are the thing that stays true on the day the streak reads zero.
+     */
+    const history =
+        kind === 'practice' && progress && isCadence(item.cadence) && !isArchived ? (
+            <PracticeHistory completions={progress.completions} cadence={item.cadence} />
+        ) : null;
     const due = kind === 'action' ? dueLabel(item.due_at) : null;
     /* Only an action stays struck through — a practice ticked today is not finished. */
     const struckOut = kind === 'action' && done;
@@ -160,6 +175,7 @@ export const ActionCard = React.memo(({ item, onEntryPress, handleTogglePin, han
                         {streak && <Text variant="meta" tone="accent">{streak}</Text>}
                         {due && <Text variant="meta" tone="accent">{due}</Text>}
                     </View>
+                    {history}
                 </ScalePressable>
                 {/*
                   * The mockup draws no pin here — it expresses pinning with the
@@ -236,6 +252,7 @@ export const ActionCard = React.memo(({ item, onEntryPress, handleTogglePin, han
                         {streak && <Text variant="meta" tone="accent">{streak}</Text>}
                         {due && <Text variant="meta" tone="accent">{due}</Text>}
                     </View>
+                    {history}
                 </ScalePressable>
                 <TouchableOpacity
                     onPress={() => handleTogglePin(item)}

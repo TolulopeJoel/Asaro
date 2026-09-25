@@ -11,9 +11,15 @@
  * furthest ahead it looks. On most days this component renders nothing.
  *
  * The streak sits beside each practice, so the line reads as something being
- * continued rather than something outstanding.
+ * continued rather than something outstanding. It shows from the first day
+ * kept, not the second: day one is the most fragile a practice ever is, and
+ * it was the one day the count said nothing.
  *
  * And the heading is "Today", not "To do" — it names a moment, not a backlog.
+ *
+ * A practice kept here stays, ticked, until the screen is left — `useToday`
+ * explains why. It is the only row on the strip that is not asking for
+ * anything, so it is dimmed and sunk to the bottom, and its box unticks.
  */
 
 import React from 'react';
@@ -29,10 +35,12 @@ import { TodayItem } from '../../hooks/useToday';
 interface Props {
     items: TodayItem[];
     onKeep: (item: TodayItem) => void;
+    /** Untick one kept a moment ago. Without this the tick is a trap. */
+    onUndo: (item: TodayItem) => void;
     onOpen?: (item: TodayItem) => void;
 }
 
-export function TodayStrip({ items, onKeep, onOpen }: Props) {
+export function TodayStrip({ items, onKeep, onUndo, onOpen }: Props) {
     const { colors, isLockedIn } = useTheme();
 
     // Absent, not empty. A block with nothing in it is still clutter.
@@ -60,14 +68,23 @@ export function TodayStrip({ items, onKeep, onOpen }: Props) {
                               */}
                             {isPractice ? (
                                 <ScalePressable
-                                    onPress={() => onKeep(entry)}
+                                    onPress={() => (entry.kept ? onUndo(entry) : onKeep(entry))}
                                     accessibilityRole="checkbox"
-                                    accessibilityState={{ checked: false }}
-                                    accessibilityLabel={`Mark ${entry.item.action} done for today`}
+                                    accessibilityState={{ checked: entry.kept }}
+                                    accessibilityLabel={
+                                        entry.kept
+                                            ? `Undo ${entry.item.action} for today`
+                                            : `Mark ${entry.item.action} done for today`
+                                    }
                                     hitSlop={Spacing.md}
-                                    style={[styles.box, { borderColor: colors.borderStrong }]}
+                                    style={[
+                                        styles.box,
+                                        entry.kept
+                                            ? { backgroundColor: colors.textPrimary, borderColor: colors.textPrimary }
+                                            : { borderColor: colors.borderStrong },
+                                    ]}
                                 >
-                                    <Check size={11} color="transparent" />
+                                    <Check size={11} color={entry.kept ? colors.background : 'transparent'} />
                                 </ScalePressable>
                             ) : (
                                 <View style={[styles.marker, { backgroundColor: entry.overdue ? colors.accent : colors.border }]} />
@@ -79,12 +96,21 @@ export function TodayStrip({ items, onKeep, onOpen }: Props) {
                                 onPress={onOpen ? () => onOpen(entry) : undefined}
                                 accessibilityRole={onOpen ? 'button' : undefined}
                             >
-                                <Text variant="body" numberOfLines={2}>
+                                <Text
+                                    variant="body"
+                                    numberOfLines={2}
+                                    tone={entry.kept ? 'tertiary' : undefined}
+                                >
                                     {entry.item.action}
                                 </Text>
                             </ScalePressable>
 
-                            {isPractice && entry.streak >= 2 && (
+                            {/*
+                              * The whole point of the kept row. On the tap this
+                              * is the number that just went up, so it stays at
+                              * full strength while the line around it dims.
+                              */}
+                            {isPractice && entry.streak >= 1 && (
                                 <Text variant="meta" tone="accent">
                                     {`${entry.streak}${entry.item.cadence === 'weekly' ? 'w' : 'd'}`}
                                 </Text>

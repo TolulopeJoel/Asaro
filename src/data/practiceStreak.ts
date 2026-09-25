@@ -90,6 +90,54 @@ export function streakOf(
     return streak;
 }
 
+/**
+ * Whether each of the last `count` periods was kept, oldest first.
+ *
+ * The honest counterweight to the streak. A streak reports one number and that
+ * number is zero the morning after a fortnight is broken, which is both true
+ * and a terrible thing to show someone who kept thirteen of those days. This
+ * reports the days themselves and lets them be read as what they were.
+ *
+ * Oldest first because it is drawn left to right as time passing, so the last
+ * cell is the current period — the one still open, and the only one that can
+ * still change.
+ */
+export function recentPeriods(
+    completions: CompletedOn[],
+    cadence: Cadence,
+    today: CompletedOn,
+    count: number,
+): boolean[] {
+    if (count <= 0) return [];
+
+    const todayMs = localDate(today);
+    const period = cadence === 'daily' ? 1 : 7;
+
+    /*
+     * Completions as whole days back from today — 0 is today, 1 yesterday.
+     * Going through `daysBetween` rather than dividing raw milliseconds is
+     * what keeps a DST change from shifting a day into the wrong cell.
+     */
+    const offsets = new Set(
+        completions.map(day => daysBetween(todayMs, localDate(day))).filter(offset => offset >= 0),
+    );
+
+    const periods: boolean[] = [];
+    for (let index = count - 1; index >= 0; index--) {
+        const newest = index * period;
+        const oldest = newest + period - 1;
+        let kept = false;
+        for (const offset of offsets) {
+            if (offset >= newest && offset <= oldest) {
+                kept = true;
+                break;
+            }
+        }
+        periods.push(kept);
+    }
+    return periods;
+}
+
 /** Whether the current period already has a completion. */
 export function doneThisPeriod(
     completions: CompletedOn[],

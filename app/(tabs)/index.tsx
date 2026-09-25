@@ -187,6 +187,7 @@ export default function Index() {
             <TodayStrip
                 items={today.items}
                 onKeep={entry => today.keep(entry.item)}
+                onUndo={entry => today.undo(entry.item)}
                 // The strip is a prompt, not a place — tapping through goes
                 // to where these actually live.
                 onOpen={() => router.push({ pathname: '/(tabs)/library', params: { view: 'actions' } })}
