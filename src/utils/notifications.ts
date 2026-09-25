@@ -5,8 +5,51 @@ import * as IntentLauncher from 'expo-intent-launcher';
 import * as Battery from 'expo-battery';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BRAND_ACCENT } from '../theme/colors';
+import { detectOemFamily, needsOemAutoStartStep } from './oemRestrictions';
 
 let isScheduling = false;
+
+/*
+ * Why the schedule has to be re-armed on every launch.
+ *
+ * expo-notifications keeps two separate things: a record of each scheduled
+ * notification in SharedPreferences, and an actual AlarmManager alarm that
+ * fires it. `getAllScheduledNotificationsAsync` reads the records — it never
+ * looks at AlarmManager. The two come apart whenever the OS force-stops us,
+ * which on Transsion (Tecno/Infinix/itel) and every other vendor listed in
+ * oemRestrictions.ts is routine: Android cancels the alarms, the records stay
+ * behind untouched.
+ *
+ * `setupDailyNotifications` used to read those records, count twelve future
+ * ones and return early, satisfied. After the first force-stop that count is
+ * still twelve and the alarms behind it are all gone, so every later launch
+ * looked at a full schedule and re-armed nothing. The reminders stopped for
+ * good, and no amount of reopening the app — or tapping Reschedule in
+ * Settings, which took the same early return — brought them back.
+ *
+ * A force-stop always means the next run is a cold start, so re-arming once
+ * per process launch is both sufficient to recover and cheap (a few dozen
+ * alarm registrations). `hasArmedThisLaunch` is module state and therefore
+ * false on every cold start; ARM_MAX_AGE_MS covers the other direction, a
+ * session left resident for days.
+ */
+let hasArmedThisLaunch = false;
+
+const ARM_MAX_AGE_MS = 12 * 60 * 60 * 1000;
+
+/** When the alarms behind the schedule were last actually registered. */
+const NOTIF_LAST_ARMED_AT = 'notif_last_armed_at';
+
+/**
+ * The local date whose reminders were deliberately dropped because the user had
+ * already journalled. Re-arming has to preserve that, or a repair would put
+ * today's nagging back after they'd earned the silence.
+ */
+const NOTIF_SKIP_DAY = 'notif_skip_day';
+
+function localDayKey(date: Date = new Date()): string {
+  return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+}
 
 // Configure how notifications should be handled when app is in foreground
 Notifications.setNotificationHandler({
@@ -372,7 +415,10 @@ export async function addNotificationsForNewDay(): Promise<void> {
   }
 }
 
-export async function setupDailyNotifications(startFromTomorrow: boolean = false): Promise<boolean> {
+export async function setupDailyNotifications(
+  startFromTomorrow: boolean = false,
+  options: { force?: boolean } = {}
+): Promise<boolean> {
   // Check permissions without requesting
   if (!await hasNotificationPermissions()) {
     return false;
@@ -399,7 +445,16 @@ export async function setupDailyNotifications(startFromTomorrow: boolean = false
       return false;
     });
 
-    if (!startFromTomorrow && futureDateNotifications.length >= 12) {
+    /*
+     * A full-looking schedule is only trustworthy if the alarms behind it were
+     * armed by this process — see the note at the top of the file. Anything
+     * else (a cold start, a stale arm, an explicit Reschedule from Settings)
+     * rebuilds, because that is the only way to find out whether the alarms
+     * are still there and the only way to put them back if they are not.
+     */
+    const mustArm = options.force || !hasArmedThisLaunch || startFromTomorrow;
+
+    if (!mustArm && futureDateNotifications.length >= 12) {
       return true;
     }
 
@@ -445,6 +500,14 @@ export async function setupDailyNotifications(startFromTomorrow: boolean = false
       }
     }
 
+    hasArmedThisLaunch = true;
+    await AsyncStorage.setItem(NOTIF_LAST_ARMED_AT, String(Date.now()));
+    if (startFromTomorrow) {
+      await AsyncStorage.setItem(NOTIF_SKIP_DAY, localDayKey());
+    } else {
+      await AsyncStorage.removeItem(NOTIF_SKIP_DAY);
+    }
+
     return true;
   } catch (error) {
     console.error('Error scheduling notifications:', error);
@@ -452,6 +515,98 @@ export async function setupDailyNotifications(startFromTomorrow: boolean = false
   } finally {
     isScheduling = false;
   }
+}
+
+/**
+ * Put the schedule back if the OS took it away. Safe to call on every launch
+ * and every return to the foreground.
+ *
+ * This is the repair path for a force-stop, which is how a Transsion phone —
+ * and most other vendor power managers — quietly ends the reminders. It
+ * rebuilds at most once per process launch, and once more if a resident
+ * session has gone `ARM_MAX_AGE_MS` without re-arming. A day whose reminders
+ * were dropped because the user had already journalled stays dropped.
+ */
+export async function ensureNotificationsArmed(): Promise<void> {
+  if (!await hasNotificationPermissions()) {
+    return;
+  }
+
+  try {
+    const [skipDay, lastArmedRaw] = await Promise.all([
+      AsyncStorage.getItem(NOTIF_SKIP_DAY),
+      AsyncStorage.getItem(NOTIF_LAST_ARMED_AT),
+    ]);
+
+    const lastArmedAt = Number(lastArmedRaw) || 0;
+    const isStale = Date.now() - lastArmedAt > ARM_MAX_AGE_MS;
+
+    await setupDailyNotifications(skipDay === localDayKey(), { force: isStale });
+  } catch (error) {
+    console.error('Error re-arming notifications:', error);
+  }
+}
+
+/**
+ * Everything that decides whether a reminder can reach the user, in one read.
+ *
+ * Each of these can be false on its own and produce exactly the same symptom —
+ * silence — so the Settings screen shows them rather than making the user
+ * guess which of the six it is.
+ */
+export async function getNotificationDiagnostics(): Promise<{
+  hasPermission: boolean;
+  channelBlocked: boolean;
+  batteryOptimised: boolean;
+  oemFamily: string;
+  needsAutoStart: boolean;
+  scheduledCount: number;
+  nextFireAt: Date | null;
+  lastArmedAt: Date | null;
+}> {
+  const [hasPermission, batteryOk, scheduled, lastArmedRaw] = await Promise.all([
+    hasNotificationPermissions(),
+    isBatteryOptimizationDisabled(),
+    getAllScheduledNotifications(),
+    AsyncStorage.getItem(NOTIF_LAST_ARMED_AT),
+  ]);
+
+  /*
+   * A vendor cleaner can set a channel's importance to NONE behind the app's
+   * back. Android refuses to let an app raise importance once the channel
+   * exists, so this can only be reported, never repaired in code — the user
+   * has to turn it back on in system settings.
+   */
+  let channelBlocked = false;
+  if (Platform.OS === 'android') {
+    try {
+      const channel = await Notifications.getNotificationChannelAsync('asaro-reminders');
+      channelBlocked = !channel || channel.importance === Notifications.AndroidImportance.NONE;
+    } catch {
+      channelBlocked = false;
+    }
+  }
+
+  const now = Date.now();
+  let nextFireAt: Date | null = null;
+  for (const request of scheduled) {
+    const trigger = request.trigger as any;
+    const value = trigger && typeof trigger === 'object' ? (trigger.date || trigger.value) : null;
+    if (!value) continue;
+    const at = new Date(value);
+    if (at.getTime() > now && (!nextFireAt || at < nextFireAt)) nextFireAt = at;
+  }
+
+  return {
+    hasPermission,
+    channelBlocked,
+    batteryOptimised: !batteryOk,
+    oemFamily: detectOemFamily(),
+    needsAutoStart: needsOemAutoStartStep(),
+    scheduledCount: scheduled.length,
+    nextFireAt,
+    lastArmedAt: Number(lastArmedRaw) ? new Date(Number(lastArmedRaw)) : null,
+  };
 }
 
 export async function cancelScheduledNotification(notificationId: string): Promise<void> {

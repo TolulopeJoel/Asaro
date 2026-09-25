@@ -1,4 +1,5 @@
 import { isBatteryOptimizationDisabled } from '@/src/utils/notifications';
+import { needsOemAutoStartStep, oemAutoStartLabel, openAutoStartSettings } from '@/src/utils/oemRestrictions';
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { AppState, Platform, Linking, View, StyleSheet } from 'react-native';
@@ -71,11 +72,30 @@ export default function BatteryOptimizationScreen() {
         }
     };
 
+    /*
+     * The second half of the ask, on phones that have one.
+     *
+     * Tecno, Infinix and itel run HiOS/XOS, where Phone Master keeps its own
+     * auto-start list above the AOSP battery whitelist. An app that is absent
+     * from it gets force-stopped, and a force-stop cancels every alarm the
+     * reminder schedule is built on — so a user can pass the button above and
+     * still never hear from Àṣàrò again. There is no permission to request and
+     * no state to read back; the list has to be opened and toggled by hand.
+     */
+    const showAutoStart = Platform.OS === 'android' && needsOemAutoStartStep();
+
+    const handleAutoStart = async () => {
+        await openAutoStartSettings();
+    };
+
     /** Why the OS should leave the app alone — the mockup's row of reasons. */
     const REASONS = [
         'Your daily reading reminder, on time',
         'Follow-up nudges for the actions you set',
         'Nothing else runs in the background',
+        ...(showAutoStart
+            ? [`Auto-start in ${oemAutoStartLabel()}, or your phone will close Àṣàrò and the reminders stop`]
+            : []),
     ];
 
     if (isLockedIn) {
@@ -108,6 +128,14 @@ export default function BatteryOptimizationScreen() {
 
                 <View style={styles.colossalFooter}>
                     <ThemedButton label="Fix Settings" variant="accent" block onPress={handleFixSettings} />
+                    {showAutoStart && (
+                        <ThemedButton
+                            label={`Allow Auto-Start (${oemAutoStartLabel()})`}
+                            variant="secondary"
+                            block
+                            onPress={handleAutoStart}
+                        />
+                    )}
                 </View>
             </Screen>
         );
@@ -141,6 +169,14 @@ export default function BatteryOptimizationScreen() {
                 </View>
 
                 <ThemedButton label="Fix Settings" variant="accent" block onPress={handleFixSettings} />
+                {showAutoStart && (
+                    <ThemedButton
+                        label={`Allow Auto-Start (${oemAutoStartLabel()})`}
+                        variant="secondary"
+                        block
+                        onPress={handleAutoStart}
+                    />
+                )}
             </View>
         </Screen>
     );

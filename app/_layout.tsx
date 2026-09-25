@@ -5,7 +5,7 @@ import {
   initializeNotificationChannel,
   hasNotificationPermissions,
   isBatteryOptimizationDisabled,
-  setupDailyNotifications
+  ensureNotificationsArmed
 } from '@/src/utils/notifications';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -133,6 +133,18 @@ export default function RootLayout() {
         setHasPermissions(perms);
         setIsBatteryOk(batteryOk);
 
+        /*
+         * Re-arm the reminder alarms before anything else in the session can
+         * touch them, and without waiting on the battery gate below. A vendor
+         * power manager that force-stopped us cancelled every alarm we had
+         * registered; this launch is the first chance to put them back, and a
+         * user who never satisfies the battery step still deserves reminders.
+         * Not awaited — it must never hold up the splash.
+         */
+        ensureNotificationsArmed().catch(error =>
+          console.error('Failed to arm notifications:', error)
+        );
+
       } catch (error) {
         console.error('Initialization error:', error);
         setDbError(true);
@@ -146,7 +158,13 @@ export default function RootLayout() {
   useEffect(() => {
     if (!dbInitialized) return;
     const subscription = AppState.addEventListener('change', (nextState) => {
-      if (nextState === 'active') syncPendingActivities();
+      if (nextState !== 'active') return;
+      syncPendingActivities();
+      // The app coming back is also the first moment we can notice that the OS
+      // threw the schedule away while we were gone.
+      ensureNotificationsArmed().catch(error =>
+        console.error('Failed to arm notifications:', error)
+      );
     });
     return () => subscription.remove();
   }, [dbInitialized]);
@@ -206,7 +224,7 @@ export default function RootLayout() {
 
       // All requirements met — mark ready and schedule notifications once.
       setIsReady(true);
-      await setupDailyNotifications();
+      await ensureNotificationsArmed();
 
       const isOnboarding = ['onboarding', 'permissions', 'battery-optimization'].includes(currentSegment);
       if (isOnboarding) {

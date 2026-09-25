@@ -35,7 +35,8 @@ export const useSleepTimePicker = () => {
                 title: 'Success! ✅',
                 message: "Your sleep time has been locked in for the next month. I've adjusted your notification schedule. Don't sleep too much o!"
             });
-            await setupDailyNotifications(false);
+            // New sleep time, new slot times — rebuild rather than trust the old schedule.
+            await setupDailyNotifications(false, { force: true });
         } catch (error) {
             console.error('Failed to save sleep time:', error);
             showAlert({ title: 'Error', message: 'Failed to save your new schedule. Please try again.' });

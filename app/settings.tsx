@@ -8,7 +8,8 @@ import {
 import { useAlert } from '@/src/context/AlertContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
-import { getAllScheduledNotifications, setupDailyNotifications, sendTestNotification, hasNotificationPermissions, openNotificationSettings } from '@/src/utils/notifications';
+import { getAllScheduledNotifications, setupDailyNotifications, sendTestNotification, hasNotificationPermissions, openNotificationSettings, getNotificationDiagnostics } from '@/src/utils/notifications';
+import { oemAutoStartLabel, openAutoStartSettings } from '@/src/utils/oemRestrictions';
 import { exportJournalEntriesToJson, importJournalEntriesFromJson, getFirstEntryDate } from '@/src/data/database';
 import { STORAGE_KEYS } from '@/src/storage/storageKeys';
 import Constants from 'expo-constants';
@@ -261,10 +262,49 @@ export default function Settings() {
         }
     };
 
+    /*
+     * Six different settings can silence a reminder and they all look the same
+     * from the outside. Rather than make someone guess which one their phone
+     * turned off, read them all and say so — and on a phone with a vendor
+     * auto-start list, offer the door to it, since that is the one the AOSP
+     * battery whitelist does not cover.
+     */
+    const handleDeliveryCheck = async () => {
+        try {
+            const d = await getNotificationDiagnostics();
+            const lines = [
+                `Permission: ${d.hasPermission ? 'granted' : 'DENIED'}`,
+                `Notification channel: ${d.channelBlocked ? 'BLOCKED — turn "Àṣàrò Reminders" back on in system settings' : 'on'}`,
+                `Battery optimisation: ${d.batteryOptimised ? 'ON — this delays reminders' : 'off'}`,
+                `Scheduled: ${d.scheduledCount}`,
+                `Next: ${d.nextFireAt ? d.nextFireAt.toLocaleString() : 'none'}`,
+                `Alarms last set: ${d.lastArmedAt ? d.lastArmedAt.toLocaleString() : 'never'}`,
+            ];
+            if (d.needsAutoStart) {
+                lines.push(`Your phone also has ${oemAutoStartLabel()}, which closes apps behind your back. Àṣàrò must be allowed to auto-start there.`);
+            }
+
+            showAlert({
+                title: 'Delivery check',
+                message: lines.join('\n'),
+                buttons: d.needsAutoStart
+                    ? [
+                        { text: `Open ${oemAutoStartLabel()}`, onPress: () => { openAutoStartSettings(); } },
+                        { text: 'Close', style: 'cancel' as const },
+                    ]
+                    : [{ text: 'Close', style: 'cancel' as const }],
+            });
+        } catch (error) {
+            console.error('Failed to read notification diagnostics:', error);
+        }
+    };
+
     const handleForceReschedule = async () => {
         setIsLoadingNotifications(true);
         try {
-            const success = await setupDailyNotifications(false);
+            // force: the point of this button is to re-register the alarms,
+            // which is exactly what a full-looking schedule would skip.
+            const success = await setupDailyNotifications(false, { force: true });
             if (success) {
                 await loadScheduledNotifications();
                 showAlert({ title: 'Success', message: 'Notifications have been rescheduled.' });
@@ -399,7 +439,9 @@ export default function Settings() {
                 setLastSleepChangeAt(nowIso);
 
                 showAlert({ title: 'Success! ✅', message: 'Your sleep time has been locked in for the next month. I\'ve adjusted your notification schedule. Don\'t sleep too much o!' });
-                await setupDailyNotifications(false);
+                // The slot times are derived from sleep time, so the existing
+                // schedule is now wrong and has to be rebuilt outright.
+                await setupDailyNotifications(false, { force: true });
             } catch (error) {
                 console.error('Failed to save sleep time:', error);
                 showAlert({ title: 'Error', message: 'Failed to save your new schedule. Please try again.' });
@@ -674,6 +716,13 @@ export default function Settings() {
                         label="Send test notification"
                         icon={Bell}
                         onPress={handleTestNotification}
+                        colors={colors}
+                    />
+                    <SettingsItem
+                        isLockedIn={isLockedIn}
+                        label="Why am I not getting reminders?"
+                        icon={Bell}
+                        onPress={handleDeliveryCheck}
                         colors={colors}
                     />
 
