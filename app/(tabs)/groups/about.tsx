@@ -9,7 +9,7 @@ import { Text } from '@/src/components/ui';
 import { Hero, Screen } from '@/src/components/ui';
 
 export default function AboutGroupsScreen() {
-    const { colors } = useTheme();
+    const { colors, isLockedIn } = useTheme();
 
     // Eight feature cards used to carry eight iOS system hues. The series is a
     // short ordered set that belongs to whichever style is active, so it wraps
@@ -110,21 +110,30 @@ export default function AboutGroupsScreen() {
                 </View>
 
                 {sections.map((section, index) => (
-                    <View key={index} style={[styles.sectionCard, { backgroundColor: colors.backgroundElevated + '40', borderColor: colors.borderSubtle + '40' }]}>
-                        <View style={[styles.iconWrap, { backgroundColor: hue(section.colorIndex) + '22' }]}>
+                    <View
+                        key={index}
+                        style={[
+                            styles.sectionCard,
+                            { borderLeftColor: hue(section.colorIndex) },
+                            isLockedIn
+                                ? { borderBottomColor: colors.border }
+                                : { backgroundColor: colors.cardBackground },
+                        ]}
+                    >
+                        <View style={styles.titleRow}>
+                            <Text variant="label" style={{ color: hue(section.colorIndex) }}>
+                                {section.title}
+                            </Text>
+                            {section.tag && (
+                                <View style={[styles.tagBadge, { borderColor: hue(section.colorIndex) }]}>
+                                    <Text variant="label" style={{ color: hue(section.colorIndex) }}>
+                                        {section.tag}
+                                    </Text>
+                                </View>
+                            )}
                         </View>
-                        <View style={styles.sectionContent}>
-                            <View style={styles.titleRow}>
-                                <Text variant="label" style={{ color: hue(section.colorIndex) }}>{section.title}</Text>
-                                {section.tag && (
-                                    <View style={[styles.tagBadge, { backgroundColor: hue(section.colorIndex) + '22' }]}>
-                                        <Text variant="label" style={{ color: hue(section.colorIndex) }}>{section.tag}</Text>
-                                    </View>
-                                )}
-                            </View>
-                            <Text variant="subtitle" style={styles.sectionSubtitle}>{section.subtitle}</Text>
-                            <Text variant="body" tone="secondary" style={styles.sectionDesc}>{section.description}</Text>
-                        </View>
+                        <Text variant="subtitle" style={styles.sectionSubtitle}>{section.subtitle}</Text>
+                        <Text variant="body" tone="secondary" style={styles.sectionDesc}>{section.description}</Text>
                     </View>
                 ))}
 
@@ -163,47 +172,35 @@ const getStyles = (colors: any) => StyleSheet.create({
         gap: Spacing.sm,
     },
     introDesc: { opacity: 0.9 },
+    /*
+     * design/all-screens.html #about. The hue is the only thing holding ten
+     * cards apart, and it used to be carried by a 48px tinted rounded square
+     * with nothing inside it — a placeholder that shipped. It moves to the
+     * rule down the card's left edge, the same device Entry detail uses to
+     * hang an answer, and costs no width.
+     */
     sectionCard: {
-        flexDirection: 'row',
-        padding: Spacing.lg,
-        borderRadius: Spacing.borderRadius.lg,
-        borderWidth: 1,
+        borderLeftWidth: 3,
+        borderBottomWidth: Spacing.border.hairline,
+        borderBottomColor: 'transparent',
+        paddingLeft: Spacing.lg,
+        paddingRight: Spacing.lg,
+        paddingVertical: Spacing.lg,
         marginBottom: Spacing.lg,
-        gap: Spacing.lg,
-    },
-    iconWrap: {
-        width: 48,
-        height: 48,
-        borderRadius: Spacing.borderRadius.lg,
-        justifyContent: 'center',
-        alignItems: 'center',
-        flexShrink: 0,
-    },
-    sectionContent: {
-        flex: 1,
         gap: 4,
     },
     titleRow: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
+        gap: Spacing.sm,
         marginBottom: 2,
     },
+    /** Square and outlined in the card's own hue — never filled. */
     tagBadge: {
         paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: Spacing.borderRadius.lg,
-    },
-    tagText: {
-        fontSize: 10,
-        fontWeight: '600',
-        letterSpacing: 0.5,
-    },
-    sectionTitle: {
-        fontSize: 10,
-        fontWeight: '900',
-        letterSpacing: 1.5,
-        textTransform: 'uppercase',
+        paddingVertical: 3,
+        borderWidth: Spacing.border.hairline,
     },
     sectionSubtitle: { marginBottom: 2 },
     sectionDesc: { opacity: 0.8 },

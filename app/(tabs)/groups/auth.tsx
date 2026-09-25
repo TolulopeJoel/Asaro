@@ -1,14 +1,7 @@
-import {
-    View,
-    StyleSheet,
-    TextInput,
-    KeyboardAvoidingView,
-    Platform,
-    TouchableOpacity,
-} from 'react-native';
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { KeyboardAvoidingView, StyleSheet, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Mail, Lock, User, LucideIcon } from 'lucide-react-native';
+import { Lock, Mail } from 'lucide-react-native';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from '@react-native-firebase/auth';
 import { getFirestore, doc, setDoc } from '@react-native-firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -16,79 +9,49 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import { useAlert } from '@/src/context/AlertContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
-import { Button } from '@/src/components/Button';
 import { ScalePressable } from '@/src/components/ScalePressable';
-import Animated, {
-    useAnimatedStyle,
-    withTiming,
-    interpolateColor,
-    useSharedValue
-} from 'react-native-reanimated';
-import React from 'react';
-import { Text } from '@/src/components/ui';
-import { Hero, Screen } from '@/src/components/ui';
+import { ClothMark, Hero, Screen, Text, ThemedButton } from '@/src/components/ui';
 import { KEYBOARD_BEHAVIOR } from '@/src/utils/keyboard';
 
-const GenderOption = ({
+/**
+ * Which of the two the reader is, as a cell.
+ *
+ * design/all-screens.html #auth. This was a 140px card carrying a 64px round
+ * icon well, a 2px border and a colour cross-fade — the tallest control in the
+ * app for the smallest question on the screen. It is the chapter picker's cell
+ * instead: 46px, square, and marked the same way a chosen chapter is, so the
+ * one new control here is one the reader has already met.
+ */
+const RoleCell = ({
     selected,
     onPress,
     label,
-    icon,
-    colors
 }: {
     selected: boolean;
     onPress: () => void;
     label: string;
-    icon: LucideIcon;
-    colors: any;
 }) => {
-    const progress = useSharedValue(selected ? 1 : 0);
-
-    React.useEffect(() => {
-        progress.value = withTiming(selected ? 1 : 0, { duration: 250 });
-    }, [selected]);
-
-    const animatedStyle = useAnimatedStyle(() => {
-        const backgroundColor = interpolateColor(
-            progress.value,
-            [0, 1],
-            [colors.cardBackground, colors.accentSecondaryLight + '40'] // Subtle accent background
-        );
-        const borderColor = interpolateColor(
-            progress.value,
-            [0, 1],
-            [colors.borderSubtle, colors.accent]
-        );
-
-        return {
-            backgroundColor,
-            borderColor,
-        };
-    });
+    const { colors, isLockedIn } = useTheme();
+    const woven = selected && !isLockedIn;
 
     return (
         <ScalePressable
             onPress={onPress}
-            style={{ flex: 1 }}
+            accessibilityRole="button"
+            accessibilityState={{ selected }}
+            style={[
+                styles.roleCell,
+                { backgroundColor: colors.backgroundElevated, borderColor: colors.border },
+                selected && {
+                    backgroundColor: woven ? colors.backgroundElevated : colors.textPrimary,
+                    borderColor: woven ? colors.accent : colors.textPrimary,
+                },
+            ]}
         >
-            <Animated.View style={[styles.genderOption, animatedStyle]}>
-                <View style={[
-                    styles.genderIconWrapper,
-                    { backgroundColor: selected ? colors.accent + '15' : colors.cardHover }
-                ]}>
-                    {React.createElement(icon, {
-                        size: 32,
-                        color: selected ? colors.accent : colors.textTertiary,
-                        strokeWidth: 2
-                    })}
-                </View>
-                <Text style={[
-                    styles.genderLabel,
-                    { color: selected ? colors.textPrimary : colors.textSecondary }
-                ]}>
-                    {label}
-                </Text>
-            </Animated.View>
+            {woven && <ClothMark />}
+            <Text variant="cell" tone={selected && !woven ? 'inverse' : 'primary'}>
+                {label}
+            </Text>
         </ScalePressable>
     );
 };
@@ -101,7 +64,7 @@ export default function AuthScreen() {
     const [isSignUp, setIsSignUp] = useState(false);
     const [gender, setGender] = useState<'m' | 'f' | null>(null);
     const [loading, setLoading] = useState(false);
-    const { colors } = useTheme();
+    const { colors, isLockedIn } = useTheme();
     const { showAlert } = useAlert();
     const router = useRouter();
 
@@ -165,7 +128,20 @@ export default function AuthScreen() {
 
     return (
         <Screen edges={[]}>
-            <Hero ownsTopInset>
+            {/*
+              * design/all-screens.html #auth. The band is the whole state
+              * indicator — "Welcome Back" or "Create Account" — so there is no
+              * segmented control above the form: the two modes are not two
+              * places, and the link at the foot already moves between them.
+              * Colossal has no band, so it names the place in a mark and lets
+              * the same words take its giant.
+              */}
+            {isLockedIn && (
+                <View style={styles.colossalTop}>
+                    <Text variant="tab">{'\u00c0\u1e63\u00e0r\u00f2 \u00b7 Groups'}</Text>
+                </View>
+            )}
+            <Hero ownsTopInset={!isLockedIn} topPadding={isLockedIn ? Spacing.lg : undefined}>
                 <Text variant="display" tone="onBand">
                     {isSignUp ? 'Create\nAccount' : 'Welcome\nBack'}
                 </Text>
@@ -180,7 +156,7 @@ export default function AuthScreen() {
                     </Text>
 
                     <View style={styles.form}>
-                        <View style={[styles.inputContainer, { backgroundColor: colors.cardBackground, borderColor: colors.borderSubtle }]}>
+                        <View style={[styles.inputContainer, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
                             <Mail size={20} color={colors.textPrimary} style={styles.inputIcon} />
                             <TextInput
                                 style={[styles.input, { color: colors.textPrimary }]}
@@ -193,7 +169,7 @@ export default function AuthScreen() {
                             />
                         </View>
 
-                        <View style={[styles.inputContainer, { backgroundColor: colors.cardBackground, borderColor: colors.borderSubtle }]}>
+                        <View style={[styles.inputContainer, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
                             <Lock size={20} color={colors.textPrimary} style={styles.inputIcon} />
                             <TextInput
                                 style={[styles.input, { color: colors.textPrimary }]}
@@ -203,16 +179,26 @@ export default function AuthScreen() {
                                 onChangeText={setPassword}
                                 secureTextEntry={!showPassword}
                             />
-                            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ padding: Spacing.sm }}>
-                                <Text style={{ color: colors.textSecondary, fontWeight: '700', fontSize: 12, letterSpacing: 0.5 }}>
-                                    {showPassword ? "HIDE" : "SHOW"}
+                            {/*
+                              * A word, not an eye. An eye glyph has to be drawn
+                              * twice — open and struck through — and still reads
+                              * as a toggle you have to guess at; the word names
+                              * the state a tap produces.
+                              */}
+                            <ScalePressable
+                                onPress={() => setShowPassword(!showPassword)}
+                                hitSlop={Spacing.md}
+                                accessibilityRole="button"
+                            >
+                                <Text variant="label" tone="secondary">
+                                    {showPassword ? 'Hide' : 'Show'}
                                 </Text>
-                            </TouchableOpacity>
+                            </ScalePressable>
                         </View>
 
                         {isSignUp && (
                             <>
-                                <View style={[styles.inputContainer, { backgroundColor: colors.cardBackground, borderColor: colors.borderSubtle }]}>
+                                <View style={[styles.inputContainer, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
                                     <Lock size={20} color={colors.textPrimary} style={styles.inputIcon} />
                                     <TextInput
                                         style={[styles.input, { color: colors.textPrimary }]}
@@ -224,41 +210,30 @@ export default function AuthScreen() {
                                     />
                                 </View>
 
-                                <View style={styles.genderContainer}>
-                                    <GenderOption
-                                        selected={gender === 'm'}
-                                        onPress={() => setGender('m')}
-                                        label="Gentleman"
-                                        icon={User}
-                                        colors={colors}
-                                    />
-                                    <GenderOption
-                                        selected={gender === 'f'}
-                                        onPress={() => setGender('f')}
-                                        label="Lady"
-                                        icon={User}
-                                        colors={colors}
-                                    />
+                                <View style={styles.roleRow}>
+                                    <RoleCell selected={gender === 'm'} onPress={() => setGender('m')} label="Gentleman" />
+                                    <RoleCell selected={gender === 'f'} onPress={() => setGender('f')} label="Lady" />
                                 </View>
                             </>
                         )}
 
-                        <Button
+                        <ThemedButton
                             label={isSignUp ? 'Create Account' : 'Sign In'}
-                            variant="primary"
-                            size="lg"
-                            onPress={handleAuth}
+                            block
                             loading={loading}
-                            fullWidth
-                            style={{ marginVertical: Spacing.md }}
+                            onPress={handleAuth}
+                            style={styles.submit}
                         />
 
-                        <Button
-                            label={isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Create One"}
-                            variant="ghost"
+                        <ScalePressable
                             onPress={() => setIsSignUp(!isSignUp)}
-                            fullWidth
-                        />
+                            accessibilityRole="button"
+                            style={styles.switchMode}
+                        >
+                            <Text variant="button" tone="tertiary">
+                                {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Create One"}
+                            </Text>
+                        </ScalePressable>
                     </View>
                 </View>
             </KeyboardAvoidingView>
@@ -270,6 +245,10 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
+    colossalTop: {
+        paddingHorizontal: Spacing.layout.screenPaddingTight,
+        paddingTop: Spacing.sm,
+    },
     content: {
         flex: 1,
         paddingHorizontal: Spacing.layout.screenPadding,
@@ -280,48 +259,41 @@ const styles = StyleSheet.create({
     form: {
         gap: Spacing.lg,
     },
+    /*
+     * `.cl-input` / `.co-input` with the padding moved onto the wrapper, so
+     * the glyph sits inside the same hairline as the text rather than beside
+     * a line of its own. The build had a third input treatment here — its own
+     * radius, its own border colour — in an app that had settled on one.
+     */
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: Spacing.lg,
-        paddingVertical: Platform.OS === 'ios' ? Spacing.sm : 0,
-        borderRadius: Spacing.borderRadius.lg,
-        borderWidth: 1,
+        paddingHorizontal: Spacing.md + 2,
+        borderWidth: Spacing.border.hairline,
     },
-    inputIcon: {
-        marginRight: Spacing.md,
-        opacity: 0.5,
-    },
+    inputIcon: { marginRight: Spacing.md },
     input: {
         flex: 1,
         fontSize: Typography.size.lg,
-        height: 56,
-        fontWeight: '500',
+        height: 52,
     },
-    genderContainer: {
+    roleRow: {
         flexDirection: 'row',
-        gap: Spacing.md,
-        marginTop: Spacing.xs,
+        gap: Spacing.sm,
     },
-    genderOption: {
+    /** The chapter picker's cell, to the pixel. */
+    roleCell: {
+        flex: 1,
+        height: Spacing.touchTarget + 2,
+        overflow: 'hidden',
+        borderWidth: Spacing.border.hairline,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: Spacing.xl,
-        borderRadius: Spacing.borderRadius.xl,
-        borderWidth: 2,
-        gap: Spacing.md,
-        minHeight: 140,
     },
-    genderIconWrapper: {
-        width: 64,
-        height: 64,
-        borderRadius: Spacing.borderRadius.round,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    genderLabel: {
-        fontSize: Typography.size.md,
-        fontWeight: Typography.weight.bold,
-        letterSpacing: 0.2,
+    submit: { marginTop: Spacing.sm },
+    switchMode: {
+        alignSelf: 'center',
+        paddingVertical: Spacing.md,
+        paddingHorizontal: Spacing.lg,
     },
 });
