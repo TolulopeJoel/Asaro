@@ -44,3 +44,10 @@ app-example
 # Python (scripts/thought-echoes)
 .venv/
 __pycache__/
+
+# The developer's own journal export. Real reflections, real reading history —
+# it is used to sanity-check detectors against data that actually exists, and
+# it must never be committed.
+asaro-backup.json
+*-backup.json
+*Plan.md

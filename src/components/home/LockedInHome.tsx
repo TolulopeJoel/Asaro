@@ -19,13 +19,15 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { ScalePressable } from '../ScalePressable';
 import { SettingsGlyph } from '../ui/SettingsGlyph';
+import { WavyAddIcon } from '../WavyAddIcon';
 import { Text } from '../ui/Text';
 import { ThemedButton } from '../ui/ThemedButton';
 import { DayStatus } from '../WeeklyStreak';
 import { useTheme } from '../../theme/ThemeContext';
 import { FontFamily, Typography } from '../../theme/typography';
 import { Spacing } from '../../theme/spacing';
-import { formatRange } from '../../utils/reference';
+import { formatRange, spell } from '../../utils/reference';
+import { DraftSummary } from '../../hooks/useEntryHooks';
 
 const { size, lineHeight, tracking } = Typography;
 
@@ -46,6 +48,11 @@ export interface LockedInHomeProps {
     /** One line of an older entry, with the reference and how long ago. */
     flashback?: { text: string; reference: string; when: string } | null;
     onBeginReflection: () => void;
+    /** The entry you walked away from — see `ClothHome` and #draft. */
+    draft?: DraftSummary | null;
+    onResumeDraft?: () => void;
+    /** The wavy plus in the top bar: an entry outside the plan. */
+    onAddEntry?: () => void;
     onSettings: () => void;
     onWeekPress?: () => void;
     onFlashbackPress?: () => void;
@@ -103,6 +110,9 @@ export function LockedInHome({
     weekDays,
     flashback,
     onBeginReflection,
+    draft,
+    onResumeDraft,
+    onAddEntry,
     onSettings,
     onWeekPress,
     onFlashbackPress,
@@ -118,21 +128,52 @@ export function LockedInHome({
         <View style={styles.screen}>
             <View style={styles.top}>
                 {/* .co-mark — the wordmark, not a screen title. */}
-                <Text variant="tab">Àṣàrò</Text>
-                <ScalePressable
-                    onPress={onSettings}
-                    accessibilityRole="button"
-                    accessibilityLabel="Settings"
-                    hitSlop={Spacing.md}
-                >
-                    <SettingsGlyph color={colors.textTertiary} />
-                </ScalePressable>
+                <Text variant="tab" style={styles.mark}>Àṣàrò</Text>
+                <View style={styles.topActions}>
+                    {/* Held while a draft is live — one draft slot, and a fresh
+                        entry would autosave across it. See ClothHome. */}
+                    <ScalePressable
+                        onPress={onAddEntry}
+                        disabled={!onAddEntry || !!draft}
+                        accessibilityRole="button"
+                        accessibilityLabel="Write an entry"
+                        accessibilityState={{ disabled: !!draft }}
+                        hitSlop={Spacing.md}
+                        style={draft ? styles.held : undefined}
+                    >
+                        <WavyAddIcon size={20} color={colors.accent} />
+                    </ScalePressable>
+                    <ScalePressable
+                        onPress={onSettings}
+                        accessibilityRole="button"
+                        accessibilityLabel="Settings"
+                        hitSlop={Spacing.md}
+                    >
+                        <SettingsGlyph color={colors.textTertiary} />
+                    </ScalePressable>
+                </View>
             </View>
 
             <View style={styles.body}>
                 <Text style={[styles.greeting, { color: colors.textSecondary }]}>{greeting}</Text>
 
-                {reading && (
+                {draft ? (
+                    <>
+                        <Text variant="label" tone="accent" style={styles.todayLabel}>Unfinished</Text>
+                        <Text style={[styles.giantBook, { color: colors.textPrimary }]}>{draft.book}</Text>
+                        <Text style={[styles.giantRef, { color: colors.accent }]}>{draft.chapters}</Text>
+                        <Text style={[styles.series, { color: colors.textTertiary }]}>
+                            {`${spell(draft.answered)} of ${spell(draft.total)} answered`}
+                        </Text>
+                        <ThemedButton
+                            label="Pick it up"
+                            variant="accent"
+                            onPress={onResumeDraft ?? (() => { })}
+                            block
+                            accessibilityHint={`Reopens your entry on ${draft.passage}`}
+                        />
+                    </>
+                ) : reading && (
                     <>
                         <Text variant="label" style={styles.todayLabel}>
                             {readingNumber ? `Today · Reading ${readingNumber}` : 'Today'}
@@ -221,6 +262,9 @@ const styles = StyleSheet.create({
     screen: {
         flex: 1,
     },
+    mark: { flex: 1 },
+    topActions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+    held: { opacity: 0.35 },
     // .co-top
     top: {
         flexDirection: 'row',

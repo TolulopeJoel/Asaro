@@ -20,13 +20,15 @@ import { StyleSheet, View } from 'react-native';
 import { ScalePressable } from '../ScalePressable';
 import { ClothMark } from '../ui/Cloth';
 import { SettingsGlyph } from '../ui/SettingsGlyph';
+import { WavyAddIcon } from '../WavyAddIcon';
 import { Hero } from '../ui/Surfaces';
 import { Text } from '../ui/Text';
 import { ThemedButton } from '../ui/ThemedButton';
 import { DayStatus } from '../WeeklyStreak';
 import { useTheme } from '../../theme/ThemeContext';
 import { Spacing } from '../../theme/spacing';
-import { formatRange } from '../../utils/reference';
+import { formatRange, spell } from '../../utils/reference';
+import { DraftSummary } from '../../hooks/useEntryHooks';
 
 export interface ClothHomeProps {
     /** The rotating line in the hero band. */
@@ -41,6 +43,18 @@ export interface ClothHomeProps {
     entryCount: number;
     flashback?: { text: string; reference: string; when: string } | null;
     onBeginReflection: () => void;
+    /**
+     * The entry you walked away from, if there is one.
+     *
+     * design/all-screens.html #draft. When it is set it takes the reading
+     * block — same slot, different label, its own passage — because there is
+     * only ever one draft and it IS your current reading session, whatever the
+     * plan has queued for today.
+     */
+    draft?: DraftSummary | null;
+    onResumeDraft?: () => void;
+    /** The wavy plus in the band: an entry outside the plan. */
+    onAddEntry?: () => void;
     onSettings: () => void;
     onWeekPress?: () => void;
     onFlashbackPress?: () => void;
@@ -133,6 +147,9 @@ export function ClothHome({
     entryCount,
     flashback,
     onBeginReflection,
+    draft,
+    onResumeDraft,
+    onAddEntry,
     onSettings,
     onWeekPress,
     onFlashbackPress,
@@ -150,20 +167,55 @@ export function ClothHome({
                     <Text variant="display" tone="onBand" numberOfLines={2} style={styles.heroTitle}>
                         {greeting}
                     </Text>
-                    <ScalePressable
-                        onPress={onSettings}
-                        accessibilityRole="button"
-                        accessibilityLabel="Settings"
-                        hitSlop={Spacing.md}
-                    >
-                        <SettingsGlyph color={colors.accent} />
-                    </ScalePressable>
+                    <View style={styles.heroActions}>
+                        {/*
+                          * Held, not hidden, while a draft is live. There is one
+                          * draft slot, so starting a fresh entry over an
+                          * unfinished one lets the autosave write across it — and
+                          * a control that vanishes teaches nothing, while one
+                          * that dims says finish this first.
+                          */}
+                        <ScalePressable
+                            onPress={onAddEntry}
+                            disabled={!onAddEntry || !!draft}
+                            accessibilityRole="button"
+                            accessibilityLabel="Write an entry"
+                            accessibilityState={{ disabled: !!draft }}
+                            hitSlop={Spacing.md}
+                            style={draft ? styles.held : undefined}
+                        >
+                            <WavyAddIcon size={20} color={colors.accent} />
+                        </ScalePressable>
+                        <ScalePressable
+                            onPress={onSettings}
+                            accessibilityRole="button"
+                            accessibilityLabel="Settings"
+                            hitSlop={Spacing.md}
+                        >
+                            <SettingsGlyph color={colors.accent} />
+                        </ScalePressable>
+                    </View>
                 </View>
                 <Text variant="sub" tone="onHero" style={styles.heroSub}>{dateLine}</Text>
             </Hero>
 
             <View style={styles.body}>
-                {reading && (
+                {draft ? (
+                    <View>
+                        <Text variant="label" style={styles.label}>Unfinished</Text>
+                        <Text variant="headline">{draft.passage}</Text>
+                        <Text variant="sub">
+                            {`${spell(draft.answered)} of ${spell(draft.total)} answered`}
+                        </Text>
+                        <ThemedButton
+                            label="Pick it up"
+                            variant="accent"
+                            onPress={onResumeDraft ?? (() => { })}
+                            style={styles.cta}
+                            accessibilityHint={`Reopens your entry on ${draft.passage}`}
+                        />
+                    </View>
+                ) : reading && (
                     <View>
                         <Text variant="label" style={styles.label}>
                             {readingNumber ? `Reading ${readingNumber} · Today` : 'Today'}
@@ -260,6 +312,8 @@ const styles = StyleSheet.create({
         gap: Spacing.md,
     },
     heroTitle: { flex: 1 },
+    heroActions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+    held: { opacity: 0.35 },
     /** `.cl-hsub{margin:8px 0 0}` */
     heroSub: { marginTop: Spacing.sm },
 

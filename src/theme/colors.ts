@@ -88,9 +88,6 @@ export interface ThemeColors {
     badge: string;
     badgeBorder: string;
     badgeText: string;
-    draftBar: string;
-    draftBarBorder: string;
-    draftIconBg: string;
 
     tabBar: string;
     tabIndicator: string;
@@ -185,9 +182,6 @@ export const cloth: ThemeColors = {
     badge: '#e3d6c1',
     badgeBorder: '#d8cab2',
     badgeText: '#c9762c',
-    draftBar: '#e3d6c1',
-    draftBarBorder: '#c9762c',
-    draftIconBg: '#dccfb7',
 
     tabBar: '#17263f',
     tabIndicator: '#c9762c',
@@ -268,9 +262,6 @@ export const colossal: ThemeColors = {
     badge: '#101010',
     badgeBorder: '#1e1e1e',
     badgeText: '#e18f43',
-    draftBar: '#101010',
-    draftBarBorder: '#e18f43',
-    draftIconBg: '#1e1e1e',
 
     tabBar: '#000000',
     tabIndicator: '#ffffff',

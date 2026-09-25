@@ -10,15 +10,11 @@ import { READING_PLAN_DATA, ReadingItem } from "@/src/data/readingPlanData";
 import { useTheme } from "@/src/theme/ThemeContext";
 import { Spacing } from "@/src/theme/spacing";
 import { Typography } from "@/src/theme/typography";
-import { ArrowRight } from "lucide-react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Link, useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { DeviceEventEmitter, ScrollView, StyleSheet, View } from "react-native";
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { JournalEntryDetail } from '@/src/components/JournalEntryDetail';
-import { WavyAddIcon } from '@/src/components/WavyAddIcon';
-import { ScalePressable } from '@/src/components/ScalePressable';
 import { LoadingView } from '@/src/components/LoadingView';
 import { Share } from 'react-native';
 import { useAlert } from '@/src/context/AlertContext';
@@ -35,7 +31,8 @@ import { getDailyTitle } from '@/src/data/homeTitles';
 import { LockedInHome } from '@/src/components/home/LockedInHome';
 import { ClothHome } from '@/src/components/home/ClothHome';
 import { formatDateToLocalString } from '@/src/utils/dateUtils';
-import { Screen, Text as UIText } from '@/src/components/ui';
+import { Screen } from '@/src/components/ui';
+import { DraftSummary, summariseDraft } from '@/src/hooks/useEntryHooks';
 
 
 const DRAFT_KEY = "reflection_draft";
@@ -86,71 +83,12 @@ async function handleNextReadingPress(
     }
 }
 
-const FloatingActionButton = React.memo(() => {
-    const { colors } = useTheme();
-    const router = useRouter();
-    const insets = useSafeAreaInsets();
-    // Tab bar height (60) + bottom inset + extra spacing
-    const bottomPosition = 60 + insets.bottom + Spacing.xl;
-
-    // Both styles want maximum contrast against their own ground.
-    const fabBackground = colors.textPrimary;
-    const iconColor = colors.background;
-
-    return (
-        <ScalePressable
-            style={[styles.fab, { backgroundColor: fabBackground, bottom: bottomPosition, shadowColor: fabBackground }]}
-            onPress={() => router.push("/addEntry")}
-        >
-            <WavyAddIcon size={Typography.size.display} color={iconColor} />
-        </ScalePressable>
-    );
-});
-
-const DraftBar = React.memo(() => {
-    const { colors } = useTheme();
-    const insets = useSafeAreaInsets();
-    // Tab bar height (60) + bottom inset + extra spacing
-    const bottomPosition = 60 + insets.bottom + Spacing.xl;
-
-    return (
-        <View
-            style={[
-                styles.draftBar,
-                {
-                    backgroundColor: colors.draftBar,
-                    borderColor: colors.draftBarBorder,
-                    shadowColor: colors.accent,
-                    bottom: bottomPosition,
-                },
-            ]}
-        >
-            <Link href={{ pathname: "/addEntry", params: { resuming: 'true' } }} asChild>
-                <ScalePressable style={styles.draftContent}>
-                    <View style={styles.draftTextContainer}>
-                        <UIText variant="body" style={styles.draftLabel}>
-                            Didn't finish?
-                        </UIText>
-                        <UIText variant="body" tone="secondary">
-                            No worries, pick it up now
-                        </UIText>
-                    </View>
-
-                    <View style={[styles.draftIcon, { backgroundColor: colors.draftIconBg }]}>
-                        <ArrowRight size={24} color={colors.accent} />
-                    </View>
-                </ScalePressable>
-            </Link>
-        </View>
-    );
-});
-
 export default function Index() {
     const [stats, setStats] = useState({ totalEntries: 0 });
     const [nextReading, setNextReading] = useState<ReadingItem | null>(null);
     const [weekDays, setWeekDays] = useState<DayStatus[]>([]);
     const [flashbackEntry, setFlashbackEntry] = useState<{ entry: JournalEntry, type: 'year' | 'month' | 'random' } | null>(null);
-    const [draftExists, setDraftExists] = useState(false);
+    const [draft, setDraft] = useState<DraftSummary | null>(null);
     const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
     const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
@@ -324,11 +262,11 @@ export default function Index() {
 
     const checkDraft = useCallback(async () => {
         try {
-            const draft = await AsyncStorage.getItem(DRAFT_KEY);
-            setDraftExists(Boolean(draft && draft.trim()));
+            const draftJson = await AsyncStorage.getItem(DRAFT_KEY);
+            setDraft(summariseDraft(draftJson));
         } catch (error) {
             console.error('Error checking draft:', error);
-            setDraftExists(false);
+            setDraft(null);
         }
     }, []);
 
@@ -491,9 +429,13 @@ export default function Index() {
                             flashbackEntry ? () => handleEntryPress(flashbackEntry.entry) : undefined
                         }
                         observation={observationCard}
+                        draft={draft}
+                        onResumeDraft={() =>
+                            router.push({ pathname: '/addEntry', params: { resuming: 'true' } })
+                        }
+                        onAddEntry={() => router.push('/addEntry')}
                     />
                 )}
-                {draftExists && <DraftBar />}
                 <HomeDetailModal />
                 {echoReceipts}
             </Screen>
@@ -544,12 +486,14 @@ export default function Index() {
                             flashbackEntry ? () => handleEntryPress(flashbackEntry.entry) : undefined
                         }
                         observation={observationCard}
+                        draft={draft}
+                        onResumeDraft={() =>
+                            router.push({ pathname: '/addEntry', params: { resuming: 'true' } })
+                        }
+                        onAddEntry={() => router.push('/addEntry')}
                     />
                 )}
             </ScrollView>
-
-            {!draftExists && <FloatingActionButton />}
-            {draftExists && <DraftBar />}
 
             <HomeDetailModal />
             {echoReceipts}
@@ -678,60 +622,6 @@ const styles = StyleSheet.create({
         fontSize: Typography.size.md,
         lineHeight: Typography.lineHeight.md,
         letterSpacing: Typography.letterSpacing.wide,
-    },
-
-    /* Draft bar */
-    draftBar: {
-        position: "absolute",
-        left: Spacing.lg,
-        right: Spacing.lg,
-        marginBottom: 4,
-        marginHorizontal: 1.5,
-        borderRadius: Spacing.borderRadius.lg,
-        borderBottomEndRadius: 4,
-        borderBottomStartRadius: 4,
-        borderWidth: 1,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-        elevation: 4,
-    },
-    draftContent: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        paddingVertical: Spacing.layout.cardPadding,
-        paddingHorizontal: Spacing.xl,
-    },
-    draftTextContainer: {
-        flex: 1,
-    },
-    draftLabel: { marginBottom: 2 },
-    draftIcon: {
-        width: 36,
-        height: 36,
-        borderRadius: Spacing.borderRadius.round,
-        justifyContent: "center",
-        alignItems: "center",
-    },
-
-    /* FAB */
-    fab: {
-        position: 'absolute',
-        right: 16,
-        width: 104.5,
-        height: 75.8,
-        marginBottom: 4,
-        borderRadius: Spacing.borderRadius.lg,
-        borderBottomLeftRadius: 0,
-        borderBottomRightRadius: 0,
-        justifyContent: 'center',
-        alignItems: 'center',
-        zIndex: 100,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-        elevation: 4,
     },
     /* Next Reading */
     nextReadingCard: {
