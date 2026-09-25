@@ -33,6 +33,7 @@ import { VerseId } from '../bible/ref';
  */
 export const DETECTORS = [
     'convergence',
+    'milestone',
     'commitment',
     'study',
     'absence',
@@ -73,7 +74,13 @@ export type DetectorName = (typeof DETECTORS)[number];
  * something to browse; an archive of questions you neglect is a standing
  * performance review, which is not what that tab is for.
  */
-const EPHEMERAL: DetectorName[] = ['commitment', 'study', 'absence'];
+/*
+ * Milestone is ephemeral for the rule stated above — the subject already has
+ * a home. A finished book's permanent record is the land screen, where its
+ * parcel is entirely green and stays that way; filing a card beside it would
+ * put a copy of something next to the thing.
+ */
+const EPHEMERAL: DetectorName[] = ['milestone', 'commitment', 'study', 'absence'];
 
 /**
  * Where a finding belongs, which is a question about timing as much as place.
@@ -101,7 +108,7 @@ const EPHEMERAL: DetectorName[] = ['commitment', 'study', 'absence'];
  */
 export type Surface = 'home' | 'afterSave';
 
-const AFTER_SAVE: DetectorName[] = ['commitment', 'study', 'absence'];
+const AFTER_SAVE: DetectorName[] = ['milestone', 'commitment', 'study', 'absence'];
 
 export function surfaceOf(detector: DetectorName): Surface {
     return AFTER_SAVE.includes(detector) ? 'afterSave' : 'home';

@@ -270,6 +270,68 @@ function trimQuote(text: string, limit = 180): string {
 }
 
 /**
+ * A book finished, or a quarter of the plan crossed.
+ *
+ * The only card in the app that exists purely to say well done, which makes
+ * the register the whole job. `design/ASARO-CHARACTER.md` §6: his defining
+ * trait is already right and has only ever been pointed at compliance. "I'm
+ * keeping absolute record" becomes a boast about having been there for it.
+ *
+ * §5 puts this at FULL volume — a book is finished perhaps a dozen times a
+ * year and the plan crosses a mark four times, so drama is free here in a way
+ * it never is on a section header.
+ *
+ * Two things it must not do. It may not congratulate somebody on their
+ * standing with Jehovah (§4①) — finishing Leviticus is an achievement of
+ * reading, and that is all this knows about. And it may not use the cheer
+ * register: "Great job!" is banned outright, which is fortunate, because he
+ * would never say it anyway.
+ */
+function renderMilestone(claim: Record<string, unknown>): RenderedObservation {
+    if (claim.kind === 'plan') {
+        const mark = Number(claim.mark) || 0;
+        const lines: Record<number, { kind: string; claim: string }> = {
+            25: { kind: 'A quarter of the plan', claim: 'Ehen. Look at you.' },
+            50: { kind: 'Half the plan', claim: "Halfway o. I'm invested now." },
+            75: { kind: 'Three quarters', claim: "Don't do anything stupid. \u{1F440}" },
+            100: {
+                kind: 'The whole plan. Finished',
+                claim: 'Àṣàrò has nothing to say. That has never happened. \u{1F605}',
+            },
+        };
+        const line = lines[mark] ?? { kind: 'The plan', claim: `${mark}% done.` };
+        return {
+            kind: line.kind,
+            evidence: [],
+            claim: line.claim,
+            subject: `${mark}%`,
+            subjectFirst: true,
+        };
+    }
+
+    const book = String(claim.book ?? '');
+    const chapters = Number(claim.chapters) || 0;
+
+    /*
+     * A long book earns a different sentence from a short one, because the
+     * achievements are genuinely different sizes and pretending otherwise is
+     * how praise stops meaning anything. Fifty chapters of Genesis is not four
+     * chapters of Ruth, and he is the last person to pretend it is.
+     */
+    const long = chapters >= 25;
+
+    return {
+        kind: 'You finished a book',
+        evidence: [],
+        claim: long
+            ? `${chapters} chapters. ${chapters}. I was here for all of them.`
+            : `All ${chapters} chapters of it. I was counting, obviously.`,
+        subject: book,
+        subjectFirst: true,
+    };
+}
+
+/**
  * A question the reader wrote down and has not come back to.
  *
  * The register is the entire design here, and it is one word away from being
@@ -363,6 +425,8 @@ export function renderObservation(observation: StoredObservation): RenderedObser
             return renderConvergence(observation.claim);
         case 'commitment':
             return renderCommitment(observation.claim);
+        case 'milestone':
+            return renderMilestone(observation.claim);
         case 'study':
             return renderStudy(observation.claim);
         case 'absence':

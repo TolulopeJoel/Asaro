@@ -25,6 +25,7 @@ import { renderObservation } from './render';
 import { detectCommitments, loadCommitments, rankCommitments } from './detectors/commitment';
 import { detectAbsence, diagnoseAbsence, loadAbsenceEntries } from './detectors/absence';
 import { detectStudy, loadTopics, qualifyingTopics, rankTopics } from './detectors/study';
+import { detectMilestones, loadBookTallies } from './detectors/milestone';
 import {
     DETECTORS,
     getObservation,
@@ -258,6 +259,21 @@ export async function runPhase0SmokeTest(): Promise<string> {
         ok('standing commitments', `${open.length} total, ${worth.length} worth handing back`);
         const commitmentIds = await detectCommitments();
         ok('commitments recorded', `${commitmentIds.length}`);
+
+        /*
+         * Milestones report the shelf as well as the finding, because a
+         * detector that is correctly silent and one that cannot see the books
+         * at all look identical from outside — and its guards are built to be
+         * silent almost always.
+         */
+        const tallies = await loadBookTallies();
+        const finished = tallies.filter(b => b.total > 0 && b.worked >= b.total);
+        ok(
+            'books finished',
+            `${finished.length} of ${tallies.length}${finished.length ? ` — ${finished.map(b => b.name).join(', ')}` : ''}`,
+        );
+        const milestoneIds = await detectMilestones(0);
+        ok('milestones recorded', `${milestoneIds.length}`);
 
         /*
          * Study reports how many topics it is holding as well as how many it

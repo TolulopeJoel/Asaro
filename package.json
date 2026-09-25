@@ -14,7 +14,7 @@
     "verify:echoes": "node --disable-warning=ExperimentalWarning scripts/verify-echoes-tone.mjs",
     "verify:bible": "node scripts/verify-bible-graph.mjs",
     "verify:observations": "node --disable-warning=ExperimentalWarning scripts/verify-observations.mjs",
-    "verify:detectors": "node scripts/verify-convergence.mjs && node scripts/verify-commitment.mjs && node --disable-warning=ExperimentalWarning scripts/verify-absence.mjs && node --disable-warning=ExperimentalWarning scripts/verify-study.mjs",
+    "verify:detectors": "node scripts/verify-convergence.mjs && node scripts/verify-commitment.mjs && node --disable-warning=ExperimentalWarning scripts/verify-absence.mjs && node --disable-warning=ExperimentalWarning scripts/verify-study.mjs && node --disable-warning=ExperimentalWarning scripts/verify-milestone.mjs",
     "verify:ml": "node scripts/verify-tokenizer.mjs && node scripts/verify-theme-matching.mjs && node scripts/verify-theme-quality.mjs",
     "check:glyphs": "node scripts/check-glyphs.mjs",
     "check:design": "node scripts/check-design.mjs",

@@ -27,6 +27,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { detectConvergence } from './detectors/convergence';
 import { detectCommitments } from './detectors/commitment';
 import { detectStudy } from './detectors/study';
+import { detectMilestones } from './detectors/milestone';
+import { getReadingProgress } from '../data/readingRepository';
+import { READING_PLAN_DATA } from '../data/readingPlanData';
 import { detectAbsence } from './detectors/absence';
 import {
     StoredObservation,
@@ -112,6 +115,17 @@ export function useObservation(enabled: boolean, surface: Surface = 'home'): Obs
                      * size — there is nothing to win by interleaving them.
                      */
                     await detectConvergence();
+                    /*
+                     * Milestones need the plan's own progress, which lives
+                     * outside the journal — every other detector here reads
+                     * only what the reader wrote, so this is the one that has
+                     * to be handed something.
+                     */
+                    const done = await getReadingProgress();
+                    const planPercent = READING_PLAN_DATA.length
+                        ? (done.length / READING_PLAN_DATA.length) * 100
+                        : 0;
+                    await detectMilestones(planPercent);
                     await detectCommitments();
                     await detectStudy();
                     await detectAbsence();
