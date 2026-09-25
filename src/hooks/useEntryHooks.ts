@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '../storage/storageKeys';
 import { BibleBook } from '../data/bibleBooks';
 import { ReflectionAnswers } from '../components/ReflectionForm';
+import { formatRange } from '../utils/reference';
 
 export type Step = 'book' | 'chapter' | 'reflection' | 'summary';
 
@@ -23,6 +24,62 @@ export interface DraftData {
     verseRange?: VerseRange | null;
     reflectionAnswers?: ReflectionAnswers;
     readingItemId?: number;
+}
+
+/** What Home needs to say about an unfinished entry. */
+export interface DraftSummary {
+    /** "Genesis 12–15" — the passage the draft is already about. */
+    passage: string;
+    /** The same, split, for Colossal's two-line giant. */
+    book: string;
+    chapters: string;
+    /** How many of the five questions came back with something in them. */
+    answered: number;
+    total: number;
+}
+
+/** The five questions the wizard asks, for the "three of five" line. */
+const QUESTION_COUNT = 5;
+
+/**
+ * Read a stored draft the way Home wants it.
+ *
+ * design/all-screens.html #draft. Home used to keep one bit of this payload —
+ * whether it existed — and say "Didn't finish?" in a floating bar. The passage
+ * and the progress were in the draft the whole time; naming them is what turns
+ * a nag into a way back in.
+ */
+export function summariseDraft(json: string | null): DraftSummary | null {
+    if (!json || !json.trim()) return null;
+
+    let draft: DraftData;
+    try {
+        draft = JSON.parse(json);
+    } catch {
+        return null;
+    }
+
+    const book = draft.selectedBook?.name;
+    const chapters = draft.selectedChapters;
+    if (!book || !chapters?.start) return null;
+
+    const range = chapters.end && chapters.end !== chapters.start
+        ? `${chapters.start}-${chapters.end}`
+        : `${chapters.start}`;
+
+    const a = draft.reflectionAnswers;
+    const answered = a
+        ? [a.reflection1, a.reflection2, a.reflection4, a.studyFurther].filter(t => !!t?.trim()).length +
+          (a.actionItems?.some(item => item.action.trim()) ? 1 : 0)
+        : 0;
+
+    return {
+        passage: formatRange(`${book} ${range}`),
+        book,
+        chapters: formatRange(range),
+        answered,
+        total: QUESTION_COUNT,
+    };
 }
 
 export function useAutoSave(

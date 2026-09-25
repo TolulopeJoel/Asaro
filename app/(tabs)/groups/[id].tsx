@@ -54,6 +54,8 @@ import { Hero, Screen, Segments, Text } from '@/src/components/ui';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
+import { reviewWindow, windowLabel } from '@/src/groups/week';
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -222,6 +224,28 @@ const buildProcessedFeed = (
 
 
 
+/**
+ * What the group says on the six days it is shut.
+ *
+ * Deliberately not a locked door. The group's name, its members and the day
+ * it opens are all still there — what waits is only what everybody has been
+ * doing, and saying so plainly is the difference between a feature that is
+ * resting and one that appears broken.
+ *
+ * No countdown, and no "come back soon". The point of closing the feed is
+ * that the reader stops thinking about the group between Sundays; a screen
+ * that tells them how many days are left is still asking them to keep count.
+ */
+const WeekClosed = ({ colors, label }: { colors: any; label: string }) => (
+    <View style={{ paddingVertical: Spacing.xl, gap: Spacing.sm }}>
+        <Text variant="label" style={{ color: colors.textTertiary }}>{label.toUpperCase()}</Text>
+        <Text variant="sub" style={{ color: colors.textSecondary }}>
+            Everyone&apos;s week is gathered up on Sunday. Until then, this is between you and
+            your own reading.
+        </Text>
+    </View>
+);
+
 // ─── Accountability Member Card ───────────────────────────────────────────────
 
 /**
@@ -232,7 +256,15 @@ const buildProcessedFeed = (
  * reading-pace description the app has never stored, so the row says what the
  * app actually knows — the streak and the days covered this week.
  */
-const ColossalMemberRow = ({ member, colors, onPress }: { member: any; colors: any; onPress: () => void }) => {
+/**
+ * `revealed` is the whole weekly rule, applied to one row.
+ *
+ * A member's streak and whether they have read today ARE their activity —
+ * gating the feed while leaving these on every day would close the front door
+ * and leave the window open. Shut, the row is who is in the group and nothing
+ * else, which is a fact about the group rather than a report on a person.
+ */
+const ColossalMemberRow = ({ member, colors, revealed, onPress }: { member: any; colors: any; revealed: boolean; onPress: () => void }) => {
     const when = member.readToday ? 'Today' : member.daysThisWeek > 0 ? 'This week' : 'Never';
     const detail = member.streak > 0
         ? `${member.streak}-day streak · ${member.daysThisWeek} of 7 this week`
@@ -255,9 +287,11 @@ const ColossalMemberRow = ({ member, colors, onPress }: { member: any; colors: a
             <Avatar id={member.userId || member.id} name={member.displayName} url={member.photoURL} size={38} radius={19} />
             <View style={{ flex: 1, minWidth: 0 }}>
                 <Text variant="reference">{member.displayName}{member.isMe ? ' (You)' : ''}</Text>
-                <Text variant="bodySmall" style={{ marginTop: 3 }}>{detail}</Text>
+                {revealed && <Text variant="bodySmall" style={{ marginTop: 3 }}>{detail}</Text>}
             </View>
-            <Text variant="meta" tone={member.readToday ? 'accent' : 'tertiary'}>{when}</Text>
+            {revealed && (
+                <Text variant="meta" tone={member.readToday ? 'accent' : 'tertiary'}>{when}</Text>
+            )}
         </ScalePressable>
     );
 };
@@ -275,7 +309,8 @@ const ColossalMemberRow = ({ member, colors, onPress }: { member: any; colors: a
  * this substitutes the one real thing available instead — how much of the
  * week they've covered.
  */
-const ClothMemberRow = ({ member, colors, today, onPress }: { member: any; colors: any; today: string; onPress: () => void }) => {
+/** `revealed`: see ColossalMemberRow — a member's reading is their activity. */
+const ClothMemberRow = ({ member, colors, today, revealed, onPress }: { member: any; colors: any; today: string; revealed: boolean; onPress: () => void }) => {
     const status = formatLastRead(member.lastReadDate, today);
     const snippet = status !== 'Never read' && member.daysThisWeek > 0
         ? `${status} · ${member.daysThisWeek} of 7 this week`
@@ -296,7 +331,9 @@ const ClothMemberRow = ({ member, colors, today, onPress }: { member: any; color
             <Avatar id={member.userId || member.id} name={member.displayName} url={member.photoURL} size={38} radius={19} />
             <View style={{ flex: 1, minWidth: 0 }}>
                 <Text variant="reference">{member.displayName}{member.isMe ? ' (You)' : ''}</Text>
-                <Text variant="bodySmall" tone="secondary" style={{ marginTop: 4 }}>{snippet}</Text>
+                {revealed && (
+                    <Text variant="bodySmall" tone="secondary" style={{ marginTop: 4 }}>{snippet}</Text>
+                )}
             </View>
         </ScalePressable>
     );
@@ -1064,7 +1101,29 @@ export default function GroupDetailScreen() {
     // We no longer return early for loading, to keep the UI stable.
     const isLoading = loading;
 
-    const { pinnedMilestone, feedItems } = buildProcessedFeed(activities, today);
+    /*
+     * The group opens at the end of the week. `src/groups/week.ts` argues
+     * that out; what it means here is that everything describing what other
+     * people have BEEN DOING — the feed, the milestone, a member's own page —
+     * waits for Sunday, while the group itself, its name and its members stay
+     * visible every day.
+     *
+     * Gated at the data rather than at each place it is drawn. A screen this
+     * size has too many render paths for a rule applied per-view to stay
+     * applied: one missed branch and the thing is on show all week.
+     */
+    const groupWeek = reviewWindow(new Date());
+    const { pinnedMilestone, feedItems } = groupWeek.open
+        ? buildProcessedFeed(activities, today)
+        : { pinnedMilestone: null, feedItems: [] as FeedItem[] };
+
+    /* Tapping a member does nothing until the window is open. */
+    const openMember = React.useCallback(
+        (member: any) => {
+            if (groupWeek.open) setSelectedMember(member);
+        },
+        [groupWeek.open],
+    );
 
     if (isLockedIn) {
         /*
@@ -1148,7 +1207,8 @@ export default function GroupDetailScreen() {
                                     key={member.id}
                                     member={member}
                                     colors={colors}
-                                    onPress={() => setSelectedMember(member)}
+                                    onPress={() => openMember(member)}
+                                    revealed={groupWeek.open}
                                 />
                             ))}
                             {accountabilityData.totalMembers === 0 && (
@@ -1171,12 +1231,15 @@ export default function GroupDetailScreen() {
                             key={member.id}
                             member={member}
                             colors={colors}
-                            onPress={() => setSelectedMember(member)}
+                            revealed={groupWeek.open}
+                            onPress={() => openMember(member)}
                         />
                     ))}
 
                     {activeTab === 'feed' && (
-                        feedItems.length > 0 ? (
+                        !groupWeek.open ? (
+                            <WeekClosed colors={colors} label={windowLabel(groupWeek)} />
+                        ) : feedItems.length > 0 ? (
                             feedItems.map((item: FeedItem) => (
                                 <ColossalFeedRow key={item.id} item={item} colors={colors} members={members} />
                             ))
@@ -1303,7 +1366,11 @@ export default function GroupDetailScreen() {
                 />
 
                 {/* ── Feed Tab ── */}
-                {activeTab === 'feed' && (
+                {activeTab === 'feed' && !groupWeek.open && (
+                    <WeekClosed colors={colors} label={windowLabel(groupWeek)} />
+                )}
+
+                {activeTab === 'feed' && groupWeek.open && (
                     <>
                         <View style={[styles.sectionHeader, { marginTop: Spacing.md }]}>
                             <Text variant="label" tone="secondary" style={styles.sectionTitle}>WHAT'S BEEN HAPPENING</Text>
@@ -1565,7 +1632,8 @@ export default function GroupDetailScreen() {
                                 member={member}
                                 colors={colors}
                                 today={today}
-                                onPress={() => setSelectedMember(member)}
+                                onPress={() => openMember(member)}
+                                revealed={groupWeek.open}
                             />
                         ))}
                         {accountabilityData.totalMembers === 0 && (
@@ -1588,7 +1656,8 @@ export default function GroupDetailScreen() {
                                 member={member}
                                 colors={colors}
                                 today={today}
-                                onPress={() => setSelectedMember(member)}
+                                onPress={() => openMember(member)}
+                                revealed={groupWeek.open}
                             />
                         ))}
                     </View>
