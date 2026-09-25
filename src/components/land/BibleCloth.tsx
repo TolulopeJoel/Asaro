@@ -44,13 +44,26 @@
 
 import React, { useMemo, useState } from 'react';
 import { GestureResponderEvent, LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
+import Svg, { ClipPath, Defs, G, Path } from 'react-native-svg';
 
 import { BookCloth, Tier } from '../../land/cloth';
 import { Cell, layoutCells } from '../../land/plots';
-import { Spacing } from '../../theme/spacing';
 import { useTheme } from '../../theme/ThemeContext';
 import { Text } from '../ui';
 import { TERRAIN, mudFor } from './terrain';
+import {
+    Speck,
+    Sprout,
+    blend,
+    bushPaths,
+    edgeFringe,
+    furrowPath,
+    patchPath,
+    speckPaths,
+    swardPaths,
+    vergePaths,
+    weather,
+} from './texture';
 
 /**
  * How big one chapter wants to be, on a side, in points.
@@ -100,21 +113,110 @@ const TIER_ALPHA: Record<Exclude<Tier, 0>, number> = {
     5: FADE_FLOOR,
 };
 
-/** A hex at a given strength. */
-function tint(hex: string, alpha: number): string {
-    const value = hex.replace('#', '');
-    const full = value.length === 3 ? value.split('').map(c => c + c).join('') : value;
-    const r = parseInt(full.slice(0, 2), 16);
-    const g = parseInt(full.slice(2, 4), 16);
-    const b = parseInt(full.slice(4, 6), 16);
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+/**
+ * The ground colour of one chapter, weathered.
+ *
+ * Bare earth is the book's own soil; planted ground is crop resolved against
+ * that same soil rather than laid over it translucently, so the result is a
+ * solid colour that can then be nudged. See `texture.ts` — a translucent fill
+ * cannot be weathered, because the nudge would land on whatever is beneath it.
+ */
+function groundOf(tier: Tier, mud: string, seed: number): string {
+    const base = tier === 0 ? mud : blend(TERRAIN.crop, mud, TIER_ALPHA[tier]);
+    return weather(base, seed);
 }
+
+/** Furrows at a quarter of a cell, so they land on chapter boundaries too. */
+const FURROWS_PER_CELL = 4;
+
+/**
+ * Blades of sward per planted chapter, and the point at which it thins.
+ *
+ * Turf wants to be close-set — that evenness is what reads as tended — so
+ * this is higher than the bush's stems per clump. A reader who has written
+ * about the whole Bible has 1,189 planted cells, though, so past the
+ * threshold the sowing drops two blades per cell. Nobody can count blades,
+ * and everybody can feel a slow screen.
+ */
+const SWARD_BLADES = 5;
+const SWARD_THIN_ABOVE = 500;
+
+/**
+ * The bush around the holding.
+ *
+ * Deep above and below, slim down the sides. What made an earlier version
+ * feel like a box was not that the land had a border — it is that the border
+ * was even, and an even border on four sides is a frame around a picture.
+ * Wild ground is not evenly distributed: there is a good stretch of it where
+ * your holding begins and ends, and a verge where it runs up against the next
+ * one's.
+ *
+ * Slim sides are also what buys the depth at top and bottom. The side strips
+ * run the whole height of the map — three thousand points of it — so every
+ * point of width there costs roughly ten times what the same point costs
+ * above or below.
+ */
+/* Looser than it looks like it should be: the bushes carry the verge, and
+ * grass only has to fill between them. */
+const VERGE_PITCH = 12;
+const BUSH_PITCH = 30;
+const PATCH_PITCH = 26;
+/*
+ * The sides are wider than they were. A bush needs room to be a bush — at
+ * fourteen points it could only ever have been a smudge — and the verge is
+ * the one place on this screen where something is meant to look untended.
+ */
+const BUSH_SIDE = 22;
+const BUSH_DEPTH = 40;
+
+/**
+ * How raggedly the verge eats into the land, and how finely.
+ *
+ * The real answer to a boundary that reads as ruled. Overhanging bushes hide
+ * a straight line; this breaks it. `FRINGE_BITE` is the deepest the grass
+ * comes in over the crop and `FRINGE_STEP` is how often the edge changes its
+ * mind — small enough to read as rough ground, large enough not to look
+ * serrated.
+ */
+const FRINGE_BITE = 9;
+const FRINGE_STEP = 11;
+
+/**
+ * How much of the two long flanks carries bushes.
+ *
+ * Nearly none, deliberately. Bushes were put on the boundary to stop it
+ * reading as a ruled line, and the ragged fringe does that job better — so
+ * what is left for them is scenery. The map is nine times taller than it is
+ * wide, so an even placement spent nine bushes on the flanks for every one at
+ * an end: a hundred and thirty near-identical mounds down both sides, which
+ * is a printed border rather than a landscape, and the bulk of the cost.
+ *
+ * A few are kept rather than none. An entirely bare flank reads as mown, and
+ * the occasional clump is what says nobody has been tending this part.
+ */
+const BUSH_SIDE_SHARE = 0.22;
+
+/*
+ * Bushes grow ALONG the field's boundary rather than anywhere in the verge.
+ *
+ * Vegetation does not stop politely at a fence, so they lean over the hedge —
+ * but an earlier version got that by widening the band they were sown in,
+ * which put shrubs at every point inside it, including well inside the land.
+ * A bush sitting on its own in the middle of somebody's crop looks like a
+ * mistake, not like an edge. `bushPaths` walks the perimeter instead, so
+ * every bush is on the boundary by construction.
+ *
+ * Which is why they are drawn ON TOP of the field rather than behind it, and
+ * the only reason the verge is split into two layers. The cost is real and
+ * accepted: a bush overhanging the outermost column hides part of a chapter.
+ * It is the outer edge of a map you can scroll and tap, and the edge looking
+ * like an edge is worth more than those few points.
+ */
 
 interface ChapterProps {
     cell: Cell;
-    tier: Tier;
     size: number;
-    mud: string;
+    ground: string;
     selected: boolean;
     selectionColor: string;
 }
@@ -128,7 +230,7 @@ interface ChapterProps {
  * takes one press handler instead and works out which cell was hit from the
  * touch coordinates, since the grid is uniform and that is just division.
  */
-const Chapter = React.memo(({ cell, tier, size, mud, selected, selectionColor }: ChapterProps) => {
+const Chapter = React.memo(({ cell, size, ground, selected, selectionColor }: ChapterProps) => {
     return (
         <View
             style={[
@@ -138,7 +240,7 @@ const Chapter = React.memo(({ cell, tier, size, mud, selected, selectionColor }:
                     top: cell.row * size,
                     width: size,
                     height: size,
-                    backgroundColor: tier === 0 ? mud : tint(TERRAIN.crop, TIER_ALPHA[tier]),
+                    backgroundColor: ground,
                     /*
                      * The outline. Only the sides facing another book carry a
                      * hedge, which is what lets a boundary follow a staircase
@@ -193,6 +295,53 @@ export function BibleCloth({
         if (measured > 0 && Math.abs(measured - width) > 0.5) setWidth(measured);
     };
 
+    /* The surround: the field plus its verges, measured as one. */
+    const [meadow, setMeadow] = useState({ width: 0, height: 0 });
+    const onMeadowLayout = (event: LayoutChangeEvent) => {
+        const { width: w, height: h } = event.nativeEvent.layout;
+        if (Math.abs(w - meadow.width) > 0.5 || Math.abs(h - meadow.height) > 0.5) {
+            setMeadow({ width: w, height: h });
+        }
+    };
+    const verge = useMemo(() => {
+        /*
+         * Sown generously past the field's true edge, because the grass is
+         * clipped to the fringe when it is drawn. Sowing only to the boundary
+         * would leave the bitten strip as flat colour — a ragged edge made of
+         * bare paint, which is worse than a straight one — and sowing to any
+         * fixed depth past it puts blades on bare field wherever the bite
+         * happened to be shallow. The clip settles both.
+         */
+        const band = BUSH_SIDE + FRINGE_BITE;
+        const bandY = BUSH_DEPTH + FRINGE_BITE;
+        return {
+            grass: vergePaths(meadow.width, meadow.height, VERGE_PITCH, band, bandY),
+            /* Along the boundary itself — the inset IS the field's edge. */
+            bushes: bushPaths(
+                meadow.width,
+                meadow.height,
+                BUSH_SIDE,
+                BUSH_DEPTH,
+                BUSH_PITCH,
+                BUSH_SIDE_SHARE,
+            ),
+            patches: patchPath(meadow.width, meadow.height, PATCH_PITCH, band, bandY),
+            /*
+             * The ragged edge, cut where the field actually ends rather than
+             * where the grass band does — the band is drawn wider so the
+             * grass has something to grow in once the edge has bitten inward.
+             */
+            fringe: edgeFringe(
+                meadow.width,
+                meadow.height,
+                BUSH_SIDE,
+                BUSH_DEPTH,
+                FRINGE_STEP,
+                FRINGE_BITE,
+            ),
+        };
+    }, [meadow.width, meadow.height]);
+
     const { colors } = useTheme();
 
     const columns = Math.max(1, Math.floor(width / BED_SIZE));
@@ -212,6 +361,42 @@ export function BibleCloth({
         return map;
     }, [cells]);
 
+    /*
+     * The texture, built once per layout rather than per cell.
+     *
+     * Furrows and specks are two SVG paths covering the whole field. Drawn as
+     * views they would be several thousand extra nodes on a screen that
+     * already carries twelve hundred; as paths they are two.
+     */
+    const texture = useMemo(() => {
+        if (size <= 0) return null;
+        /*
+         * Clods go on bare earth only. Planted ground used to get pale flecks
+         * as a stand-in for growth; it has actual stems now, and keeping both
+         * just put litter under the crop.
+         */
+        const specks: Speck[] = cells.map(cell => ({
+            column: cell.column,
+            row: cell.row,
+            planted: (books[cell.book].cells[cell.chapter - 1] ?? 0) !== 0,
+        }));
+        const sprouts: Sprout[] = [];
+        for (const cell of cells) {
+            const tier = books[cell.book].cells[cell.chapter - 1] ?? 0;
+            if (tier !== 0) sprouts.push({ column: cell.column, row: cell.row, tier });
+        }
+
+        return {
+            furrows: furrowPath(columns * size, rows * size, size / FURROWS_PER_CELL),
+            ...speckPaths(specks, size),
+            sward: swardPaths(
+                sprouts,
+                size,
+                sprouts.length > SWARD_THIN_ABOVE ? SWARD_BLADES - 2 : SWARD_BLADES,
+            ),
+        };
+    }, [cells, books, columns, rows, size]);
+
     const onFieldPress = (event: GestureResponderEvent) => {
         if (!onBookPress || size <= 0) return;
         const { locationX, locationY } = event.nativeEvent;
@@ -228,7 +413,37 @@ export function BibleCloth({
      * field just stops where the component does.
      */
     return (
-        <View style={[styles.meadow, { backgroundColor: TERRAIN.meadow }]}>
+        <View
+            onLayout={onMeadowLayout}
+            style={[styles.meadow, { backgroundColor: TERRAIN.meadow }]}
+        >
+            {/*
+              * Ground mottling, UNDER the land.
+              *
+              * It was briefly drawn with the rest of the verge, which moved on
+              * top of the field when the ragged edge arrived — and a patch is
+              * a forty-point round dot in a twenty-two point verge, so every
+              * one of them bled a whole chapter of somebody's land. It is
+              * texture for the meadow floor and has no business above
+              * anything: down here it can be as broad and soft as it likes.
+              */}
+            {meadow.width > 0 && verge.patches !== '' && (
+                <Svg
+                    style={StyleSheet.absoluteFill}
+                    width={meadow.width}
+                    height={meadow.height}
+                    pointerEvents="none"
+                >
+                    <Path
+                        d={verge.patches}
+                        stroke={TERRAIN.vergeBack}
+                        strokeWidth={PATCH_PITCH * 1.6}
+                        strokeLinecap="round"
+                        strokeOpacity={0.35}
+                    />
+                </Svg>
+            )}
+
             <Pressable
                 onLayout={onLayout}
                 onPress={onFieldPress}
@@ -244,14 +459,62 @@ export function BibleCloth({
                             <Chapter
                                 key={`${cell.book}:${cell.chapter}`}
                                 cell={cell}
-                                tier={book.cells[cell.chapter - 1] ?? 0}
                                 size={size}
-                                mud={mudFor(book.name)}
+                                ground={groundOf(
+                                    book.cells[cell.chapter - 1] ?? 0,
+                                    mudFor(book.name),
+                                    cell.row * 8191 + cell.column,
+                                )}
                                 selected={selected === book.name}
                                 selectionColor={colors.accent}
                             />
                         );
                     })}
+
+                {/*
+                  * Texture sits above the ground and below the names, so the
+                  * weathering reads as part of the field while a book's name
+                  * stays legible over it.
+                  */}
+                {texture && (
+                    <Svg
+                        style={StyleSheet.absoluteFill}
+                        width={columns * size}
+                        height={rows * size}
+                        pointerEvents="none"
+                    >
+                        <Path d={texture.furrows} stroke="#000" strokeWidth={1} strokeOpacity={0.07} />
+                        <Path
+                            d={texture.earth}
+                            stroke="#000"
+                            strokeWidth={1.6}
+                            strokeLinecap="round"
+                            strokeOpacity={0.14}
+                        />
+                        {/*
+                          * The sward on cleared ground. Fine, short and close
+                          * — everything the bush past the hedge is not, which
+                          * is what makes the boundary read as cultivation
+                          * rather than as a change of colour.
+                          */}
+                        <Path
+                            d={texture.sward.back}
+                            stroke={TERRAIN.swardBack}
+                            strokeWidth={1.3}
+                            strokeLinecap="round"
+                            strokeOpacity={0.9}
+                            fill="none"
+                        />
+                        <Path
+                            d={texture.sward.tip}
+                            stroke={TERRAIN.swardTip}
+                            strokeWidth={1.1}
+                            strokeLinecap="round"
+                            strokeOpacity={0.9}
+                            fill="none"
+                        />
+                    </Svg>
+                )}
 
                 {width > 0 &&
                     names
@@ -282,42 +545,70 @@ export function BibleCloth({
                             </View>
                         ))}
             </Pressable>
-        </View>
-    );
-}
 
-/** The ramp, spelled out. Without it the fade is just an inconsistency. */
-export function ClothLegend() {
-    const tiers: Exclude<Tier, 0>[] = [1, 2, 3, 4, 5];
+            {/*
+              * The whole verge, drawn OVER the land.
+              *
+              * It has to be: the fringe cuts an irregular bite out of the
+              * field's edge, and everything that grows in the verge then has
+              * to cover what it bit off. Non-interactive throughout, so a
+              * chapter under the fringe is still tappable — the data is
+              * exactly where it was, only the last few points of the outermost
+              * chapters are hidden.
+              *
+              * Order is the effect: the bite, then mottled floor, then grass,
+              * then the bushes standing in it.
+              */}
+            {meadow.width > 0 && verge.grass.back !== '' && (
+                <Svg
+                    style={StyleSheet.absoluteFill}
+                    width={meadow.width}
+                    height={meadow.height}
+                    pointerEvents="none"
+                >
+                    {/*
+                      * The grass is CLIPPED to the same shape the fringe cut.
+                      *
+                      * Clamping where blades may be sown was the obvious fix
+                      * and it cannot work: the bite varies along the edge, so
+                      * any single limit is either past it somewhere — blades
+                      * standing on bare field — or short of it everywhere,
+                      * which leaves a bald gap between the grass and the land.
+                      * Clipping asks the real question instead: is this point
+                      * verge? Blades may then be sown generously past the
+                      * boundary, and each one shows exactly as far as the
+                      * ground it grows on actually reaches.
+                      *
+                      * Bushes are deliberately OUTSIDE the clip. They are
+                      * meant to lean over the hedge.
+                      */}
+                    <Defs>
+                        <ClipPath id="verge-ground">
+                            <Path d={verge.fringe} clipRule="evenodd" />
+                        </ClipPath>
+                    </Defs>
 
-    return (
-        <View style={styles.legend}>
-            <Text variant="meta" tone="tertiary">Growing</Text>
-            <View style={[styles.legendStrip, { borderColor: TERRAIN.hedge, backgroundColor: TERRAIN.mud[0] }]}>
-                {tiers.map(tier => (
-                    <View
-                        key={tier}
-                        style={[styles.legendBed, { backgroundColor: tint(TERRAIN.crop, TIER_ALPHA[tier]) }]}
-                    />
-                ))}
-                {/* Bare earth, shown as the soil it actually is. */}
-                <View style={styles.legendBed} />
-                <View style={styles.legendBed} />
-            </View>
-            <Text variant="meta" tone="tertiary">Unplanted</Text>
+                    <Path d={verge.fringe} fill={TERRAIN.meadow} fillRule="evenodd" />
+
+                    <G clipPath="url(#verge-ground)">
+                        <Path d={verge.grass.back} stroke={TERRAIN.vergeBack} strokeWidth={1.4} strokeLinecap="round" fill="none" />
+                        <Path d={verge.grass.tip} stroke={TERRAIN.vergeTip} strokeWidth={1.2} strokeLinecap="round" fill="none" />
+                    </G>
+                    <Path d={verge.bushes.mass} fill={TERRAIN.bushMass} />
+                    <Path d={verge.bushes.crown} fill={TERRAIN.bushCrown} fillOpacity={0.55} />
+                    <Path d={verge.bushes.twigs} stroke={TERRAIN.bushTwig} strokeWidth={1.2} strokeLinecap="round" fill="none" />
+                </Svg>
+            )}
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    meadow: { padding: Spacing.md },
+    meadow: { paddingHorizontal: BUSH_SIDE, paddingVertical: BUSH_DEPTH },
     field: { position: 'relative' },
     cell: { position: 'absolute' },
     lip: { position: 'absolute', top: 0, left: 0, right: 0, height: 1 },
     nameBox: { position: 'absolute', justifyContent: 'center', alignItems: 'center' },
     name: { opacity: 0.6, letterSpacing: 0.4, fontWeight: '700' },
     selection: { borderWidth: 2 },
-    legend: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-    legendStrip: { flexDirection: 'row', borderWidth: 1, flex: 1, height: 16 },
-    legendBed: { flexGrow: 1, flexBasis: 0 },
 });

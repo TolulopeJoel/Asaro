@@ -35,8 +35,45 @@
  */
 
 export const TERRAIN = {
-    /** Beyond the holding. Wild, duller than the crop. */
-    meadow: '#5d7049',
+    /** Beyond the holding: the floor the bush grows out of, not the bush. */
+    meadow: '#3e4d2f',
+
+    /**
+     * The verge past the hedge: low grass with bushes standing in it.
+     *
+     * An earlier version made the whole strip one tangle, which is
+     * undergrowth, not bush. A bush is a THING — a clump, rounded, sitting
+     * clear of its neighbours and standing a good bit higher than what grows
+     * around it. You can count them. That is why they are built as silhouettes
+     * here rather than as strokes: a mound of overlapping lobes with a lit
+     * crown on its upper side, and a few twigs breaking its outline so it does
+     * not read as a blob.
+     *
+     * Everything here is darker and cooler than the sward on cleared ground.
+     * That contrast is the whole point of the boundary — planted land should
+     * read as cultivated the moment it meets what was there before.
+     */
+    vergeBack: '#41532f',
+    vergeTip: '#66814a',
+
+    /*
+     * Held deliberately close to the verge around them.
+     *
+     * The first pass made the mound near-black against the grass, which gave
+     * each bush a hard silhouette and turned the border into a row of cut-out
+     * stickers — they read as objects placed on the ground rather than as
+     * things growing out of it. A bush is the same stuff as the verge, only
+     * more of it, so the whole range here sits within a few steps of
+     * `vergeBack`: the shape comes from density and the crown, not from
+     * contrast.
+     *
+     * They still stand out where they overhang the FIELD, and that is correct
+     * — cleared ground is a different colour, which is the entire point of the
+     * boundary.
+     */
+    bushMass: '#39492a',
+    bushCrown: '#4d6435',
+    bushTwig: '#57703e',
 
     /**
      * Bare earth inside a parcel — three tones, picked per book.
@@ -53,6 +90,20 @@ export const TERRAIN = {
 
     /** Growth. Dyed over the mud at the tier's strength. */
     crop: '#5f9e4a',
+
+    /**
+     * Grass on cleared, planted ground, in two depths.
+     *
+     * Turf rather than thicket: short, fine, close-set and near enough
+     * upright. Where bush is defined by mass and tangle, this is defined by
+     * evenness — which is exactly what makes ground look tended, and what the
+     * eye reads as the difference between a field and what surrounds it.
+     *
+     * Brighter and warmer than the bush, so the boundary carries even where
+     * the hedge is thin.
+     */
+    swardBack: '#4d8a3a',
+    swardTip: '#9fd071',
 
     /** The lit top edge of a parcel. What stops a tile reading as a rectangle. */
     lip: 'rgba(255, 255, 255, 0.2)',

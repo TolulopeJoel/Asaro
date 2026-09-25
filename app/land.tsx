@@ -23,7 +23,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 
-import { BibleCloth, ClothLegend } from '@/src/components/land/BibleCloth';
+import { BibleCloth } from '@/src/components/land/BibleCloth';
 import { LoadingView } from '@/src/components/LoadingView';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { Hero, Screen, Text as UIText } from '@/src/components/ui';
@@ -86,7 +86,26 @@ export default function LandScreen() {
                     <ChevronLeft size={20} color={colors.accent} strokeWidth={2} />
                 </ScalePressable>
                 <UIText variant="display" tone="onBand" style={styles.heroTitle}>Your land</UIText>
-                <UIText variant="sub" tone="onHero">Every chapter you have planted</UIText>
+                {/*
+                  * The count lives up here rather than in a panel of its own.
+                  * It is the one number on the screen that only ever goes up,
+                  * and a block for it below pushed the land down and framed
+                  * it — the field should be the screen, not an illustration
+                  * inside one.
+                  *
+                  * Tapping a field replaces it with that field's own tally,
+                  * so identifying a parcel costs no layout at all: nothing
+                  * appears, nothing shifts, one line changes.
+                  */}
+                <UIText variant="sub" tone="onHero" numberOfLines={1}>
+                    {selected
+                        ? selected.worked === 0
+                            ? `${selected.name} — ${selected.total} chapters, none yet`
+                            : `${selected.name} — ${selected.worked} of ${selected.total}, last ${ago(selected.lastWorkedDays ?? 0)}`
+                        : cloth
+                            ? `${cloth.worked} of ${cloth.total.toLocaleString()} chapters planted`
+                            : 'Every chapter you have planted'}
+                </UIText>
             </Hero>
 
             {!cloth ? (
@@ -95,37 +114,6 @@ export default function LandScreen() {
                 </View>
             ) : (
                 <ScrollView contentContainerStyle={styles.content}>
-                    {/*
-                      * The count leads, because it is the thing that only ever
-                      * goes up. Everything else on this screen fades; this
-                      * number is the one that cannot.
-                      */}
-                    <View style={styles.summary}>
-                        <UIText variant="hero">{cloth.worked}</UIText>
-                        <UIText variant="label">
-                            {`chapters under cultivation of ${cloth.total.toLocaleString()}`}
-                        </UIText>
-                    </View>
-
-                    <ClothLegend />
-
-                    {/*
-                      * Tapping a parcel says what it is rather than navigating.
-                      * The name is watermarked on the ground, but abbreviated
-                      * and shrunk to fit — this is where "Lev" becomes
-                      * Leviticus, with what has actually been planted in it.
-                      */}
-                    {selected && (
-                        <View style={[styles.selected, { borderColor: colors.border }]}>
-                            <UIText variant="subtitle">{selected.name}</UIText>
-                            <UIText variant="meta" tone="secondary">
-                                {selected.worked === 0
-                                    ? `${selected.total} chapters, none yet`
-                                    : `${selected.worked} of ${selected.total} chapters · last ${ago(selected.lastWorkedDays ?? 0)}`}
-                            </UIText>
-                        </View>
-                    )}
-
                     {/*
                       * One holding, Genesis to Revelation, with no break at
                       * Matthew. Splitting it into two fields drew a boundary
@@ -137,7 +125,7 @@ export default function LandScreen() {
                     <BibleCloth
                         books={cloth.books}
                         selected={selected?.name ?? null}
-                        onBookPress={setSelected}
+                        onBookPress={book => setSelected(current => (current?.name === book.name ? null : book))}
                     />
 
                     {/*
@@ -172,9 +160,15 @@ const styles = StyleSheet.create({
     back: { alignSelf: 'flex-start', marginBottom: Spacing.sm },
     heroTitle: { marginBottom: Spacing.xs },
     loading: { flex: 1, justifyContent: 'center' },
-    content: { padding: Spacing.lg, gap: Spacing.xl, paddingBottom: Spacing.xxl },
-    summary: { gap: Spacing.xs },
-    selected: { borderWidth: 1, padding: Spacing.md, gap: Spacing.xs },
-    section: { gap: Spacing.md },
-    quiet: { borderTopWidth: 1, paddingTop: Spacing.lg, gap: Spacing.sm },
+    /* No horizontal padding: the land runs to both screen edges, which is the
+     * difference between a map and a picture of a map. Anything that is not
+     * the land pads itself. */
+    content: { paddingBottom: Spacing.xxl },
+    quiet: {
+        borderTopWidth: 1,
+        marginTop: Spacing.xl,
+        paddingTop: Spacing.lg,
+        paddingHorizontal: Spacing.lg,
+        gap: Spacing.sm,
+    },
 });
