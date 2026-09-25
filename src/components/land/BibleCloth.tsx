@@ -58,6 +58,7 @@ import {
     edgeFringe,
     furrowPath,
     patchPath,
+    rgba,
     speckPaths,
     swardPaths,
     vergePaths,
@@ -95,8 +96,46 @@ const BED_SIZE = 30;
  */
 const HEDGE = 1.2;
 
+/**
+ * How the book currently identified is picked out.
+ *
+ * Its own boundary is recoloured and thickened, and every chapter inside it
+ * gets a line too — but a faint one, at about the weight of a plough furrow.
+ *
+ * The balance is the point. An earlier version drew a full-strength ring
+ * inside every cell, which on a fifty-chapter book meant fifty ochre
+ * rectangles: an orange grid laid over the land, obliterating the very thing
+ * the tap was asking about. Dropping the inner lines entirely fixed that and
+ * lost something real — you could see WHICH book was selected but no longer
+ * how many chapters it held. Faint keeps both: the outline says which, the
+ * furrows say how big, and neither shouts over the ground.
+ */
+const HEDGE_SELECTED = 2;
+const FURROW_SELECTED = 0.75;
+const FURROW_SELECTED_ALPHA = 0.42;
+
 /** Cells of unbroken run below which a book carries no name. */
 const MIN_NAME_SPAN = 2;
+
+/**
+ * How strongly a book's name sits on its ground, bare and full.
+ *
+ * It fades as the land fills, and it never goes away. Those are two separate
+ * decisions and both matter.
+ *
+ * It fades because a name is worth least where it is needed least. A planted
+ * book is already distinct — green among brown, textured among bare — so its
+ * label is largely restating what the ground says, and at full strength it is
+ * ink sitting on the one part of the map worth looking at. A bare parcel is
+ * identical to the forty around it, and the name is the only way in.
+ *
+ * It never goes away because the name is how the reader FINDS things.
+ * Dropping it on completion would un-label exactly the books someone knows
+ * best — the ones they are most likely to go looking for — and a map that
+ * hides the places you have been is backwards. Quieter, not gone.
+ */
+const NAME_ON_BARE = 0.62;
+const NAME_ON_FULL = 0.3;
 
 /**
  * Strength of the crop per tier, faintest last.
@@ -218,6 +257,17 @@ interface ChapterProps {
  * touch coordinates, since the grid is uniform and that is just division.
  */
 const Chapter = React.memo(({ cell, size, ground, selected, selectionColor }: ChapterProps) => {
+    const edge = selected ? HEDGE_SELECTED : HEDGE;
+    const edgeColor = selected ? selectionColor : TERRAIN.hedge;
+
+    /*
+     * Inner lines are drawn on the right and bottom only, so two neighbouring
+     * chapters share one line rather than stacking two and doubling its
+     * weight — the same rule the hedges follow between books.
+     */
+    const inner = selected ? FURROW_SELECTED : 0;
+    const innerColor = rgba(selectionColor, FURROW_SELECTED_ALPHA);
+
     return (
         <View
             style={[
@@ -233,11 +283,14 @@ const Chapter = React.memo(({ cell, size, ground, selected, selectionColor }: Ch
                      * hedge, which is what lets a boundary follow a staircase
                      * instead of squaring it off.
                      */
-                    borderTopWidth: cell.edgeTop ? HEDGE : 0,
-                    borderRightWidth: cell.edgeRight ? HEDGE : 0,
-                    borderBottomWidth: cell.edgeBottom ? HEDGE : 0,
-                    borderLeftWidth: cell.edgeLeft ? HEDGE : 0,
-                    borderColor: TERRAIN.hedge,
+                    borderTopWidth: cell.edgeTop ? edge : 0,
+                    borderLeftWidth: cell.edgeLeft ? edge : 0,
+                    borderRightWidth: cell.edgeRight ? edge : inner,
+                    borderBottomWidth: cell.edgeBottom ? edge : inner,
+                    borderTopColor: edgeColor,
+                    borderLeftColor: edgeColor,
+                    borderRightColor: cell.edgeRight ? edgeColor : innerColor,
+                    borderBottomColor: cell.edgeBottom ? edgeColor : innerColor,
                 },
             ]}
             pointerEvents="none"
@@ -250,12 +303,6 @@ const Chapter = React.memo(({ cell, size, ground, selected, selectionColor }: Ch
               */}
             <View style={[styles.lip, { backgroundColor: TERRAIN.lip }]} pointerEvents="none" />
 
-            {selected && (
-                <View
-                    style={[StyleSheet.absoluteFill, styles.selection, { borderColor: selectionColor }]}
-                    pointerEvents="none"
-                />
-            )}
         </View>
     );
 });
@@ -290,38 +337,6 @@ export function BibleCloth({
             setMeadow({ width: w, height: h });
         }
     };
-    const verge = useMemo(() => {
-        /*
-         * Sown generously past the field's true edge, because the grass is
-         * clipped to the fringe when it is drawn. Sowing only to the boundary
-         * would leave the bitten strip as flat colour — a ragged edge made of
-         * bare paint, which is worse than a straight one — and sowing to any
-         * fixed depth past it puts blades on bare field wherever the bite
-         * happened to be shallow. The clip settles both.
-         */
-        const band = VERGE_SIDE + FRINGE_BITE;
-        const bandY = VERGE_DEPTH + FRINGE_BITE;
-        return {
-            grass: vergePaths(meadow.width, meadow.height, VERGE_PITCH, band, bandY),
-            patches: patchPath(meadow.width, meadow.height, PATCH_PITCH, band, bandY),
-            /*
-             * The ragged edge, cut where the field actually ends rather than
-             * where the grass band does — the band is drawn wider so the
-             * grass has something to grow in once the edge has bitten inward.
-             */
-            fringe: edgeFringe(
-                meadow.width,
-                meadow.height,
-                VERGE_SIDE,
-                VERGE_DEPTH,
-                FRINGE_STEP,
-                FRINGE_BITE,
-            ),
-        };
-    }, [meadow.width, meadow.height]);
-
-    const { colors } = useTheme();
-
     const columns = Math.max(1, Math.floor(width / BED_SIZE));
     const size = width > 0 ? width / columns : 0;
     const { cells, rows, names } = useMemo(
@@ -333,6 +348,74 @@ export function BibleCloth({
      * Which book owns each grid position, so a touch can be resolved without
      * asking 1,189 views which of them was hit.
      */
+    /*
+     * Where the last row runs out.
+     *
+     * 1,189 chapters in rows of eleven leaves ten empty cells at the end, and
+     * the field's rectangle covers them — so without this the holding ends in
+     * a hard bar of bare ground sitting inside its own boundary. Everything
+     * that grows around the land is told about the step instead.
+     */
+    const tailCells = cells.length % columns;
+    const tail = useMemo(
+        () =>
+            tailCells === 0 || size <= 0
+                ? undefined
+                : {
+                    fromX: VERGE_SIDE + tailCells * size,
+                    fromY: VERGE_DEPTH + (rows - 1) * size,
+                },
+        [tailCells, size, rows],
+    );
+
+    const verge = useMemo(() => {
+        /*
+         * Sown generously past the field's true edge, because the grass is
+         * clipped to the fringe when it is drawn. Sowing only to the boundary
+         * would leave the bitten strip as flat colour — a ragged edge made of
+         * bare paint, which is worse than a straight one — and sowing to any
+         * fixed depth past it puts blades on bare field wherever the bite
+         * happened to be shallow. The clip settles both.
+         */
+        const band = VERGE_SIDE + FRINGE_BITE;
+        const bandY = VERGE_DEPTH + FRINGE_BITE;
+        /*
+         * The land's outline, clockwise, stepping around the empty tail of
+         * the last row. A rectangle here is what put a bar of bare ground
+         * inside the holding.
+         */
+        const right = meadow.width - VERGE_SIDE;
+        const bottom = meadow.height - VERGE_DEPTH;
+        const outline: [number, number][] = tail
+            ? [
+                [VERGE_SIDE, VERGE_DEPTH],
+                [right, VERGE_DEPTH],
+                [right, tail.fromY],
+                [tail.fromX, tail.fromY],
+                [tail.fromX, bottom],
+                [VERGE_SIDE, bottom],
+            ]
+            : [
+                [VERGE_SIDE, VERGE_DEPTH],
+                [right, VERGE_DEPTH],
+                [right, bottom],
+                [VERGE_SIDE, bottom],
+            ];
+
+        return {
+            grass: vergePaths(meadow.width, meadow.height, VERGE_PITCH, band, bandY, tail),
+            patches: patchPath(meadow.width, meadow.height, PATCH_PITCH, band, bandY, tail),
+            /*
+             * The ragged edge, cut where the field actually ends rather than
+             * where the grass band does — the band is drawn wider so the
+             * grass has something to grow in once the edge has bitten inward.
+             */
+            fringe: edgeFringe(meadow.width, meadow.height, outline, FRINGE_STEP, FRINGE_BITE),
+        };
+    }, [meadow.width, meadow.height, tail]);
+
+    const { colors } = useTheme();
+
     const owner = useMemo(() => {
         const map = new Map<string, number>();
         for (const cell of cells) map.set(`${cell.row}:${cell.column}`, cell.book);
@@ -497,31 +580,42 @@ export function BibleCloth({
                 {width > 0 &&
                     names
                         .filter(place => place.span >= MIN_NAME_SPAN)
-                        .map(place => (
-                            <View
-                                key={place.book}
-                                pointerEvents="none"
-                                style={[
-                                    styles.nameBox,
-                                    {
-                                        left: place.column * size,
-                                        top: place.row * size,
-                                        width: place.span * size,
-                                        height: size,
-                                    },
-                                ]}
-                            >
-                                <Text
-                                    variant="meta"
-                                    numberOfLines={1}
-                                    adjustsFontSizeToFit
-                                    minimumFontScale={0.6}
-                                    style={[styles.name, { color: TERRAIN.hedge }]}
+                        .map(place => {
+                            const book = books[place.book];
+                            const planted = book.total > 0 ? book.worked / book.total : 0;
+                            return (
+                                <View
+                                    key={place.book}
+                                    pointerEvents="none"
+                                    style={[
+                                        styles.nameBox,
+                                        {
+                                            left: place.column * size,
+                                            top: place.row * size,
+                                            width: place.span * size,
+                                            height: size,
+                                        },
+                                    ]}
                                 >
-                                    {books[place.book].abbrv}
-                                </Text>
-                            </View>
-                        ))}
+                                    <Text
+                                        variant="meta"
+                                        numberOfLines={1}
+                                        adjustsFontSizeToFit
+                                        minimumFontScale={0.6}
+                                        style={[
+                                            styles.name,
+                                            {
+                                                color: TERRAIN.hedge,
+                                                opacity:
+                                                    NAME_ON_BARE - (NAME_ON_BARE - NAME_ON_FULL) * planted,
+                                            },
+                                        ]}
+                                    >
+                                        {book.abbrv}
+                                    </Text>
+                                </View>
+                            );
+                        })}
             </Pressable>
 
             {/*
@@ -582,6 +676,6 @@ const styles = StyleSheet.create({
     cell: { position: 'absolute' },
     lip: { position: 'absolute', top: 0, left: 0, right: 0, height: 1 },
     nameBox: { position: 'absolute', justifyContent: 'center', alignItems: 'center' },
-    name: { opacity: 0.6, letterSpacing: 0.4, fontWeight: '700' },
-    selection: { borderWidth: 2 },
+    /* Opacity is set per book — see NAME_ON_BARE. */
+    name: { letterSpacing: 0.4, fontWeight: '700' },
 });

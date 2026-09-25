@@ -46,6 +46,12 @@ const clamp = (value: number) => Math.max(0, Math.min(255, Math.round(value)));
 const toHex = (r: number, g: number, b: number) =>
     `#${[r, g, b].map(v => clamp(v).toString(16).padStart(2, '0')).join('')}`;
 
+/** A hex at a given transparency, for drawing over ground you cannot predict. */
+export function rgba(hex: string, alpha: number): string {
+    const [r, g, b] = channels(hex);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 /**
  * `top` laid over `bottom` at `alpha`, resolved to a solid colour.
  *
@@ -144,11 +150,8 @@ export function speckPaths(
 /**
  * A ragged edge for the land, as one filled path.
  *
- * The better answer to a boundary that reads as ruled. Everything else tried
- * so far hid the join — bushes along the boundary, leaning further and
- * further over it — and hiding a straight line with objects placed on it only
- * draws attention to how straight it is. This breaks the line itself, and
- * once it did, the bushes had nothing left to do and were removed.
+ * The answer to a boundary that reads as ruled. Bushes along the edge were
+ * tried first and only ever hid the line; this breaks it.
  *
  * The path is the whole surround with a WOBBLY HOLE cut in it, drawn over the
  * field with the ground colour, so the verge eats irregularly into the land.
@@ -156,6 +159,12 @@ export function speckPaths(
  * the field runs almost to its true edge. Nothing about the data changes: the
  * cells underneath are exactly where they were, and only the outermost few
  * points of the outermost chapters are covered.
+ *
+ * It takes the land's OUTLINE rather than a rectangle, because the land is
+ * not one. The grid holds 1,189 chapters in rows of eleven, which leaves ten
+ * empty cells in the last row — and cutting a rectangular hole around them
+ * left that emptiness sitting inside the holding as a hard bar of bare
+ * ground. The outline steps around it, so the map ends where the chapters do.
  *
  * The hole is wound BACKWARDS from the surround, and that is not decoration.
  * Even-odd fill would cut it either way, but this path is also used as a clip
@@ -169,33 +178,65 @@ export function speckPaths(
 export function edgeFringe(
     width: number,
     height: number,
-    insetX: number,
-    insetY: number,
+    /** The land's corners, clockwise. */
+    outline: readonly (readonly [number, number])[],
     step: number,
     depth: number,
 ): string {
     if (width <= 0 || height <= 0 || step <= 0 || depth <= 0) return '';
-    const left = insetX;
-    const right = width - insetX;
-    const top = insetY;
-    const bottom = height - insetY;
-    if (right <= left || bottom <= top) return '';
+    if (outline.length < 3) return '';
 
     const points: string[] = [];
     let index = 0;
     /* Always inward, never out: an outward excursion would land on ground that
-     * is already this colour and show as nothing, so it is only wasted path. */
+     * is already this colour, so it draws nothing and only costs path. */
     const bite = () => depth * noise((index++ * 2654435761) >>> 0);
 
-    for (let x = left; x < right; x += step) points.push(`${x.toFixed(1)} ${(top + bite()).toFixed(1)}`);
-    for (let y = top; y < bottom; y += step) points.push(`${(right - bite()).toFixed(1)} ${y.toFixed(1)}`);
-    for (let x = right; x > left; x -= step) points.push(`${x.toFixed(1)} ${(bottom - bite()).toFixed(1)}`);
-    for (let y = bottom; y > top; y -= step) points.push(`${(left + bite()).toFixed(1)} ${y.toFixed(1)}`);
+    for (let corner = 0; corner < outline.length; corner++) {
+        const [fromX, fromY] = outline[corner];
+        const [toX, toY] = outline[(corner + 1) % outline.length];
+        const runX = toX - fromX;
+        const runY = toY - fromY;
+        const length = Math.hypot(runX, runY);
+        if (length === 0) continue;
+
+        /*
+         * Inward normal of a clockwise edge in screen coordinates, where y
+         * runs down: (-dy, dx). Getting the sign wrong here bites OUTWARD,
+         * which draws nothing at all and looks exactly like the fringe not
+         * working.
+         */
+        const normalX = -runY / length;
+        const normalY = runX / length;
+
+        const steps = Math.max(1, Math.round(length / step));
+        for (let at = 0; at < steps; at++) {
+            const along = at / steps;
+            const depthHere = bite();
+            const x = fromX + runX * along + normalX * depthHere;
+            const y = fromY + runY * along + normalY * depthHere;
+            points.push(`${x.toFixed(1)} ${y.toFixed(1)}`);
+        }
+    }
 
     /* Reversed: the surround runs clockwise, so the hole must run the other way. */
     const hole = `M${points.reverse().join('L')}Z`;
     const surround = `M0 0H${width.toFixed(1)}V${height.toFixed(1)}H0Z`;
     return surround + hole;
+}
+
+/**
+ * The empty tail of the grid's last row.
+ *
+ * 1,189 chapters in rows of eleven leaves ten cells over, so the bottom of
+ * the holding is not a straight line — and everything that grows around the
+ * land has to know that, or it leaves the emptiness bare.
+ */
+export interface Tail {
+    /** Ground at or past this x, on the last row, is not land. */
+    fromX: number;
+    /** ...and at or past this y. */
+    fromY: number;
 }
 
 /** Whether a lattice point falls in the sown verge rather than behind the land. */
@@ -206,7 +247,9 @@ function inVerge(
     height: number,
     band: number,
     bandY: number,
+    tail?: Tail,
 ): boolean {
+    if (tail && x >= tail.fromX && y >= tail.fromY) return true;
     return !(x > band && x < width - band && y > bandY && y < height - bandY);
 }
 
@@ -222,6 +265,7 @@ export function vergePaths(
     pitch: number,
     band: number,
     bandY: number = band,
+    tail?: Tail,
 ): { back: string; tip: string } {
     const back: string[] = [];
     const tip: string[] = [];
@@ -231,7 +275,7 @@ export function vergePaths(
         for (let column = 0; column * pitch < width; column++) {
             const pointX = column * pitch;
             const pointY = row * pitch;
-            if (!inVerge(pointX, pointY, width, height, band, bandY)) continue;
+            if (!inVerge(pointX, pointY, width, height, band, bandY, tail)) continue;
 
             const seed = (row * 7919 + column * 104729) >>> 0;
             const baseX = pointX + noise(seed) * pitch;
@@ -267,6 +311,7 @@ export function patchPath(
     pitch: number,
     band: number,
     bandY: number = band,
+    tail?: Tail,
 ): string {
     if (pitch <= 0 || width <= 0 || height <= 0 || band <= 0) return '';
     const parts: string[] = [];
@@ -274,7 +319,7 @@ export function patchPath(
         for (let column = 0; column * pitch < width; column++) {
             const pointX = column * pitch;
             const pointY = row * pitch;
-            if (!inVerge(pointX, pointY, width, height, band, bandY)) continue;
+            if (!inVerge(pointX, pointY, width, height, band, bandY, tail)) continue;
             const seed = (row * 31337 + column * 6151) >>> 0;
             if (noise(seed) < 0.55) continue;
             const x = pointX + noise(seed + 1) * pitch;
