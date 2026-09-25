@@ -1,6 +1,5 @@
 import { getDailyEntryCounts } from '@/src/data/database';
 import { useTheme } from '@/src/theme/ThemeContext';
-import { Colors } from '@/src/theme/colors';
 import { formatDateToLocalString, getLocalMidnight } from '@/src/utils/dateUtils';
 import { ChevronRight } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';

@@ -67,9 +67,9 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
 
 
     // Track dynamic heights for growth
-    const [actionHeights, setActionHeights] = useState<{ [key: number]: number }>({});
+    const [, setActionHeights] = useState<{ [key: number]: number }>({});
     const [motivationHeights, setMotivationHeights] = useState<{ [key: number]: number }>({});
-    const [actionHeightsModal, setActionHeightsModal] = useState<{ [key: number]: number }>({});
+    const [, setActionHeightsModal] = useState<{ [key: number]: number }>({});
     const [motivationHeightsModal, setMotivationHeightsModal] = useState<{ [key: number]: number }>({});
 
     const actionRefs = useRef<(TextInput | null)[]>([]);

@@ -47,11 +47,6 @@ import { Text } from './ui';
 
 type ViewMode = 'recent' | 'books' | 'bookDetail' | 'actions' | 'topics';
 
-interface NavigationBreadcrumb {
-    label: string;
-    onPress: () => void;
-}
-
 type ListItem =
     | { type: 'header'; title: string; id: string }
     | { type: 'entry'; entry: JournalEntry; id: number }
@@ -290,32 +285,6 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
         }
     }, [debouncedSearchQuery, entries]);
 
-    const navigateToRecent = () => {
-        onViewModeChange('recent');
-        onSelectedBookChange(undefined);
-        onSearchChange('');
-    };
-
-    const navigateToBooks = () => {
-        onViewModeChange('books');
-        onSelectedBookChange(undefined);
-        onSearchChange('');
-    };
-
-    const navigateToActions = () => {
-        onViewModeChange('actions');
-        onSelectedBookChange(undefined);
-        onSearchChange('');
-        loadActions();
-    };
-
-    const navigateToTopics = () => {
-        onViewModeChange('topics');
-        onSelectedBookChange(undefined);
-        onSearchChange('');
-        loadTopics();
-    };
-
     const navigateToBookDetail = (book: BibleBook) => {
         onSelectedBookChange(book);
         onViewModeChange('bookDetail');
@@ -376,23 +345,6 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
             loadBookEntries();
         }
     }, [selectedBook, debouncedSearchQuery, viewMode, loadBookEntries]);
-
-    const getBreadcrumbs = (): NavigationBreadcrumb[] => {
-        const breadcrumbs: NavigationBreadcrumb[] = [];
-
-        if (viewMode === 'bookDetail' && selectedBook) {
-            breadcrumbs.push({
-                label: 'Books',
-                onPress: navigateToBooks
-            });
-            breadcrumbs.push({
-                label: selectedBook.name,
-                onPress: () => { }
-            });
-        }
-
-        return breadcrumbs;
-    };
 
     // Helper functions moved outside component scope
 

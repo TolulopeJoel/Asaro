@@ -60,7 +60,7 @@ export const fetchFlashbackData = async (): Promise<{ entry: JournalEntry, type:
 };
 
 export const Flashback: React.FC<FlashbackProps> = React.memo(({ onEntryPress, flashbackData: flashbackProp }) => {
-    const { colors, isDark } = useTheme();
+    const { colors } = useTheme();
     const [flashbackDataState, setFlashbackData] = useState<{ entry: JournalEntry, type: 'year' | 'month' | 'random' } | null>(null);
     const flashbackData = flashbackProp !== undefined ? flashbackProp : flashbackDataState;
 

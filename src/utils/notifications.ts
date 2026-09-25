@@ -58,7 +58,7 @@ export async function hasNotificationPermissions(): Promise<boolean> {
     return false;
   }
 
-  const { status, canAskAgain, expires, granted } = await Notifications.getPermissionsAsync();
+  const { status, granted } = await Notifications.getPermissionsAsync();
 
   // On Android 13+, we also need to check for POST_NOTIFICATIONS specifically if status is not granted
   if (status === 'granted' || granted) {

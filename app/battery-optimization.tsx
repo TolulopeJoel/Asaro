@@ -57,12 +57,12 @@ export default function BatteryOptimizationScreen() {
                         data: `package:${pkg}`
                     }
                 );
-            } catch (error) {
+            } catch {
                 try {
                     await IntentLauncher.startActivityAsync(
                         'android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS'
                     );
-                } catch (error2) {
+                } catch {
                     Linking.openSettings();
                 }
             }

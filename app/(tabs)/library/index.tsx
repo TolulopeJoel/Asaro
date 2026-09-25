@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState, useRef, useEffect } from 'react';
-import { StyleSheet, View, FlatList, ScrollView, TouchableOpacity, Platform, LayoutAnimation, TextInput } from 'react-native';
+import { StyleSheet, View, FlatList, TouchableOpacity, Platform, LayoutAnimation, TextInput } from 'react-native';
 import {
     Clock,
     Library,

@@ -105,7 +105,7 @@ export const initializeDatabase = async (): Promise<boolean> => {
                 `);
 
                 const addCol = async (table: string, colDef: string) => {
-                    try { await database.runAsync(`ALTER TABLE ${table} ADD COLUMN ${colDef}`); } catch (e) { /* ignore if already exists */ }
+                    try { await database.runAsync(`ALTER TABLE ${table} ADD COLUMN ${colDef}`); } catch { /* ignore if already exists */ }
                 };
 
                 await addCol('journal_entries', 'study_further TEXT');

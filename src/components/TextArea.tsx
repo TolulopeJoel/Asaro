@@ -71,7 +71,7 @@ const TextArea: React.FC<{
         const { colors, style: themeStyle } = useTheme();
         const [isExpanded, setIsExpanded] = useState(false);
         const [tempValue, setTempValue] = useState('');
-        const [contentHeight, setContentHeight] = useState(0);
+        const [, setContentHeight] = useState(0);
         const [contentHeightModal, setContentHeightModal] = useState(0);
         const regularTextInputRef = useRef<TextInput>(null);
         const expandedTextInputRef = useRef<TextInput>(null);

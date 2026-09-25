@@ -196,7 +196,7 @@ export interface SegmentsProps {
  * Underline in Cloth, plain weighted text in Colossal.
  */
 export function Segments({ items, value, onChange, scrollable = false }: SegmentsProps) {
-    const { colors, shape, style: themeStyle } = useTheme();
+    const { colors, style: themeStyle } = useTheme();
     const isCloth = themeStyle === 'cloth';
 
     const buttons = items.map((item) => {

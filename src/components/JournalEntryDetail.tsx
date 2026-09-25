@@ -161,7 +161,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                             } else {
                                 showAlert({ title: 'Notice', message: 'Could not share reflection. Make sure you are in a group.' });
                             }
-                        } catch (e) {
+                        } catch {
                             showAlert({ title: 'Error', message: 'An error occurred while sharing.' });
                         } finally {
                             setIsSharingAnswer(false);

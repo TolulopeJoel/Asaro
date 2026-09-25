@@ -67,7 +67,7 @@ export const openBibleReferenceFromTag = async (refString: string) => {
         return;
     }
 
-    const [_, bookName, c1, v1, c2, v2] = match;
+    const [, bookName, c1, v1, c2, v2] = match;
 
     const chapter1 = parseInt(c1, 10);
     const verse1 = v1 ? parseInt(v1, 10) : undefined;
