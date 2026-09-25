@@ -34,6 +34,7 @@ import { VerseId } from '../bible/ref';
 export const DETECTORS = [
     'convergence',
     'commitment',
+    'study',
     'absence',
     'divineName',
     'recurrence',
@@ -72,7 +73,7 @@ export type DetectorName = (typeof DETECTORS)[number];
  * something to browse; an archive of questions you neglect is a standing
  * performance review, which is not what that tab is for.
  */
-const EPHEMERAL: DetectorName[] = ['commitment', 'absence'];
+const EPHEMERAL: DetectorName[] = ['commitment', 'study', 'absence'];
 
 /**
  * Where a finding belongs, which is a question about timing as much as place.
@@ -100,7 +101,7 @@ const EPHEMERAL: DetectorName[] = ['commitment', 'absence'];
  */
 export type Surface = 'home' | 'afterSave';
 
-const AFTER_SAVE: DetectorName[] = ['commitment', 'absence'];
+const AFTER_SAVE: DetectorName[] = ['commitment', 'study', 'absence'];
 
 export function surfaceOf(detector: DetectorName): Surface {
     return AFTER_SAVE.includes(detector) ? 'afterSave' : 'home';
@@ -128,7 +129,7 @@ export function surfaceOf(detector: DetectorName): Surface {
  * commitments the rotation does the work and the rest merely stops it
  * sprinting; for absence there is no rotation, so the rest IS the pacing.
  */
-const REPEATS: DetectorName[] = ['commitment', 'absence'];
+const REPEATS: DetectorName[] = ['commitment', 'study', 'absence'];
 
 /**
  * How long each recurring detector rests, in days.
@@ -149,6 +150,13 @@ const REPEATS: DetectorName[] = ['commitment', 'absence'];
  */
 const REST_DAYS: Partial<Record<DetectorName, number>> = {
     commitment: 7,
+    /*
+     * Longer than a commitment's. A standing resolution about character is
+     * worth meeting again fairly often; a passing curiosity handed back twice
+     * in a fortnight starts to read as the app nagging about homework, which
+     * is exactly the register `study` is written to avoid.
+     */
+    study: 14,
     absence: 30,
 };
 const DEFAULT_REST_DAYS = 7;

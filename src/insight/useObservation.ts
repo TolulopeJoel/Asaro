@@ -26,6 +26,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { detectConvergence } from './detectors/convergence';
 import { detectCommitments } from './detectors/commitment';
+import { detectStudy } from './detectors/study';
 import { detectAbsence } from './detectors/absence';
 import {
     StoredObservation,
@@ -112,6 +113,7 @@ export function useObservation(enabled: boolean, surface: Surface = 'home'): Obs
                      */
                     await detectConvergence();
                     await detectCommitments();
+                    await detectStudy();
                     await detectAbsence();
                     await stamp(LAST_RUN_KEY);
                 }

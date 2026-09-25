@@ -269,6 +269,46 @@ function trimQuote(text: string, limit = 180): string {
     return `${cut.slice(0, cut.lastIndexOf(' ')).replace(/[,;:.]$/, '')}…`;
 }
 
+/**
+ * A question the reader wrote down and has not come back to.
+ *
+ * The register is the entire design here, and it is one word away from being
+ * wrong. "You still haven't looked into this" is a debt notice; "you wondered
+ * about this" is a returned interest. Nothing on this card may imply the
+ * reader owes anybody anything — they wrote down a question because it caught
+ * them, and the only true thing the app knows is that it caught them.
+ *
+ * Which is why the passage leads rather than the age. Where they were when
+ * they thought of it is the part that brings the question back; how long ago
+ * it was is context, and belongs in the sentence rather than at the head of
+ * it. A card that opens with the elapsed time is counting.
+ */
+function renderStudy(claim: Record<string, unknown>): RenderedObservation {
+    const topic = String(claim.topic ?? '');
+    const passage = String(claim.passage ?? '');
+    const ago = agoPhrase(Number(claim.ageDays) || 0).toLowerCase();
+
+    /*
+     * A reminder the reader set and that has since passed earns a different
+     * sentence, because it is a different fact. They did not merely write this
+     * down — they named a day for it. Saying so is repeating their own
+     * decision back to them, which is the strongest thing this card can do and
+     * still be true.
+     */
+    const named = claim.reminderPassed === true;
+
+    return {
+        kind: 'You wanted to look into this',
+        evidence: passage ? [passage] : [],
+        claim: named
+            ? `You set a time for this one and it went by. ${passage ? `It came out of ${passage}, ` : ''}${ago}.`
+            : `You wrote this down ${ago}${passage ? `, reading ${passage}` : ''}.`,
+        subject: trimQuote(topic),
+        subjectFirst: true,
+        openLabel: 'Open that entry',
+    };
+}
+
 function renderCommitment(claim: Record<string, unknown>): RenderedObservation {
     const action = String(claim.action ?? '');
     const motivation = String(claim.motivation ?? '');
@@ -323,6 +363,8 @@ export function renderObservation(observation: StoredObservation): RenderedObser
             return renderConvergence(observation.claim);
         case 'commitment':
             return renderCommitment(observation.claim);
+        case 'study':
+            return renderStudy(observation.claim);
         case 'absence':
             return renderAbsence(observation.claim);
         default:

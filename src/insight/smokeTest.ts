@@ -24,6 +24,7 @@ import { detectConvergence, findConvergence, loadSeedEntries } from './detectors
 import { renderObservation } from './render';
 import { detectCommitments, loadCommitments, rankCommitments } from './detectors/commitment';
 import { detectAbsence, diagnoseAbsence, loadAbsenceEntries } from './detectors/absence';
+import { detectStudy, loadTopics, qualifyingTopics, rankTopics } from './detectors/study';
 import {
     DETECTORS,
     getObservation,
@@ -68,7 +69,7 @@ const REARM = false;
  *
  * Set to null once you have seen what you came to see.
  */
-const REARM_DETECTOR: DetectorName | null = 'absence';
+const REARM_DETECTOR: DetectorName | null = null;
 
 export async function runPhase0SmokeTest(): Promise<string> {
     const out: string[] = [];
@@ -257,6 +258,22 @@ export async function runPhase0SmokeTest(): Promise<string> {
         ok('standing commitments', `${open.length} total, ${worth.length} worth handing back`);
         const commitmentIds = await detectCommitments();
         ok('commitments recorded', `${commitmentIds.length}`);
+
+        /*
+         * Study reports how many topics it is holding as well as how many it
+         * will offer, because those numbers diverge by design: the detector
+         * may be sitting on a dozen and hand back exactly one. Seeing only the
+         * one would look like a detector that had barely found anything.
+         */
+        const topics = await loadTopics();
+        const openTopics = qualifyingTopics(topics);
+        const dated = openTopics.filter(topic => topic.reminderPassed).length;
+        ok(
+            'study topics',
+            `${topics.length} open, ${openTopics.length} old enough${dated ? `, ${dated} with a date that passed` : ''}, offering ${rankTopics(topics).length}`,
+        );
+        const studyIds = await detectStudy();
+        ok('study recorded', `${studyIds.length}`);
 
         /*
          * Absence reports its counts even when it declines to fire. A detector
