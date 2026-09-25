@@ -116,13 +116,9 @@ const SettingsItem = ({
     showChevron?: boolean;
     colors: any;
 }) => {
-    /*
-     * design/all-screens.html #settings — the label on the left, its value on
-     * the right, and nothing else. No icon chip and no chevron; a list where
-     * every row carries both reads as texture rather than as information, and
-     * this is the longest list in the app. A value of "On" is the one thing
-     * here worth the accent.
-     */
+    // design/all-screens.html #settings — label left, value right, nothing
+    // else. No icon chip, no chevron: on the app's longest list, rows carrying
+    // both read as texture rather than information.
     void icon; void showChevron;
 
     return (
@@ -256,13 +252,9 @@ export default function Settings() {
         }
     };
 
-    /*
-     * Six different settings can silence a reminder and they all look the same
-     * from the outside. Rather than make someone guess which one their phone
-     * turned off, read them all and say so — and on a phone with a vendor
-     * auto-start list, offer the door to it, since that is the one the AOSP
-     * battery whitelist does not cover.
-     */
+    // Six settings can silence a reminder and they look identical from
+    // outside, so read them all and say which. On a phone with a vendor
+    // auto-start list, offer that door too — the AOSP whitelist misses it.
     const handleDeliveryCheck = async () => {
         try {
             const d = await getNotificationDiagnostics();
@@ -527,13 +519,10 @@ export default function Settings() {
                 ]}
                 showsVerticalScrollIndicator={false}
             >
-                {/*
-                     * design/all-screens.html #settings, the `.cl` slot: Cloth
-                     * drops to a single header band and puts the profile on it —
-                     * the avatar in ochre, the name at 24px, and how long you
-                     * have been reading underneath. No screen title: the band
-                  * is about you, not about the word "Settings".
-                  */}
+                {/* design/all-screens.html #settings, the `.cl` slot: one
+                  * header band carrying the profile — avatar in ochre, name at
+                  * 24px, time reading underneath. No screen title: the band is
+                  * about you, not about the word "Settings". */}
                 <Hero ownsTopInset>
                         <ScalePressable
                             onPress={() => router.back()}
@@ -569,15 +558,10 @@ export default function Settings() {
                         </ScalePressable>
                 </Hero>
 
-                {/*
-                  * design/all-screens.html #settings.
-                  *
-                  * Settings is labelled runs of plain rows — Reminders, Your
-                  * data, Engine Room, About — with no panel anywhere on the
-                  * screen, and no Appearance selector: light/dark has no second
-                  * Cloth palette to choose between yet. The profile rides on
-                  * the hero band above.
-                  */}
+                {/* design/all-screens.html #settings: labelled runs of plain
+                  * rows — Reminders, Your data, Engine Room, About — with no
+                  * panel anywhere, and no Appearance selector until there is a
+                  * second Cloth palette to choose between. */}
                 <View style={styles.clothBody}>
                     {/* Admins keep the photo editor; it opens under the profile
                         rather than as a section neither mockup draws. */}
@@ -647,12 +631,9 @@ export default function Settings() {
                         colors={colors}
                     />
 
-                    {/*
-                      * Version gets its own "About". No rule here — the
-                      * mockup never draws `.cl-hr` anywhere on this screen;
-                      * only the label's own margin-top:20 (clothSectionLabel)
-                      * separates sections.
-                      */}
+                    {/* Version gets its own "About". No rule: the mockup draws
+                      * no `.cl-hr` on this screen, and only the label's own
+                      * margin-top separates sections. */}
                     <UIText variant="label" style={styles.clothSectionLabel}>About</UIText>
                     <SettingsItem
                         label="Version"
@@ -671,12 +652,9 @@ export default function Settings() {
 
             </ScrollView>
 
-            {/*
-              * The mockup's footer. Every setting here already
-              * persists the moment it changes — there is no pending state to
-              * commit — so the button does the only honest thing left and
-              * closes the screen.
-              */}
+            {/* The mockup's footer. Every setting persists the moment it
+              * changes, so there is nothing to commit and the button just
+              * closes the screen. */}
             <View style={styles.footer}>
                 <ThemedButton label="Save Changes" block onPress={() => router.back()} />
             </View>
@@ -725,13 +703,9 @@ const styles = StyleSheet.create({
     scrollView: {
         flex: 1,
     },
-    /*
-     * marginBottom used to sit at Spacing.xl here. Hero applies this style
-     * directly to the indigo band View, and ClothStrip renders as the very
-     * next sibling — so that margin pushed 24px of ecru between the band and
-     * the strip instead of letting them abut, as `.cl-strip` (no margin of
-     * its own) assumes.
-     */
+    // No marginBottom: Hero applies this style directly to the indigo band and
+    // ClothStrip is its next sibling, so any margin here pushes ecru between
+    // the two instead of letting them abut as `.cl-strip` assumes.
     backButton: {
         width: Spacing.touchTarget,
         height: Spacing.touchTarget,

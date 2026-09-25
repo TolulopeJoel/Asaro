@@ -104,15 +104,11 @@ export default function JoinGroupScreen() {
     /*
      * design/all-screens.html #join, the `.cl` slot.
      *
-     * A near-empty screen, which the design's own note says is "where a style
-     * has nowhere to hide" — so it stays plain: a back arrow and the title on
-     * the band, then the sub-line, the labelled field, the primary button
-     * (plain `.cl-btn`, not the ochre `.ochre` variant), and finally the
-     * "No code?" panel with its own ghost button. This used to be a centred
-     * card with an 84px icon well and "Continue to Group" — neither the icon,
-     * the card, nor that copy exist anywhere in the mockup, and the panel that
-     * offers the sign-in path (the only way Cloth can reach auth.tsx) had no
-     * rendering at all.
+     * A near-empty screen, which the design note calls "where a style has
+     * nowhere to hide", so it stays plain: back arrow and title on the band,
+     * then the sub-line, the labelled field, the primary button (plain
+     * `.cl-btn`, not the ochre variant), and the "No code?" panel with its own
+     * ghost button — the only way Cloth reaches auth.tsx.
      */
     return (
         <Screen edges={[]}>

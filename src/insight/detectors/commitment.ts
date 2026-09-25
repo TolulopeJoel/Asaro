@@ -1,35 +1,17 @@
 /**
  * Something you are trying to be, and the reason you gave for it.
  *
- * `action_items.motivation` is the most revealing column in this schema. It is
- * the only place someone writes *why* a thing matters, in their own words,
- * unmediated by the passage that prompted it — and no other journalling app
- * asks for it, because no other app makes resolving something part of the
- * writing flow.
+ * `action_items.motivation` is the only place someone writes *why* a thing
+ * matters in their own words.
  *
- * The plan called this "Unfinished" and gated it on `is_completed`. Two facts
- * about a real journal took that apart.
+ * These are not tasks. "I will be kinder to my parents" is a standing
+ * commitment about character — nobody completes it — so nothing here is gated
+ * on `is_completed`, and the framing is present tense: this is something you
+ * are working on, and here is why you said it mattered. Age is the reason to
+ * resurface (the resolution is remembered, the reason fades), never an
+ * accusation of lateness. Completion and pinning are courtesy filters only.
  *
- * Forty-six entries, ten action items, and **not one ever ticked**. An unused
- * checkbox is not evidence, so reading it as "you did not do this" would be
- * inferring someone's obedience from a UI affordance they never touch.
- *
- * And more fundamentally: these are not tasks. "I will be kinder to my
- * parents", "I want to give Jehovah my best", "I want to be quick to follow
- * instructions" — nobody completes those. They are standing commitments about
- * character, the kind of thing you hold for years, and a checkbox is the wrong
- * shape for them entirely. A detector built on completion was answering a
- * question the data was never asking.
- *
- * So the framing is present tense. Not "you said this once and let it go" but
- * "this is something you are working on, and here is why you said it
- * mattered". Age is the reason to resurface — the resolution is remembered and
- * the reason fades — never an accusation of lateness. Completion and pinning
- * survive only as courtesy filters: something explicitly closed or
- * deliberately pinned should not be handed back.
- *
- * Which makes this meditation material rather than a task list, and the app is
- * named for meditation.
+ * Thresholds and ranking: design/DETECTORS.md#commitment
  */
 
 import { withDatabase } from '../../data/db';
@@ -53,21 +35,14 @@ export interface StandingCommitment {
 
 export interface CommitmentOptions {
     /**
-     * How old a resolution must be before it is worth handing back.
-     *
-     * Eight weeks, because the point is that the reason has faded. Anything
-     * recent is still in mind, and the app already has somewhere for that —
-     * `ActionReminders` works in windows up to five weeks, so this begins
-     * where that leaves off rather than competing with it.
+     * How old a resolution must be before it is worth handing back. Set past
+     * `ActionReminders`' five-week ceiling so the two do not compete — the
+     * point here is that the reason has faded.
      */
     minAgeDays?: number;
     /**
-     * Minimum motivation length, after citations are stripped.
-     *
-     * Measured on the prose, not the markup: a motivation that is only
-     * `[[Exodus 20:12]], [[Exodus 21:15]]` is a pointer, not a reason, and
-     * handing it back gives the reader nothing they did not already see. On a
-     * real journal this cut four of ten — two empty, two citations-only.
+     * Minimum motivation length, measured on prose with citations stripped. A
+     * motivation that is only `[[Exodus 20:12]]` is a pointer, not a reason.
      */
     minMotivationChars?: number;
     maxCandidates?: number;
@@ -76,22 +51,15 @@ export interface CommitmentOptions {
 const DEFAULTS: Required<CommitmentOptions> = {
     minAgeDays: 56,
     minMotivationChars: 40,
-    /*
-     * Two at a time, against convergence's three. These are the reader's own
-     * sentences handed back to them, which lands harder than a passage
-     * suggestion — and a queue of them would read as a list of things they
-     * have failed to do, which is precisely what this must never become.
-     */
+    // Two, against convergence's three: these are the reader's own sentences
+    // handed back, and a queue of them reads as a list of failures.
     maxCandidates: 2,
 };
 
-/** Rank what is worth handing back first. */
 /**
- * Everything that still holds, before any of it is ranked.
- *
- * Separate from `rankCommitments` because retraction needs the whole set: a
- * detector that records its best two would otherwise withdraw the third every
- * run and find it again the next.
+ * Everything that still holds, before ranking. Separate from `rankCommitments`
+ * because retraction needs the whole set — otherwise the third is withdrawn
+ * every run and found again the next.
  */
 export function qualifyingCommitments(
     open: StandingCommitment[],
@@ -112,16 +80,9 @@ export function rankCommitments(
     const config = { ...DEFAULTS, ...options };
     const qualifying = qualifyingCommitments(open, options);
 
-    /*
-     * Length of the reason, with age as a gentle tilt rather than the driver.
-     *
-     * The plan proposed age times length, which hands the oldest item the top
-     * slot forever. What actually marks one of these as having meant something
-     * is how much the writer bothered to explain it — age only decides whether
-     * enough time has passed for the explaining to be worth repeating. So
-     * length carries the score, saturating so a very long motivation cannot
-     * dominate on bulk alone, and age enters logarithmically.
-     */
+    // Length of the reason carries the score (saturating, so bulk alone cannot
+    // dominate) with age as a logarithmic tilt. Age times length would pin the
+    // oldest item in the top slot for ever.
     const scored = qualifying.map(item => ({
         item,
         score:
@@ -145,13 +106,9 @@ export async function loadCommitments(now: number = Date.now()): Promise<Standin
              WHERE COALESCE(a.is_completed, 0) = 0
                AND COALESCE(a.is_pinned, 0) = 0
                AND TRIM(COALESCE(a.action, '')) != ''
-               /*
-                * Applications only. A practice has a rhythm of its own and a
-                * dated action has a deadline — both are already spoken for by
-                * something better suited than a card that says "you wrote this
-                * down five months ago". This detector exists for the kind of
-                * commitment nothing else can support: the one with no end.
-                */
+               -- Applications only: a practice has its own rhythm and a dated
+               -- action has a deadline, so both are already served elsewhere.
+               -- This detector is for the commitment with no end.
                AND a.cadence IS NULL
                AND a.due_at IS NULL
                -- Archived: the reader has said this one is finished with.
@@ -188,13 +145,9 @@ export async function loadCommitments(now: number = Date.now()): Promise<Standin
 export async function detectCommitments(options: CommitmentOptions = {}): Promise<number[]> {
     const open = await loadCommitments();
 
-    /*
-     * `loadCommitments` already excludes anything that has become a practice,
-     * gained a date, or been archived — so whatever it no longer returns is
-     * exactly what should no longer be queued. Without this a commitment
-     * promoted to a practice went on waiting as a commitment, because
-     * detectors only ever wrote and nothing ever withdrew.
-     */
+    // `loadCommitments` already excludes anything promoted to a practice,
+    // dated, or archived, so whatever it stops returning should stop being
+    // queued.
     await retractObservations(
         'commitment',
         qualifyingCommitments(open, options).map(item => `action:${item.actionItemId}`),
@@ -215,12 +168,9 @@ export async function detectCommitments(options: CommitmentOptions = {}): Promis
                     writtenAt: item.writtenAt,
                     ageDays: Math.round(item.ageDays),
                 },
-                /*
-                 * Steady and unremarkable. This detector cannot be wrong about
-                 * its facts — it is quoting the reader — so confidence is not
-                 * measuring truth here, only how much of the queue it should
-                 * take against detectors that are inferring something.
-                 */
+                // Quoting the reader, so it cannot be wrong about its facts:
+                // confidence only sets how much of the queue it takes against
+                // detectors that are inferring.
                 confidence: 0.5,
                 evidence: [
                     { kind: 'actionItem', actionItemId: item.actionItemId, entryId: item.entryId },

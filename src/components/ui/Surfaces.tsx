@@ -1,12 +1,10 @@
 /**
- * The surfaces every screen is assembled from.
+ * The surfaces every screen is assembled from — hero, strip, card, row,
+ * segments, button. Nothing invents its own container, which is what keeps a
+ * style a theme rather than a separate app.
  *
- * Twenty screens in the mockups are built from roughly this set — hero, strip,
- * card, row, segments, button. Nothing invents its own container, which is
- * what keeps a style a theme rather than a separate app.
- *
- * Shape comes from the theme rather than from constants here, because it is
- * the axis a second style is most likely to move.
+ * Shape comes from the theme, not constants here: it is the axis a second style
+ * is most likely to move.
  */
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, View, ViewProps, ViewStyle } from 'react-native';
@@ -66,24 +64,15 @@ export function Hero({ children, style, topPadding = Spacing.layout.heroPaddingT
     /**
      * Take the screen's top safe-area inset into this band's own padding.
      *
-     * By default <Screen> pads its top edge by insets.top, so a transient
-     * status bar never lands on a header (see useScreenInsets — the app hides
-     * the bar, but Android can bring it back without reporting real insets).
-     * That padding sits on Screen's own background ABOVE the band, which
-     * shows as a strip of ecru above the indigo — the band stopping short of
-     * the top of the screen instead of reaching it the way every mockup draws
-     * it.
+     * <Screen> pads its top edge by insets.top so a transient status bar never
+     * lands on a header, but that padding sits on Screen's background ABOVE the
+     * band and shows as a strip of ecru over the indigo.
      *
-     * A screen fixes that by dropping 'top' from <Screen edges> and setting
-     * this, which moves the same reserved space inside the band: the indigo
-     * now runs to the true top of the screen and the content inside sits
-     * exactly where it did. It is opt-in per screen because the two have to
-     * change together — doing one without the other either doubles the gap or
-     * puts the header back under the bar.
+     * MUST be paired with dropping 'top' from <Screen edges> — one without the
+     * other either doubles the gap or puts the header back under the bar.
      *
-     * A negative margin on the band would look like it does the same job, but
-     * a band inside a ScrollView is clipped to the scroll bounds, so it draws
-     * nothing above them.
+     * A negative margin looks equivalent and is not: a band inside a ScrollView
+     * is clipped to the scroll bounds and draws nothing above them.
      */
     ownsTopInset?: boolean;
 }) {
@@ -91,13 +80,11 @@ export function Hero({ children, style, topPadding = Spacing.layout.heroPaddingT
     const insets = useScreenInsets();
 
     /*
-     * The mockup's `padding-top:52px` is measured from the top of the display
-     * — its phone frame draws no status bar, so 52 is the whole allowance
-     * above the title. Adding the inset to it would double-count and leave the
-     * band half again too tall. The app hides the status bar, so the inset's
-     * only job here is clearing a camera cutout: it is a floor under the
-     * band's own padding, not something to stack on top of it. Spacing.lg is
-     * the breathing room between a cutout and the first line of type.
+     * The mockup's `padding-top:52px` is measured from the top of the display —
+     * its frame draws no status bar, so 52 is the whole allowance above the
+     * title, and adding the inset double-counts. The inset's only job here is
+     * clearing a camera cutout, so it is a FLOOR under the band's own padding
+     * rather than something stacked on top of it.
      */
     const top: ViewStyle = {
         paddingTop: ownsTopInset
@@ -164,9 +151,9 @@ export interface SegmentsProps {
     value: string;
     onChange: (key: string) => void;
     /**
-     * Let the row scroll instead of sharing the width evenly. Needed once
-     * there are more than about four tabs — Library has six, and flexing them
-     * into 390px shrinks the labels below the type scale's smallest size.
+     * Let the row scroll instead of sharing the width evenly. Needed past about
+     * four tabs, where flexing them into 390px shrinks the labels below the
+     * type scale's smallest size.
      */
     scrollable?: boolean;
 }

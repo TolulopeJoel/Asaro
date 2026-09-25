@@ -1,24 +1,17 @@
 /**
- * How long a practice has been kept.
+ * How long a practice has been kept. Pure — dates in, numbers out, no database
+ * and no clock of its own, since a function that reads the clock cannot be
+ * tested at the boundary where a streak breaks.
  *
- * Pure on purpose — dates in, numbers out, no database and no clock of its
- * own. Streak arithmetic is where this kind of feature quietly goes wrong, and
- * a function that reads the clock itself cannot be tested at a boundary.
- *
- * Two rules shape everything here, and both come from what a streak is FOR.
- * It exists to encourage someone, so its failure mode must be generous: a
- * streak that breaks a few hours early, or that calls a day missed while the
- * reader still has the evening ahead of them, does the opposite of its job.
+ * A streak exists to encourage, so its failure mode must be generous:
  *
  *   **Today is not yet owed.** A daily practice done yesterday but not yet
- *   today is still a live streak. The day is not over. Only once yesterday is
- *   also missed has the thread actually been dropped.
+ *   today is still live — the day is not over.
  *
- *   **A period lapses only after two.** A weekly practice does not need one
- *   completion in every calendar week — it needs the reader not to let a
- *   fortnight pass. Anchored windows would break a streak for somebody who
- *   did it late one week and early the next, which is enforcing a schedule
- *   they never set. The same rule gives a daily practice its grace day.
+ *   **A period lapses only after two.** A weekly practice needs the reader not
+ *   to let a fortnight pass, not one completion per calendar week. Anchored
+ *   windows would break a streak for doing it late one week and early the next,
+ *   enforcing a schedule nobody set. The same rule gives daily its grace day.
  */
 
 import { Cadence } from './actionKind';
@@ -40,11 +33,8 @@ function daysBetween(laterMs: number, earlierMs: number): number {
 }
 
 /**
- * How many periods in a row this practice has been kept, counting back.
- *
- * `today` is passed in so the boundaries can be tested — the day a streak
- * breaks is exactly the case worth pinning, and it is unreachable if the
- * function reads `Date.now()` itself.
+ * How many periods in a row this practice has been kept, counting back. `today`
+ * is passed in so the day a streak breaks can be tested.
  */
 export function streakOf(
     completions: CompletedOn[],
@@ -91,16 +81,12 @@ export function streakOf(
 }
 
 /**
- * Whether each of the last `count` periods was kept, oldest first.
- *
- * The honest counterweight to the streak. A streak reports one number and that
- * number is zero the morning after a fortnight is broken, which is both true
- * and a terrible thing to show someone who kept thirteen of those days. This
- * reports the days themselves and lets them be read as what they were.
+ * Whether each of the last `count` periods was kept, oldest first — the honest
+ * counterweight to the streak, which reads zero the morning after a fortnight
+ * breaks and says nothing about the thirteen days kept.
  *
  * Oldest first because it is drawn left to right as time passing, so the last
- * cell is the current period — the one still open, and the only one that can
- * still change.
+ * cell is the current period — the only one that can still change.
  */
 export function recentPeriods(
     completions: CompletedOn[],

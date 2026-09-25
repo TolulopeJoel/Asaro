@@ -26,18 +26,11 @@ export function ClothGround({ style }: { style?: ViewStyle }) {
     const { colors } = useTheme();
     const pid = `rings-${useId()}`;
     /*
-     * The rings are sized from a measured layout rather than from `100%`.
-     *
-     * react-native-svg resolves a percentage dimension once, against the size
-     * the <Svg> had when it first laid out, and does not re-resolve it when the
-     * parent grows. A band whose height is stable never shows this, but one
-     * that fills in after a fetch does: Group detail renders its title alone
-     * while loading, then adds `.cl-hsub` underneath, and the band gets taller
-     * than the rings were measured for — leaving the bottom strip of indigo
-     * bare, with the pattern stopping in mid-air partway down.
-     *
-     * Reading the layout and passing pixels means the <Rect> is re-issued at
-     * the band's real height every time it changes.
+     * Sized from a measured layout, never `100%`: react-native-svg resolves a
+     * percentage dimension ONCE, against the size the <Svg> first laid out at,
+     * and never re-resolves it when the parent grows. A band that fills in
+     * after a fetch then leaves its bottom strip bare, the pattern stopping in
+     * mid-air. Passing pixels re-issues the <Rect> at the real height.
      */
     const [size, setSize] = useState({ width: 0, height: 0 });
     const onLayout = useCallback((e: LayoutChangeEvent) => {
@@ -78,11 +71,9 @@ export function ClothGround({ style }: { style?: ViewStyle }) {
 }
 
 /**
- * The divider strip under a hero band: crosshatch at ~38% ink.
- *
- * Calibrated deliberately. 50% read as a solid bar, 21% vanished, 31% was
- * correct but inert. 38% sits just above the weight of a plain dashed rule,
- * which is enough to register as texture rather than as a line.
+ * The divider strip under a hero band: crosshatch at ~38% ink. Calibrated —
+ * 50% reads as a solid bar, 21% vanishes, 31% is correct but inert. 38% sits
+ * just above a plain dashed rule, enough to register as texture.
  */
 export function ClothStrip({ style }: { style?: ViewStyle }) {
     const { colors } = useTheme();
@@ -183,16 +174,13 @@ export function ClothMark({ style }: { style?: ViewStyle }) {
 
 const styles = StyleSheet.create({
     /*
-     * Matches `.cl-input`'s own rendered height — `Spacing.md+2` padding
-     * top and bottom, `lineHeight.lg` of text, one hairline border each
-     * side — so the ribbon fills exactly the box a search field would.
-     */
-    /*
-     * `flex: 1` matters here: this sits as the sole child of `heroSearch`, a
-     * row flex container that otherwise held the search field's own
-     * `flex: 1` TextInput. Without it the ribbon collapses to its intrinsic
-     * (near-zero) width instead of filling the row — the space is still
-     * reserved, but nothing draws across it.
+     * `height` matches `.cl-input`'s rendered height — `Spacing.md+2` padding
+     * top and bottom, `lineHeight.lg` of text, one hairline each side — so the
+     * ribbon fills exactly the box a search field would.
+     *
+     * `flex: 1` is load-bearing: this is the sole child of `heroSearch`, a row
+     * flex container that otherwise held the TextInput's own `flex: 1`. Without
+     * it the ribbon collapses to near-zero width and nothing draws.
      */
     zigzag: { flex: 1, height: 54, justifyContent: 'center' },
 });

@@ -44,14 +44,10 @@ const FIELD_LABELS: Record<string, string> = {
 const MIN_ENTRIES = 15;
 
 /**
- * Example snippets per theme, by position in the list.
- *
- * Straight from design/all-screens.html #themes, which draws its three themes
- * at three different weights rather than one weight repeated: the first gets
- * a name, meta and two excerpts; the second one excerpt; the third is a bare
- * name-and-meta row. Both the `.cl` and `.co` slots taper identically, so it
- * is the rule for the screen and not a quirk of one style. Anything past the
- * second position is compact — read the name, tap if it interests you.
+ * Example snippets per theme, by position in the list. From
+ * design/all-screens.html #themes: the first theme gets two excerpts, the
+ * second one, the third a bare name-and-meta row. Both the `.cl` and `.co`
+ * slots taper identically, so it is the rule for the screen.
  */
 const PREVIEW_SNIPPETS = [2, 1];
 
@@ -75,12 +71,9 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
     // read through, and pushing a route would eject you on every entry.
     const [openEntry, setOpenEntry] = useState<JournalEntry | null>(null);
     const [progress, setProgress] = useState(0);
-    /*
-     * The full ranking is kept, not just the clusters inside it. `spanDays` is
-     * the card's headline — see the meta line in renderItem — so throwing the
-     * wrapper away and keeping `.cluster` meant recomputing from member dates
-     * at every render site, in two different vocabularies.
-     */
+    // The full ranking, not just the clusters inside it: `spanDays` is the
+    // card's headline, and keeping only `.cluster` means recomputing it from
+    // member dates at every render site.
     const [ranked, setRanked] = useState<RankedTheme[]>([]);
     const clusters = useMemo(() => ranked.map(theme => theme.cluster), [ranked]);
     const [named, setNamed] = useState<NamedTheme[]>([]);
@@ -120,16 +113,9 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
                 return;
             }
 
-            /*
-             * Clustering says what groups together; rankThemes says which of
-             * those groups is worth showing. It drops anything no tighter
-             * than two entries picked at random, pushes suspected
-             * reading-plan artifacts (one book, one week) below themes that
-             * recur across books and months, and tilts toward what you have
-             * written recently. The centered vectors go with it because the
-             * "tighter than chance" floor is measured against this corpus,
-             * not a fixed number.
-             */
+            // Clustering says what groups together; `rankThemes` says which
+            // groups are worth showing. The centered vectors go with it
+            // because the cohesion floor is measured against this corpus.
             const centered = centerWithinFields(items);
             const found = clusterThemes(centered, { grain: 85, minEntries: 3 });
             const ranked = rankThemes(found, centered);
@@ -174,15 +160,10 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
     }, [compute]);
 
     /*
-     * "Try again" has to ask what actually went wrong.
-     *
-     * Retrying straight into `compute` assumes the model is on disk and goes
-     * looking for patterns with it. When the failure was the download itself
-     * that is the wrong half of the job: the model gets fetched anyway, deep
-     * inside `embed`, but with no progress callback and under a "Looking for
-     * patterns…" label — 34MB of silence that reads exactly like the hang the
-     * reader just hit. Routing a missing model back through `handleDownload`
-     * retries the part that failed, with the progress bar that belongs to it.
+     * "Try again" has to ask what actually went wrong. Retrying straight into
+     * `compute` when the DOWNLOAD failed fetches the model deep inside `embed`
+     * with no progress callback, under a "Looking for patterns…" label — 34MB
+     * of silence that reads exactly like the hang the reader just hit.
      */
     const handleRetry = useCallback(async () => {
         const ready = await isModelDownloaded();
@@ -212,13 +193,10 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
     );
 
     /*
-     * A provisional label per cluster, so no theme shows up nameless.
-     *
-     * Must sit above the early returns below — it is a hook, and the phase
-     * checks bail out before the list renders. Recomputed only when the
-     * clusters themselves change; a saved name is applied over the top of
-     * this at each render site rather than being folded in here, so renaming
-     * never has to invalidate it.
+     * A provisional label per cluster, so no theme shows up nameless. MUST sit
+     * above the early returns below — it is a hook and those bail out first. A
+     * saved name is applied over the top at each render site rather than folded
+     * in here, so renaming never invalidates this.
      */
     const suggested = useMemo(() => suggestNames(clusters), [clusters]);
 
@@ -233,12 +211,9 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
     }
 
     if (phase === 'needsModel') {
-        /*
-         * design/all-screens.html #themesintro, the `.cl` slot: a centred
-         * column in a 34px gutter. The privacy line is set between two
-         * hairlines — it is the one sentence on this screen that must not be
-         * skimmed past.
-         */
+        // design/all-screens.html #themesintro, the `.cl` slot: a centred
+        // column in a 34px gutter. The privacy line sits between two hairlines
+        // — the one sentence here that must not be skimmed past.
         return (
             <View style={styles.clothCentre}>
                 <Sparkles size={34} color={colors.accent} strokeWidth={1.5} />
@@ -273,11 +248,8 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
     }
 
     if (phase === 'tooEarly') {
-        /*
-         * design/all-screens.html #themesearly, the `.cl` slot. Cloth states
-         * the shortfall as a sentence and draws a two-part bar under it, in
-         * indigo against the hairline.
-         */
+        // design/all-screens.html #themesearly, the `.cl` slot: the shortfall
+        // as a sentence, with a two-part indigo bar under it.
         return (
             <View style={styles.clothCentre}>
                 <Sparkles size={34} color={colors.textMuted} strokeWidth={1.5} />
@@ -342,32 +314,18 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
                 </UIText>
             }
             renderItem={({ item, index }) => {
-                /*
-                 * Snippets taper down the list rather than repeating at full
-                 * weight. Every theme was showing three, which is what made
-                 * this a scroll: past the first screenful the examples stop
-                 * being orienting and start being a wall, and the answer to
-                 * "what is this theme" is the name, not its third excerpt.
-                 * Clusters arrive sorted strongest first, so position is
-                 * rank — the theme most worth reading earns the most room.
-                 */
+                // Snippets taper rather than repeating at full weight: past
+                // the first screenful excerpts stop orienting and start being a
+                // wall. Clusters arrive strongest first, so position is rank.
                 const previewCount = PREVIEW_SNIPPETS[index] ?? 0;
                 const reps = previewCount > 0 ? representatives(item, previewCount) : [];
                 const books = [...new Set(item.members.map(m => m.bookName))].filter(Boolean);
                 /*
-                 * What the card leads with, and the reason the feature exists.
-                 *
-                 * "5 entries" is the least interesting true thing about a
-                 * theme — it is a fact about the clustering, not about the
-                 * reader. "Across 8 months" says the same group outlived the
-                 * passage that prompted it: you wrote it in Genesis in
-                 * October, forgot, and wrote it again in Leviticus in June.
-                 * That gap is the evidence the connection is yours rather
-                 * than the reading plan's, which is the only claim this
-                 * screen can make that search could not.
-                 *
-                 * Falls back to the count below a month, where there is no
-                 * such claim to make — see spanLabel.
+                 * The span leads, not the count. "5 entries" is a fact about
+                 * the clustering; "across 8 months" says the group outlived the
+                 * passage that prompted it, which is the evidence the
+                 * connection is the reader's rather than the plan's. Falls back
+                 * to the count below a month — see `spanLabel`.
                  */
                 const span = spanLabel(ranked[index]?.spanDays ?? 0);
                 const entryCountLabel = `${item.entryCount} ${item.entryCount === 1 ? 'entry' : 'entries'}`;
@@ -375,26 +333,19 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
                     item.members.map(m => ({ entryId: m.entryId, field: m.field })),
                     named,
                 );
-                /*
-                 * Every theme carries a name now: the person's own if they
-                 * gave it one, otherwise the words their entries lean on.
-                 * `savedName` still gates the naming affordances below — a
-                 * suggestion is something to replace, not something already
-                 * saved.
-                 */
+                // Every theme carries a name: the reader's own, else the words
+                // their entries lean on. `savedName` still gates the naming
+                // affordances — a suggestion is something to replace.
                 const displayName = savedName?.name ?? suggested[index];
 
                 /*
                  * design/all-screens.html #themes, the `.cl` slot: an unnamed
-                 * theme's panel shows the field DIRECTLY — an ochre-labelled
-                 * input plus Save/Cancel — never a separate "Name this theme"
-                 * button. That button only ever appears once a theme already
-                 * has a name, as "Rename".
+                 * theme's panel shows the field DIRECTLY — ochre-labelled input
+                 * plus Save/Cancel — never a "Name this theme" button. That
+                 * only appears once a theme has a name, as "Rename".
                  *
-                 * Open only on request. This used to be `!savedName || …`, so
-                 * every unnamed theme sat under an open text field —
-                 * reasonable when unnamed meant blank, nagging once a theme
-                 * already reads with a name.
+                 * Open on request only: now that every theme reads with a name,
+                 * a field standing open under each one nags.
                  */
                 const naming = namingIndex === index;
 
@@ -462,11 +413,9 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
                                 >
                                     <Check size={18} color={colors.buttonPrimaryText} />
                                 </ScalePressable>
-                                {/*
-                                  * `.cl-btn.ghost{aria-label="Cancel"}` is drawn
-                                  * alongside Save on BOTH the named and unnamed
-                                  * panel in the mockup, so this is unconditional.
-                                  */}
+                                {/* `.cl-btn.ghost{aria-label="Cancel"}` is
+                                  * drawn alongside Save on BOTH panels in the
+                                  * mockup, so this is unconditional. */}
                                 <ScalePressable
                                     onPress={() => {
                                         setNaming(null);
@@ -493,12 +442,9 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
                             </ScalePressable>
                         )}
 
-                        {/*
-                          * Only meaningful next to visible examples. On a
-                          * compact row the meta line already says how many
-                          * entries there are, and "+4 more" under nothing
-                          * reads as a count of things being hidden.
-                          */}
+                        {/* Only meaningful next to visible examples: on a
+                          * compact row the meta line already gives the count,
+                          * and "+4 more" under nothing reads as concealment. */}
                         {reps.length > 0 && item.entryCount > reps.length && (
                             <UIText variant="caption" style={styles.more}>
                                 +{item.entryCount - reps.length} more — tap to read
@@ -579,11 +525,9 @@ const styles = StyleSheet.create({
         paddingTop: Spacing.layout.cardPadding,
         paddingBottom: 80,
     },
-    /**
-     * `.cl-panel{background:var(--panel); padding:18px}` — filled, never
-     * outlined. Cloth separates by colour block; the 1px border this used to
-     * carry made the panel read as a card from another design.
-     */
+    /** `.cl-panel{background:var(--panel); padding:18px}` — filled, never
+     * outlined. Cloth separates by colour block; a border reads as a card
+     * from another design. */
     card: {
         padding: Spacing.layout.cardPadding,
         marginBottom: Spacing.md,

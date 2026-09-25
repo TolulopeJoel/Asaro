@@ -90,12 +90,8 @@ export default function Index() {
     const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
     const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-    /*
-     * A noticing, when there is one and the quiet period has passed.
-     * Gated on the journal being loaded so detection never races the DB, and
-     * on there being entries at all — the graph has nothing to converge on
-     * before someone has written.
-     */
+    // Gated on the journal being loaded so detection never races the DB, and
+    // on there being entries at all — the graph has nothing to converge on.
     const echo = useObservation(!isLoading && stats.totalEntries > 0);
     const [receiptsOpen, setReceiptsOpen] = useState(false);
 
@@ -130,13 +126,8 @@ export default function Index() {
             />
         ) : null;
 
-    /*
-     * Progress through the plan, replacing the entry count.
-     *
-     * A count of entries only goes up and nothing follows from it. "34 of 364"
-     * is a goal with an end, and it is the core activity rather than a
-     * by-product of it.
-     */
+    // Progress through the plan rather than an entry count: a count only goes
+    // up and nothing follows from it, where "34 of 364" is a goal with an end.
     const [planProgress, setPlanProgress] = useState<{ completed: number; total: number; percent: number } | null>(null);
     useEffect(() => {
         (async () => {
@@ -151,14 +142,9 @@ export default function Index() {
         })();
     }, [isLoading]);
 
-    /*
-     * The receipts, as an element rather than a component.
-     *
-     * Declaring a component inside render gives it a new identity on every
-     * pass, so React unmounts and remounts the whole modal subtree — which
-     * here would drop the loaded entries and reset the sheet mid-read. An
-     * element has no identity to lose.
-     */
+    // An element, NOT a component: declaring a component inside render gives
+    // it a new identity each pass, remounting the modal subtree and dropping
+    // the loaded entries mid-read.
     const echoReceipts = (
         <AnimatedModal
             visible={receiptsOpen && !!echo.observation}
@@ -335,12 +321,8 @@ export default function Index() {
         handleNextReadingPress(nextReading, router, loadHomeData);
     }, [nextReading, router, loadHomeData]);
 
-    /**
-     * "Sunday, 21 September" — the date under Cloth's hero title.
-     *
-     * The band says what day it is because Cloth's home is the one screen that
-     * greets you.
-     */
+    /** "Sunday, 21 September" — the date under Cloth's hero title. The band
+     * says what day it is because Home is the one screen that greets you. */
     const homeDateLine = useMemo(
         () => new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }),
         []
@@ -414,11 +396,9 @@ export default function Index() {
                 ) : (
                     /*
                      * design/all-screens.html #home, the `.cl` slot: four blocks
-                     * under the band, in this order. WelcomeBack, the action
-                     * reminders and the study reminders are drawn on neither
-                     * style's Home — the design lists exactly "daily title, next
-                     * reading, weekly streak, entry count and the flashback" —
-                     * so they no longer render here.
+                     * under the band, in this order. The design lists exactly
+                     * "daily title, next reading, weekly streak, entry count and
+                     * the flashback" — nothing else belongs on Home.
                      */
                     <ClothHome
                         greeting={getDailyTitle()}

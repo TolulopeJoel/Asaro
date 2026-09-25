@@ -145,12 +145,10 @@ export const Button: React.FC<ButtonProps> = ({
     ];
 
     /*
-     * This label used to render in react-native's bare Text with only a size
-     * and a fixed 0.3px tracking — the platform system face in both styles,
-     * never Work Sans, and never uppercased. Reading the
-     * fontFamily/textTransform/letterSpacing off the design system's `button`
-     * role (`.cl-btn` / `.co-btn`) is what ThemedButton already does; this
-     * legacy component still has call sites, so it needs the same face.
+     * Face, transform and tracking come off the design system's `button` role
+     * (`.cl-btn` / `.co-btn`), the same as ThemedButton. A bare `Text` here
+     * falls back to the platform system face, never Work Sans and never
+     * uppercased. This component is legacy but still has call sites.
      */
     const designLabelStyle = textStyle(themeStyle, 'button');
 

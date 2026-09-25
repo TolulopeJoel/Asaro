@@ -8,17 +8,15 @@
  */
 
 /**
- * The one colour that exists outside the themes.
+ * The one colour that exists outside the themes. Android notification lights,
+ * the adaptive icon ground and the splash screen are painted by the OS before
+ * any React code runs, so they cannot read a theme — set in app.json and
+ * mirrored here.
  *
- * Android notification lights, the adaptive icon ground and the splash screen
- * are painted by the OS before any React code runs, so they cannot read a
- * theme. They are set in app.json and mirrored here.
- *
- * Note the mismatch this makes explicit: these platform surfaces are still the
- * original vibrant orange, while Cloth's accent is the deeper, less saturated
- * #c9762c that reads correctly on ecru. Reconciling that means regenerating
- * the icon and splash assets, which is a brand decision rather than a
- * refactor — so it is flagged, not quietly changed.
+ * KNOWN MISMATCH: these platform surfaces are the vibrant orange, while Cloth's
+ * accent is the deeper #c9762c that reads correctly on ecru. Reconciling means
+ * regenerating the icon and splash assets — a brand decision, so it is flagged
+ * rather than quietly changed.
  */
 export const BRAND_ACCENT = '#E18F43';
 
@@ -55,7 +53,7 @@ export interface ThemeColors {
     accentSecondaryDark: string;
     accentSecondaryLight: string;
 
-    // Semantic — the four states that used to be hardcoded iOS hexes
+    // Semantic — the four states, so nothing reaches for a raw hex
     success: string;
     successSurface: string;
     warning: string;
@@ -97,12 +95,9 @@ export interface ThemeColors {
     iconActive: string;
 
     /**
-     * Seven steps, Sunday to Saturday, shown when a whole week is complete.
-     *
-     * This replaces a hardcoded iOS rainbow. The celebration was worth keeping
-     * — a finished week should look like something — but seven system hues
-     * belonged to the palette. Cloth reads as a cloth lowered further into
-     * the vat with each dip.
+     * Seven steps, Sunday to Saturday, shown when a whole week is complete. A
+     * finished week should look like something, but the hues must come from the
+     * palette — Cloth reads as a cloth lowered further into the vat each dip.
      */
     celebration: readonly string[];
 

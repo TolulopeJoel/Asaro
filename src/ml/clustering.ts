@@ -1,28 +1,22 @@
 /**
  * Theme clustering over entry embeddings.
  *
- * Ported from scripts/thought-echoes/themes.py, which is the reference
- * implementation — the Python version is where the approach was validated
- * against real entries, and the two must agree. scripts/verify-clustering.mjs
- * checks that they do.
+ * A port of scripts/thought-echoes/themes.py, the reference implementation. The
+ * two must agree; scripts/verify-clustering.mjs checks that they do.
  *
- * Two deliberate choices carried over from the experiments:
+ * Two deliberate choices carried over:
  *
- *   Centering. Every answer to one prompt points the same way ("Jehovah is
+ *   **Centering.** Every answer to one prompt points the same way ("Jehovah is
  *   loving"), so raw cosine mostly measures how strongly each answer expresses
- *   that shared idea. Subtracting the field's mean vector removes the common
- *   direction and leaves what each answer is actually about. Without this,
- *   every theme comes out as a restatement of the question.
+ *   that shared idea. Subtracting the field's mean vector leaves what each
+ *   answer is actually about; without it every theme restates the question.
  *
- *   No generated labels. Clusters are named by the person who wrote them.
- *   A model guessing names would be worse, could be wrong in ways nobody can
- *   hotfix, and naming your own recurring thought is the point of the app.
- *   themeNames.ts does put a provisional label on an unnamed cluster, which
- *   is not a walk-back of this: it extracts words the person already wrote
- *   rather than inventing a description, it is never persisted, and a saved
- *   name always beats it. The rule this module cares about — that nothing
- *   invents an interpretation and stores it as though a person meant it —
- *   still holds.
+ *   **No generated labels.** Clusters are named by the person who wrote them.
+ *   A model guessing could be wrong in ways nobody can hotfix. (themeNames.ts
+ *   suggests a provisional label, which is extractive rather than invented,
+ *   never persisted, and always beaten by a saved name — the rule here is that
+ *   nothing invents an interpretation and stores it as though a person meant
+ *   it.)
  */
 
 export interface Embedded {
@@ -52,11 +46,9 @@ function dot(a: Float32Array, b: Float32Array): number {
 }
 
 /**
- * Subtract each field's mean vector and renormalise.
- *
- * Returns new vectors; the inputs are untouched so the stored embeddings stay
- * reusable for other purposes (similar-entry lookup, for instance, wants the
- * uncentered ones).
+ * Subtract each field's mean vector and renormalise. Returns NEW vectors — the
+ * inputs stay untouched so the stored embeddings remain reusable, since
+ * similar-entry lookup wants the uncentered ones.
  */
 export function centerWithinFields<T extends Embedded>(items: T[]): T[] {
     const byField = new Map<string, T[]>();
@@ -137,11 +129,9 @@ export interface ClusterOptions {
 }
 
 /**
- * Average-linkage agglomerative clustering.
- *
- * Written out rather than pulled from a library: a heavy journal is a few
- * thousand answers, the naive merge loop handles that in well under a second,
- * and it keeps the dependency list empty.
+ * Average-linkage agglomerative clustering. Written out rather than pulled from
+ * a library: a heavy journal is a few thousand answers, which the naive merge
+ * loop handles in well under a second, and it keeps the dependency list empty.
  */
 export function clusterThemes<T extends Embedded>(
     items: T[],
@@ -211,10 +201,8 @@ export function clusterThemes<T extends Embedded>(
 }
 
 /**
- * The members that best represent a cluster, most central first.
- *
- * Used to show a few lines under an unnamed theme so the person has something
- * concrete to react to when naming it.
+ * The members that best represent a cluster, most central first — a few lines
+ * under an unnamed theme, so the person has something concrete to react to.
  */
 export function representatives<T extends Embedded>(cluster: Cluster<T>, count = 3): T[] {
     const { members } = cluster;

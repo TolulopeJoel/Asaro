@@ -11,9 +11,8 @@ import { Hero, Screen } from '@/src/components/ui';
 export default function AboutGroupsScreen() {
     const { colors } = useTheme();
 
-    // Eight feature cards used to carry eight iOS system hues. The series is a
-    // short ordered set that belongs to whichever style is active, so it wraps
-    // rather than reaching outside the palette for more colours.
+    // `series` is a short ordered set belonging to the active style, so it
+    // wraps rather than reaching outside the palette for more colours.
     const hue = (i: number) => colors.series[i % colors.series.length];
     const router = useRouter();
 
@@ -152,11 +151,8 @@ const getStyles = (colors: any) => StyleSheet.create({
         paddingHorizontal: Spacing.md,
         height: 56,
     },
-    /*
-     * Every Cloth band draws its back arrow the same way: a bare ochre glyph
-     * hanging 6px into the gutter so the chevron lines up with the title's
-     * stem. This screen used to carry a tinted round pill instead.
-     */
+    // Every Cloth band draws its back arrow the same way: a bare ochre glyph
+    // hanging 6px into the gutter so the chevron lines up with the title's stem.
     backArrow: { marginLeft: -6, alignSelf: 'flex-start' },
     /** `.cl-htitle{margin-top:10px}` under the arrow. */
     clothHeroTitle: { marginTop: 10 },
@@ -172,10 +168,9 @@ const getStyles = (colors: any) => StyleSheet.create({
     introDesc: { opacity: 0.9 },
     /*
      * design/all-screens.html #about. The hue is the only thing holding ten
-     * cards apart, and it used to be carried by a 48px tinted rounded square
-     * with nothing inside it — a placeholder that shipped. It moves to the
-     * rule down the card's left edge, the same device Entry detail uses to
-     * hang an answer, and costs no width.
+     * cards apart, and it is carried by the rule down the card's left edge —
+     * the same device Entry detail uses to hang an answer, and it costs no
+     * width.
      */
     sectionCard: {
         borderLeftWidth: 3,

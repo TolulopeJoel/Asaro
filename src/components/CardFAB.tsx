@@ -2,10 +2,8 @@
  * The bar under an entry: share it, edit it, throw it away.
  *
  * design/all-screens.html #entrydetail anchors it to the foot of the screen
- * behind a hairline. It used to float 60px + inset above the tab bar on a 12px
- * shadow at 15%, in a design set that has no shadows anywhere — and the shadow
- * was the only thing saying it was always there, which sitting it on the foot
- * says for free.
+ * behind a hairline — not floating on a shadow, which this design set does not
+ * have anywhere, and which sitting on the foot makes unnecessary.
  *
  * Share carries a word because it is the one anyone looks for; edit and delete
  * are glyphs, and delete takes the quietest tone of the three. Nothing here is

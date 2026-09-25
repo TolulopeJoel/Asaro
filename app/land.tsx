@@ -1,21 +1,14 @@
 /**
- * Your land — a prototype.
+ * Your land. Every chapter the reader has written about is a worked block of
+ * cloth and the whole Bible is the field. Worked land FADES when left alone and
+ * is never taken away, so the pull back is "Judges has gone quiet" rather than
+ * "you are losing Judges" — `src/land/cloth.ts` argues that out in full.
  *
- * The idea this tests: every chapter the reader has written about is a worked
- * block of cloth, and the whole Bible is the field. More reading is more land.
- * Land already worked *fades* when it is left alone and is never taken away,
- * so the pull back is "Judges has gone quiet" rather than "you are losing
- * Judges". `src/land/cloth.ts` argues that distinction out in full; this
- * screen is what it looks like.
+ * Built from entries, never ticked plan items: a tick says the reader passed
+ * over a chapter, an entry says they worked it.
  *
- * Built from entries rather than from ticked plan items, deliberately. A
- * ticked plan item says the reader passed over a chapter; an entry says they
- * worked it, which is the thing the metaphor is actually about. It also keeps
- * the land honest — it is made of what they wrote, and nothing else.
- *
- * Cloth only. `terrain.ts` explains why: in a monochrome style a green field
- * would be the loudest thing on the page, so rather than ship a grey shadow of
- * this screen there is one version of it.
+ * Cloth only — see `terrain.ts`: in a monochrome style a green field would be
+ * the loudest thing on the page.
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
@@ -88,17 +81,11 @@ export default function LandScreen() {
                     <ChevronLeft size={20} color={colors.accent} strokeWidth={2} />
                 </ScalePressable>
                 <UIText variant="display" tone="onBand" style={styles.heroTitle}>Your land</UIText>
-                {/*
-                  * The count lives up here rather than in a panel of its own.
-                  * It is the one number on the screen that only ever goes up,
-                  * and a block for it below pushed the land down and framed
-                  * it — the field should be the screen, not an illustration
-                  * inside one.
-                  *
-                  * Tapping a field replaces it with that field's own tally,
-                  * so identifying a parcel costs no layout at all: nothing
-                  * appears, nothing shifts, one line changes.
-                  */}
+                {/* The count lives here rather than in a panel of its own: a
+                  * block below pushes the land down and frames it, and the
+                  * field should be the screen rather than an illustration
+                  * inside one. Tapping a parcel swaps this line for that
+                  * parcel's tally, so identifying one costs no layout. */}
                 <UIText variant="sub" tone="onHero" numberOfLines={1}>
                     {selected
                         ? parcelLine(
@@ -117,40 +104,25 @@ export default function LandScreen() {
                 </View>
             ) : (
                 <ScrollView contentContainerStyle={styles.content}>
-                    {/*
-                      * One holding, Genesis to Revelation, with no break at
-                      * Matthew. Splitting it into two fields drew a boundary
-                      * the reading does not have: someone who reads the plan
-                      * crosses from Malachi to Matthew without the ground
-                      * changing under them, and the whole point of the land is
-                      * that it is one place they are working through.
-                      */}
+                    {/* One holding, Genesis to Revelation, with no break at
+                      * Matthew. Splitting it draws a boundary the reading does
+                      * not have — the point of the land is that it is one place
+                      * being worked through. */}
                     <BibleCloth
                         books={cloth.books}
                         selected={selected?.name ?? null}
                         onBookPress={book => setSelected(current => (current?.name === book.name ? null : book))}
                     />
 
-                    {/*
-                      * The invitation, and the only place the screen asks for
-                      * anything. It names only books already worked — see
-                      * `quietBooks`, which explains why it must never reach for
-                      * a book the reader has never opened.
-                      */}
+                    {/* The invitation, and the only place the screen asks for
+                      * anything. Names only books already worked — see
+                      * `quietBooks` for why it must never reach further. */}
                     {quiet.length > 0 && (
                         <View style={[styles.quiet, { borderTopColor: colors.border }]}>
-                            {/*
-                              * Fallow is the exact word and it is doing real
-                              * work. Land left fallow is resting, not lost, and
-                              * it is still yours — which is the whole mechanic
-                              * in one farming term the reader already knows.
-                              *
-                              * The heading softens as the ground gets older —
-                              * `fallowTone.ts` argues that out. This section
-                              * reacts to absence, and the character doc makes
-                              * that a rule rather than a preference: the longer
-                              * somebody has been away, the gentler he gets.
-                              */}
+                            {/* "Fallow" is the exact word: land left fallow is
+                              * resting, not lost, and still yours — the whole
+                              * mechanic in one farming term. The heading softens
+                              * as the ground gets older, per `fallowTone.ts`. */}
                             <UIText variant="label">
                                 {fallowHeading(
                                     quiet.reduce<number | null>(

@@ -40,10 +40,9 @@ function readableOn(background: string): string {
 
 /**
  * Stable slot for a person, derived from their id (or name as a fallback).
- *
- * Returns an index rather than a colour so the palette stays with the theme.
- * This used to be nine hardcoded iOS system colours, which meant a group of
- * members looked like a different product from the screen they sat on.
+ * Returns an INDEX rather than a colour so the palette stays with the theme —
+ * hardcoded hues make a group of members look like a different product from
+ * the screen they sit on.
  */
 export const getAvatarIndex = (id: string | undefined | null, name: string | undefined, length: number): number => {
     const seed = (id || name || 'Guest').toString();

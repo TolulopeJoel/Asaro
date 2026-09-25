@@ -17,14 +17,8 @@ interface BookCardProps {
 }
 
 /**
- * A book in the library's Books list.
- *
- * A panel carrying the book's name, its entry count as an ochre badge, and a
- * chevron. The comment here used to describe the opposite of all three — "a
- * hairline under it, no panel, no ochre badge and no chevron" — because it
- * was written for the Colossal row, which was deleted while the Cloth code it
- * sat above survived. A comment that contradicts the code beneath it is worse
- * than none: the next person trusts it.
+ * A book in the library's Books list: a panel carrying the book's name, its
+ * entry count as an ochre badge, and a chevron.
  */
 export const BookCard = React.memo(({ book, onNavigate }: BookCardProps) => {
     const { colors } = useTheme();

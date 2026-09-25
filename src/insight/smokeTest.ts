@@ -1,18 +1,13 @@
 /**
- * Phase 0 on a real device, against a real journal.
+ * The insight substrate on a real device, against a real journal.
  *
- * Everything in Phase 0 is verified in Node except the two things Node cannot
- * reach: whether the bundled graph asset actually resolves and decodes on
- * Android, and whether the v10 migration lands on a database that has been
- * accumulating since v1. Both only fail on a device, so this runs there.
+ * Covers what the Node scripts cannot reach: whether the bundled graph asset
+ * resolves and decodes on Android, whether migrations land on a database that
+ * has been accumulating since v1, and what the detectors actually find when
+ * walked from entries a reader really wrote.
  *
- * It also does something the scripts cannot: walks the graph from the entries
- * the reader has actually written. That is the first real signal about whether
- * the convergence detector is worth building — if a genuine journal produces
- * no shared ground, Phase 1's premise is wrong and better to know now.
- *
- * `__DEV__` only. Writes one observation and deletes it again, so it leaves
- * the journal exactly as it found it.
+ * `__DEV__` only. Writes one observation and deletes it again, leaving the
+ * journal exactly as it found it.
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -41,58 +36,36 @@ import {
 /**
  * Whether to put a finding back into the queue on this run.
  *
- * Off, and it should stay off unless you are deliberately re-testing.
- *
- * Re-arming was needed once, when every observation was already marked shown
- * and both surfaces had nothing to draw. It then became the bug: it cleared
- * `shown_at` and `followed_at` on the most recent finding, which is always the
- * one just engaged with — so a card that had been read stayed pending on Home
- * and never reached the archive, every reload, for ever.
- *
- * Leave it false to watch the real behaviour. Flip it for one run to force a
- * card back, then turn it off again.
+ * Leave false to watch real behaviour; flip it for one run to force a card
+ * back, then turn it off. Left on it keeps clearing `shown_at` on the most
+ * recent finding — always the one just engaged with — so a card that was read
+ * stays pending on Home and never reaches the archive.
  */
 const REARM = false;
 
 /**
  * Force ONE named detector's finding back, regardless of the rotation above.
- *
  * `REARM` picks the least recently touched row per surface, which is right for
- * cycling through everything and useless when you want to look at one specific
- * detector — on the save screen it is as likely to hand back a commitment as
- * the thing you just built.
+ * cycling and useless when you want one specific detector.
  *
- * It exists because a finding is marked shown the instant `useObservation`
- * SELECTS it, not when anyone looks at it. Reaching the summary step of the
- * entry wizard is enough to spend one, so a detector resting thirty days can
- * be burned by a screen nobody read. Until that is settled, testing needs a
- * way to put a specific card back.
- *
- * Set to null once you have seen what you came to see.
+ * Set back to null once you have seen what you came to see.
  */
 const REARM_DETECTOR: DetectorName | null = null;
 
 /**
- * Put a milestone card on screen without having reached one.
+ * Put a milestone card on screen without having reached one. `milestone` is the
+ * only detector that cannot be tested by waiting — its anti-backfill guards
+ * mean even a reader with four completed books sees nothing unless they closed
+ * one this week.
  *
- * `milestone` is the only detector that cannot be tested by waiting. The
- * others eventually fire on a journal that simply grows: a commitment ages
- * into range, a topic passes three weeks, an imbalance widens. A milestone
- * needs a book actually finished or a quarter of the plan actually crossed,
- * and its anti-backfill guards mean even a reader with four completed books
- * sees nothing unless they closed one this week. Correct, and untestable.
+ * Keyed `preview:…`, never `book:Ruth`: dedupe keys are how a milestone is
+ * offered once ever, so previewing under a real key burns it and the genuine
+ * card is silently skipped as already seen.
  *
- * So this records a synthetic one. It is keyed `preview:…` rather than
- * `book:Ruth`, and that matters more than it looks: dedupe keys are how a
- * milestone is offered exactly once ever, so previewing under a real key
- * would burn it — the day the reader genuinely finished Ruth, the card would
- * be silently skipped as already seen.
- *
- * Set back to null when you have seen it. The row stays behind, which is
- * harmless — `preview:` collides with nothing — but it will keep reappearing
- * in the pending queue until it is dismissed like any other card.
+ * Set back to null when done. The row stays behind harmlessly, but keeps
+ * reappearing in the pending queue until dismissed like any other card.
  */
-const PREVIEW_MILESTONE: 'shortBook' | 'longBook' | 'planHalf' | 'planDone' | null = 'shortBook';
+const PREVIEW_MILESTONE: 'shortBook' | 'longBook' | 'planHalf' | 'planDone' | null = null;
 
 export async function runPhase0SmokeTest(): Promise<string> {
     const out: string[] = [];
@@ -100,15 +73,10 @@ export async function runPhase0SmokeTest(): Promise<string> {
     const bad = (label: string, detail = '') => say(`  FAIL ${label}${detail ? ` — ${detail}` : ''}`);
 
     /**
-     * Run a block, and if it throws say so and carry on.
-     *
-     * The detector pass, the table dump, the re-arm and the surface probe used
-     * to share one try/catch two hundred and fifty lines long, labelled
-     * "re-arming threw". So a milestone recorded without evidence — a failure
-     * three sections earlier — reported itself as a re-arm problem and
-     * silently deleted every diagnostic after it, including the one probe that
-     * says what each surface would actually draw. A debug tool that hides its
-     * own output the moment anything goes wrong is worse than none.
+     * Run a block, and if it throws say so and carry on. Keep the stages
+     * separate: one try/catch around everything mislabels the failure and
+     * swallows every diagnostic after it, and a debug tool that hides its own
+     * output the moment anything goes wrong is worse than none.
      */
     const stage = async (name: string, run: () => Promise<void>) => {
         try {
@@ -141,11 +109,8 @@ export async function runPhase0SmokeTest(): Promise<string> {
         );
         check(tables.length === 2, 'observation tables exist', tables.map(t => t.name).join(',') || 'none');
 
-        /*
-         * `markFollowed` is fired on the way out to jw.org and nothing awaits
-         * it, so a missing column would surface as a silent unhandled
-         * rejection at exactly the moment nobody is looking at the console.
-         */
+        // `markFollowed` fires on the way out to jw.org and nothing awaits it,
+        // so a missing column surfaces as a silent unhandled rejection.
         const columns = await withDatabase(async db =>
             (await db.getAllAsync<{ name: string }>(`PRAGMA table_info(observations)`)).map(c => c.name),
         );
@@ -292,16 +257,8 @@ export async function runPhase0SmokeTest(): Promise<string> {
     // ── make it visible ──────────────────────────────────────────────────────
     say('\nRe-arming for a look');
 
-    /*
-     * One stage per detector, not one try around all of them.
-     *
-     * They shared a block, so the first to throw cancelled every detector
-     * after it — a milestone recorded without evidence meant `detectStudy`
-     * never ran, no study row was ever written, and the surface probe
-     * correctly reported nothing waiting. Three symptoms, one cause, and
-     * nothing on screen connecting them. Detectors are independent by
-     * design; the harness should not be the thing that couples them.
-     */
+    // One stage per detector, never one try around all of them: detectors are
+    // independent by design, and the harness should not couple them.
     await stage('convergence', async () => {
         const ids = await detectConvergence();
         ok('convergences recorded', `${ids.length}`);
@@ -315,12 +272,8 @@ export async function runPhase0SmokeTest(): Promise<string> {
         ok('commitments recorded', `${commitmentIds.length}`);
     });
 
-        /*
-         * Milestones report the shelf as well as the finding, because a
-         * detector that is correctly silent and one that cannot see the books
-         * at all look identical from outside — and its guards are built to be
-         * silent almost always.
-         */
+        // Reports the shelf as well as the finding: a detector correctly
+        // silent and one that cannot see the books look identical outside.
     await stage('milestone', async () => {
         const tallies = await loadBookTallies();
         const finished = tallies.filter(b => b.total > 0 && b.worked >= b.total);
@@ -354,12 +307,8 @@ export async function runPhase0SmokeTest(): Promise<string> {
         }
     });
 
-        /*
-         * Study reports how many topics it is holding as well as how many it
-         * will offer, because those numbers diverge by design: the detector
-         * may be sitting on a dozen and hand back exactly one. Seeing only the
-         * one would look like a detector that had barely found anything.
-         */
+        // Reports topics held as well as topics offered — they diverge by
+        // design, and seeing only the one looks like a detector finding little.
     await stage('study', async () => {
         const topics = await loadTopics();
         const openTopics = qualifyingTopics(topics);
@@ -372,12 +321,8 @@ export async function runPhase0SmokeTest(): Promise<string> {
         ok('study recorded', `${studyIds.length}`);
     });
 
-        /*
-         * Absence reports its counts even when it declines to fire. A detector
-         * that is silent because the journal is balanced and one that is silent
-         * because it is reading the wrong column look identical from outside,
-         * and this is the surface where that difference would otherwise hide.
-         */
+        // Reports its counts even when declining to fire: silent-because-
+        // balanced and silent-because-reading-the-wrong-column look identical.
     await stage('absence', async () => {
         const answered = await loadAbsenceEntries();
         const tally = { jehovah: 0, message: 0, apply: 0, others: 0 };
@@ -399,12 +344,9 @@ export async function runPhase0SmokeTest(): Promise<string> {
 
     await stage('the table dump and re-arm', async () => {
 
-        /*
-         * What is actually in the table, per detector. "afterSave → nothing"
-         * has two completely different causes — no row was ever written, or a
-         * row exists but the pending query will not return it — and they are
-         * indistinguishable from the surface probe alone.
-         */
+        // What is actually in the table, per detector. "afterSave → nothing"
+        // has two causes — no row written, or a row the pending query will not
+        // return — indistinguishable from the surface probe alone.
         const stored = await withDatabase(db =>
             db.getAllAsync<any>(
                 `SELECT detector, COUNT(*) AS n,
@@ -420,24 +362,15 @@ export async function runPhase0SmokeTest(): Promise<string> {
             say(`    ${String(row.detector).padEnd(12)} ${row.n} total · ${row.unshown} never shown · ${row.rejected} rejected · ${row.dismissed} dismissed`);
         }
 
-        /*
-         * Re-arm ONE finding per surface, not all of them.
-         *
-         * Clearing everything looked right and quietly broke the thing it was
-         * meant to help test: pending means "not yet seen" and the archive
-         * means "seen", so wiping `shown_at` across the board emptied the
-         * Echoes tab on every reload. Leaving the rest alone gives both a
-         * card to draw and a history to list.
-         */
+        // Re-arm ONE finding per surface, never all: pending means "not yet
+        // seen" and the archive means "seen", so wiping `shown_at` across the
+        // board empties the Echoes tab on every reload.
         if (REARM) {
             const rearmed: string[] = [];
             for (const surface of ['home', 'afterSave'] as const) {
                 const forSurface = DETECTORS.filter(d => surfaceOf(d) === surface);
-                /*
-                 * The LEAST recently touched, not the most. Picking the newest
-                 * meant repeatedly resurrecting whatever the reader had just
-                 * dealt with, which is the opposite of cycling through.
-                 */
+                // The LEAST recently touched: picking the newest resurrects
+                // whatever was just dealt with, the opposite of cycling.
                 const target = await withDatabase(async db =>
                     db.getFirstAsync<{ id: number; detector: string }>(
                         `SELECT id, detector FROM observations
@@ -476,18 +409,14 @@ export async function runPhase0SmokeTest(): Promise<string> {
             );
 
             /*
-             * Standing the rivals down, which is the whole difference between
-             * "put it back in the queue" and "let me look at it".
+             * Standing the rivals down — the difference between "put it back in
+             * the queue" and "let me look at it". The queue is ordered by
+             * confidence, so a re-armed detector at 0.4 still sits behind an
+             * unshown milestone at 0.95 and the card never appears.
              *
-             * Re-arming alone only clears the target's `shown_at`. The queue
-             * is ordered by confidence, so a detector at 0.4 that has just
-             * been re-armed still sits behind an unshown milestone at 0.95 —
-             * the switch reported success and the card never appeared, which
-             * is the most misleading thing a debug affordance can do.
-             *
-             * Marking the others shown is honest rather than destructive:
-             * they HAVE been shown, and the alternative is deleting rows that
-             * hold the reader's own history with a finding.
+             * Marking the others shown is honest rather than destructive: they
+             * HAVE been shown, and the alternative is deleting the reader's own
+             * history with a finding.
              */
             const surface = surfaceOf(REARM_DETECTOR);
             const rivals = DETECTORS.filter(d => d !== REARM_DETECTOR && surfaceOf(d) === surface);
@@ -514,13 +443,9 @@ export async function runPhase0SmokeTest(): Promise<string> {
     });
 
     /*
-     * What each surface would actually draw, so a quiet screen can be told
-     * apart from a broken one without hunting through the app.
-     *
-     * Its own stage on purpose. This is the single most useful thing the
-     * smoke test prints, and while it lived inside the block above, any
-     * failure in the two hundred lines before it took this with it — which is
-     * precisely when you most need to see it.
+     * What each surface would actually draw, so a quiet screen can be told from
+     * a broken one. Its own stage on purpose: this is the most useful thing the
+     * smoke test prints, and an earlier failure must not take it down.
      */
     await stage('the surface probe', async () => {
         say('\n  What each surface would draw:');
@@ -535,11 +460,8 @@ export async function runPhase0SmokeTest(): Promise<string> {
             pending.forEach((observation, index) => {
                 const rendered = renderObservation(observation);
                 if (!rendered) return;
-                /*
-                 * The detector and its confidence, because "nothing showed"
-                 * and "something else outranked it" look identical from the
-                 * app and are fixed by completely different things.
-                 */
+                // Detector and confidence: "nothing showed" and "something
+                // else outranked it" look identical from the app.
                 say(
                     `                 ${index === 0 ? '▸' : ' '} ${String(observation.detector).padEnd(11)}` +
                     ` ${observation.confidence.toFixed(2)}  ${rendered.kind}: ${rendered.subject.slice(0, 38)}`,

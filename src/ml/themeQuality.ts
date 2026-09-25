@@ -1,34 +1,26 @@
 /**
  * Deciding which clusters are worth calling themes, and in what order.
+ * `clusterThemes` answers "what groups together", which is not the same
+ * question. Three gates close the gap:
  *
- * clusterThemes answers "what groups together". That is not the same question
- * as "what is worth showing someone", and three things went wrong in the gap
- * between them:
+ *   **Cohesion floor.** The merge threshold is a percentile of the corpus's
+ *   own similarities, so it always cuts somewhere — a hundred unrelated
+ *   entries still produce "themes". A group no tighter than two entries picked
+ *   at random is the threshold working on noise, not a pattern.
  *
- *   Everything clustered. The merge threshold is a percentile of the corpus's
- *   own similarities, so it always cuts somewhere — write about a hundred
- *   unrelated things and you still get "themes". `cohesion` was computed for
- *   every cluster and then used for nothing but breaking ties in the sort. It
- *   is now a floor: a group no tighter than two of your entries picked at
- *   random is not a pattern, it is the threshold doing its job on noise.
+ *   **Plan artifacts.** Read one book for a week and those entries share
+ *   vocabulary, imagery and mood, so they cluster hard — a fact about the plan,
+ *   not the reader. One book PLUS one week is the signature; neither half alone
+ *   is damning, since one book across six months is real engagement and one
+ *   week across many books is a real preoccupation.
  *
- *   The reading plan looked like a personality. Read Job for a week and those
- *   entries share vocabulary, imagery and mood, so they cluster hard — but
- *   that is a fact about the plan, not about the reader. Themes' own empty
- *   state warns about exactly this ("mostly describe the reading plan rather
- *   than you"). One book plus one week is the signature, and neither half
- *   alone is damning: Job across six months is real engagement, and a week
- *   spanning many books is a real preoccupation.
- *
- *   Nothing ever got old. Ranking was entryCount first, so a large dead theme
- *   from eight months ago outranked a live one forever. "Four times this
- *   month" is worth more of your attention than "four times ever".
+ *   **Recency.** "Four times this month" is worth more attention than "four
+ *   times ever", so size cannot rank alone.
  *
  * Deliberately separate from clustering.ts, which is a line-by-line port of
- * themes.py and is checked against it by scripts/verify-clustering.mjs. None
- * of this belongs in that port — it needs `bookName` and `createdAt`, which
- * the generic Embedded shape does not carry — and keeping it out means the
- * parity check keeps meaning what it says.
+ * themes.py checked by scripts/verify-clustering.mjs. This needs `bookName` and
+ * `createdAt`, which the generic Embedded shape does not carry, and keeping it
+ * out is what lets the parity check keep meaning what it says.
  */
 
 import { Cluster } from './clustering';
@@ -37,12 +29,8 @@ import { StoredEmbedding } from '../data/embeddingRepository';
 export interface ThemeQualityOptions {
     /**
      * How far above ambient similarity a cluster must sit, in standard
-     * deviations, to count as a theme at all.
-     *
-     * Measured against the corpus rather than a fixed cosine, because how
-     * similar any two of someone's entries look depends entirely on how
-     * varied their writing is. 1.0 keeps groups that are clearly tighter than
-     * chance and drops the rest.
+     * deviations. Measured against the corpus rather than a fixed cosine:
+     * how similar any two entries look depends on how varied the writing is.
      */
     cohesionZFloor?: number;
     /** Share of members from a single book above which a cluster looks like one reading. */
@@ -61,21 +49,12 @@ const DEFAULTS: Required<ThemeQualityOptions> = {
     cohesionZFloor: 1,
     bookConcentration: 0.8,
     minSpanDays: 14,
-    /*
-     * Demoted, not dropped. A plan artifact is still writing the person did,
-     * and the signature catches real themes by accident often enough that
-     * hiding them would be the worse error — someone who reads Job for a week
-     * and is genuinely shaken by it wrote a real theme. Ranking it below
-     * everything that recurs across books says the same thing without
-     * deciding on their behalf that it never happened.
-     */
+    // Demoted, not dropped: the signature catches real themes by accident
+    // often enough that hiding them would be the worse error.
     artifactPenalty: 0.4,
     recencyHalfLifeDays: 90,
-    /*
-     * Never below half. Recency is a tilt, not a cliff: a theme you returned
-     * to nine times last year should still outrank one you touched twice last
-     * week, and a floor keeps size the dominant term.
-     */
+    // Never below half. Recency is a tilt, not a cliff — nine returns last
+    // year should still outrank two last week.
     recencyFloor: 0.5,
 };
 
@@ -98,20 +77,15 @@ function dot(a: Float32Array, b: Float32Array): number {
 }
 
 /**
- * Mean and spread of similarity between two items picked at random.
+ * Mean and spread of similarity between two items picked at random — the
+ * yardstick the cohesion floor is measured against, so a biased sample moves
+ * the floor and silently changes which themes exist. Every pair when there are
+ * few enough to afford, otherwise a seeded sample.
  *
- * This is the yardstick the cohesion floor is measured against, so a biased
- * sample moves the floor and silently changes which themes exist. Every pair
- * is used when there are few enough to afford; past that it samples with a
- * small seeded generator.
- *
- * Seeded, not Math.random, because the same journal has to produce the same
- * themes twice — a list that reshuffles on every open reads as the app
- * changing its mind. An earlier version walked the pairs with a fixed stride
- * to get that determinism without a generator, which looked neat and was
- * wrong: advancing one index by 1 and the other by a constant makes the gap
- * between them move in steps of 2, so it only ever compared items an odd
- * distance apart and never saw half the pairs at all.
+ * Seeded, not `Math.random`: the same journal must produce the same themes
+ * twice. Do not swap the generator for a fixed stride — stepping one index by 1
+ * and the other by a constant only ever compares items an odd distance apart
+ * and never sees half the pairs.
  */
 function ambientSimilarity(items: StoredEmbedding[], samples = 4000): { mean: number; std: number } {
     const n = items.length;
@@ -164,12 +138,9 @@ function dominantBookShare(cluster: Cluster<StoredEmbedding>): number {
 }
 
 /**
- * Drop the clusters that are not themes, and order what remains.
- *
- * Returns richer objects than it takes so a caller can say *why* something
- * ranked where it did. `spanDays` is now the theme card's headline rather
- * than debug detail — a ranking nobody can interrogate is one nobody can
- * fix, and one the reader never sees is one they cannot trust either.
+ * Drop the clusters that are not themes, and order what remains. Returns richer
+ * objects than it takes so a caller can say *why* something ranked where it
+ * did — `spanDays` is the theme card's headline, not debug detail.
  *
  * `now` is injectable so the recency maths can be tested without the clock.
  */
@@ -213,15 +184,12 @@ export function rankThemes(
 /**
  * How long a theme has been running, phrased the way the UI says it.
  *
- * Returns null below a month, which is the whole point of the function rather
- * than an edge case. "Across 8 months" is evidence that a thought outlived the
- * passage that prompted it — the reader had forgotten the first entry by the
- * time they wrote the second. A fortnight is a reading session, and rounding
- * one up to "1 month" spends that credibility on noise. Callers that must say
- * something regardless supply their own words for the null.
+ * Returns null below a month, which is the point rather than an edge case:
+ * "across 8 months" is evidence a thought outlived the passage that prompted
+ * it, and rounding a fortnight up to "1 month" spends that credibility on
+ * noise. Callers that must say something supply their own words for the null.
  *
- * Shared so the list and the detail view cannot drift into two vocabularies
- * for the same fact.
+ * Shared, so the list and the detail view cannot drift into two vocabularies.
  */
 export function spanLabel(spanDays: number): string | null {
     const months = spanDays / 30.4;

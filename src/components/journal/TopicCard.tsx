@@ -127,8 +127,8 @@ const styles = StyleSheet.create({
         gap: 10,
         marginTop: 9,
     },
-    /* One strike, not two: this used to set textDecorationLine AND draw a line
-       across the text with an absolutely positioned View. */
+    /* One strike, not two: `textDecorationLine` alone, never also an
+       absolutely positioned View drawn across the text. */
     struck: { textDecorationLine: 'line-through' },
     done: { opacity: 0.55 },
 });

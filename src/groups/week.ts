@@ -1,29 +1,23 @@
 /**
  * When a group opens.
  *
- * Groups used to be a live feed: open the tab any hour of any day and watch
- * what everybody else is doing. That is the most engaging thing this app
- * could contain and also the most corrosive, because the engagement runs on
- * comparison — and comparison is a bad engine for somebody's worship. Reading
- * more than the person below you on a list is not the point of reading.
+ * A group is a place you visit at the end of the week, never a live feed. A
+ * stream you check between meetings runs on comparison, and comparison is a bad
+ * engine for somebody's worship.
  *
- * So the group is a place you visit at the end of the week, not a stream you
- * check between meetings. Nothing about it is hidden in the sense of being
- * secret: the group, its name, its members and the day it opens are all
- * visible always. What waits for the end of the week is what everybody has
- * BEEN DOING — the feed and the per-member detail.
+ * Nothing is secret: the group, its name, its members and the day it opens are
+ * always visible. What waits for the end of the week is what everybody has BEEN
+ * DOING — the feed and the per-member detail.
  *
- * Notifications are deliberately untouched by any of this. If somebody in
- * your group finishes a book, you hear about it when it happens, because that
- * is news rather than a scoreboard, and the whole design assumes that is the
- * channel where other people's reading reaches you day to day.
+ * Notifications are deliberately untouched by this. Somebody finishing a book
+ * is news rather than a scoreboard, and that is the channel where other
+ * people's reading reaches you day to day.
  *
- * Sunday, and all of it. The week in this app culminates at the weekend, and
- * a window that opened at a particular hour would be missed by anyone busy
- * that morning — which, on a Sunday, is most people it is built for.
+ * The whole of Sunday, not an hour of it: a window opening at a particular hour
+ * is missed by anyone busy that morning.
  *
- * Pure, with `now` passed in. Every boundary here is a date boundary and none
- * of them is testable if the module reads the clock itself.
+ * Pure, with `now` passed in — every boundary here is a date boundary and none
+ * is testable if the module reads the clock itself.
  */
 
 /** Sunday. `Date.getDay()` numbering, where 0 is Sunday. */
@@ -51,32 +45,24 @@ const DAY_NAMES = [
 ];
 
 /**
- * Whether the group is open, and when it next will be.
- *
- * `openDay` is a parameter rather than a constant read from module scope so a
- * test can drive every day of the week through it — and so the choice of
+ * Whether the group is open, and when it next will be. `openDay` is a parameter
+ * rather than module scope so a test can drive every day through it, and so
  * Sunday stays one value rather than an assumption spread through the file.
  */
 export function reviewWindow(now: Date, openDay: number = REVIEW_DAY): ReviewWindow {
     const day = now.getDay();
     const open = day === openDay;
 
-    /*
-     * Whole days, counted from local midnight to local midnight rather than
-     * from the current instant. "Opens in 2 days" on a Friday evening should
-     * not become "opens in 1 day" simply because it is late — the reader is
-     * being told which day, not how many hours.
-     */
+    // Whole days, midnight to midnight rather than from the current instant:
+    // the reader is being told which day, not how many hours.
     const daysUntil = open ? 0 : (openDay - day + 7) % 7;
 
     return { open, daysUntil, dayName: DAY_NAMES[openDay] ?? 'Sunday' };
 }
 
 /**
- * "Opens Sunday", "Opens tomorrow", "Open today".
- *
- * Phrased around the reader's week rather than as a countdown. A number of
- * days is a wait; a day of the week is a plan.
+ * "Opens Sunday", "Opens tomorrow", "Open today" — phrased around the reader's
+ * week rather than as a countdown. A number of days is a wait; a day is a plan.
  */
 export function windowLabel(window: ReviewWindow): string {
     if (window.open) return 'Open today';
@@ -85,12 +71,9 @@ export function windowLabel(window: ReviewWindow): string {
 }
 
 /**
- * The seven days the open window is reporting on.
- *
- * Inclusive of the opening day itself, so Sunday's window covers the Monday
- * before it up to and including Sunday. Anything that arrives later belongs
- * to next week's, which is what keeps a group from showing a partial day and
- * calling it a week.
+ * The seven days the open window reports on, inclusive of the opening day — so
+ * Sunday's window covers the Monday before up to and including Sunday. Anything
+ * later belongs to next week's, which stops a partial day being called a week.
  */
 export function reviewRange(now: Date): { from: Date; to: Date } {
     const to = new Date(now.getFullYear(), now.getMonth(), now.getDate());

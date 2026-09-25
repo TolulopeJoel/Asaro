@@ -10,11 +10,8 @@ import { Spacing } from '../../theme/spacing';
 import { Text } from '../ui';
 
 /**
- * How many distinct chapters of a book the entries actually cover.
- *
- * Entries overlap — two of them can both touch chapter 12 — so this counts the
- * union rather than summing ranges, which would claim more of a book read than
- * has been.
+ * How many distinct chapters of a book the entries actually cover. Counts the
+ * UNION, since entries overlap — summing ranges claims more read than was.
  */
 export function coveredChapters(entries: JournalEntry[]): number {
     const seen = new Set<number>();
@@ -81,26 +78,17 @@ export interface StillAheadProps {
 }
 
 /**
- * How many readings may sit above the entries before the strip is moved down.
- *
- * The real cost is VERTICAL ROWS, not the number of chips — they wrap about
- * five to a row, so ten is two rows and still reads as a heading, while
- * Genesis's seventeen is four and pushes the entries off the screen entirely.
- * Counting items is the cheap proxy for measuring them.
- *
- * It also falls out pleasantly: a book you have nearly finished shows what is
- * left up top, and a book you have barely started keeps its long list out of
- * the way until you have scrolled your own entries.
+ * How many readings may sit above the entries before the strip moves down. The
+ * real cost is VERTICAL ROWS — chips wrap about five to a row, so ten is two
+ * rows and still reads as a heading while seventeen is four and pushes the
+ * entries off screen. Counting items is the cheap proxy for measuring them.
  */
 export const AHEAD_AT_TOP = 10;
 
 /**
- * "Still ahead" — the plan's remaining readings for this book, as chips.
- *
- * It OPENS the book's screen. It used to close it, which meant it sat under
- * every entry the reader had written in that book: fine on Jeremiah with two,
- * unreachable on Genesis with twenty. What it says is what to read next, and
- * that is the one thing on the screen worth seeing before you have scrolled.
+ * "Still ahead" — the plan's remaining readings for this book, as chips. OPENS
+ * the screen: it says what to read next, which is the one thing worth seeing
+ * before scrolling. As a footer it is unreachable on a book with twenty entries.
  */
 export const StillAhead = React.memo(({ ranges, place }: StillAheadProps) => {
     const { colors } = useTheme();

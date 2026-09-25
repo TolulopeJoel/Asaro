@@ -5,20 +5,14 @@ const CURRENT_DB_VERSION = 14;
 /**
  * The migration run, shared by everyone who asks for it.
  *
- * Migrations are not safe to run twice at once. Each step reads the current
- * version, decides what is pending and applies it — so two concurrent runs
- * both read the same version, both conclude the same step is outstanding and
- * both try to apply it. One wins; the other hits an existing table or a
- * duplicate column and the whole thing returns false.
+ * Migrations are not safe to run twice at once: two concurrent runs read the
+ * same version, conclude the same step is outstanding, and the loser hits an
+ * existing table or duplicate column. React re-invoking effects in development
+ * makes that routine.
  *
- * Which happens more often than it sounds. React re-invokes effects in
- * development, and `_layout`'s init effect carries no guard of its own, so
- * the very first thing the app does on a reload is start this twice.
- *
- * Caching the promise makes the second caller await the first run rather than
- * begin another — the same fix `getDb` needed, for the same reason, one layer
- * up. The result is cached on failure too: a failed migration is a state the
- * app must surface, not something to retry silently on the next render.
+ * Caching the promise makes the second caller await the first. Cached on
+ * failure too — a failed migration is a state the app must surface, not retry
+ * silently on the next render.
  */
 let migrating: Promise<boolean> | null = null;
 
@@ -32,9 +26,8 @@ const runMigrations = async (): Promise<boolean> => {
         return await withDatabase(async (database) => {
             const currentVersion = await getDbVersion(database);
 
-            // Migration logic: Run each pending migration in order
             if (currentVersion < 1) {
-                // First time setup (v1)
+                // v1: first-time setup
                 await database.execAsync(`
                     CREATE TABLE IF NOT EXISTS journal_entries (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -57,7 +50,7 @@ const runMigrations = async (): Promise<boolean> => {
             }
 
             if (currentVersion < 2) {
-                // Migration to v2: Clean up legacy columns
+                // v2: drop the legacy date_created column
                 const tableInfo = await database.getAllAsync(`PRAGMA table_info(journal_entries)`) as any[];
                 if (tableInfo.some((col: any) => col.name === 'date_created')) {
                     await database.execAsync(`
@@ -96,7 +89,7 @@ const runMigrations = async (): Promise<boolean> => {
             }
 
             if (currentVersion < 3) {
-                // Migration to v3: Create action_items table and migrate reflection_3
+                // v3: action_items, seeded from reflection_3
                 await database.execAsync(`
                     CREATE TABLE IF NOT EXISTS action_items (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -121,7 +114,7 @@ const runMigrations = async (): Promise<boolean> => {
             }
 
             if (currentVersion < 4) {
-                // Migration to v4: Add reading_progress, pin/complete status for actions, and study columns
+                // v4: reading_progress, action pin/complete flags, study columns
                 await database.execAsync(`
                     CREATE TABLE IF NOT EXISTS reading_progress (
                         item_id INTEGER PRIMARY KEY,
@@ -142,7 +135,7 @@ const runMigrations = async (): Promise<boolean> => {
             }
 
             if (currentVersion < 5) {
-                // Migration to v5: FTS5 search and performance indexes
+                // v5: FTS5 search and performance indexes
                 await database.execAsync(`
                     CREATE VIRTUAL TABLE IF NOT EXISTS journal_entries_fts USING fts5(
                         reflection_1, reflection_2, reflection_3, reflection_4, notes, study_further,
@@ -200,7 +193,7 @@ const runMigrations = async (): Promise<boolean> => {
             }
 
             if (currentVersion < 7) {
-                // Migration to v7: Add study topics and references
+                // v7: standalone study topics (dropped again in v8)
                 await database.execAsync(`
                     CREATE TABLE IF NOT EXISTS study_topics (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -223,10 +216,9 @@ const runMigrations = async (): Promise<boolean> => {
             }
 
             if (currentVersion < 8) {
-                // Migration to v8: drop standalone study topics.
-                // "Study" is now a single concept — the study_further field on a
-                // journal entry, which is born out of the reflection flow. The
-                // separate topics table was a parallel model under the same name.
+                // v8: drop standalone study topics. Study is one concept — the
+                // study_further field on an entry, born out of the reflection
+                // flow. The topics table was a parallel model under one name.
                 await database.execAsync(`
                     DROP TABLE IF EXISTS study_topic_references;
                     DROP TABLE IF EXISTS study_topics;
@@ -234,17 +226,14 @@ const runMigrations = async (): Promise<boolean> => {
             }
 
             if (currentVersion < 9) {
-                // Migration to v9: embeddings for Themes.
+                // v9: embeddings for Themes.
                 //
-                // One row per (entry, field) rather than per entry: the four
-                // prompts are compared separately, since every answer to one
-                // prompt shares a direction that would otherwise drown out
-                // what each answer is actually about.
+                // One row per (entry, field), not per entry: answers to one
+                // prompt share a direction that would drown out what each
+                // answer is actually about.
                 //
-                // `model` is recorded so a future model change can invalidate
-                // and re-embed only what it needs to, instead of silently
-                // mixing vectors from two different spaces — which would
-                // produce plausible-looking nonsense.
+                // `model` is recorded so a model change can re-embed only what
+                // it needs to, rather than mixing vectors from two spaces.
                 await database.execAsync(`
                     CREATE TABLE IF NOT EXISTS entry_embeddings (
                         entry_id INTEGER NOT NULL,
@@ -260,8 +249,7 @@ const runMigrations = async (): Promise<boolean> => {
 
                     -- Themes the reader has named. Clusters are recomputed as
                     -- entries accumulate, so a theme is anchored to the entries
-                    -- that formed it; that way a name the person chose survives
-                    -- re-clustering instead of being silently reshuffled.
+                    -- that formed it and a chosen name survives re-clustering.
                     CREATE TABLE IF NOT EXISTS themes (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         name TEXT NOT NULL,
@@ -281,25 +269,16 @@ const runMigrations = async (): Promise<boolean> => {
 
             if (currentVersion < 10) {
                 /*
-                 * Migration to v10: observations.
+                 * v10: observations — the unit the reader is shown. Every
+                 * detector writes the same record, so ranking, pacing and the
+                 * feedback loop are written once rather than per detector.
                  *
-                 * The unit the reader is shown. Every detector — the ones that
-                 * walk the cross-reference graph, the ones that count what is
-                 * missing, the ones that cluster — writes the same record
-                 * here, so the ranking, the pacing and the feedback loop are
-                 * written once rather than per detector.
+                 * `payload` holds the structured claim, never its wording, so a
+                 * better sentence can ship without rewriting anyone's history.
                  *
-                 * `payload` holds the structured claim and never its wording.
-                 * Phrasing is chosen at render time, so a better sentence can
-                 * ship in an update without rewriting anyone's history, and
-                 * two readers with the same finding are never stuck with one
-                 * frozen string.
-                 *
-                 * `dedupe_key` is what stops a true noticing becoming a
-                 * nag. Detectors re-run as the journal grows and will keep
-                 * finding the same thing; the key identifies the finding
-                 * rather than the run, so the second discovery updates the
-                 * first instead of queueing behind it.
+                 * `dedupe_key` identifies the finding rather than the run, so
+                 * rediscovery updates the first row instead of queueing behind
+                 * it. See design/DETECTORS.md.
                  */
                 await database.execAsync(`
                     CREATE TABLE IF NOT EXISTS observations (
@@ -316,10 +295,9 @@ const runMigrations = async (): Promise<boolean> => {
                         UNIQUE (detector, dedupe_key)
                     );
 
-                    -- The receipts. An observation the reader cannot check is
-                    -- a horoscope, so the evidence is stored with the claim
-                    -- rather than recomputed when they ask for it — recomputed
-                    -- evidence can disagree with the claim it justifies.
+                    -- The receipts. Stored with the claim rather than
+                    -- recomputed on demand: recomputed evidence can disagree
+                    -- with the claim it is meant to justify.
                     CREATE TABLE IF NOT EXISTS observation_evidence (
                         observation_id INTEGER NOT NULL,
                         kind TEXT NOT NULL,
@@ -339,31 +317,20 @@ const runMigrations = async (): Promise<boolean> => {
 
             if (currentVersion < 11) {
                 /*
-                 * Migration to v11: what kind of thing an action item is.
-                 *
-                 * The entry wizard asks "How can I realistically apply this in
-                 * my life?" and prompts with "I will…", which invites a
-                 * commitment about character. Everything downstream then filed
-                 * the answer as a task: a completion checkbox, an Actions tab,
-                 * reminders windowed by age. A real journal showed the cost —
-                 * ten items, not one ever ticked, because nobody finishes
-                 * being kinder to their parents.
-                 *
-                 * Three kinds genuinely live in this column, and they are told
-                 * apart by what the writer supplied rather than by a category
-                 * they were made to choose:
+                 * v11: what kind of thing an action item is. Three kinds live
+                 * in this column, told apart by what the writer supplied rather
+                 * than by a category they were made to choose:
                  *
                  *   nothing   an application — standing, never completed
                  *   cadence   a practice — recurring, completed per occurrence
                  *   due_at    an action — a task, completed once
                  *
-                 * Deriving the kind keeps the writing surface as it is. Both
-                 * columns are null for every existing row, so the whole
+                 * Both columns are null for every existing row, so the whole
                  * journal becomes applications, which is what it always was.
+                 *
+                 * Guarded like v4: SQLite ALTER TABLE has no IF NOT EXISTS, and
+                 * a half-applied migration must not wedge the next launch.
                  */
-                // Guarded the way v4 adds columns: ALTER TABLE has no IF NOT
-                // EXISTS in SQLite, and a half-applied migration must not wedge
-                // the app on the next launch.
                 for (const column of ['cadence TEXT', 'due_at DATETIME']) {
                     try {
                         await database.runAsync(`ALTER TABLE action_items ADD COLUMN ${column}`);
@@ -375,23 +342,16 @@ const runMigrations = async (): Promise<boolean> => {
 
             if (currentVersion < 12) {
                 /*
-                 * Migration to v12: practice completions.
+                 * v12: practice completions. A practice completes per
+                 * occurrence, so a single `is_completed` boolean cannot
+                 * represent it — "done today but not yesterday" needs a log.
                  *
-                 * A practice completes per occurrence, so `is_completed` — a
-                 * single boolean — cannot represent it. "Done today but not
-                 * yesterday" needs a log, and a log is what streaks and any
-                 * future widget both rest on.
+                 * Keyed on a LOCAL date string, not a timestamp: today is
+                 * wherever the reader is, and deriving the day from UTC moves
+                 * completions across midnight and breaks streaks.
+                 * `reading_progress` is the same shape.
                  *
-                 * Keyed on a LOCAL date string, not a timestamp. A practice is
-                 * done "today", and today is wherever the reader is; deriving
-                 * the day from a UTC timestamp would move completions across
-                 * midnight for anyone east or west of it and quietly break
-                 * their streak. `reading_progress` is the same shape, so this
-                 * is a pattern the app already keeps.
-                 *
-                 * The primary key makes marking a day done idempotent, which
-                 * matters when the same tap can arrive from a card, a list and
-                 * eventually a home-screen widget.
+                 * The primary key makes marking a day done idempotent.
                  */
                 await database.execAsync(`
                     CREATE TABLE IF NOT EXISTS action_item_completions (
@@ -408,17 +368,13 @@ const runMigrations = async (): Promise<boolean> => {
 
             if (currentVersion < 13) {
                 /*
-                 * Migration to v13: archiving, which replaces deleting.
+                 * v13: archiving, which replaces deleting. An action item is
+                 * part of what someone wrote on a given day, so deleting one
+                 * rewrites the entry rather than tidying a list.
                  *
-                 * An action item is part of what someone wrote on a given day.
-                 * Deleting one does not tidy a list — it rewrites the entry, so
-                 * the journal no longer says what it said. A commitment that
-                 * has served its purpose has not stopped having been made.
-                 *
-                 * `archived_at` rather than a flag, matching `pinned_at`: when
-                 * something was set down is worth keeping, and a practice keeps
-                 * its completion history either way. Archiving hides a thing
-                 * from what you are working on; it never edits the past.
+                 * `archived_at` rather than a flag, matching `pinned_at`.
+                 * Archiving hides a thing from what you are working on; it
+                 * never edits the past.
                  */
                 try {
                     await database.runAsync(`ALTER TABLE action_items ADD COLUMN archived_at DATETIME`);
@@ -429,20 +385,14 @@ const runMigrations = async (): Promise<boolean> => {
 
             if (currentVersion < 14) {
                 /*
-                 * Migration to v14: findings that come round again, and
-                 * knowing when one was acted on.
+                 * v14: findings that come round again, and knowing when one was
+                 * acted on. `shown_at` becomes "last shown" rather than a
+                 * one-way door, with `shown_count` recording how many times
+                 * round a finding has been — right for a standing commitment,
+                 * which is not a reminder if met once in a lifetime.
                  *
-                 * `shown_at` was a one-way door — set once, and the finding was
-                 * excluded for ever. Right for a discovery, wrong for a
-                 * standing commitment: something you are trying to BE that you
-                 * meet once in a lifetime is not a reminder. It becomes "last
-                 * shown", and `shown_count` records how many times round it
-                 * has been.
-                 *
-                 * `followed_at` closes the other gap. Tapping through to read a
-                 * passage is the strongest evidence a card worked — the reader
-                 * was sent somewhere and went — and it was being discarded at
-                 * the moment it was generated.
+                 * `followed_at` records tapping through to a passage, the
+                 * strongest evidence a card worked.
                  */
                 for (const column of ['shown_count INTEGER NOT NULL DEFAULT 0', 'followed_at DATETIME']) {
                     try {
@@ -457,17 +407,13 @@ const runMigrations = async (): Promise<boolean> => {
                 );
             }
 
-            // Set to current version
             await setDbVersion(database, CURRENT_DB_VERSION);
 
             return true;
         });
     } catch (error) {
-        /*
-         * Logged with the cause. "Failed to initialize database" on its own
-         * says only that something went wrong somewhere in twelve migrations,
-         * which is the message this spent a while being.
-         */
+        // Logged with the cause: a bare "failed to initialize" says only that
+        // something went wrong somewhere in fourteen migrations.
         console.error('Database init error:', error);
         return false;
     }

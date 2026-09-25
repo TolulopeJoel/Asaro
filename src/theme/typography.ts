@@ -43,21 +43,18 @@ export const FontFamily = {
     serif: 'Fraunces_700Bold',
 } as const;
 
-/**
- * One scale, eight steps. Every size in the app comes from here — the previous
- * code used 13 different raw `fontSize` values, which is why nothing lined up.
- */
+/** One scale, eight steps. Every size in the app comes from here; screens
+ * never set a raw `fontSize`. */
 export const Typography = {
     fontFamily: FontFamily,
 
     size: {
         /**
-         * Every step is a size the mockup actually uses (design/all-screens.html).
-         * The `Half`/`Plus` names are the half-steps that file leans on — Cloth
-         * sets meta at 10.5 and supporting copy at 13.5, and rounding those to
-         * the nearest whole step is what made the built screens read heavier
-         * than the approved cloth. Nothing here is invented: if a size is not
-         * in the mockup, it is not in this scale.
+         * Every step is a size design/all-screens.html actually uses. The
+         * `Half`/`Plus` names are its half-steps — meta at 10.5, supporting
+         * copy at 13.5 — and rounding those to whole steps makes the built
+         * screens read heavier than the approved cloth. If a size is not in the
+         * mockup, it does not belong in this scale.
          */
         xs: 10,
         /** Cloth's eyebrow and timestamp. */
@@ -123,15 +120,11 @@ export const Typography = {
     },
 
     /**
-     * Tracking, in em, exactly as the mockup declares it.
-     *
-     * The mockup sets letter-spacing in em, so it scales with the size; React
-     * Native's `letterSpacing` is absolute px. Keeping the em value here and
-     * multiplying by the role's size at render (see `track()` in ui/Text) is
-     * what makes the built type provably the approved type, rather than a set
-     * of px numbers someone once eyeballed and can no longer justify.
-     *
-     * Each key is a role.
+     * Tracking, in em, exactly as the mockup declares it. The mockup sets
+     * letter-spacing in em so it scales with the size; React Native's
+     * `letterSpacing` is absolute px. Keeping em here and multiplying by the
+     * role's size at render (`track()` in ui/Text) makes the built type
+     * provably the approved type rather than eyeballed px. Each key is a role.
      */
     tracking: {
         hero: -0.035,

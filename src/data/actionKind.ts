@@ -1,34 +1,20 @@
 /**
- * What kind of thing an action item is.
- *
- * The entry wizard asks "How can I realistically apply this in my life?" and
- * prompts with "I will…". That invites a commitment about character, and the
- * answers bear it out — "I will be kinder to my parents", "I want to give
- * Jehovah my best", "I want to be quick to follow instructions". Nobody
- * completes those. A journal of forty-six entries produced ten such items and
- * not one was ever ticked, which was never a usage problem: the app was asking
- * a formational question and handing back a checkbox.
- *
- * Three genuinely different things live in this one column:
+ * What kind of thing an action item is. Three genuinely different things live
+ * in one column:
  *
  *   an **application** is who you are trying to be. It has no end, so it has
- *   no completion. What helps is meeting it again, with the reason you gave.
+ *   no completion — what helps is meeting it again, with the reason you gave.
  *
- *   a **practice** is an application with a rhythm — "three things I'm
- *   grateful for each day", "ten minutes tidying each evening". It completes
- *   per occurrence, which is a log rather than a flag, so streaks and a widget
- *   become possible later.
+ *   a **practice** is an application with a rhythm ("ten minutes tidying each
+ *   evening"). It completes per occurrence, which is a log rather than a flag.
  *
  *   an **action** is a task with a deadline. It completes once, and only this
  *   kind can meaningfully be overdue.
  *
- * The kind is DERIVED, never asked. A three-way picker in a wizard that
- * already runs five questions deep would be friction on the one surface that
- * was working, and people would classify wrong under it. Instead two optional
- * controls sit beside the motivation, and what the writer supplied decides:
- * a cadence makes it a practice, a date makes it an action, neither leaves it
- * an application. Every existing row has neither, so the whole journal reads
- * as applications — which is what it always was.
+ * The kind is DERIVED, never asked: a three-way picker in a wizard already five
+ * questions deep is friction on the one surface that works, and people classify
+ * wrong under it. A cadence makes it a practice, a date an action, neither an
+ * application.
  */
 
 /** How often a practice comes round. */
@@ -48,12 +34,9 @@ export function isCadence(value: unknown): value is Cadence {
 }
 
 /**
- * Derive the kind.
- *
- * Cadence wins over a date. A practice with a first occurrence is still a
- * practice — the date says when it starts, not when it is finished — and
- * reading that pair as a one-off task would quietly retire something the
- * writer meant to keep doing.
+ * Derive the kind. Cadence wins over a date: a practice with a first occurrence
+ * is still a practice, since the date says when it starts rather than when it
+ * is finished.
  */
 export function actionKindOf(item: KindFields): ActionKind {
     if (isCadence(item.cadence)) return 'practice';
@@ -62,12 +45,10 @@ export function actionKindOf(item: KindFields): ActionKind {
 }
 
 /**
- * Whether completion means anything for this kind.
- *
- * Applications answer no. That is the whole correction: an unticked box on
- * "I will be kinder to my parents" is not evidence of anything, and offering
- * the box at all invites the reader to feel they have failed at something the
- * app never had the standing to judge.
+ * Whether completion means anything for this kind. Applications answer no: an
+ * unticked box on "I will be kinder to my parents" is not evidence of anything,
+ * and offering the box invites the reader to feel they failed at something the
+ * app has no standing to judge.
  */
 export function completes(kind: ActionKind): boolean {
     return kind !== 'application';

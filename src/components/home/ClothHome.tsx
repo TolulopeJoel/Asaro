@@ -1,18 +1,12 @@
 /**
- * Home, in Cloth.
- *
- * design/all-screens.html #home, the `.cl` slot. The hero band carries the
- * day's line and the date over the onikọ rings; under the crosshatch strip the
- * body is four blocks and nothing else:
+ * Home, in Cloth. design/all-screens.html #home, the `.cl` slot: the hero band
+ * carries the day's line and the date over the onikọ rings, and under the
+ * crosshatch strip the body is four blocks and nothing else.
  *
  *   today's reading, with the one call to action   .cl-label / .cl-h.xl / .cl-btn
  *   the week, as seven woven panels               .cl-panel ×7
  *   the entry count                               .cl-panel .cl-stat
  *   one flashback                                 .cl-panel
- *
- * The design note calls Home "the one screen where both styles get to be
- * generous", and this is what generous means here — four panels on cloth,
- * rather than the eight stacked cards the screen used to carry.
  */
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -44,12 +38,9 @@ export interface ClothHomeProps {
     flashback?: { text: string; reference: string; when: string } | null;
     onBeginReflection: () => void;
     /**
-     * The entry you walked away from, if there is one.
-     *
-     * design/all-screens.html #draft. When it is set it takes the reading
-     * block — same slot, different label, its own passage — because there is
-     * only ever one draft and it IS your current reading session, whatever the
-     * plan has queued for today.
+     * The entry you walked away from, if there is one. design/all-screens.html
+     * #draft: it takes the reading block's slot, because there is only ever one
+     * draft and it IS the current reading session, whatever the plan queued.
      */
     draft?: DraftSummary | null;
     onResumeDraft?: () => void;
@@ -59,41 +50,30 @@ export interface ClothHomeProps {
     onWeekPress?: () => void;
     onFlashbackPress?: () => void;
     /**
-     * A noticing, when there is one.
-     *
-     * Passed as a node rather than as data: the card decides its own weight
-     * from the active style, so neither Home has to know how it is drawn —
-     * and there is one card rather than two that must be kept in step.
+     * A noticing, when there is one. Passed as a node rather than data so the
+     * card decides its own weight from the active style, and there is one card
+     * rather than two to keep in step.
      */
     observation?: React.ReactNode;
     /** What is live today. Absent on most days — see `TodayStrip`. */
     today?: React.ReactNode;
     /**
-     * Progress through the reading plan.
-     *
-     * Replaces the entry count, which only ever went up. "34 of 364" is a goal
-     * with an end, and finishing the Bible in a year is a real one for this
-     * reader; a monotonic counter of entries written is a fact about the
-     * database that nothing follows from.
+     * Progress through the reading plan. "34 of 364" is a goal with an end,
+     * where a monotonic count of entries written is a fact about the database
+     * that nothing follows from.
      */
     planProgress?: { completed: number; total: number; percent: number } | null;
     /**
-     * Opening the land — every chapter this progress has actually worked.
-     *
-     * The progress bar and the cloth are the same fact at two resolutions: one
-     * says how far through the plan you are, the other says what that came to.
-     * Tapping from the number to the thing it made is the natural move, so the
-     * bar is the door rather than earning a button of its own.
+     * Opening the land. The progress bar and the cloth are the same fact at two
+     * resolutions, so the bar is the door rather than earning its own button.
      */
     onProgressPress?: () => void;
 }
 
 /**
- * The week, as seven panels.
- *
- * Three states, exactly as the mockup draws them: a day you wrote is the deep
- * indigo block, a day you did not is the bare panel, and today wears the woven
- * ochre mark. The mark is the motif doing a job rather than decorating.
+ * The week, as seven panels. Three states as the mockup draws them: a day you
+ * wrote is deep indigo, a day you did not is the bare panel, and today wears
+ * the woven ochre mark — the motif doing a job rather than decorating.
  */
 function WeekPanels({ days, onPress }: { days: DayStatus[]; onPress?: () => void }) {
     const { colors } = useTheme();
@@ -168,13 +148,11 @@ export function ClothHome({
                         {greeting}
                     </Text>
                     <View style={styles.heroActions}>
-                        {/*
-                          * Held, not hidden, while a draft is live. There is one
-                          * draft slot, so starting a fresh entry over an
-                          * unfinished one lets the autosave write across it — and
-                          * a control that vanishes teaches nothing, while one
-                          * that dims says finish this first.
-                          */}
+                        {/* Held, not hidden, while a draft is live. There is
+                          * one draft slot, so a fresh entry lets the autosave
+                          * write across it — and a control that dims says
+                          * finish this first, where one that vanishes teaches
+                          * nothing. */}
                         <ScalePressable
                             onPress={onAddEntry}
                             disabled={!onAddEntry || !!draft}

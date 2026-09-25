@@ -1,25 +1,17 @@
 /**
- * The reader's Bible as cloth.
+ * The reader's Bible as cloth. One cell per chapter, 1,189 of them, grouped by
+ * book: a cell is worked if the reader has ever written about that chapter, and
+ * how recently decides how strongly it is dyed.
  *
- * One cell per chapter, 1,189 of them, grouped by book. A cell is worked if
- * the reader has ever written about that chapter, and how *recently* decides
- * how strongly it is dyed. Books they have lived in come up as dense blocks;
- * books they have never opened stay as unworked ground.
+ * THE RULE THIS FILE EXISTS TO ENFORCE: nothing ever becomes unworked again. A
+ * chapter read in March is still read in December, so the oldest tier fades but
+ * is never empty — see `FADE_FLOOR` where it is drawn. Fading is a true
+ * statement about time passing; erasure would be a false one about what they
+ * did. It makes the pull a RESTORE, not a PREVENT, which is the only version
+ * still bearable on the day somebody comes back after three months away.
  *
- * The one rule this file exists to enforce: **nothing ever becomes unworked
- * again.** A chapter read in March is still read in December, and an app that
- * takes it back to make somebody anxious is lying about their own history to
- * manufacture a loss. So the oldest tier is faded, never empty, and it has a
- * floor — see `FADE_FLOOR` where it is drawn. Fading is a true statement about
- * time passing; erasure would be a false one about what they did.
- *
- * Which makes the pull here a *restore*, not a *prevent*. "Judges has gone
- * quiet, let me go back" and "I will lose Judges if I don't" produce the same
- * visit and are not the same feeling, and only one of them is still bearable
- * on the day somebody comes back after three months away.
- *
- * Pure on purpose, `now` passed in, like `practiceStreak.ts` — every boundary
- * below is a date boundary and none of them is testable otherwise.
+ * Pure, with `now` passed in like `practiceStreak.ts` — every boundary here is
+ * a date boundary and none is testable otherwise.
  */
 
 import { BibleBook } from '../data/bibleBooks';
@@ -34,21 +26,18 @@ export interface CoverageRow {
 }
 
 /**
- * How long ago a chapter was last worked.
- *
- * `0` is never. The rest run freshest to faintest, and there is deliberately
- * no tier past `5` — a chapter read nine years ago and one read three years
- * ago are the same fact at this distance, and splitting them further would
- * only push the far end toward invisible.
+ * How long ago a chapter was last worked. `0` is never; the rest run freshest
+ * to faintest. Deliberately no tier past `5` — nine years ago and three years
+ * ago are the same fact at this distance, and splitting further only pushes the
+ * far end toward invisible.
  */
 export type Tier = 0 | 1 | 2 | 3 | 4 | 5;
 
 /**
- * Upper bound in days for each tier, freshest first.
- *
- * A month, a season, half a year, a year. Chosen so that someone reading the
- * plan at any sane pace keeps the current book at tier 1 without effort — the
- * ramp should describe a life, not police a schedule.
+ * Upper bound in days for each tier, freshest first — a month, a season, half a
+ * year, a year. Chosen so anyone reading the plan at a sane pace keeps the
+ * current book at tier 1 without effort: the ramp describes a life, it does not
+ * police a schedule.
  */
 const TIER_DAYS = [30, 90, 180, 365];
 
@@ -81,11 +70,9 @@ function tierFor(days: number): Tier {
 }
 
 /**
- * Whole days between an ISO timestamp and now, or null if it cannot be read.
- *
- * Clamped at zero. A clock that has gone backwards — a device whose time was
- * wrong and got corrected — must not produce a negative age that then reads as
- * the freshest possible tier.
+ * Whole days between an ISO timestamp and now, or null if unreadable. Clamped
+ * at zero: a clock corrected backwards must not produce a negative age, which
+ * would read as the freshest possible tier.
  */
 function ageInDays(iso: string, now: number): number | null {
     const at = new Date(iso).getTime();
@@ -94,12 +81,9 @@ function ageInDays(iso: string, now: number): number | null {
 }
 
 export function weaveCloth(rows: CoverageRow[], books: BibleBook[], now: number): Cloth {
-    /*
-     * Freshest age per chapter, keyed by book. Built first and separately
-     * because entries overlap constantly — the plan hands out ranges, the
-     * reader writes about a single chapter inside one later, and the cell
-     * should carry whichever reading was most recent.
-     */
+    // Freshest age per chapter, keyed by book. Built separately because
+    // entries overlap constantly — the plan hands out ranges and the reader
+    // writes about single chapters inside them later.
     const freshest = new Map<string, Map<number, number>>();
 
     for (const row of rows) {
@@ -139,12 +123,9 @@ export function weaveCloth(rows: CoverageRow[], books: BibleBook[], now: number)
         let lastWorkedDays: number | null = null;
 
         for (let chapter = 1; chapter <= book.chapters; chapter++) {
-            /*
-             * Bounded by the book, not by the data. A bad range — a typo, an
-             * import from elsewhere — must not add cells to a book, or the
-             * cloth stops being the Bible's shape and starts being the
-             * journal's.
-             */
+            // Bounded by the book, not the data: a bad range must not add
+            // cells, or the cloth takes the journal's shape instead of the
+            // Bible's.
             const days = chapters?.get(chapter);
             if (days === undefined) {
                 cells.push(0);
@@ -172,13 +153,10 @@ export function weaveCloth(rows: CoverageRow[], books: BibleBook[], now: number)
 }
 
 /**
- * The books that have gone quiet — worked once, not for a long time.
- *
- * This is the whole retention mechanic, and it is phrased as an invitation
- * because of what it is made of: land the reader has already cultivated. It
- * deliberately never names a book they have never opened. Being pointed at
- * sixty-six unread books is not a nudge, it is an indictment, and nobody needs
- * an app to tell them they have not read Nahum.
+ * The books that have gone quiet — worked once, not for a long time. NEVER
+ * names a book the reader has never opened: being pointed at sixty-six unread
+ * books is an indictment, not a nudge. This only ever offers back land they
+ * already cultivated.
  */
 export function quietBooks(cloth: Cloth, sinceDays: number, limit: number): BookCloth[] {
     return cloth.books

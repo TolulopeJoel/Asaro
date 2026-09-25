@@ -21,12 +21,11 @@ interface EntryCardProps {
  * One entry in the library list.
  *
  * `.cl-row`: the reference, a one-line snippet under it, and how long ago on
- * the right, separated by a hairline. The type comes from the variant system
- * — `reference` is Fraunces 17, `bodySmall` 13, `meta` 10.5.
+ * the right, separated by a hairline. The type comes from the variant system —
+ * `reference` is Fraunces 17, `bodySmall` 13, `meta` 10.5.
  *
- * It used to be a bordered card with a date, an ochre reference badge, a
- * chevron and four reflection dots. None of that chrome is in the mockup; the
- * design's library is a run of type on cloth.
+ * No card border, date badge, chevron or reflection dots: none of that chrome
+ * is in the mockup, where the library is a run of type on cloth.
  */
 export const EntryCard = React.memo(({ entry, omitBookName = false, onEntryPress }: EntryCardProps) => {
     const { colors } = useTheme();

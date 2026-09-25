@@ -1,35 +1,25 @@
 /**
  * Where every chapter sits on the land, and where one book's ground ends.
  *
- * The rule, and everything else follows from it: **one chapter is one cell of
- * a single uniform grid.** Not a share of a plot that has been stretched to
- * fit — an actual, identical square, the same size in Obadiah as in Psalms.
- * A reader finishing a chapter tonight should see one of these fill in, and
- * that only works if they are all the same thing.
+ * THE RULE everything follows from: one chapter is one cell of a single uniform
+ * grid — an identical square, the same size in Obadiah as in Psalms. A reader
+ * finishing a chapter tonight sees one of these fill in, which only works if
+ * they are all the same thing.
  *
- * Which means a book gets no say in its own shape. Its chapters take the next
- * cells in the grid, wrapping at the edge of the field like text wrapping in a
- * paragraph, and where its run happens to start and stop decides what it looks
- * like. Fifty chapters across eleven columns is four full rows and a tail of
- * six, so Genesis is an L. Some books are staircases. A book that starts near
- * the right edge is a few cells, then a block.
+ * So a book gets no say in its own shape. Its chapters take the next cells,
+ * wrapping at the edge of the field like text in a paragraph, and where its run
+ * starts and stops decides what it looks like: Genesis is an L, some books are
+ * staircases. That irregularity is the point — balancing a book into a tidy
+ * rectangle by spreading its remainder across its rows keeps the corner square
+ * only by making one book's beds a different size from the next's.
  *
- * That irregularity is the point. Earlier versions balanced each book into a
- * tidy rectangle by spreading the remainder across its rows, which is the
- * "boxing each book into a rectangle" problem in its subtlest form: to keep
- * the corner square it had to make the beds of one book a different size from
- * the beds of the next. Real parcels are not rectangles. They are whatever
- * shape the ground and the boundary left them, and an L-shaped field is a
- * completely ordinary thing to own.
+ * What demarcates a book is therefore an OUTLINE traced along it, never a box
+ * drawn around it: a cell carries a hedge on each side where its neighbour
+ * belongs to another book or there is no neighbour at all. Computed here rather
+ * than drawn by eye, which is what lets a boundary follow a staircase exactly.
  *
- * So what demarcates a book is no longer a box drawn around it but an OUTLINE
- * traced along it: a cell carries a hedge on each side where its neighbour
- * belongs to another book, or where there is no neighbour at all. Those edges
- * are computed here rather than drawn by eye, which is what lets the boundary
- * follow a staircase exactly.
- *
- * Pure, and in cells rather than points, so the whole layout can be checked at
- * a boundary without a renderer.
+ * Pure, and in cells rather than points, so the layout can be checked at a
+ * boundary without a renderer.
  */
 
 /** One chapter's square, and which of its sides carry a boundary. */

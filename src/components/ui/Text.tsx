@@ -1,16 +1,11 @@
 /**
- * Typed text.
+ * Typed text. Callers ask for a role — `title`, `label`, `quote` — and the
+ * active style decides face, size and weight; Cloth answers in Fraunces over
+ * Work Sans.
  *
- * Callers ask for a role — `title`, `label`, `quote` — and the active style
- * decides the face, size and weight. Cloth answers in Fraunces over Work Sans.
- *
- * Every value is taken from the approved mockup, design/all-screens.html — the
- * `.cl-*` rules. Each variant below names the rule it implements, so a drift
- * from the design is a one-line diff to find.
- *
- * Screens should not set `fontSize` or `fontFamily` directly. That habit is
- * what produced 13 raw font sizes and a serif token that was defined and then
- * never used anywhere in the app.
+ * Every value comes from design/all-screens.html's `.cl-*` rules, and each
+ * variant below names the rule it implements, so drift is a one-line diff.
+ * Screens must never set `fontSize` or `fontFamily` directly.
  */
 import React from 'react';
 import { Text as RNText, StyleSheet, TextProps as RNTextProps, TextStyle } from 'react-native';
@@ -52,11 +47,9 @@ function toneColor(tone: TextProps['tone'], colors: ThemeColors): string {
 const { size, lineHeight, tracking } = Typography;
 
 /**
- * The mockup's em tracking, resolved against a concrete size.
- *
- * Rounded to 0.1px: RN will happily take -0.775, but a tenth is already below
- * what a device can render, and the rounded number is the one a designer can
- * check against the mockup.
+ * The mockup's em tracking, resolved against a concrete size. Rounded to 0.1px
+ * — a tenth is already below what a device renders, and the rounded number is
+ * the one a designer can check against the mockup.
  */
 function track(px: number, variant: TextVariant): number {
     const em = tracking[variant as keyof typeof tracking];

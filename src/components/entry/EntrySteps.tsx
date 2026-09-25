@@ -86,12 +86,9 @@ interface ChapterStepProps {
 }
 
 /**
- * Which chapters.
- *
- * design/all-screens.html #chapters. Cloth puts the book itself on a full
- * `.cl-hero` band (with a Back AND a Close button, since the mockup draws
- * both) and states the current selection as a `.cl-panel` summary with a
- * Clear button, ahead of the grid rather than above it.
+ * Which chapters. design/all-screens.html #chapters: the book goes on a full
+ * `.cl-hero` band with both Back and Close, and the current selection is a
+ * `.cl-panel` summary with a Clear button ahead of the grid.
  */
 export const ChapterStep = React.memo(({
     selectedBook,
@@ -212,13 +209,9 @@ export const ReflectionStep = React.memo(({
     onExit,
     saveButtonText
 }: ReflectionStepProps) => (
-    /*
-     * The writing surface owns the whole screen.
-     *
-     * design/all-screens.html #entry gives it its own `.co-top` and its own
-     * footer — there is no step header and no outer scroll, because the answer
-     * band is the thing that scrolls. So this step is a frame and nothing more.
-     */
+    // The writing surface owns the whole screen. design/all-screens.html
+    // #entry gives it its own `.co-top` and footer — no step header, no outer
+    // scroll, because the answer band is what scrolls.
     <View style={styles.stepContainer}>
         <ReflectionForm
             initialAnswers={reflectionAnswers}
@@ -242,37 +235,30 @@ interface SummaryStepProps {
     onDone: () => void;
     onShare: () => void;
     /**
-     * Something you committed to before, if there is one.
-     *
-     * Sits between the entry you just recorded and the way out — after the
-     * confirmation, so it reads as what came back rather than as another step,
-     * and above the actions so leaving is never blocked by it.
+     * Something you committed to before, if there is one. Sits after the
+     * confirmation so it reads as what came back rather than another step, and
+     * above the actions so leaving is never blocked by it.
      */
     observation?: React.ReactNode;
     /**
-     * The saved entry's id, used to pick what he says when there is no card.
-     *
-     * A seed rather than the line itself, so the choosing stays in one place
-     * with the words it chooses between. See `savedNotes.ts`.
+     * The saved entry's id, used to pick what he says when there is no card. A
+     * seed rather than the line itself, so the choosing stays with the words it
+     * chooses between — see `savedNotes.ts`.
      */
     noteSeed?: number;
 }
 
 /**
- * The last step of the wizard, and the only screen the app gives you for free.
+ * The last step of the wizard. design/all-screens.html #saved: confirmation and
+ * receipt are ONE element — a tick alone says "done", while the passage and
+ * date say done *and* what was done. Both go in the band, and since the wizard
+ * runs bandless while you write, the band returning is itself the signal.
  *
- * design/all-screens.html #saved. Confirmation and receipt are one element,
- * not two: a tick inside a ring says "done" and nothing else, while the
- * passage and the date say done *and* what was done. Cloth puts both in the
- * band — the wizard runs bandless while you write, so the band returning is
- * itself the signal that you have arrived somewhere.
+ * No second large element: the count of answers is a fact about the form, not
+ * the reader, so it rides in the supporting line.
  *
- * No second large element. The count of answers is a fact about the form
- * rather than about the reader, so it rides in the supporting line and never
- * takes a size of its own.
- *
- * There is no close button. The two ways out are the two controls at the foot,
- * and neither of them loses the entry.
+ * No close button. The two ways out are the controls at the foot, and neither
+ * loses the entry.
  */
 export const SummaryStep = React.memo(({
     selectionSummary,
@@ -304,12 +290,8 @@ export const SummaryStep = React.memo(({
                 ]}
                 showsVerticalScrollIndicator={false}
             >
-                {/*
-                  * The card if there is one, and a word from him if there is
-                  * not. Never both — two voices over one moment is the thing
-                  * §6 warns about, and having no card is the condition rather
-                  * than a coincidence.
-                  */}
+                {/* The card if there is one, a word from him if not. NEVER
+                  * both: two voices over one moment is what §6 warns about. */}
                 {observation ?? (
                     <Text variant="body" tone="secondary" style={styles.savedNote}>
                         {savedNote(noteSeed)}
@@ -360,12 +342,9 @@ const styles = StyleSheet.create({
         paddingTop: Spacing.md + 2,
         paddingBottom: Spacing.layout.tabBarPadding,
     },
-    /*
-     * `.cl-top{display:flex; justify-content:space-between}` — ChapterStep's
-     * band carries two bare icon buttons with nothing between them, so (unlike
-     * BookStep's title+close, which spreads via the title's own flex:1) this
-     * needs the justification stated explicitly.
-     */
+    // `.cl-top{justify-content:space-between}` — this band carries two bare
+    // icon buttons with nothing between them, so unlike BookStep's title+close
+    // (which spreads via the title's flex:1) the justification must be stated.
     clothChapterTop: {
         flexDirection: 'row',
         alignItems: 'center',

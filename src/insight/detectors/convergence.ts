@@ -1,22 +1,15 @@
 /**
  * Convergence: the passage your entries circle and you have never written about.
  *
- * This is the detector the whole feature was reorganised around, because it is
- * the only one whose evidence the reader could not have assembled themselves.
- * Everything else Àṣàrò notices, it learned from them — what they wrote, when,
- * about which chapter. This one joins that to 341,000 cross-references nobody
- * holds in their head, and the join is where "how did it know that" lives.
+ * The claim is narrow on purpose — *these passages you chose are connected, and
+ * here is the one at their centre you have not read* — so it is checkable
+ * against public data and can be wrong.
  *
- * The claim is narrow on purpose: *these passages you chose are connected to
- * each other, and here is the one at their centre that you have not read.* It
- * is checkable, it can be wrong, and it is falsifiable against public data —
- * which is what separates it from a horoscope that happens to be about you.
+ * `findConvergence` is pure (entries and a graph in, candidates out) and is what
+ * scripts/verify-convergence.mjs exercises; the IO lives in `detectConvergence`
+ * below it and holds none of the reasoning.
  *
- * Split in two deliberately. `findConvergence` is pure: entries and a graph in,
- * candidates out, no database, no clock. That is what
- * scripts/verify-convergence.mjs exercises against the real asset. The IO lives
- * in `detectConvergence` below it, where it cannot be tested and therefore
- * should not hold any of the reasoning.
+ * Threshold and scoring rationale: design/DETECTORS.md#convergence
  */
 
 import { withDatabase } from '../../data/db';
@@ -65,75 +58,41 @@ export interface SeedEntry {
 export interface ConvergenceOptions {
     /**
      * Distinct entries that must reach a passage before it is a convergence.
-     *
-     * The floor that makes the claim true rather than merely computable. Two
-     * entries share a cross-reference constantly — the Bible is a dense graph
-     * and almost any pair of passages is two hops apart. Four separate
-     * occasions is the point where "you keep circling this" stops being a
-     * description of scripture and starts being one of the reader.
+     * Almost any pair of passages is two hops apart in a graph this dense, so
+     * the floor is what makes the claim about the reader rather than the text.
      */
     minEntries?: number;
     /**
-     * Distinct Bible books those entries must span.
-     *
-     * One book is the reading plan talking. Read Genesis 12-15 across four
-     * sittings and of course they converge — they cross-reference each other
-     * because they are one narrative. Requiring two books is what makes the
-     * convergence the reader's rather than the text's.
+     * Distinct Bible books those entries must span. One book is the reading
+     * plan talking — four sittings on Genesis 12-15 converge because they are
+     * one narrative.
      */
     minBooks?: number;
     /**
-     * Days between the earliest and latest contributing entry.
-     *
-     * The same argument as `themeQuality.spanLabel` makes for themes: a
-     * connection drawn across months is evidence the reader had forgotten the
-     * first passage by the time they wrote the second, so the thread is theirs.
-     * Inside a fortnight it is one study session.
+     * Days between the earliest and latest contributing entry. A connection
+     * drawn across months means the reader had forgotten the first passage by
+     * the time they wrote the second; inside a fortnight it is one session.
      */
     minSpanDays?: number;
     /**
-     * Total weight one entry contributes through the chapter it was assigned.
-     *
-     * A budget per entry, not per verse. Weighting each verse of a chapter
-     * equally with each citation sounds like a 3:1 preference for citations
-     * and is not one: a chapter puts twenty or thirty verses into the seed set
-     * and an entry carries at most a couple of citations, so volume decides
-     * the outcome and the intended preference never lands. Splitting a fixed
-     * budget across whatever a channel produced makes the ratio mean what it
-     * says — and incidentally stops long chapters counting for more than short
-     * ones, which was never a fact about the reader either.
+     * Total weight one entry contributes through the chapter it was assigned —
+     * a budget per entry, not per verse, so a long chapter does not outvote a
+     * short one and the chapter:citation ratio means what it says.
      */
     chapterBudget?: number;
     /** Total weight one entry contributes through verses its writer chose to cite. */
     citationBudget?: number;
     /**
-     * Contributors that must reach the passage through a verse they CITED,
-     * rather than through a chapter the plan assigned them.
-     *
-     * The gate that separates a convergence about the reader from one about
-     * the text. A chapter enters the seed set whole, carrying every theme it
-     * contains — so four entries on Genesis 8, Genesis 35 and Exodus 18 all
-     * reach Isaac's altar at Genesis 26:25, because each of those chapters
-     * happens to contain someone building an altar. The reader was writing
-     * about compassion, false worship and humility. The link is real in the
-     * Treasury and absent from the journal.
-     *
-     * A citation does not have that problem. It is the reader reaching into
-     * a passage and pointing at one verse, so what it drags into the seed set
-     * is what they meant. Requiring two of them is requiring that the thread
-     * was drawn by the person, not inferred from their reading schedule.
+     * Contributors that must reach the passage through a verse they CITED
+     * rather than a chapter the plan assigned. A chapter enters the seed set
+     * whole, carrying every theme it contains; a citation is the reader
+     * pointing. See design/DETECTORS.md#convergence.
      */
     minCitingEntries?: number;
     /**
-     * How much a plan-shaped convergence is demoted, 0–1.
-     *
-     * Àṣàrò ships ONE reading plan — `READING_PLAN_DATA`, 364 readings, the
-     * same order for everybody. So "the chapters I have read lately" is very
-     * nearly the same sentence for every user on the same week of the plan,
-     * and a detector that leans on chapters is at risk of handing two friends
-     * in the same congregation the identical private discovery. That is the
-     * Barnum failure wearing a citation: it feels personal, it is checkable,
-     * and it is not about them.
+     * How much a plan-shaped convergence is demoted, 0–1. The app ships one
+     * reading plan for everybody, so a chapter-led finding risks handing two
+     * friends the identical "private" discovery.
      */
     planPenalty?: number;
     /** How many candidates to keep. The pacing layer decides what is shown. */
@@ -147,13 +106,8 @@ const DEFAULTS: Required<ConvergenceOptions> = {
     chapterBudget: 1,
     citationBudget: 3,
     minCitingEntries: 2,
-    /*
-     * Demoted, not dropped — the same call `themeQuality.ts` already made for
-     * plan artifacts, and for the same reason. Someone reading Exodus and
-     * Leviticus really is being pointed at Hebrews 9, and that is worth
-     * knowing; it just is not a discovery about them, so it ranks below
-     * anything that is.
-     */
+    // Demoted, not dropped: Exodus and Leviticus really do point at Hebrews 9,
+    // it just is not a discovery about the reader.
     planPenalty: 0.6,
     maxCandidates: 3,
 };
@@ -180,12 +134,8 @@ export interface ConvergenceCandidate {
     citingEntryCount: number;
     /**
      * The share of contributors that pointed rather than merely passed nearby.
-     *
-     * Two of four is a different claim from two of seven. Both have two people
-     * pointing, but in the second case five arrived because the schedule sent
-     * them, so most of the evidence is about the plan and the finding is
-     * diluted. Count is how much evidence there is; this is how much of it the
-     * reader chose.
+     * Two of four is a stronger claim than two of seven: count is how much
+     * evidence there is, this is how much of it the reader chose.
      */
     citingFraction: number;
     spanDays: number;
@@ -200,28 +150,14 @@ export interface ConvergenceCandidate {
 /**
  * How straight-through the contributing entries are, as rank correlation.
  *
- * Distinct books was the wrong test for "is this the reader or the plan", and
- * this journal is why: Genesis, Exodus and Leviticus clears a two-book gate
- * easily and is still just the plan, read in order, for thirteen months.
- * Contiguity is not the tell either — plenty of people legitimately read
- * Genesis then Exodus.
+ * The tell for "plan or reader" is ORDER: a plan marches forward, so date rank
+ * and canonical rank move together. A thread the reader owns jumps around —
+ * Genesis in October, Habakkuk in March — and the correlation collapses.
  *
- * The tell is ORDER. A reading plan marches forward: later entries sit later
- * in the canon, so date rank and canonical rank move together and the
- * correlation approaches 1. A thread the reader owns jumps around — Genesis in
- * October, Habakkuk in March, James in June — and the correlation collapses.
- * One number, no lists of books to maintain, and it says the thing the book
- * count was only gesturing at.
- *
- * Spearman's rho, floored at zero: reading the canon backwards is not evidence
- * of anything, so negative correlation is treated as simply not-sequential.
- *
- * Then scaled by how tightly the entries sit in the canon, because order alone
- * over four or five points says very little. A set running Genesis to Jeremiah
- * scored 0.80 on rho and was demoted as plan-shaped — but crossing twenty-one
- * books in the three days between two entries is the opposite of marching
- * through a schedule. Reading forward through a few books is a plan; arriving
- * at the far end of the canon is the reader going somewhere.
+ * Spearman's rho floored at zero (reading backwards is not evidence of
+ * anything), then scaled by how tightly the entries sit in the canon, since
+ * order alone over four or five points says very little.
+ * See design/DETECTORS.md#convergence.
  */
 function sequentiality(contributors: SeedEntry[]): number {
     const n = contributors.length;
@@ -257,12 +193,9 @@ function sequentiality(contributors: SeedEntry[]): number {
     if (varianceX === 0 || varianceY === 0) return 0;
     const rho = Math.max(0, covariance / Math.sqrt(varianceX * varianceY));
 
-    /*
-     * Half-weight at roughly ten books of spread, tailing off from there. The
-     * scale is a judgement, not a derivation: it is set so a Genesis-to-
-     * Leviticus march still reads as the schedule while a Genesis-to-Jeremiah
-     * reach does not, which is the distinction real journals actually turn on.
-     */
+    // Half-weight at roughly ten books of spread. A judgement, not a
+    // derivation: tuned so Genesis-to-Leviticus still reads as the schedule
+    // while Genesis-to-Jeremiah does not.
     const positions = contributors.map(canonPosition);
     const canonRange = Math.max(...positions) - Math.min(...positions);
     const density = 1 / (1 + canonRange / 10_000);
@@ -283,14 +216,9 @@ export function findConvergence(
     const config = { ...DEFAULTS, ...options };
     if (entries.length === 0) return [];
 
-    /*
-     * Seeds are tracked by PROVENANCE, not just by weight.
-     *
-     * Which entries put a verse into the seed set matters less than how it got
-     * there: through a chapter the schedule assigned, or through a verse the
-     * writer reached for. Those two carry different evidence and the gates
-     * below treat them differently, so they are kept apart from the start.
-     */
+    // Seeds are tracked by provenance, not just weight: arriving via an
+    // assigned chapter and via a verse the writer reached for are different
+    // evidence, and the gates below treat them differently.
     const seedWeight = new Map<number, number>();
     const seedFromChapter = new Map<number, Set<number>>();
     const seedFromCitation = new Map<number, Set<number>>();
@@ -324,23 +252,13 @@ export function findConvergence(
             }
         }
 
-        /*
-         * A citation's whole span is seeded, with its budget split across it.
-         *
-         * Per citation rather than per verse, so quoting a sixteen-verse
-         * passage is one act of pointing and not sixteen — otherwise a reader
-         * who cites generously would drown out one who cites precisely.
-         */
-        /*
-         * A whole-chapter citation is not the reader pointing at anything.
-         *
-         * "[[Leviticus 4]]" names the chapter they were already assigned, so
-         * it carries exactly the information the chapter seed carries and none
-         * of the specificity the citation channel exists for. Counting it as a
-         * citation makes the gate trivial to clear — one such tag drags thirty
-         * verses in at citation weight — and the detector goes back to
-         * reporting the reading schedule in a better disguise.
-         */
+        // Whole-chapter citations are dropped: "[[Leviticus 4]]" names the
+        // chapter already assigned, so it carries no more than the chapter seed
+        // while making the citation gate trivial to clear.
+        //
+        // Budget splits per citation, not per verse, so quoting sixteen verses
+        // is one act of pointing and a generous citer cannot drown out a
+        // precise one.
         const pointed = entry.citations.filter(cited => verseOf(cited.start) !== 0);
         const perCitation = pointed.length ? config.citationBudget / pointed.length : 0;
 
@@ -406,33 +324,18 @@ export function findConvergence(
         const spanDays = times.length > 1 ? (Math.max(...times) - Math.min(...times)) / DAY_MS : 0;
         if (spanDays < config.minSpanDays) continue;
 
-        /*
-         * Discount by how connected the passage is to everyone.
-         *
-         * Without this the answer is Psalm 119, Isaiah 53 and John 3:16 for
-         * every reader alive — they are the highest-degree nodes in the
-         * Treasury, so they are reachable from almost any seed. That is the
-         * textbook Barnum failure: a result that feels personal and would be
-         * identical for a stranger. Dividing by log(degree) asks instead
-         * whether this passage is central to THIS reader's set.
-         */
         const degree = graph.degree(ordinal);
 
         /*
-         * Two discounts, answering two different ways this can be true and
-         * still not worth saying.
-         *
-         * Degree asks whether the passage is central to THIS reader or merely
-         * central to everyone — without it the answer is Psalm 119 and John
-         * 3:16 for every user alive. Square root rather than log: degrees in
-         * the Treasury run from one to several hundred, and log compresses
-         * that hundred-fold range into barely two, so the discount the comment
-         * promised was not one the score delivered.
+         * Two discounts, for two ways this can be true and still not worth
+         * saying. Degree asks whether the passage is central to THIS reader or
+         * to everyone — without it the answer is Psalm 119 and John 3:16 for
+         * every user alive. Square root, not log: Treasury degrees span one to
+         * several hundred and log flattens that range to almost nothing.
          *
          * planShape asks whether the reader assembled this set or the schedule
-         * did. Both discounts demote rather than exclude, so a real thread that
-         * happens to run through consecutive books can still surface above the
-         * noise.
+         * did. Both demote rather than exclude, so a real thread running
+         * through consecutive books can still surface.
          */
         const planShape = sequentiality(contributors);
         const citingFraction = citing.size / contributors.length;
@@ -498,16 +401,13 @@ export async function detectConvergence(options: ConvergenceOptions = {}): Promi
     const [entries, graph] = await Promise.all([loadSeedEntries(), loadGraph()]);
 
     /*
-     * The half of the claim that decays.
+     * "You have never written about it" decays — it stops being true the moment
+     * the reader opens that passage, which is what the card asked them to do.
+     * Queued findings are not re-derived before display, so without this the app
+     * would tell someone they had never read what it sent them to read.
      *
-     * "You have never written about it" is true when recorded and can stop
-     * being true the moment the reader opens that passage — which is, after
-     * all, what the card asked them to do. A queued finding is not re-derived
-     * before it is shown, so without this the app would eventually tell
-     * someone they had never read something it had sent them to read.
-     *
-     * Everything still unvisited is kept, not just what this run ranked
-     * highest: the retraction is about truth, not about placing.
+     * Everything still unvisited is kept, not just this run's top candidates:
+     * the retraction is about truth, not placing.
      */
     const stillUnwritten = findConvergence(entries, graph, {
         ...options,
@@ -515,16 +415,8 @@ export async function detectConvergence(options: ConvergenceOptions = {}): Promi
     }).map(candidate => `hub:${candidate.hubVerseId}`);
     await retractObservations('convergence', stillUnwritten);
 
-    /*
-     * A passage the reader has already met is settled, however they answered.
-     *
-     * Tapping through to read it is the obvious case. "That's not it" is the
-     * one worth spelling out: it means the card was wrong about the
-     * connection, not that the passage went unread — they looked, and decided.
-     * Either way the app has no business carrying on as though that passage
-     * were untouched, so a hub with any engagement behind it is never offered
-     * again even if the claim technically still holds.
-     */
+    // A hub with any engagement behind it is never offered again, even if the
+    // claim still holds. "That's not it" counts too: they looked and decided.
     const settled = await settledHubs();
 
     const candidates = findConvergence(entries, graph, options);
@@ -547,14 +439,10 @@ export async function detectConvergence(options: ConvergenceOptions = {}): Promi
                     hubBook: bookNumberOf(candidate.hubVerseId),
                 },
                 /*
-                 * Built from the evidence, not from `score`.
-                 *
-                 * `score` exists to order candidates within one run and has no
-                 * absolute scale — it moves whenever the weighting changes, as
-                 * it just did. Confidence has a harder job: the pending queue
-                 * mixes detectors, so the number has to mean roughly the same
-                 * thing coming from convergence as from absence. Entry count
-                 * and plan shape do; a raw dot-product sum does not.
+                 * Built from the evidence, not from `score`. `score` only
+                 * orders candidates within one run and has no absolute scale,
+                 * but the pending queue mixes detectors, so confidence has to
+                 * mean roughly the same thing here as it does in absence.
                  */
                 confidence:
                     Math.min(1, candidate.entryIds.length / 8) *

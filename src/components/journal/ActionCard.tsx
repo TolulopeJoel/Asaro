@@ -1,11 +1,7 @@
 /**
- * One action item.
- *
- * design/all-screens.html #actions. An action carries two texts of unequal
- * weight — the thing to do and why — and the design solves it with the serif
- * rather than with a rule: the action is set in the serif inside a filled
- * `.cl-panel` and the face carries the difference. A pinned action gets an
- * ochre left rail and a "Pinned" heading.
+ * One action item. design/all-screens.html #actions: two texts of unequal
+ * weight — the thing to do and why — separated by the SERIF rather than a rule.
+ * A pinned action gets an ochre left rail and a "Pinned" heading.
  */
 import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -32,11 +28,9 @@ interface ActionCardProps {
 }
 
 /**
- * "1 day", "12 days", "3 weeks" — how long a practice has been kept.
- *
- * From one, not from two. The first day kept is the most precarious a practice
- * ever is and it used to be the single day this said nothing at all, which put
- * the silence exactly where the encouragement was worth most.
+ * "1 day", "12 days", "3 weeks" — how long a practice has been kept. Counts
+ * from ONE, not two: the first day is the most precarious a practice ever is,
+ * so silence there puts it exactly where encouragement is worth most.
  */
 function streakLabel(streak: number, cadence: string | null | undefined): string | null {
     if (streak < 1) return null;
@@ -65,15 +59,10 @@ function reference(item: EnhancedActionItem): string {
 export const ActionCard = React.memo(({ item, onEntryPress, handleTogglePin, handleToggleAction, progress, onEdit }: ActionCardProps) => {
     const { colors, style: themeStyle } = useTheme();
 
-    /*
-     * What this item is decides whether a checkbox appears at all.
-     *
-     * An application — "I will be kinder to my parents" — has no end, so
-     * offering a box to tick invites the reader to feel they failed at
-     * something the app never had standing to judge. A practice ticks for
-     * today and unticks tomorrow. Only an action, which has a deadline, ticks
-     * once and stays ticked.
-     */
+    // The kind decides whether a checkbox appears at all: an application has
+    // no end, so offering a box invites the reader to feel they failed at
+    // something the app cannot judge. A practice ticks for today and unticks
+    // tomorrow; only an action ticks once and stays ticked.
     /*
      * Archived is dimmed and loses its checkbox whatever kind it is. It has
      * served its purpose, so nothing is being asked of it — but it is still
@@ -84,13 +73,9 @@ export const ActionCard = React.memo(({ item, onEntryPress, handleTogglePin, han
     const done = kind === 'practice' ? !!progress?.doneNow : !!item.is_completed;
     const showsCheckbox = completes(kind) && !isArchived;
     const streak = kind === 'practice' ? streakLabel(progress?.streak ?? 0, item.cadence) : null;
-    /*
-     * The history cells used to sit here, under the meta row. They belong on
-     * Stats instead: the Library is where the reader MANAGES what they are
-     * carrying — edit it, tick it, pin it, archive it — and a record of the
-     * last fortnight answers a different question entirely. A row that has to
-     * be both a control and a chart is worse at both.
-     */
+    // No history cells here — they live on Stats. The Library is where the
+    // reader MANAGES what they carry, and a row that is both a control and a
+    // chart is worse at both.
     const due = kind === 'action' ? dueLabel(item.due_at) : null;
     /* Only an action stays struck through — a practice ticked today is not finished. */
     const struckOut = kind === 'action' && done;
@@ -105,13 +90,10 @@ export const ActionCard = React.memo(({ item, onEntryPress, handleTogglePin, han
     };
 
     /*
-     * design/all-screens.html #actions, the `.cl` slot.
-     *
-     * Cloth answers the same two-texts-of-unequal-weight problem with the
-     * serif rather than with a rule: the action is set in Fraunces at `.cl-h.md`
-     * and the motivation drops to Work Sans underneath it. A pinned action
-     * carries a 3px ochre rail down its left edge — the one place ochre appears
-     * on this screen besides the "Pinned" label itself.
+     * design/all-screens.html #actions, the `.cl` slot: the action in Fraunces
+     * at `.cl-h.md`, the motivation dropping to Work Sans beneath. A pinned
+     * action carries a 3px ochre rail — the only ochre on this screen besides
+     * the "Pinned" label.
      */
     return (
         <View

@@ -225,16 +225,12 @@ const buildProcessedFeed = (
 
 
 /**
- * What the group says on the six days it is shut.
+ * What the group says on the six days it is shut. Not a locked door — the name,
+ * the members and the opening day are all still there, which is the difference
+ * between a feature resting and one that appears broken.
  *
- * Deliberately not a locked door. The group's name, its members and the day
- * it opens are all still there — what waits is only what everybody has been
- * doing, and saying so plainly is the difference between a feature that is
- * resting and one that appears broken.
- *
- * No countdown, and no "come back soon". The point of closing the feed is
- * that the reader stops thinking about the group between Sundays; a screen
- * that tells them how many days are left is still asking them to keep count.
+ * No countdown, and no "come back soon": the point of closing the feed is that
+ * the reader stops thinking about the group between Sundays.
  */
 const WeekClosed = ({ colors, label }: { colors: any; label: string }) => (
     <View style={{ paddingVertical: Spacing.xl, gap: Spacing.sm }}>
@@ -248,22 +244,18 @@ const WeekClosed = ({ colors, label }: { colors: any; label: string }) => (
 // ─── Accountability Member Card ───────────────────────────────────────────────
 
 /**
- * One member's status.
+ * One member's status. design/all-screens.html #group, `.cl-row`: an avatar,
+ * the name in the serif, and one `.cl-snip` line folding read status and
+ * recency into a sentence.
  *
- * design/all-screens.html #group, `.cl-row`: an avatar, the name in the serif,
- * and a single `.cl-snip` line folding the read status and how long ago into
- * one sentence. `formatLastRead` already produces the mockup's exact
- * "Read today 😌" / "Never read" strings from the one field every member
- * carries (`lastReadDate`); the mockup's reading-pace clause ("Usually reads
- * in the evening") is sample copy for data this app has never recorded, so
- * this substitutes the one real thing available instead — how much of the
- * week they've covered.
+ * The mockup's reading-pace clause ("Usually reads in the evening") is sample
+ * copy for data this app has never recorded, so this substitutes the one real
+ * thing available — how much of the week they have covered.
  */
 /**
- * `revealed` is the whole weekly rule, applied to one row: a member's streak
- * and whether they have read today ARE their activity, so gating the feed
- * while leaving these on every day would close the front door and leave the
- * window open.
+ * `revealed` is the weekly rule applied to one row: a member's streak and
+ * whether they read today ARE their activity, so gating the feed while leaving
+ * these on closes the front door and leaves the window open.
  */
 const ClothMemberRow = ({ member, colors, today, revealed, onPress }: { member: any; colors: any; today: string; revealed: boolean; onPress: () => void }) => {
     const status = formatLastRead(member.lastReadDate, today);
@@ -1003,19 +995,16 @@ export default function GroupDetailScreen() {
         };
     }, [members, user?.uid, today]);
 
-    // We no longer return early for loading, to keep the UI stable.
+    // Deliberately no early return while loading, so the UI stays stable.
     const isLoading = loading;
 
     /*
-     * The group opens at the end of the week. `src/groups/week.ts` argues
-     * that out; what it means here is that everything describing what other
-     * people have BEEN DOING — the feed, the milestone, a member's own page —
-     * waits for Sunday, while the group itself, its name and its members stay
-     * visible every day.
+     * The group opens at the end of the week — see `src/groups/week.ts`.
+     * Everything describing what other people have BEEN DOING waits for Sunday;
+     * the group, its name and its members stay visible every day.
      *
-     * Gated at the data rather than at each place it is drawn. A screen this
-     * size has too many render paths for a rule applied per-view to stay
-     * applied: one missed branch and the thing is on show all week.
+     * Gated at the DATA, never per-view: a screen this size has too many render
+     * paths for that to stay applied, and one missed branch shows it all week.
      */
     const groupWeek = reviewWindow(new Date());
     const { pinnedMilestone, feedItems } = groupWeek.open
@@ -1033,13 +1022,10 @@ export default function GroupDetailScreen() {
     return (
         <Screen edges={[]}>
             {/*
-              * design/all-screens.html #group, the `.cl` slot: `.cl-top`
-              * carries a bare back arrow, then `.cl-htitle` (margin-top:10)
-              * and `.cl-hsub` state the group and how many have read today.
-              * No avatar in the band, so Info/MoreHorizontal (real
-              * functionality the mockup does not draw explicitly, kept here
-              * for the same reason the FAB stays on Home) sit alongside the
-              * back arrow rather than beside a group photo.
+              * design/all-screens.html #group, the `.cl` slot: `.cl-top` is a
+              * bare back arrow, then `.cl-htitle` and `.cl-hsub` state the
+              * group and how many have read today. No avatar in the band, so
+              * Info/MoreHorizontal sit alongside the back arrow.
               */}
             <Hero ownsTopInset>
                 <View style={styles.clothTopRow}>
@@ -1097,15 +1083,10 @@ export default function GroupDetailScreen() {
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
-                {/*
-                  * design/all-screens.html #group, the `.cl` slot:
-                  * `.cl-segs{Progress, Updates, Members}`, in that order — no
-                  * horizontal avatar strip above it: the strip only restates
-                  * what the tab content itself lists. The old tab strip also
-                  * mislabeled Members as
-                  * "Circle" and ran the segments feed-first instead of
-                  * Progress-first.
-                  */}
+                {/* design/all-screens.html #group, the `.cl` slot:
+                  * `.cl-segs{Progress, Updates, Members}` in that order, and no
+                  * avatar strip above it — the strip only restates what the tab
+                  * content already lists. */}
                 <Segments
                     items={[
                         { key: 'accountability', label: 'Progress' },

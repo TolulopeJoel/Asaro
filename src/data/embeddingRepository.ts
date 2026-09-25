@@ -6,22 +6,16 @@ import { bytesToVector, embed, vectorToBytes } from '../ml/embedder';
 import { stripReferences } from '../utils/reference';
 
 /**
- * Which model the stored vectors came from.
- *
- * Bumping this is the whole migration. `pruneEmbeddings` deletes every row
- * whose model does not match, and `backfillEmbeddings` re-embeds whatever is
- * missing — so changing the string here retires the old vectors and rebuilds
- * them, with no schema change and nothing to hand-write. Vectors from two
- * different models are not comparable, so they must never be allowed to sit
- * in the same table and be clustered together.
+ * Which model the stored vectors came from. Bumping this IS the whole
+ * migration: `pruneEmbeddings` deletes rows whose model does not match and
+ * `backfillEmbeddings` re-embeds what is missing. Vectors from two models are
+ * not comparable and must never sit in the same table.
  */
 export const EMBEDDING_MODEL = 'bge-small-en-v1.5-q';
 
 /**
- * Fields worth embedding, with the label the UI shows.
- *
- * `study_further` is deliberately absent: it is answered in a small minority
- * of entries, so it has never had enough material to cluster.
+ * Fields worth embedding, with the label the UI shows. `study_further` is
+ * deliberately absent — answered in too few entries to cluster.
  */
 export const EMBEDDABLE_FIELDS: { column: string; label: string }[] = [
     { column: 'reflection_1', label: 'on Jehovah' },
@@ -35,10 +29,8 @@ export const EMBEDDABLE_FIELDS: { column: string; label: string }[] = [
 export const ACTION_FIELD = 'action';
 
 /**
- * Answers shorter than this are skipped.
- *
- * "HE IS SIMPLY THE BEST" is heartfelt and carries nothing for a model to
- * cluster on; including such lines mostly produces noisy themes.
+ * Answers shorter than this are skipped. "HE IS SIMPLY THE BEST" is heartfelt
+ * and carries nothing for a model to cluster on.
  */
 const MIN_CHARS = 60;
 
@@ -66,12 +58,9 @@ async function collectTexts(): Promise<PendingText[]> {
         const out: PendingText[] = [];
         for (const entry of entries) {
             for (const { column } of EMBEDDABLE_FIELDS) {
-                /*
-                 * Stripped before the length gate, not after: an answer that
-                 * only clears MIN_CHARS on the weight of its citations has
-                 * less to cluster on than the count suggests, and it is the
-                 * prose we are measuring.
-                 */
+                // Stripped BEFORE the length gate: an answer that only clears
+                // MIN_CHARS on the weight of its citations has less to cluster
+                // on than the count suggests.
                 const text = stripReferences((entry[column] ?? '').trim());
                 if (text.length >= MIN_CHARS) {
                     out.push({ entryId: entry.id, field: column, text });
@@ -114,11 +103,9 @@ export interface BackfillProgress {
 }
 
 /**
- * Embed anything new or edited. Safe to call on every app open.
- *
- * Work is proportional to what changed, not to the size of the journal: a
- * stored `text_hash` means an untouched entry is never re-embedded, and an
- * edited one is caught automatically.
+ * Embed anything new or edited. Safe on every app open — work is proportional
+ * to what changed, since a stored `text_hash` means an untouched entry is never
+ * re-embedded and an edited one is caught automatically.
  */
 export async function backfillEmbeddings(
     onProgress?: (progress: BackfillProgress) => void,
@@ -166,16 +153,13 @@ export async function backfillEmbeddings(
 }
 
 /**
- * Drop vectors whose entry is gone, any left by a previous model, and any
- * whose text no longer qualifies for embedding at all.
+ * Drop vectors whose entry is gone, any left by a previous model, and any whose
+ * text no longer qualifies for embedding.
  *
- * That last case is easy to miss and does real damage. `backfillEmbeddings`
- * only ever writes, so a row whose answer has since fallen out of
- * `collectTexts` — edited down below MIN_CHARS, or left under it once its
- * citations stopped counting toward the length — keeps its old vector and
- * goes on being clustered forever, from text that is no longer what it was
- * measured from. Dropping it here is what keeps "embedded" and "embeddable"
- * the same set.
+ * That last case matters: `backfillEmbeddings` only ever writes, so a row whose
+ * answer has since fallen out of `collectTexts` keeps its old vector and goes
+ * on being clustered from text it no longer matches. This is what keeps
+ * "embedded" and "embeddable" the same set.
  */
 export async function pruneEmbeddings(): Promise<void> {
     const embeddable = await collectTexts();
@@ -298,11 +282,9 @@ export async function getNamedThemes(): Promise<NamedTheme[]> {
 
 /**
  * Save the name a person gave a cluster, pinned to the members that formed it.
- *
- * Anchoring to members is what keeps a named theme stable: clusters are
- * recomputed as the journal grows, and without this a name would drift onto a
- * different group of entries — which would feel, correctly, like the app
- * making things up.
+ * Anchoring to MEMBERS is what keeps a named theme stable — clusters are
+ * recomputed as the journal grows, and a name that drifts onto a different
+ * group of entries reads, correctly, as the app making things up.
  */
 export async function nameTheme(
     name: string,
@@ -322,13 +304,10 @@ export async function nameTheme(
 }
 
 /**
- * Find the saved name for a freshly computed cluster, if it has one.
- *
- * Clusters are recomputed whenever the journal grows, so a name cannot be tied
- * to a cluster index — it is tied to the members that formed it. A saved theme
- * claims a cluster when most of its members are still in it, which tolerates a
- * theme absorbing a few new entries without letting a name drift onto what is
- * really a different group.
+ * Find the saved name for a freshly computed cluster, if it has one. A name is
+ * tied to its MEMBERS, never a cluster index, since clusters are recomputed as
+ * the journal grows. A saved theme claims a cluster when most of its members
+ * are still in it, which tolerates absorbing a few new entries.
  *
  * Exported for scripts/verify-theme-matching.mjs.
  */

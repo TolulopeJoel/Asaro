@@ -1,26 +1,12 @@
 /**
  * The moments worth marking: a book finished, a quarter of the plan crossed.
+ * The app's one DELIGHT register — see design/ASARO-CHARACTER.md §6.
  *
- * The app had no surface for these at all. Somebody could write about the last
- * chapter of Ruth — completing a book of the Bible — and the app's entire
- * response was to save the row. Everything built before this either asks the
- * reader for something (notifications, the plan, Today) or hands back
- * something they already wrote (commitment, study). Nothing ever simply told
- * them they had done a thing.
- *
- * `design/ASARO-CHARACTER.md` §6 makes this the clearest case in the app for
- * the DELIGHT register. His defining trait — "I'm keeping absolute record",
- * "I noticed, I always notice" — has only ever been pointed at compliance. A
- * completed book is the same man with the same receipts, pleased instead of
- * disappointed, and it is the one place he is allowed to take some credit for
- * having been there.
- *
- * Both kinds are guarded against BACKFILL, which is the failure that would
- * have made this feel fake. A reader who is already sixty per cent through the
- * plan must not be congratulated on reaching a quarter, and somebody who
- * finished Ruth last spring must not be told about it now because the
- * detector has only just been written. So neither fires on a state; both fire
- * on a state that has just changed.
+ * Both kinds guard against BACKFILL, the failure that would make this feel
+ * fake: a reader already 60% through the plan must not be congratulated on
+ * reaching a quarter, and somebody who finished Ruth last spring must not hear
+ * about it now. So neither fires on a state, both fire on a state that has just
+ * changed. See design/DETECTORS.md#milestone.
  */
 
 import { getChapterCoverage } from '../../data/database';
@@ -34,23 +20,16 @@ export const PLAN_MARKS = [25, 50, 75, 100];
 
 export interface MilestoneOptions {
     /**
-     * How recently a book's last chapter must have been worked.
-     *
-     * Two days, and this is the whole anti-backfill mechanism for books. A
-     * completed book is a permanent fact — it stays completed for ever — so a
-     * detector keyed on completion alone would announce every book the reader
-     * has ever finished the first time it ran. Keyed on "completed, and you
-     * were in it this week", it can only ever fire for one they just closed.
+     * How recently a book's last chapter must have been worked — the whole
+     * anti-backfill mechanism for books. Completion alone is permanent, so it
+     * would announce every book ever finished on the first run.
      */
     freshDays?: number;
     /**
-     * How far past a plan mark still counts as having just crossed it.
-     *
-     * One reading is roughly a quarter of a percent, so three points is about
-     * eleven readings' grace. Someone who crosses halfway and does not open
-     * the app for a fortnight misses the card — which is the right failure:
-     * a "Halfway!" shown at fifty-eight per cent is a lie about when, and
-     * this app does not lie about when.
+     * How far past a plan mark still counts as just having crossed it. One
+     * reading is roughly a quarter point, so this is about eleven readings'
+     * grace. Missing the window is the right failure: "Halfway!" at 58% is a
+     * lie about when.
      */
     markWindow?: number;
 }
@@ -79,12 +58,8 @@ export interface BookTally {
     lastWorkedDays: number | null;
 }
 
-/**
- * Which milestones have just been reached.
- *
- * Pure, so both guards can be tested at their boundaries — and they are the
- * only interesting thing in this file.
- */
+/** Which milestones have just been reached. Pure, so both guards can be
+ * tested at their boundaries. */
 export function findMilestones(
     books: BookTally[],
     planPercent: number,
@@ -104,11 +79,8 @@ export function findMilestones(
         });
     }
 
-    /*
-     * The highest mark just crossed, never a list. Someone who finishes the
-     * plan in one sitting has crossed all four, and four cards in a row is a
-     * parade rather than a moment.
-     */
+    // The highest mark crossed, never a list: finishing the plan in one sitting
+    // crosses all four, and four cards in a row is a parade, not a moment.
     const crossed = PLAN_MARKS.filter(
         mark => planPercent >= mark && planPercent < mark + config.markWindow,
     );
@@ -123,13 +95,8 @@ export function findMilestones(
 /** Every book, with how much of it has been written about and how recently. */
 export async function loadBookTallies(now: number = Date.now()): Promise<BookTally[]> {
     const coverage = await getChapterCoverage();
-    /*
-     * `weaveCloth` already expands ranges, keeps the freshest reading per
-     * chapter and bounds everything by the real length of each book. Writing
-     * that again here to keep `insight` from importing `land` would mean two
-     * copies of range arithmetic, and the second copy is always the one that
-     * is wrong.
-     */
+    // Reuses `weaveCloth` rather than reimplementing range expansion here: two
+    // copies of that arithmetic means one of them is wrong.
     const cloth = weaveCloth(coverage, ALL_BIBLE_BOOKS, now);
     return cloth.books.map(book => ({
         name: book.name,
@@ -140,18 +107,12 @@ export async function loadBookTallies(now: number = Date.now()): Promise<BookTal
 }
 
 /**
- * The entries a milestone rests on.
+ * The entries a milestone rests on. `recordObservation` refuses a finding with
+ * no evidence.
  *
- * `recordObservation` refuses a finding with no evidence, and it is right to:
- * a detector's job ends at a claim WITH the rows that support it, which is
- * what lets a card open onto something real and what stops a claim outliving
- * its basis. This detector shipped passing an empty array and threw on every
- * run — the invariant caught a genuine gap rather than being in the way.
- *
- * For a finished book the evidence is the writing that finished it. For a
- * plan crossing it is the entry that crossed it: no single row "is" a
- * percentage, but saving that entry is the event being reported, and pointing
- * at it is both true and the most useful place to go from the card.
+ * For a finished book that is the writing that finished it. For a plan
+ * crossing it is the entry that crossed it — no single row "is" a percentage,
+ * but saving that entry is the event being reported.
  */
 async function evidenceEntries(book: string | undefined, limit = 6): Promise<number[]> {
     return withDatabase(async database => {
@@ -171,12 +132,9 @@ async function evidenceEntries(book: string | undefined, limit = 6): Promise<num
 }
 
 /**
- * Find what has just been reached, and record it.
- *
- * No retraction, unlike every other detector here. A milestone is not a claim
- * that can stop being true — Ruth does not become unfinished — so there is
- * nothing to withdraw. The dedupe key is doing the only work that matters:
- * offered once, ever.
+ * Find what has just been reached, and record it. No retraction, unlike every
+ * other detector: Ruth does not become unfinished, so the dedupe key does the
+ * only work needed — offered once, ever.
  */
 export async function detectMilestones(
     planPercent: number,
@@ -188,12 +146,8 @@ export async function detectMilestones(
     const ids: number[] = [];
     for (const milestone of milestones) {
         const entries = await evidenceEntries(milestone.book);
-        /*
-         * A milestone with nothing behind it cannot be recorded, and should
-         * not be: a finished book with no entries in the table is a
-         * contradiction, and reporting it would be reporting a bug as an
-         * achievement.
-         */
+        // A finished book with no entries behind it is a contradiction;
+        // recording it would report a bug as an achievement.
         if (entries.length === 0) continue;
 
         ids.push(
@@ -206,13 +160,8 @@ export async function detectMilestones(
                     chapters: milestone.chapters,
                     mark: milestone.mark,
                 },
-                /*
-                 * The highest in the app, and not because it is the most
-                 * important. Confidence orders the queue, and this is the only
-                 * detector that is not inferring anything — it is counting. On
-                 * the day somebody finishes a book, that should outrank a
-                 * commitment being handed back.
-                 */
+                // Highest in the app: confidence orders the queue, and this is
+                // the only detector that counts rather than infers.
                 confidence: 0.95,
                 evidence: entries.map(entryId => ({ kind: 'entry' as const, entryId })),
             }),

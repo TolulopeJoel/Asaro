@@ -1,39 +1,17 @@
 /**
- * The question you answer least.
+ * The question you answer least — a straight count over the wizard's four
+ * reflection channels. No model, no graph, every device.
  *
- * Negative space, which nobody sees about themselves because nobody counts
- * what they did not do. The entry wizard asks four things and stores each in
- * its own column, so "how often does this reader answer each one" is a
- * straight count of data the app already has. No model, no graph, every device.
+ * IMPORTANT: `reflection_3` is hardcoded to '' on every save
+ * (app/addEntry.tsx:243). The action-items step replaced that question, so the
+ * action items ARE its answer and the column can never fill again — which is
+ * why `answeredApply` reads action items first and the column only for entries
+ * written before the change.
  *
- * ---
+ * This counts writing, not living: the claim is a pair of counts about entries
+ * and nothing else, never a shortfall and never a should.
  *
- * The trap this detector was nearly built on top of, recorded because it would
- * have shipped a false finding to every reader on earth:
- *
- * `reflection_3` — "How can I realistically apply this in my life?" — is
- * hardcoded to '' on every save (`app/addEntry.tsx`, the `reflections` array).
- * The wizard replaced that question with the action-items step, so the action
- * items ARE the answer to it and the column can never fill again. Counting
- * columns alone would have found a question answered zero times out of every
- * recent entry, for everybody, and announced it. Hence `answeredApply` below:
- * the apply channel reads the action items, and the old column only so that
- * entries written before the change still count.
- *
- * The general rule that falls out of it, and the reason for `minPoorest`: a
- * question nobody has EVER answered is far more likely to be a fact about the
- * app than about the reader. A question answered a handful of times proves the
- * reader can reach it and knows it is there, and chooses it rarely anyway.
- * That second thing is provable; the first is a guess about a form.
- *
- * ---
- *
- * What the card may say is bounded by the same rule as every other detector:
- * say only what the data can prove. This one counts *writing*, not living.
- * Somebody may help others constantly and never journal about it, so the claim
- * is a pair of counts about entries and nothing else — never a shortfall,
- * never a should. The counts are checkable against the reader's own list,
- * which is the whole difference between this and a horoscope.
+ * Gates and the never-answered trap: design/DETECTORS.md#absence
  */
 
 import { withDatabase } from '../../data/db';
@@ -44,12 +22,9 @@ export interface Channel {
     key: 'jehovah' | 'message' | 'apply' | 'others';
     question: string;
     /**
-     * The question as a verb phrase, for naming it mid-sentence.
-     *
-     * The card contrasts two questions, and setting the busy one out in full
-     * would put ninety characters of someone else's wording inside a sentence
-     * about counting. These are what a person would call the question if they
-     * were describing it to a friend.
+     * The question as a verb phrase, for naming it mid-sentence — what someone
+     * would call it describing it to a friend. Quoting the full question inside
+     * the claim would bury it in ninety characters of someone else's wording.
      */
     short: string;
 }
@@ -137,13 +112,9 @@ export function countChannels(entries: AbsenceEntry[]): Record<Channel['key'], n
 }
 
 /**
- * Why the detector did or did not fire, in full.
- *
- * Separated from `rankAbsence` so the two can never disagree: the ranker reads
- * this and returns a candidate only when nothing blocked it. A detector that
- * declines is indistinguishable from one that is broken — reading the wrong
- * column, say — and that is not a thing to discover on a device, so the reason
- * is a first-class result rather than a comment.
+ * Why the detector did or did not fire. A detector that declines looks exactly
+ * like one that is broken (reading the wrong column, say), so the reason is a
+ * first-class result. `rankAbsence` reads this, so the two cannot disagree.
  */
 export interface AbsenceDiagnosis {
     total: number;
@@ -189,16 +160,9 @@ export function diagnoseAbsence(
         };
     }
 
-    /*
-     * Never-answered questions are excluded from the contest, not treated as
-     * the winner of it.
-     *
-     * An earlier version took the lowest count outright and then rejected the
-     * whole journal when that count was zero — so a reader with one unreachable
-     * question (which, before the apply channel was fixed, was everybody) got
-     * silence forever, including about the real gap sitting one place above it.
-     * Dropping a channel has to mean dropping the channel.
-     */
+    // Never-answered questions are excluded from the contest, not treated as
+    // its winner — otherwise one unreachable question silences the detector
+    // about the real gap sitting one place above it.
     const eligible = keys.filter(key => counts[key] >= config.minPoorest);
     if (eligible.length === 0) {
         return { ...base, richKey, richCount, blocked: 'no question answered even once' };
@@ -233,11 +197,9 @@ export function diagnoseAbsence(
 }
 
 /**
- * The single widest gap, or null if the journal has nothing to say yet.
- *
- * One candidate rather than every pair below the threshold. Three cards each
- * naming a question the reader skips is a performance review, and the point of
- * the finding is that it is a surprise, which only the widest gap is.
+ * The single widest gap, or null if the journal has nothing to say yet. One
+ * candidate, not every pair below the threshold: three cards naming questions
+ * the reader skips is a performance review.
  */
 export function rankAbsence(
     entries: AbsenceEntry[],
@@ -248,11 +210,9 @@ export function rankAbsence(
 
     const poorKey = d.poorKey;
 
-    /*
-     * Receipts are the times they DID answer it — the rare ones. The claim is
-     * "this happened N times", so the proof is those N entries, and handing
-     * back the exceptions reads as a record rather than a reprimand.
-     */
+    // Receipts are the times they DID answer it. The claim is "this happened N
+    // times", so those N entries are the proof, and handing back the exceptions
+    // reads as a record rather than a reprimand.
     const entryIds = entries
         .filter(entry => entry.answered.includes(poorKey))
         .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
@@ -277,12 +237,9 @@ function answeredField(value: unknown): boolean {
 }
 
 /**
- * The apply question, which is not a column.
- *
- * Action items first, because that is where the answer has lived since the
- * wizard changed. The old column is still read so entries written before the
- * change are not retroactively counted as skipped — a reader should not watch
- * their own history change because the form did.
+ * The apply question, which is not a column — see the header. Action items are
+ * where the answer lives; the old column is still read so older entries are not
+ * retroactively counted as skipped.
  */
 function answeredApply(reflection3: unknown, actionCount: number): boolean {
     return actionCount > 0 || answeredField(reflection3);
@@ -319,12 +276,9 @@ export interface AbsenceOptions {
 /**
  * Find the widest gap and record it. Returns the observation ids.
  *
- * Retraction matters more here than for any other detector. A convergence is
- * true forever — those entries do point at that verse. This claim is a running
- * count, and a reader who takes the hint and starts answering the question
- * makes it false. Leaving it standing would have the app insisting on a
- * shortfall the reader has already closed, which is the one outcome that would
- * make the whole surface untrustworthy.
+ * Retraction matters more here than anywhere else: this claim is a running
+ * count, so a reader who takes the hint makes it false. Leaving it standing
+ * would insist on a shortfall they have already closed.
  */
 export async function detectAbsence(options: AbsenceOptions = {}): Promise<number[]> {
     const config = options.config ?? DEFAULT_ABSENCE_CONFIG;
@@ -350,11 +304,8 @@ export async function detectAbsence(options: AbsenceOptions = {}): Promise<numbe
             poorCount: candidate.poorCount,
             totalEntries: candidate.totalEntries,
         },
-        /*
-         * How lopsided it is, not how sure we are it happened — the counts are
-         * certain. A 1:10 gap is a louder finding than a 3:10 one, and the
-         * ranker should be able to tell them apart.
-         */
+        // How lopsided it is, not how sure we are — the counts are certain.
+        // A 1:10 gap is a louder finding than a 3:10 one.
         confidence: Math.min(1, 1 - candidate.poorCount / candidate.richCount),
         evidence: candidate.entryIds.map(entryId => ({ kind: 'entry' as const, entryId })),
     });

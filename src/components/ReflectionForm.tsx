@@ -1,10 +1,8 @@
 /**
- * The writing surface — one question at a time.
- *
- * design/all-screens.html #entry draws this in both styles: a question number,
- * the question, the answer between two rules, and a five-step progress bar.
- * The screen people spend the most time on gets the least decoration, and it
- * asks one thing rather than showing five and letting you choose.
+ * The writing surface — one question at a time. design/all-screens.html #entry:
+ * a question number, the question, the answer between two rules, and a
+ * five-step progress bar. The screen people spend the most time on gets the
+ * least decoration, and asks one thing rather than showing five.
  *
  * The step is named in a `.cl-label` rather than enlarged, so the question
  * itself carries the page.
@@ -74,11 +72,9 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
   });
 
   /**
-   * Which page you are on: 0–4 are the five questions, 5 is the notes.
-   *
-   * The notes page carries no number, because the mockup's label says "of five
-   * questions" and notes are not a sixth question — that page simply leads
-   * with its heading instead.
+   * Which page you are on: 0–4 are the five questions, 5 is the notes. Notes
+   * carries no number — the mockup's label says "of five questions", and notes
+   * are not a sixth.
    */
   const [page, setPage] = useState(0);
   const isNotes = page === REFLECTION_QUESTIONS.length;
@@ -128,21 +124,13 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
     return ((answers[q.id as keyof ReflectionAnswers] as string) || '').trim().length > 0;
   };
 
-  /*
-   * Whether the page you are on has been answered — it decides "Skip" or
-   * "Next". Plain const rather than useMemo: `isQuestionAnswered` closes
-   * over `answers` and is redefined every render anyway, so memoizing this
-   * would only add a dependency-array footgun for no real cost saved.
-   */
+  // Whether this page is answered — decides "Skip" or "Next". Plain const:
+  // `isQuestionAnswered` is redefined every render anyway, so memoizing adds a
+  // dependency-array footgun for nothing.
   const answeredHere = isNotes ? answers.notes.trim().length > 0 : isQuestionAnswered(current);
 
-  /*
-   * Answered questions, Notes included — what the progress bar actually
-   * tracks. `page` alone would count a skipped question as progress just
-   * because you've moved past it; this only grows when there's something
-   * written, so skipping through the five questions leaves the bar exactly
-   * where it was rather than reading as work done.
-   */
+  // Answered questions, Notes included — what the progress bar tracks. `page`
+  // alone counts a skipped question as progress just for moving past it.
   const answeredCount =
     REFLECTION_QUESTIONS.filter(isQuestionAnswered).length +
     (answers.notes.trim().length > 0 ? 1 : 0);
@@ -219,13 +207,9 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
             </ScrollView>
           ) : (
             <TextArea
-              /*
-               * One field per question, not one field reused.
-               *
-               * Without the key React keeps the same TextArea (and the same
-               * native input) across pages, so the previous question's text
-               * can linger in it and its expand-modal state carries over.
-               */
+              // One field per question, not one reused: without the key React
+              // keeps the same TextArea and native input across pages, so the
+              // previous answer lingers and the expand-modal state carries.
               key={isNotes ? 'notes' : current.id}
               bare
               label={isNotes ? 'Additional thoughts' : current.question}
@@ -289,14 +273,9 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
         )}
 
         {/* ── where you are ──────────────────────────────────────────────── */}
-        {/*
-          * Cloth measures where you are — the woven strip fills as you go.
-          * This is the motif doing a job rather than decorating, which is the
-          * one thing the design note for this screen asks of the pattern.
-          *
-          * It fills by `answeredCount`, not `page`: paging past a question
-          * you skipped shouldn't read as ground covered.
-          */}
+        {/* The woven strip fills as you go — the motif doing a job rather
+          * than decorating. Fills by `answeredCount`, not `page`: paging past a
+          * skipped question should not read as ground covered. */}
         <View style={[styles.clothProgress, { backgroundColor: colors.border }]}>
           <View
             style={[

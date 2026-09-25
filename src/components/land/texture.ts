@@ -1,27 +1,20 @@
 /**
  * What keeps the land from looking like a spreadsheet of coloured squares.
+ * Ordered by what each buys per unit of cost:
  *
- * Three things, and they are ordered by how much they buy per unit of cost:
+ *   **Weathering.** Every cell's colour nudged a few percent by a hash of its
+ *   position. Free — arithmetic on a colour already being computed — and worth
+ *   more than everything below it put together.
  *
- *   **Weathering.** Every cell's colour is nudged a few percent lighter or
- *   darker by a hash of where it is. Real ground is never one flat value, and
- *   a field of 1,189 identical greens reads as a chart no matter what shape it
- *   is cut into. This costs nothing at all — it is arithmetic on a colour that
- *   was being computed anyway — and it does more for realism than everything
- *   below it put together.
+ *   **Furrows.** Plough lines at a quarter of a cell, one SVG path for the
+ *   whole field rather than four hundred extra views.
  *
- *   **Furrows.** Plough lines at a quarter of a cell, drawn once for the whole
- *   field as a single SVG path rather than as views. A View per line would be
- *   four hundred extra nodes on a screen that already has twelve hundred.
+ *   **Clods and growth.** A scatter of specks, darker on bare earth and
+ *   lighter on planted ground. Also one path.
  *
- *   **Clods and growth.** A scatter of specks: darker on bare earth, lighter
- *   on planted ground. Also one path, and also seeded by position so a field
- *   looks the same every time it is opened. Ground that reshuffles itself
- *   between visits is not a place.
- *
- * Everything here is deterministic. There is no `Math.random` in this file and
- * there must never be one: the land is somewhere the reader is meant to come
- * to recognise, and recognition needs the stones to stay where they were.
+ * Everything here is DETERMINISTIC. No `Math.random` in this file, ever: the
+ * land is somewhere the reader comes to recognise, and recognition needs the
+ * stones to stay where they were.
  */
 
 /** A stable 0..1 from an integer seed. Cheap, and good enough for dirt. */
@@ -53,11 +46,9 @@ export function rgba(hex: string, alpha: number): string {
 }
 
 /**
- * `top` laid over `bottom` at `alpha`, resolved to a solid colour.
- *
- * Done here rather than left to the renderer as an rgba background so that the
- * result can then be weathered. A translucent colour cannot be nudged — the
- * nudge would land on whatever happened to be underneath.
+ * `top` laid over `bottom` at `alpha`, resolved to a solid colour — resolved
+ * here rather than left as an rgba background so the result can be weathered.
+ * A translucent colour cannot be nudged; the nudge lands on what is underneath.
  */
 export function blend(top: string, bottom: string, alpha: number): string {
     const [tr, tg, tb] = channels(top);
@@ -70,11 +61,9 @@ export function blend(top: string, bottom: string, alpha: number): string {
 }
 
 /**
- * The same colour, a few percent off, decided by position.
- *
- * `spread` is a fraction: 0.12 means the ground varies over roughly a twelfth
- * either way. Much more than that and the field starts to look mouldy rather
- * than weathered; much less and it may as well be flat.
+ * The same colour, a few percent off, decided by position. `spread` is a
+ * fraction — much more and the field looks mouldy rather than weathered, much
+ * less and it may as well be flat.
  */
 export function weather(hex: string, seed: number, spread = 0.11): string {
     const factor = 1 - spread / 2 + noise(seed) * spread;
@@ -83,11 +72,9 @@ export function weather(hex: string, seed: number, spread = 0.11): string {
 }
 
 /**
- * Plough lines across the whole field, as one path.
- *
- * Horizontal, at a pitch that divides the cell evenly, so the lines land on
- * chapter boundaries as well as inside them — the texture reinforces the grid
- * rather than fighting it.
+ * Plough lines across the whole field, as one path. Pitch divides the cell
+ * evenly so lines land on chapter boundaries as well as inside them, and the
+ * texture reinforces the grid rather than fighting it.
  */
 export function furrowPath(width: number, height: number, pitch: number): string {
     if (pitch <= 0 || width <= 0 || height <= 0) return '';
@@ -105,15 +92,12 @@ export interface Speck {
 }
 
 /**
- * Stones on bare earth and growth on planted ground, as two paths.
+ * Stones on bare earth and growth on planted ground, as two paths. Each speck
+ * is a zero-length segment with a round cap, which is how a thousand dots fit
+ * in one path without a thousand nodes.
  *
- * Each speck is a dot rather than a shape, drawn as a zero-length line segment
- * with a round cap — which is how you get a thousand dots into one path
- * without a thousand nodes.
- *
- * The count per cell is deliberately low. The job is to break up a flat fill,
- * not to render soil; past about three the field turns to static and the crop
- * stops reading as crop.
+ * The count per cell is deliberately low: the job is to break up a flat fill,
+ * and past about three the field turns to static.
  */
 export function speckPaths(
     specks: Speck[],
@@ -126,18 +110,12 @@ export function speckPaths(
 
     for (const speck of specks) {
         const base = (speck.row * 8191 + speck.column) >>> 0;
-        /*
-         * Nought to two, so roughly a third of cells carry nothing. An even
-         * scatter across every cell is a halftone screen, which is the one
-         * texture that looks less like ground than a flat fill does.
-         */
+        // Nought to two, so roughly a third of cells carry nothing. An even
+        // scatter over every cell reads as a halftone screen.
         const count = Math.floor(noise(base) * 3);
         for (let index = 0; index < count; index++) {
             const seed = (base * 31 + index * 7919) >>> 0;
-            /*
-             * Inset from the edges. A speck on a boundary reads as a nick in
-             * the hedge rather than as something lying on the ground.
-             */
+            // Inset: a speck on a boundary reads as a nick in the hedge.
             const x = (speck.column + 0.15 + noise(seed) * 0.7) * size;
             const y = (speck.row + 0.15 + noise(seed + 1) * 0.7) * size;
             (speck.planted ? growth : earth).push(`M${x.toFixed(1)} ${y.toFixed(1)}h0`);
@@ -148,32 +126,24 @@ export function speckPaths(
 }
 
 /**
- * A ragged edge for the land, as one filled path.
- *
- * The answer to a boundary that reads as ruled. Bushes along the edge were
- * tried first and only ever hid the line; this breaks it.
+ * A ragged edge for the land, as one filled path — the answer to a boundary
+ * that reads as ruled.
  *
  * The path is the whole surround with a WOBBLY HOLE cut in it, drawn over the
- * field with the ground colour, so the verge eats irregularly into the land.
- * Where it bites deep the grass comes in over the crop; where it barely bites
- * the field runs almost to its true edge. Nothing about the data changes: the
- * cells underneath are exactly where they were, and only the outermost few
- * points of the outermost chapters are covered.
+ * field in the ground colour, so the verge eats irregularly into the land.
+ * Nothing about the data moves; only the outermost few points of the outermost
+ * chapters are covered.
  *
- * It takes the land's OUTLINE rather than a rectangle, because the land is
- * not one. The grid holds 1,189 chapters in rows of eleven, which leaves ten
- * empty cells in the last row — and cutting a rectangular hole around them
- * left that emptiness sitting inside the holding as a hard bar of bare
- * ground. The outline steps around it, so the map ends where the chapters do.
+ * It takes the land's OUTLINE rather than a rectangle, because the last row is
+ * usually short — a rectangular hole leaves that emptiness inside the holding
+ * as a hard bar of bare ground.
  *
- * The hole is wound BACKWARDS from the surround, and that is not decoration.
- * Even-odd fill would cut it either way, but this path is also used as a clip
- * region, and a renderer that quietly ignores `clipRule` falls back to
- * non-zero winding — under which two loops wound the same way are one solid
- * shape with no hole at all. The failure is spectacular rather than subtle:
- * the clip becomes the whole screen and grass floods the map. Opposite
- * winding makes the path mean the same thing under both rules, so nothing
- * depends on a renderer honouring an attribute.
+ * CAREFUL: the hole is wound BACKWARDS from the surround. Even-odd fill would
+ * cut it either way, but this path is also used as a clip region, and a
+ * renderer that ignores `clipRule` falls back to non-zero winding — under which
+ * two loops wound the same way are one solid shape with no hole at all. The
+ * clip then becomes the whole screen and grass floods the map. Opposite winding
+ * makes the path mean the same thing under both rules.
  */
 export function edgeFringe(
     width: number,
@@ -188,8 +158,8 @@ export function edgeFringe(
 
     const points: string[] = [];
     let index = 0;
-    /* Always inward, never out: an outward excursion would land on ground that
-     * is already this colour, so it draws nothing and only costs path. */
+    // Always inward: an outward excursion lands on ground already this colour,
+    // so it draws nothing and only costs path.
     const bite = () => depth * noise((index++ * 2654435761) >>> 0);
 
     for (let corner = 0; corner < outline.length; corner++) {
@@ -200,12 +170,9 @@ export function edgeFringe(
         const length = Math.hypot(runX, runY);
         if (length === 0) continue;
 
-        /*
-         * Inward normal of a clockwise edge in screen coordinates, where y
-         * runs down: (-dy, dx). Getting the sign wrong here bites OUTWARD,
-         * which draws nothing at all and looks exactly like the fringe not
-         * working.
-         */
+        // Inward normal of a clockwise edge in screen coordinates (y down):
+        // (-dy, dx). The wrong sign bites outward and draws nothing, which
+        // looks exactly like the fringe not working.
         const normalX = -runY / length;
         const normalY = runX / length;
 
@@ -226,11 +193,9 @@ export function edgeFringe(
 }
 
 /**
- * The empty tail of the grid's last row.
- *
- * 1,189 chapters in rows of eleven leaves ten cells over, so the bottom of
- * the holding is not a straight line — and everything that grows around the
- * land has to know that, or it leaves the emptiness bare.
+ * The empty tail of the grid's last row. The chapter count rarely divides
+ * evenly, so the bottom of the holding is not a straight line — and everything
+ * growing around the land has to know, or it leaves the emptiness bare.
  */
 export interface Tail {
     /** Ground at or past this x, on the last row, is not land. */
@@ -254,10 +219,8 @@ function inVerge(
 }
 
 /**
- * Low grass for the verge past the hedge.
- *
- * Deliberately plainer and darker than the sward on cleared ground — the
- * same kind of thing, left alone.
+ * Low grass for the verge past the hedge. Deliberately plainer and darker than
+ * the sward on cleared ground — the same kind of thing, left alone.
  */
 export function vergePaths(
     width: number,
@@ -299,11 +262,9 @@ export function vergePaths(
 }
 
 /**
- * Soft patches of lighter and darker ground under the verge.
- *
- * Drawn as very fat, very faint round dots. Without them the surround is one
- * flat green behind the grass, and the eye reads the flatness before it reads
- * anything growing — the same reason every cell of the field is weathered.
+ * Soft patches of lighter and darker ground under the verge, as very fat, very
+ * faint round dots. Without them the surround is one flat green and the eye
+ * reads the flatness before anything growing.
  */
 export function patchPath(
     width: number,
@@ -339,24 +300,15 @@ export interface Sprout {
 }
 
 /**
- * Sward — grass on cleared, planted ground.
+ * Sward — grass on cleared, planted ground. The opposite of the verge in every
+ * parameter that matters: short, close-set, upright and regular, where the
+ * verge is loose and leggy. Evenness is what the eye reads as tended.
  *
- * The opposite of the verge beyond the hedge in every parameter that
- * matters, and deliberately so. That grass is loose, leggy and uneven; this
- * is short, close-set, near enough upright, and regular. Evenness is what the
- * eye reads as tended, and it is the whole reason a field looks like a field
- * rather than like a clearing.
+ * Two things follow the data rather than the look: blades sit on a regular
+ * sub-lattice because a sown crop is planted in rows, and vigour follows
+ * recency, so an old field reads as left alone rather than mown.
  *
- * Two things follow the data rather than the look. Blades sit on a regular
- * sub-lattice inside the cell, because a sown crop is planted in rows. And
- * vigour follows recency: freshly worked ground stands full, ground last
- * touched years ago is short and thin. The colour already fades with age, and
- * if the growth did not fade with it an old field would read as a mown one
- * rather than as one left alone.
- *
- * `budget` is blades per cell. A reader who has written about the whole Bible
- * has 1,189 planted cells, so the caller thins the sowing as the holding
- * fills — nobody can count blades, and everybody can feel a slow screen.
+ * `budget` is blades per cell; the caller thins it as the holding fills.
  */
 export function swardPaths(
     sprouts: Sprout[],

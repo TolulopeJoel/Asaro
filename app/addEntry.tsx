@@ -37,13 +37,10 @@ export default function MeditationSessionScreen() {
 
     const [currentStep, setCurrentStep] = useState<Step>('book');
 
-    /*
-     * Something committed to before, shown once the entry is saved.
-     *
-     * Only loaded on the summary step — asking for it earlier would run a
-     * query behind a screen nobody is going to see it on, and the detector's
-     * own eight-week floor means it can never be the commitment just written.
-     */
+    // Something committed to before, shown once the entry is saved. Loaded
+    // only on the summary step: earlier is a query behind a screen nobody sees
+    // it on, and the detector's age floor means it is never the one just
+    // written.
     const echo = useObservation(currentStep === 'summary', 'afterSave');
     const [echoOpen, setEchoOpen] = useState(false);
 

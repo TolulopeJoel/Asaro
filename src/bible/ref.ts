@@ -1,23 +1,18 @@
 /**
  * Verse identity: one number that names any verse in the Bible.
  *
- * `BBCCCVVV` is not a new invention here — it is already the addressing the
- * app speaks. `openBibleReference` builds exactly this to hand jw.org a
- * passage, book number first, then chapter, then verse, each zero-padded.
- * This module only promotes it from a string built at the edge to a number
- * used throughout, so the cross-reference graph, the detectors and the deep
- * links all key on the same thing and cannot drift apart.
+ * `BBCCCVVV` is the addressing the app already speaks — `openBibleReference`
+ * builds exactly this for jw.org. This promotes it from a string built at the
+ * edge to a number used throughout, so the graph, the detectors and the deep
+ * links cannot drift apart.
  *
- * Numeric rather than the padded string because the graph needs to sort,
- * binary-search and range-scan millions of these. The largest possible id is
- * Revelation 22:21 → 66_022_021, comfortably inside a Uint32 and inside an
- * exact JS integer, so arrays of them stay typed and cheap.
+ * Numeric rather than padded string because the graph sorts, binary-searches
+ * and range-scans millions of these. The largest id is Revelation 22:21 →
+ * 66_022_021, inside a Uint32 and an exact JS integer.
  *
- * Book numbers are 1-based indexes into `ALL_BIBLE_BOOKS`, which is the same
- * basis `openBibleReference` uses (`findIndex(...) + 1`). That is a real
- * coupling and a deliberate one: the day those two disagree, every deep link
- * in the app silently opens the wrong passage, so they must read from one
- * list. `verify-bible-graph.mjs` pins it.
+ * Book numbers are 1-based indexes into `ALL_BIBLE_BOOKS`, the same basis
+ * `openBibleReference` uses. A deliberate coupling: the day the two disagree,
+ * every deep link opens the wrong passage. `verify-bible-graph.mjs` pins it.
  */
 
 import { ALL_BIBLE_BOOKS } from '../data/bibleBooks';
@@ -48,10 +43,9 @@ export function verseOf(id: VerseId): number {
 }
 
 /**
- * Book number for a book's full name, or 0 if it isn't one.
- *
- * Zero rather than undefined so callers can compare without a null check and
- * still produce an id that matches nothing, which is the safe failure here.
+ * Book number for a book's full name, or 0 if it isn't one. Zero rather than
+ * undefined so callers compare without a null check and still produce an id
+ * matching nothing, which is the safe failure.
  */
 export function bookNumberFromName(name: string): number {
     return ALL_BIBLE_BOOKS.findIndex(book => book.name === name) + 1;
@@ -62,13 +56,9 @@ export function bookNameFromNumber(bookNumber: number): string {
 }
 
 /**
- * Inclusive id bounds covering every verse of one chapter.
- *
- * The graph stores verses, but a reader engages with chapters — the journal
- * records `chapter_start`/`chapter_end`, not verses. Scanning this range over
- * the sorted verse table turns "the chapter they read" into "the verses the
- * graph knows about in it" without needing a table of verse counts per
- * chapter, which the app does not have and would otherwise have to ship.
+ * Inclusive id bounds covering every verse of one chapter. Scanning this range
+ * over the sorted verse table turns "the chapter they read" into "the verses
+ * the graph knows about in it", with no per-chapter verse-count table to ship.
  */
 export function chapterBounds(bookNumber: number, chapter: number): [VerseId, VerseId] {
     return [verseId(bookNumber, chapter, 0), verseId(bookNumber, chapter, CHAPTER_SCALE - 1)];
@@ -105,28 +95,20 @@ export interface CitedRange {
 /**
  * Parse the `[[...]]` citations the writer left in their own answers.
  *
- * Deliberately narrower than a general reference parser: these strings come
- * from the app's own reference picker, so the shape is known. Anything that
- * doesn't match is dropped rather than guessed at — a misparsed citation
- * would put a verse the reader never chose into the evidence for a claim
- * about them, which is the one failure this whole feature cannot afford.
+ * Deliberately narrower than a general reference parser — these come from the
+ * app's own picker, so the shape is known, and anything that does not match is
+ * DROPPED rather than guessed at. A misparsed citation would put a verse the
+ * reader never chose into the evidence for a claim about them.
  *
- * Returns the whole span, not its first verse. Keeping only the head looks
- * harmless and quietly destroys the signal: someone citing `Jeremiah 10:1-16`
- * means the passage about idols and the God who made the earth, and verse 1 is
- * "Hear the word that Jehovah has spoken" — an opener that connects to
- * nothing. In one real journal both of the citations that should have carried
- * a theme were ranges whose meaning sat in the middle, so the reader's
- * clearest thread was invisible while their reading schedule was not.
+ * Returns the whole SPAN, not its first verse. Keeping only the head destroys
+ * the signal: `Jeremiah 10:1-16` means the passage about idols, while verse 1
+ * is an opener that connects to nothing.
  */
 export function parseReference(text: string): CitedRange | null {
-    /*
-     * The trailing letter in "Exodus 20:5a" is not optional to support.
-     * Writers use it to point at half a verse, and `openBibleReferenceFromTag`
-     * has always accepted it — so a stricter pattern here does not reject
-     * those citations visibly, it drops them silently from the one channel
-     * that records what the reader chose rather than what the plan assigned.
-     */
+    // The trailing letter in "Exodus 20:5a" must stay supported:
+    // `openBibleReferenceFromTag` accepts it, so a stricter pattern here drops
+    // those citations SILENTLY from the one channel recording what the reader
+    // chose rather than what the plan assigned.
     const match = text
         .trim()
         .match(/^(.+?)\s+(\d+)(?::(\d+)[a-z]?)?(?:\s*[-–]\s*(?:(\d+):)?(\d+)[a-z]?)?$/i);
@@ -142,11 +124,8 @@ export function parseReference(text: string): CitedRange | null {
     const tailChapter = match[4] ? Number(match[4]) : undefined;
     const tail = match[5] ? Number(match[5]) : undefined;
 
-    /*
-     * With no verse, a trailing number is a CHAPTER: "Genesis 12-15" is four
-     * chapters, not verses 12 to 15. Reading it the other way would silently
-     * shrink a whole passage to a handful of verses in chapter 12.
-     */
+    // With no verse, a trailing number is a CHAPTER: "Genesis 12-15" is four
+    // chapters, not verses 12 to 15.
     if (verse === undefined) {
         return {
             start: verseId(book, chapter, 0),

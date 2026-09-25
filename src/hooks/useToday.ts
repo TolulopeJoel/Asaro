@@ -1,29 +1,19 @@
 /**
- * What is live today, and nothing else.
+ * What is live today, and nothing else. Usually empty, so the strip it feeds
+ * disappears rather than standing there as wallpaper.
  *
- * Home's problem was never how many blocks it had — it was that every block
- * was unconditional, so the screen looked identical on a day with something to
- * do and a day without. This is the other half: a small set that is usually
- * empty, so the strip it feeds disappears rather than standing there as
- * wallpaper.
- *
- * Deliberately narrow. It answers "is there anything I could do in fifteen
+ * Deliberately narrow: it answers "is there anything I could do in fifteen
  * seconds", not "what am I carrying". The full set lives in the Library, and
- * putting it here would turn a devotional app's front page into a chore list —
- * which is the exact framing the whole action-item rework exists to undo.
+ * putting it here turns a devotional app's front page into a chore list.
  *
- * So:
  *   a practice appears only on a day its rhythm has not yet been kept;
  *   an action appears only once its date is near or past;
  *   an application never appears at all. It asks nothing of today.
  *
- * With one deliberate exception. A practice kept *from here* stays on the
- * list until the screen is left, ticked and quiet at the bottom. Dropping it
- * on the tap was the obvious reading of the rule above and it threw away the
- * only moment the streak exists for: the number goes from 11 to 12 and the
- * row carrying it disappears in the same frame, so nobody ever sees it move.
- * It costs one visible line to let someone watch the thing they just did
- * land, and the row asks nothing — which is what the rule was protecting.
+ * ONE exception: a practice kept *from here* stays on the list until the screen
+ * is left, ticked and quiet at the bottom. Dropping it on the tap takes the row
+ * away in the same frame the streak goes from 11 to 12, so nobody ever sees it
+ * move. The row asks nothing, which is what the rule was protecting.
  */
 
 import { useCallback, useRef, useState } from 'react';
@@ -73,15 +63,10 @@ function dueWithin(dueAt: string | null | undefined, days: number): boolean {
 export function useToday(enabled: boolean): Today {
     const [items, setItems] = useState<TodayItem[]>([]);
 
-    /*
-     * Practices kept during this visit to the screen.
-     *
-     * A ref rather than state: it decides what the next load keeps, and it
-     * must not itself cause one. It is not persisted either, so leaving Home
-     * and coming back clears it — by then the tap is no longer the thing just
-     * done, and the row goes back to being one more kept practice that Home
-     * has nothing to say about.
-     */
+    // Practices kept during this visit. A ref rather than state: it decides
+    // what the next load keeps and must not itself cause one. Not persisted, so
+    // leaving Home clears it — by then the tap is no longer the thing just
+    // done.
     const keptHere = useRef<Set<number>>(new Set());
 
     const load = useCallback(async () => {
@@ -121,14 +106,10 @@ export function useToday(enabled: boolean): Today {
                 }
             }
 
-            /*
-             * Anything already kept sinks, whatever it is — it is on the list
-             * to be seen, not to be done, so it must not sit above something
-             * that still wants doing. Then overdue first, then practices, then
-             * what is merely approaching: a practice sits above a deadline
-             * three days out because it is the thing that can actually be done
-             * now.
-             */
+            // Anything already kept sinks — it is there to be seen, not done.
+            // Then overdue, then practices, then what is merely approaching: a
+            // practice outranks a deadline three days out because it is the
+            // thing that can actually be done now.
             live.sort((a, b) => {
                 if (a.kept !== b.kept) return a.kept ? 1 : -1;
                 if (a.overdue !== b.overdue) return a.overdue ? -1 : 1;

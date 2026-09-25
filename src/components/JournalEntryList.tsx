@@ -60,13 +60,9 @@ type ListItem =
     | { type: 'searchSpacer'; id: string };
 
 /**
- * How long an answered question stays on screen before it goes.
- *
- * Long enough to notice the tick landed and take it back; short enough that
- * the list is not quietly keeping a record nobody asked for. Ten seconds is
- * the same bargain a send-undo makes, and for the same reason: the cheapest
- * way to make a destructive-feeling action safe is to delay it rather than to
- * confirm it.
+ * How long an answered question stays on screen before it goes. Long enough to
+ * notice the tick landed and take it back, short enough not to keep a record
+ * nobody asked for — the same bargain a send-undo makes.
  */
 const LINGER_MS = 10_000;
 
@@ -106,11 +102,9 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
     const [availableBooks, setAvailableBooks] = useState<BookWithCount[]>([]);
     const [actionsList, setActionsList] = useState<EnhancedActionItem[]>([]);
     const [practiceProgressMap, setPracticeProgress] = useState<Map<number, PracticeProgress>>(new Map());
-    /*
-     * A ref beside the state: the toggle handler needs to know whether today
-     * is already done, and reading it from state would make the callback
-     * depend on the map and rebuild the whole list on every completion.
-     */
+    // A ref beside the state: the toggle handler needs to know whether today
+    // is done, and reading it from state would rebuild the whole list on every
+    // completion.
     const practiceProgressRef = useRef(practiceProgressMap);
     /** Which commitment is open for editing, if any. */
     const [editingAction, setEditingAction] = useState<EnhancedActionItem | null>(null);
@@ -118,18 +112,12 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
     const [topicsList, setTopicsList] = useState<JournalEntry[]>([]);
 
 /*
-     * Questions you have just answered, still on screen.
+     * Questions just answered, still on screen. A ticked question leaves the
+     * list for good — a list of answered questions is a graveyard — but leaving
+     * instantly makes a mis-tap unrecoverable, so it lingers and the checkbox
+     * stays live. Ticking again inside the window cancels the exit.
      *
-     * A ticked question leaves the list for good — you looked the thing up,
-     * and a list of answered questions is a graveyard rather than something
-     * you are working on. But leaving instantly makes a mis-tap
-     * unrecoverable, so it lingers for ten seconds first and the checkbox
-     * stays live: ticking again inside that window puts it back and cancels
-     * the exit. The window is the undo.
-     *
-     * Nothing is destroyed either way. The question is part of the entry that
-     * raised it and still reads there, under "What would I like to study
-     * further?" — this is only about what the reader is still carrying.
+     * Nothing is destroyed either way: the question still reads on its entry.
      */
     const [lingering, setLingering] = useState<Set<number>>(new Set());
     const lingerTimers = useRef(new Map<number, ReturnType<typeof setTimeout>>());
@@ -214,11 +202,8 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
             const data = await getAllActionItems(200);
             setActionsList(data);
 
-            /*
-             * Only practices need progress, and only practices pay for it.
-             * An application has nothing to count and an action is a single
-             * boolean already on the row.
-             */
+            // Only practices need progress: an application has nothing to
+            // count and an action is a boolean already on the row.
             const practices = data.filter(item => actionKindOf(item) === 'practice');
             const progress = await Promise.all(
                 practices.map(async item => [item.id!, await practiceProgress(item.id!, item.cadence)] as const),
@@ -277,11 +262,8 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
 
     const handleToggleAction = useCallback(async (item: EnhancedActionItem) => {
         try {
-            /*
-             * A practice is done for a day, not done forever. Ticking one
-             * writes today into the completion log; ticking it again takes
-             * today back out. Only an action flips the boolean on the row.
-             */
+            // A practice is done for a day, not for ever: ticking writes today
+            // into the completion log. Only an action flips the row's boolean.
             if (actionKindOf(item) === 'practice') {
                 const current = practiceProgressRef.current.get(item.id!);
                 if (current?.doneNow) await unmarkPracticeDone(item.id!);
@@ -328,16 +310,8 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
     // Note: useFocusEffect below handles initial + subsequent loads
 
     // Refresh entries when screen comes into focus (e.g., after edit/delete)
-    /*
-     * The only reload path. A `refreshTrigger` prop used to sit beside this
-     * running the identical four loads, for the case of an in-screen modal
-     * closing — which never lost focus and so never re-fired this. Entries
-     * open as a route (`/library/[id]`) rather than a modal, so returning
-     * from one pops the stack, focus comes back and this runs. Nothing ever
-     * called the setter, the trigger sat at zero for the life of the app, and
-     * the whole mechanism was dead code describing a screen that no longer
-     * exists.
-     */
+    // The only reload path. Entries open as a route (`/library/[id]`), not a
+    // modal, so returning from one pops the stack and focus comes back here.
     useFocusEffect(
         useCallback(() => {
             loadEntries(true);
@@ -447,13 +421,9 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
                 return [{ type: 'emptyState' as const, id: 'empty-actions' }];
             }
 
-            /*
-             * "Pinned" over the pinned run, "All actions" over the rest — the
-             * headings both styles use in design/all-screens.html #actions.
-             * With nothing pinned there is one run and so no heading to draw;
-             * a lone "All actions" label over the whole list would be naming
-             * a distinction the screen isn't making.
-             */
+            // "Pinned" and "All actions". With nothing pinned there is one run
+            // and no heading — a lone label would name a distinction the screen
+            // is not making.
             const pinned = sortedActions.filter(a => !!a.is_pinned);
             const rest = sortedActions.filter(a => !a.is_pinned);
             const row = (action: EnhancedActionItem) =>
@@ -466,29 +436,21 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
             }
 
             /*
-             * Grouped by what each thing IS, and ordered by what it asks of
-             * the reader today.
+             * Grouped by what each thing IS, ordered by what it asks today:
+             * practices first (something to do now), actions next (a
+             * deadline), applications last — they ask for nothing and are there
+             * to be met again, not worked through. One flat list is what lets a
+             * formational answer read as an unfinished chore.
              *
-             * Practices come first because they are the only ones with
-             * something to do now; actions next because a deadline is next
-             * most urgent; applications last because they ask for nothing —
-             * they are there to be met again, not worked through. Running them
-             * together as one list was what let a formational answer read as
-             * an unfinished chore.
-             *
-             * A heading only appears when there is more than one group, so a
-             * journal of nothing but applications — which every journal is at
-             * first — sees no taxonomy it did not ask for.
+             * A heading appears only with more than one group, so a journal of
+             * nothing but applications sees no taxonomy it did not ask for.
              */
             const groups: { kind: ActionKind | 'archived'; title: string; rows: EnhancedActionItem[] }[] = [
                 { kind: 'practice', title: 'Practices', rows: [] },
                 { kind: 'action', title: 'With a date', rows: [] },
                 { kind: 'application', title: 'Applying', rows: [] },
-                /*
-                 * Last, and never mixed in. Archived means it has served its
-                 * purpose, not that it never happened — it stays reachable
-                 * here and on its entry, out of the way of what still stands.
-                 */
+                // Last, never mixed in. Archived means it served its purpose,
+                // not that it never happened.
                 { kind: 'archived', title: 'Archived', rows: [] },
             ];
             for (const action of rest) {
@@ -514,13 +476,9 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
         }
 
         if (viewMode === 'topics') {
-            /*
-             * Open questions, plus any just answered and still inside their
-             * undo window. There is no "completed" section under this any
-             * more: a question you have answered is not something you come
-             * back to, and a standing list of them turned the one place that
-             * says what you are carrying into an archive of what you are not.
-             */
+            // Open questions, plus any just answered and still inside their
+            // undo window. No "completed" section: this place says what you are
+            // carrying, not what you are not.
             const shown = topicsList.filter(t => !t.study_completed || lingering.has(t.id!));
 
             if (shown.length === 0) {
@@ -609,20 +567,12 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
     }, [viewMode, filteredEntries, debouncedSearchQuery, availableBooks, bookEntries, selectedBook, groupEntriesByDate, actionsList, topicsList, lingering]);
 
     /*
-     * Nothing here yet.
+     * Nothing here yet. Eight of these, and for Questions and Commitments they
+     * are often the only thing on screen for weeks, so the copy carries the
+     * voice and the layout gets out of its way.
      *
-     * design/all-screens.html #empties. Eight of these, one per place a list
-     * can be empty, and for Questions and Commitments they are often the only
-     * thing on screen for weeks — so the copy carries the app's voice and the
-     * layout gets out of its way.
-     *
-     * No icon well. The glyph used to sit inside an 84px tinted box at
-     * borderRadius.lg, which was the largest rounded shape in an app that has
-     * none. Cloth keeps the glyph bare on the stroke at 34px, the treatment
-     * #themesearly already uses.
-     *
-     * None of the eight gets a button. What fills them is already on screen —
-     * the field above, the tab beside, the entry you have not written.
+     * The glyph stays bare on the stroke at 34px — no icon well. None of the
+     * eight gets a button: what fills them is already on screen.
      */
     const renderEmptyState = useCallback(() => {
         let iconName: any = Notebook;
@@ -680,34 +630,21 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
     /**
      * The plan's outstanding readings for the book on screen.
      *
-     * Matched with `planItemCoversBook` rather than `item.book === name`,
-     * because the plan groups eleven short books into shared readings —
-     * "Obadiah/Jonah", "Titus/Philemon", "2 John/3 John/Jude". No book is
-     * called "Obadiah/Jonah", so a strict comparison found nothing for any of
-     * those eleven and their screens showed no readings at all, indefinitely.
+     * MUST use `planItemCoversBook`, not `item.book === name`: the plan groups
+     * eleven short books into shared readings ("Obadiah/Jonah",
+     * "Titus/Philemon", "2 John/3 John/Jude"), and no book is called
+     * "Obadiah/Jonah", so a strict comparison shows those eleven nothing.
      *
-     * The save path has always used this helper — which is why writing about
-     * Jonah correctly ticks the Obadiah/Jonah reading. Only the display side
-     * was left on the strict test, so the plan knew about these books and the
-     * screen did not.
-     *
-     * A consequence worth knowing rather than hiding: a reading shown on
-     * Jonah's page covers Obadiah too, so completing it completes both. That
-     * is the plan working as designed — they share a day — and it is better
-     * shown honestly than hidden to avoid explaining it.
+     * Consequence worth knowing: a reading shown on Jonah's page covers Obadiah
+     * too, so completing it completes both. They share a day by design.
      */
     const stillAhead = React.useMemo(() => {
         if (viewMode !== 'bookDetail' || !selectedBook) return [];
         return READING_PLAN_DATA
             .filter(item => planItemCoversBook(item.book, selectedBook.name) && !completedPlanIds.has(item.id))
-            /*
-             * A reading with no chapter range covers the whole book, which is
-             * how the plan files the short ones. Mapping it to `formatRange`
-             * gave an empty string that `filter(Boolean)` then dropped — so
-             * fixing the name match alone would have left these eleven books
-             * with a strip that was still empty, for a second reason. The
-             * Plan tab has always said "Full book" here.
-             */
+            // A reading with no chapter range covers the whole book, which is
+            // how the plan files the short ones. `formatRange` returns '' for
+            // those, which `filter(Boolean)` would drop.
             .map(item => formatRange(item.chapters) || 'Full book')
             .filter(Boolean);
     }, [viewMode, selectedBook, completedPlanIds]);
@@ -759,9 +696,8 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
         }
     }, [colors, viewMode, selectedBook, bookEntries, onEntryPress, handleTogglePin, handleToggleAction, handleToggleTopic, navigateToBookDetail, renderEmptyState]);
 
-    // Memoize the header element so FlatList receives a stable reference.
-    // Passing renderListHeader() (a call) would produce a new element every render
-    // and cause FlatList to unmount/remount the header unnecessarily.
+    // Memoized so FlatList gets a stable reference — calling renderListHeader()
+    // inline makes a new element each render and remounts the header.
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -785,19 +721,11 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
                         getFlatListData.length === 0 && styles.emptyContainer
                     ]}
                     /*
-                     * "Still ahead" changes ends depending on its length.
-                     *
-                     * It began as a footer, which meant it sat below every
-                     * entry the reader had written in that book — visible on
-                     * Jeremiah with two entries, unreachable on Genesis with
-                     * twenty. Moving it to the top fixed that and created the
-                     * opposite problem: seventeen chips is four rows, and a
-                     * book you have just started opened on a wall of readings
-                     * with your own writing pushed off the screen.
-                     *
-                     * So a short remainder leads and a long one follows. Both
-                     * placements are right for the case they serve, and the
-                     * cost of each is only paid by the other's.
+                     * "Still ahead" changes ends depending on its length: a
+                     * short remainder leads, a long one follows. As a footer it
+                     * is unreachable on a book with twenty entries; as a header
+                     * seventeen chips is four rows that push the reader's own
+                     * writing off screen.
                      */
                     ListHeaderComponent={
                         viewMode === 'bookDetail' && stillAhead.length <= AHEAD_AT_TOP

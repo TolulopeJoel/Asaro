@@ -5,16 +5,12 @@
  * scripts/build-bible-graph.mjs into a packed CSR structure and bundled with
  * the app. Source data is CC BY openbible.info.
  *
- * This is the one piece of knowledge in Àṣàrò that the reader does not
- * already have. Everything else the app knows, it learned from them — what
- * they wrote, when, about which chapter. The graph knows which passages
- * illuminate each other, which nobody holds in their head, and that is what
- * lets a detector say something true that its reader could not have worked
- * out. It costs 3MB and no model, which is why it is the tier that reaches
- * every device rather than the tier that needs 6GB of RAM.
+ * The one piece of knowledge in the app the reader does not already have —
+ * everything else it learned from them. 3MB and no model, which is why this is
+ * the tier that reaches every device.
  *
- * Nothing here holds scripture text. The graph is verse ids and edges; the
- * words stay on jw.org, in the reader's own translation.
+ * Nothing here holds scripture TEXT: the graph is verse ids and edges, and the
+ * words stay on jw.org in the reader's own translation.
  *
  * Layout, all little-endian:
  *
@@ -24,9 +20,8 @@
  *   targets u32[E]      neighbour ORDINALS, sorted within each list
  *   weights u8[E]       vote counts, clamped to a byte
  *
- * Neighbours are stored as ordinals rather than verse ids so a traversal
- * never has to search: scoring walks ordinals and only converts back to ids
- * when it has an answer to show someone.
+ * Neighbours are ordinals rather than verse ids so a traversal never has to
+ * search: scoring walks ordinals and converts back only for an answer.
  */
 
 import { Asset } from 'expo-asset';
@@ -55,10 +50,9 @@ export interface BibleGraph {
     weights(ordinal: number): Uint8Array;
 
     /**
-     * Ordinals for every verse the graph knows about in a chapter span.
-     *
-     * The journal records chapters, not verses, so this is how "what they
-     * read" becomes "what the graph can reason about".
+     * Ordinals for every verse the graph knows about in a chapter span. The
+     * journal records chapters, not verses, so this is how "what they read"
+     * becomes "what the graph can reason about".
      */
     ordinalsInChapters(bookName: string, chapterStart: number, chapterEnd?: number): number[];
 
@@ -73,12 +67,9 @@ class PackedGraph implements BibleGraph {
     private readonly voteWeights: Uint8Array;
 
     constructor(bytes: Uint8Array) {
-        /*
-         * Copied into a fresh buffer rather than viewed in place. A Uint8Array
-         * handed back by the file layer carries no alignment guarantee, and a
-         * Uint32Array view onto an odd byteOffset throws — on some devices and
-         * not others, which is the worst kind of bug to find later.
-         */
+        // Copied into a fresh buffer, never viewed in place: the file layer
+        // gives no alignment guarantee, and a Uint32Array view onto an odd
+        // byteOffset throws on some devices and not others.
         const aligned = new Uint8Array(bytes.length);
         aligned.set(bytes);
         const view = new DataView(aligned.buffer);
@@ -173,11 +164,8 @@ class PackedGraph implements BibleGraph {
 }
 
 /**
- * Decode the packed asset.
- *
- * Separate from `loadGraph` so the verifier exercises this exact code against
- * the exact bytes that ship, rather than a second decoder written to agree
- * with it. Two decoders drift; one gets tested.
+ * Decode the packed asset. Separate from `loadGraph` so the verifier exercises
+ * this exact code against the exact bytes that ship — two decoders drift.
  */
 export function decodeGraph(bytes: Uint8Array): BibleGraph {
     return new PackedGraph(bytes);
@@ -187,22 +175,17 @@ let loaded: BibleGraph | null = null;
 let loading: Promise<BibleGraph> | null = null;
 
 /**
- * Load the graph, once per session.
- *
- * Concurrent callers share one promise rather than each decoding 3MB — the
- * detectors all want it at the same moment, right after the journal loads.
+ * Load the graph, once per session. Concurrent callers share one promise rather
+ * than each decoding 3MB — the detectors all want it at the same moment.
  */
 export async function loadGraph(): Promise<BibleGraph> {
     if (loaded) return loaded;
     if (loading) return loading;
 
     loading = (async () => {
-        /*
-         * `require` rather than an import: Metro resolves bundled assets
-         * through the module registry, and `Asset.fromModule` takes that
-         * registry handle. An ESM import of a .bin has no such handle, so
-         * this is the supported form rather than a leftover.
-         */
+        // `require`, not an import: Metro resolves bundled assets through the
+        // module registry and `Asset.fromModule` takes that handle, which an
+        // ESM import of a .bin does not produce.
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const asset = Asset.fromModule(require('../../assets/bible/xrefs.bin'));
         await asset.downloadAsync();

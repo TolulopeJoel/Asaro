@@ -2,23 +2,17 @@
  * Something you said you would look into.
  *
  * `journal_entries.study_further` is written during the entry flow and then,
- * unless the writer also set a date, is never seen again — it lives two taps
- * deep in the Library under Topics and nothing ever brings it up. That is the
- * same shape of problem the rest of this substrate exists for: the reader
- * produces something and the app keeps it rather than giving it back.
+ * unless the writer set a date, never surfaces again — it sits two taps deep in
+ * the Library under Topics.
  *
- * What it is NOT is a list of things owed. A study topic is a question
- * somebody found interesting enough to write down mid-reflection, and the
- * useful thing about it is that curiosity fades faster than the note does.
- * Handing one back months later is returning an interest, not chasing a task
- * — so the framing is what they wondered, never what they failed to do, and
- * exactly one is offered at a time. A queue of them would be a debt counter,
- * which is the one thing this must never become.
+ * This is NOT a list of things owed. Handing a topic back is returning an
+ * interest, not chasing a task, so the framing is what they wondered and
+ * exactly one is offered at a time — a queue would be a debt counter.
  *
- * Two courtesy filters keep it honest. A topic already marked studied is
- * finished with. And a topic whose reminder is still in the FUTURE has a plan
- * attached — the reader has already told the app when they want it back, and
- * pre-empting that is both rude and redundant.
+ * Two courtesy filters: a topic marked studied is finished with, and one whose
+ * reminder is still in the future already has the reader's own plan attached.
+ *
+ * Thresholds and ranking: design/DETECTORS.md#study
  */
 
 import { withDatabase } from '../../data/db';
@@ -41,44 +35,23 @@ export interface OpenTopic {
 
 export interface StudyOptions {
     /**
-     * How long a topic must sit before it is worth handing back.
-     *
-     * Three weeks. Shorter than `commitment`'s eight, deliberately: a standing
-     * commitment about character is still in mind months later, whereas a
-     * question you meant to look into has usually slipped within a fortnight.
-     * The floor exists only to guarantee the app never reads somebody their
-     * own sentence back at them minutes after they wrote it.
+     * How long a topic must sit before it is worth handing back. Shorter than
+     * `commitment`'s floor: curiosity slips within a fortnight, where a
+     * standing commitment is still in mind months later.
      */
     minAgeDays?: number;
     /**
-     * Minimum length, after citations are stripped.
-     *
-     * Measured on the prose, not the markup — same rule as `commitment`. A
-     * topic that is only `[[Romans 5:12]]` is a bookmark, not a question, and
-     * handing it back tells the reader nothing they could not see already.
+     * Minimum length, measured on prose with citations stripped. A topic that
+     * is only `[[Romans 5:12]]` is a bookmark, not a question.
      */
     minChars?: number;
     /**
-     * The same floor, for a topic whose reminder has already passed.
-     *
-     * Much lower, because naming a date changes what the shortness means. An
-     * eight-word note nobody ever dated is probably a scribble; the same note
-     * with a day attached is somebody who meant it and then missed it. The
-     * length gate exists to filter scribbles, and a date is better evidence
-     * than length that this was not one.
-     *
-     * Not zero. An empty topic still has nothing to hand back, whatever the
-     * reader intended.
+     * The same floor for a topic whose reminder has passed — much lower,
+     * because a date is better evidence than length that this was not a
+     * scribble. Not zero: an empty topic has nothing to hand back.
      */
     minCharsIfDated?: number;
-    /**
-     * One. Never more.
-     *
-     * Two study topics side by side stop reading as "here is something you
-     * were curious about" and start reading as a backlog — and a backlog of
-     * things you promised to study, shown every time you save, is a debt
-     * counter. The detector may hold many; the reader is offered one.
-     */
+    /** One, never more. Two side by side read as a backlog. */
     maxCandidates?: number;
 }
 
@@ -90,11 +63,9 @@ const DEFAULTS: Required<StudyOptions> = {
 };
 
 /**
- * Everything still open, before any of it is ranked.
- *
- * Separate from `rankTopics` because retraction needs the whole qualifying
- * set: a detector that records only its best would otherwise withdraw the
- * runner-up on every run and rediscover it on the next.
+ * Everything still open, before ranking. Separate from `rankTopics` because
+ * retraction needs the whole qualifying set — otherwise the runner-up is
+ * withdrawn on every run and rediscovered on the next.
  */
 export function qualifyingTopics(open: OpenTopic[], options: StudyOptions = {}): OpenTopic[] {
     const config = { ...DEFAULTS, ...options };
@@ -109,13 +80,9 @@ export function rankTopics(open: OpenTopic[], options: StudyOptions = {}): OpenT
     const config = { ...DEFAULTS, ...options };
     const qualifying = qualifyingTopics(open, options);
 
-    /*
-     * Scored the way commitments are: length carries it, because how much
-     * somebody bothered to write is what marks a question as having mattered,
-     * and age enters logarithmically as a tilt rather than as the driver.
-     * Ranking by age alone would hand the oldest topic the slot for ever and
-     * the reader would never see a second one.
-     */
+    // Length carries the score — how much someone bothered to write is what
+    // marks a question as having mattered — with age as a logarithmic tilt.
+    // Ranking by age alone would pin the oldest topic in the slot for ever.
     const scored = qualifying.map(topic => ({
         topic,
         score:
@@ -124,15 +91,11 @@ export function rankTopics(open: OpenTopic[], options: StudyOptions = {}): OpenT
     }));
 
     /*
-     * A passed reminder sorts ahead of everything, as its own key rather than
-     * as a bonus added to the score. It was a bonus first, and that quietly
-     * did not work: the length-times-age term is unbounded in practice — a
-     * four-hundred-day-old topic scores near six — so any fixed bonus is
-     * swamped by exactly the old, long topics it was meant to outrank.
-     *
-     * And it should outrank them. The reader naming a day and the day going
-     * by is the only intention in this data stated outright rather than
-     * inferred, so it is not one signal among several; it is the signal.
+     * A passed reminder sorts ahead of everything as its own key, not as a
+     * score bonus: the length-times-age term is unbounded in practice (a
+     * 400-day-old topic scores near six), so any fixed bonus is swamped by
+     * exactly the topics it was meant to outrank. A named day that went by is
+     * the only intention here stated outright rather than inferred.
      */
     scored.sort(
         (a, b) =>
@@ -174,12 +137,8 @@ export async function loadTopics(now: number = Date.now()): Promise<OpenTopic[]>
                     passage: `${row.book_name} ${range}`,
                     writtenAt: row.created_at,
                     reminderPassed: Number.isFinite(reminder) && reminder <= now,
-                    /*
-                     * A reminder still ahead means the reader has already said
-                     * when they want this back. Pre-empting their own plan is
-                     * both redundant and presumptuous, so it is filtered here
-                     * rather than merely ranked down.
-                     */
+                    // Filtered, not merely ranked down: a reminder still ahead
+                    // means the reader already said when they want this back.
                     reminderPending: Number.isFinite(reminder) && reminder > now,
                 };
             })
@@ -197,13 +156,8 @@ export async function loadTopics(now: number = Date.now()): Promise<OpenTopic[]>
 export async function detectStudy(options: StudyOptions = {}): Promise<number[]> {
     const open = await loadTopics();
 
-    /*
-     * `loadTopics` already drops anything marked studied, emptied, or given a
-     * future date — so whatever it no longer returns is exactly what should no
-     * longer be queued. Without this a topic the reader ticked off went on
-     * waiting to be offered, because detectors only ever wrote and nothing
-     * withdrew.
-     */
+    // `loadTopics` already drops anything studied, emptied, or dated ahead, so
+    // whatever it stops returning is exactly what should stop being queued.
     await retractObservations(
         'study',
         qualifyingTopics(open, options).map(topic => `entry:${topic.entryId}`),
@@ -225,12 +179,10 @@ export async function detectStudy(options: StudyOptions = {}): Promise<number[]>
                     reminderPassed: topic.reminderPassed,
                 },
                 /*
-                 * Low and steady. Like `commitment`, this cannot be wrong
-                 * about its facts — it is quoting the reader — so confidence
-                 * is not measuring truth, only how much of the queue it should
-                 * take against detectors that are inferring something. It sits
-                 * below commitment because a passing curiosity is a lighter
-                 * thing than a standing resolution.
+                 * Low and steady. This quotes the reader, so it cannot be wrong
+                 * about its facts — confidence here only sets how much of the
+                 * queue it takes against detectors that are inferring. Below
+                 * commitment: a curiosity is lighter than a resolution.
                  */
                 confidence: 0.4,
                 evidence: [{ kind: 'entry', entryId: topic.entryId, field: 'study_further' }],

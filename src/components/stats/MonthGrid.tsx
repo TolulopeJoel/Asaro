@@ -14,11 +14,9 @@ interface MonthGridProps {
 }
 
 /**
- * A month, as a shape.
- *
- * Neither mockup draws day numbers, a weekday row, or the per-week clover
- * celebration this used to carry — the month reads as a block of marks, and the
- * one number worth reading has already been enlarged above it.
+ * A month, as a shape. Neither mockup draws day numbers, a weekday row, or a
+ * per-week celebration — the month reads as a block of marks, and the one
+ * number worth reading is already enlarged above it.
  */
 export const MonthGrid = React.memo(({ year, month, data, showTitle = true }: MonthGridProps) => {
     const { colors } = useTheme();

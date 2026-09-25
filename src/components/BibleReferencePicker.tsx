@@ -178,16 +178,14 @@ const ChapterPills = ({
     placeholder?: string;
 }) => {
     /*
-     * design/all-screens.html #refpicker, lines 1081-1090: the chapter phase
-     * for Genesis (50 chapters, past CHIP_THRESHOLD) shows the field AND the
-     * pills together — `.cl-pill.field` ("Ch?") followed by pills 1 2 3 4 5,
-     * with "Genesis has 50 chapters — type a number OR keep scrolling." That
-     * "or" is the point: past the threshold you get a fast path to type a
-     * number, but the pills stay, scrollable, for anyone who'd rather tap.
+     * design/all-screens.html #refpicker, lines 1081-1090: past CHIP_THRESHOLD
+     * the chapter phase shows the field AND the pills together — `.cl-pill.field`
+     * ("Ch?") then pills 1 2 3 4 5, with "Genesis has 50 chapters — type a
+     * number OR keep scrolling."
      *
-     * This used to branch — pills below the threshold, the field instead of
-     * them above it — which silently dropped the field on a short book and
-     * dropped the pills on every long one.
+     * That "or" is the point, so never branch between them: the threshold adds
+     * a fast path to type a number, and the pills stay scrollable for anyone
+     * who would rather tap.
      */
     const allChapters = Array.from({ length: book.chapters }, (_, i) => i + 1);
     const chaptersToShow = min ? allChapters.filter(ch => ch > min) : allChapters;
@@ -701,8 +699,7 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
                  * The band says what it is asking for before it offers the
                  * pills. design/all-screens.html #refpicker puts that prompt in
                  * a label above the row — without it the strip is a line of
-                 * numbers with no stated question, which is exactly what it
-                 * used to be.
+                 * numbers with no stated question.
                  */}
                 <View style={[styles.promptRow, { paddingHorizontal: gutter }]}>
                     <Text variant="label" style={styles.prompt} numberOfLines={1}>{prompt}</Text>

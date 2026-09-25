@@ -1,21 +1,14 @@
 /**
- * Editing one commitment, from the list where you are looking at it.
+ * Editing one commitment, from the list where you are looking at it. A typo is
+ * noticed while reading the list, and a standing commitment reveals itself as a
+ * daily practice months after it was written — neither happens in the wizard.
  *
- * Until now the only way to change an action item was to find the entry it
- * came from, open that entry in edit mode, walk the wizard to the action step
- * and re-save the lot. That is the wrong moment twice over. A typo gets
- * noticed while reading the list, and a standing commitment reveals itself as
- * a daily practice months after it was written — never while it is being
- * written, which is the only place the kind chips existed.
+ * Deliberately small: the two texts, the kind, and a way out. NOT a second
+ * writing surface — the wizard still owns composing an entry.
  *
- * So this is deliberately small: the two texts, the kind, and a way out. It is
- * not a second writing surface. The wizard still owns composing an entry; this
- * owns correcting one thing you are already looking at.
- *
- * design/all-screens.html #actionedit draws it in both styles, and draws it in
- * the state worth agreeing on: the reason missing, the label saying so, and
- * Save refusing. Nothing is enlarged — a form has no fact to enlarge, and the
- * giant would land on a field label.
+ * design/all-screens.html #actionedit draws it in the state worth agreeing on:
+ * the reason missing, the label saying so, Save refusing. Nothing is enlarged,
+ * since a form has no fact to enlarge.
  */
 
 import React, { useState } from 'react';
@@ -59,14 +52,9 @@ export function ActionEditor({ item, onClose, onSave, onArchive }: Props) {
     const [motivation, setMotivation] = useState(item.motivation ?? '');
     const [kind, setKind] = useState({ cadence: item.cadence ?? null, due_at: item.due_at ?? null });
     const [saving, setSaving] = useState(false);
-    /*
-     * Whether the reader has asked to save yet.
-     *
-     * Nothing is flagged before they do. An empty reason on a form you have
-     * only just opened is not a mistake — it is a field you were on your way
-     * to filling in — and colouring it red on arrival accuses someone of an
-     * error they have not made. The flag belongs to the attempt.
-     */
+    // Nothing is flagged until the reader asks to save. An empty reason on a
+    // freshly opened form is a field you were on your way to filling in, not a
+    // mistake — the flag belongs to the attempt.
     const [tried, setTried] = useState(false);
     const archived = !!item.archived_at;
 
@@ -80,14 +68,10 @@ export function ActionEditor({ item, onClose, onSave, onArchive }: Props) {
     const actionMissing = !action.trim();
 
     /*
-     * Save stays live and refuses, rather than sitting dead.
-     *
-     * A disabled primary explains nothing: the reader is left comparing a grey
-     * button against three filled-in-looking fields with no way to ask what is
-     * wrong. Pressing it is how they ask, so pressing it has to answer — it
-     * marks the field that is missing and leaves the button alone. Only the
-     * write itself disables it, because that one is about the app being busy
-     * rather than the reader being wrong.
+     * Save stays live and REFUSES rather than sitting dead. A disabled primary
+     * explains nothing — pressing it is how the reader asks what is wrong, so
+     * pressing it has to answer. Only the write itself disables the button,
+     * since that is the app being busy rather than the reader being wrong.
      */
     const save = async () => {
         if (saving) return;
@@ -103,13 +87,9 @@ export function ActionEditor({ item, onClose, onSave, onArchive }: Props) {
         }
     };
 
-    /*
-     * `.cl-input` / `.co-input`: square, filled with the panel colour, one
-     * hairline. A field asked for and not given turns `danger` in both its
-     * label and its box, so the refusal is attached to the thing that causes
-     * it rather than only to the button that reported it — and it clears the
-     * moment the field is answered, without waiting for another attempt.
-     */
+    // `.cl-input` / `.co-input`: square, panel-filled, one hairline. A missing
+    // field turns `danger` in both label and box, so the refusal attaches to
+    // its cause, and clears as soon as the field is answered.
     const field = (
         label: string,
         value: string,
@@ -198,13 +178,9 @@ export function ActionEditor({ item, onClose, onSave, onArchive }: Props) {
                             onPress={save}
                         />
 
-                        {/*
-                          * Archive, never delete. The item stays on its entry
-                          * and a practice keeps every completion it logged —
-                          * what changes is only whether it counts as something
-                          * you are working on. Nothing here can rewrite what
-                          * the journal says, so it needs no confirmation.
-                          */}
+                        {/* Archive, never delete: the item stays on its entry
+                          * and a practice keeps its completions. Nothing here
+                          * rewrites the journal, so it needs no confirmation. */}
                         <ScalePressable
                             onPress={() => onArchive(!archived)}
                             accessibilityRole="button"

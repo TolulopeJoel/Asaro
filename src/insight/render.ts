@@ -1,25 +1,13 @@
 /**
- * Turning a structured observation into the words a reader sees.
+ * Turns a structured observation into the words a reader sees.
  *
- * Kept out of the detectors on purpose. A detector's job ends at a claim with
- * evidence; how that claim is phrased is a separate problem with separate
- * failure modes, and folding the two together is how you end up unable to
- * improve the wording without re-deriving the finding.
+ * Templates, not generation — every string is assembled from numbers the
+ * detector already measured. The governing rule: say only what the graph can
+ * prove. Detectors know which chapters were written on and how they connect,
+ * never what an entry is ABOUT, so no card names a theme or characterises
+ * anyone's spiritual life.
  *
- * Templates, not generation. The plan reserves an on-device model for Tier 3
- * and even there it may only render a record it cannot contradict — so this is
- * where the sentences live now and where a model would have to earn its way in
- * later, behind an entailment check. Nothing here invents a fact: every string
- * is assembled from numbers the detector measured.
- *
- * The rule that shapes all the copy: say only what the graph can prove. The
- * detector does not know what the reader's entries are ABOUT — it knows which
- * chapters they wrote on, which verses they cited, and how those connect. So
- * the card never names a theme, never says "you keep writing about X", and
- * never characterises anyone's spiritual life. It says: these passages, this
- * long, all pointing here, and you have not been here. Each of those is
- * checkable against public data, which is the only thing separating this from
- * a horoscope that happens to be about you.
+ * Copy rationale: design/DECISIONS.md#observation-copy
  */
 
 import { VerseId, formatVerseId } from '../bible/ref';
@@ -37,59 +25,27 @@ export interface RenderedObservation {
     /** What the card lands on — a passage, or the reader's own resolution. */
     subject: string;
     /**
-     * What the card calls its own receipts, or absent when it has none to show.
-     *
-     * "Show me why" asks a finding to justify itself, which only makes sense
-     * where it inferred something. A card that quotes the reader back has
-     * nothing to justify, so it names what is actually behind the tap instead.
-     * Kept here with the rest of the words rather than in the card, which
-     * should not have to know one detector from another.
-     *
-     * Undefined makes the card unpressable, which is the honest state for a
-     * finding whose evidence would tell the reader nothing they did not
-     * already have — see `renderAbsence`.
+     * What the card calls its own receipts. Undefined makes the card
+     * unpressable, which is correct for a finding that inferred nothing and so
+     * has no evidence worth a tap — see `renderAbsence`.
      */
     openLabel?: string;
     /**
-     * Whether the subject is the card's topic rather than its destination.
-     *
-     * Convergence keeps its subject for last because that verse is somewhere
-     * the reader is being SENT — the card is an argument and the passage is
-     * its payoff, so arriving at it early would give away the ending.
-     *
-     * Absence has no destination. Its subject is what the card is ABOUT, and a
-     * topic belongs at the top like a heading. The claim then says "this one"
-     * about something already on screen instead of something three lines
-     * further down, which is the difference between a sentence that resolves
-     * as you read it and one that asks you to hold a pronoun open.
+     * Whether the subject is the card's topic (render it first, as a heading)
+     * rather than its destination (hold it for last, as the payoff).
      */
     subjectFirst?: boolean;
-    /**
-     * A closing remark, where a card with no receipts would have had a button.
-     *
-     * Only for findings that cannot be opened. It is the one line on such a
-     * card that is neither a measurement nor a subject, so it is where Àṣàrò
-     * gets to speak — and on a card the reader cannot tap, it is the whole
-     * reason the card is worth reading rather than just true.
-     */
+    /** A closing remark, used only on cards with no receipts to open. */
     aside?: string;
     /**
-     * Only when the subject is scripture.
-     *
-     * Absent for detectors whose subject is something the reader wrote, which
-     * is what stops the receipts offering a "Read it" button pointing nowhere.
+     * Set only when the subject is scripture. Absent for detectors whose
+     * subject is something the reader wrote, so the receipts don't offer a
+     * "Read it" button pointing nowhere.
      */
     subjectVerseId?: VerseId;
 }
 
-/**
- * Sentence-case a span.
- *
- * `spanLabel` speaks in fragments — "across 8 months" — because it was written
- * for a meta line. Reused rather than reimplemented: the codebase already
- * learned that the list and the detail view drifting into two vocabularies for
- * one fact is its own kind of bug.
- */
+/** Sentence-case a span: `spanLabel` speaks in fragments ("across 8 months"). */
 function spanPhrase(spanDays: number): string | null {
     const label = spanLabel(spanDays);
     if (!label) return null;
@@ -101,34 +57,13 @@ function renderConvergence(claim: Record<string, unknown>): RenderedObservation 
     const passages = Array.isArray(claim.passages) ? (claim.passages as string[]) : [];
     const span = spanPhrase(Number(claim.spanDays) || 0);
 
-    /*
-     * The count is deliberately absent from the lead.
-     *
-     * "Four entries" is the least interesting true thing here — it is a fact
-     * about the computation, not about the reader, and themeQuality.ts already
-     * recorded that lesson for themes. The passages are listed above this
-     * sentence, so the count is visible without being announced; what earns
-     * the words is the reach between them.
-     */
+    // The entry count stays out of the lead: the passages are listed directly
+    // above it, so it is visible without being announced. The reach is the find.
     const claimText = span
         ? `${span}, and every one of these points at the same passage. You have never written about it.`
         : 'Every one of these points at the same passage. You have never written about it.';
 
-    /*
-     * Àṣàrò frames it; he does not make the claim.
-     *
-     * The rule at the top of this file — say only what the graph can prove —
-     * applies to `claim` and nothing else, so that sentence stays flat and
-     * checkable. The label and the button are not assertions, and they are
-     * the one place on this card where the app is allowed to be pleased with
-     * itself, which is the whole point of the feature.
-     *
-     * It is also the register he has never been given. Every line he owns
-     * today is pressure — "I'm keeping absolute record. Every single day you
-     * miss, I'm writing it down." That is exactly what this detector did, for
-     * ten months, and here it paid off. Same nosy man, same receipts, finally
-     * delighted rather than disappointed.
-     */
+    // Àṣàrò frames the find; the claim itself stays flat and checkable.
     return {
         kind: 'Look what I found',
         evidence: passages,
@@ -147,91 +82,20 @@ function renderAbsence(claim: Record<string, unknown>): RenderedObservation {
     const total = Number(claim.totalEntries) || 0;
     const times = poorCount === 1 ? 'just once' : `just ${poorCount} times`;
 
-    /*
-     * Two counts, a total, and no inference at all.
-     *
-     * "If it's to X, you will Y" is the construction Àṣàrò would actually
-     * reach for, and it happens to be the safest thing on the card: it is the
-     * two measured numbers set side by side, carrying attitude purely through
-     * word order. Nothing is added to what was counted.
-     *
-     * The second number keeps its unit and its verb. An earlier draft ended
-     * "— 38", where the dash stood in for both and left the figure to fend
-     * for itself; a reader who has not already worked out what is being
-     * counted has no way in.
-     *
-     * Note where the personality sits: inside the claim, not only around it.
-     * The rule elsewhere in this file is that Àṣàrò frames a finding and does
-     * not make it, and that is the right rule for convergence, whose sentence
-     * asserts a connection. It was too strong here. The real constraint is
-     * that nothing may be asserted which the data does not show, and "you
-     * know how to do that one" is backed by the very number it sits next to.
-     * Keeping him out of the sentence was a proxy for the constraint, not the
-     * constraint itself.
-     *
-     * What is deliberately NOT here is any claim about how the reader studies.
-     * A draft asked "are you sure you are reading your Bible well?", which is
-     * the one sentence this data cannot support — the detector knows which
-     * text fields get typed into, and nothing whatsoever about the quality of
-     * anyone's reading. Somebody can study deeply and never use that field.
-     * Asserting the link would be the horoscope failure this whole surface is
-     * built to avoid, and the rule at the top of this file forbids it outright.
-     */
+    // Two measured counts set side by side. Nothing is asserted about HOW the
+    // reader studies — this detector sees which fields get typed into and
+    // nothing else. See design/DECISIONS.md#observation-copy.
     return {
-        /*
-         * His record-keeping, finally useful. "I'm keeping absolute record.
-         * Every single day you miss, I'm writing it down" is a threat in a
-         * notification and a straight description of this detector here.
-         */
         kind: 'I have been counting',
         evidence: [],
         claim: `Out of ${total} entries, you have answered this one ${times}. If it's to ${richShort} ${richCount} times, you know how to do that one.`,
-        /*
-         * Quoted, unlike every other subject in this file.
-         *
-         * A convergence's subject is a verse reference and a commitment's is
-         * the reader's own sentence; neither can be mistaken for the app
-         * speaking. This one is a QUESTION, on a card where a character is
-         * doing all the talking — left bare it reads as Àṣàrò asking it of
-         * you right now, rather than as the question you keep stepping over.
-         * The quotes mark it as borrowed: the wizard's words, held up.
-         */
-        subject: `\u201c${poorQuestion}\u201d`,
+        // Quoted so it reads as the wizard's question held up, not as Àṣàrò
+        // asking it of the reader right now.
+        subject: `“${poorQuestion}”`,
         subjectFirst: true,
-        /*
-         * No receipts, and so nothing to tap.
-         *
-         * Convergence opens because it INFERRED something — that these entries
-         * point at that passage — and the entries are what stop it being a
-         * horoscope. This card infers nothing. It reports two counts of the
-         * reader's own writing, which they could check by scrolling their own
-         * journal, so sending them through to nine old entries would be
-         * proving something nobody disputes and charging a tap for it.
-         *
-         * Which leaves the card to be worth reading on its own, and that is
-         * what the aside is for.
-         *
-         * It is the innocent face after the tease, which is the shape of every
-         * other thing he says — "But remember I care, that's why I disturb",
-         * "No lecture from me". A second joke here would be piling on; this
-         * lands the first one and then steps back.
-         *
-         * "Just saying" is the phrase everybody understands to mean the exact
-         * opposite, which is why it works: the disclaimer and the point are
-         * the same sentence, and nobody is fooled, least of all him. Naming
-         * judgement outright is also the plainest possible statement of the
-         * rule this detector runs on — it counts, it does not appraise.
-         *
-         * Contracted, because he contracts everywhere else. "I am not judging"
-         * is a shade stiff for a man who says "I'm keeping absolute record".
-         *
-         * It also does work no flat sentence can. The rule for this detector
-         * is state the record, never the judgement — but a reader looking at 9
-         * against 38 will supply a judgement whether or not the app does, and
-         * a card that simply goes quiet leaves them to convict themselves. Him
-         * declining out loud is the difference between an observation and a
-         * telling-off.
-         */
+        // No receipts: this reports the reader's own counts back, which they
+        // could verify by scrolling their journal. The aside is what makes the
+        // card worth reading instead of merely true.
         aside: "I'm not judging o, just saying.",
     };
 }
@@ -248,21 +112,11 @@ function agoPhrase(ageDays: number): string {
     return years < 2 ? 'A year ago' : `${Math.round(years)} years ago`;
 }
 
-/**
- * Trim a motivation to what a card can hold, on a word boundary.
- *
- * The whole thing is in the receipts. Cutting mid-word would make the reader's
- * own sentence look careless, which is the opposite of the effect wanted when
- * handing it back to them.
- */
+/** Trim a motivation to what a card can hold, on a word boundary. */
 function trimQuote(text: string, limit = 180): string {
-    /*
-     * Unwrapped, not stripped. A card is plain text so it cannot make a
-     * citation tappable — but showing `[[Exodus 20:12]]` puts markup in front
-     * of the reader, and removing it outright would delete the reason where
-     * the reference IS the reason. Keeping the words and losing the brackets
-     * is the only reading that serves both.
-     */
+    // Unwrapped rather than stripped: a card is plain text so it cannot make a
+    // citation tappable, but deleting `[[Exodus 20:12]]` outright would delete
+    // the reason wherever the reference IS the reason.
     const clean = unwrapReferences(text);
     if (clean.length <= limit) return clean;
     const cut = clean.slice(0, limit);
@@ -270,22 +124,9 @@ function trimQuote(text: string, limit = 180): string {
 }
 
 /**
- * A book finished, or a quarter of the plan crossed.
- *
- * The only card in the app that exists purely to say well done, which makes
- * the register the whole job. `design/ASARO-CHARACTER.md` §6: his defining
- * trait is already right and has only ever been pointed at compliance. "I'm
- * keeping absolute record" becomes a boast about having been there for it.
- *
- * §5 puts this at FULL volume — a book is finished perhaps a dozen times a
- * year and the plan crosses a mark four times, so drama is free here in a way
- * it never is on a section header.
- *
- * Two things it must not do. It may not congratulate somebody on their
- * standing with Jehovah (§4①) — finishing Leviticus is an achievement of
- * reading, and that is all this knows about. And it may not use the cheer
- * register: "Great job!" is banned outright, which is fortunate, because he
- * would never say it anyway.
+ * A book finished, or a quarter of the plan crossed — the only card that exists
+ * purely to say well done. Must not congratulate anyone on their standing with
+ * Jehovah, and must not use the cheer register. See design/ASARO-CHARACTER.md §4①, §5.
  */
 function renderMilestone(claim: Record<string, unknown>): RenderedObservation {
     if (claim.kind === 'plan') {
@@ -312,12 +153,8 @@ function renderMilestone(claim: Record<string, unknown>): RenderedObservation {
     const book = String(claim.book ?? '');
     const chapters = Number(claim.chapters) || 0;
 
-    /*
-     * A long book earns a different sentence from a short one, because the
-     * achievements are genuinely different sizes and pretending otherwise is
-     * how praise stops meaning anything. Fifty chapters of Genesis is not four
-     * chapters of Ruth, and he is the last person to pretend it is.
-     */
+    // Fifty chapters of Genesis is not four of Ruth; one sentence for both
+    // would make the praise mean nothing.
     const long = chapters >= 25;
 
     return {
@@ -332,31 +169,17 @@ function renderMilestone(claim: Record<string, unknown>): RenderedObservation {
 }
 
 /**
- * A question the reader wrote down and has not come back to.
- *
- * The register is the entire design here, and it is one word away from being
- * wrong. "You still haven't looked into this" is a debt notice; "you wondered
- * about this" is a returned interest. Nothing on this card may imply the
- * reader owes anybody anything — they wrote down a question because it caught
- * them, and the only true thing the app knows is that it caught them.
- *
- * Which is why the passage leads rather than the age. Where they were when
- * they thought of it is the part that brings the question back; how long ago
- * it was is context, and belongs in the sentence rather than at the head of
- * it. A card that opens with the elapsed time is counting.
+ * A question the reader wrote down and has not come back to. Nothing here may
+ * imply they owe anybody anything — it is a returned interest, not a debt
+ * notice, which is why the passage leads and the age sits inside the sentence.
  */
 function renderStudy(claim: Record<string, unknown>): RenderedObservation {
     const topic = String(claim.topic ?? '');
     const passage = String(claim.passage ?? '');
     const ago = agoPhrase(Number(claim.ageDays) || 0).toLowerCase();
 
-    /*
-     * A reminder the reader set and that has since passed earns a different
-     * sentence, because it is a different fact. They did not merely write this
-     * down — they named a day for it. Saying so is repeating their own
-     * decision back to them, which is the strongest thing this card can do and
-     * still be true.
-     */
+    // A reminder they set and that has since passed is a different fact: they
+    // named a day for it, so the card repeats their own decision back.
     const named = claim.reminderPassed === true;
 
     return {
@@ -377,47 +200,25 @@ function renderCommitment(claim: Record<string, unknown>): RenderedObservation {
     const passage = String(claim.passage ?? '');
     const ago = agoPhrase(Number(claim.ageDays) || 0);
 
-    /*
-     * Present tense, and no verdict.
-     *
-     * An action item here is not a task someone failed to tick — it is a
-     * standing commitment about character: "I will be kinder to my parents",
-     * "I want to give Jehovah my best". Nobody completes those, so framing one
-     * as overdue would be inventing a failure out of a checkbox the writer was
-     * never really using.
-     *
-     * Age earns its place for a different reason. The resolution is the part
-     * people remember; the reason behind it is the part that fades. So the
-     * quote is the payload, the time is why it is worth repeating now, and the
-     * commitment itself lands last — handed back, not chased up.
-     */
+    // Present tense, no verdict. These are standing commitments about character
+    // ("I will be kinder to my parents"), not tasks anyone completes, so
+    // framing one as overdue would invent a failure. The reason is what fades,
+    // so the quote is the payload and the commitment lands last.
     return {
         kind: 'Something you are working on',
         evidence: passage ? [passage] : [],
-        claim: `You wrote this down ${ago.toLowerCase()}, and gave a reason: \u201c${trimQuote(motivation)}\u201d`,
+        claim: `You wrote this down ${ago.toLowerCase()}, and gave a reason: “${trimQuote(motivation)}”`,
         subject: action,
-        /*
-         * Not "show me why" — the why is already on the card, in the reader's
-         * own words. What the tap actually opens is the whole reason
-         * untruncated and the entry it was written in, so it says that.
-         *
-         * And no Àṣàrò here, unlike the convergence card above. That one is
-         * his find and he can be pleased about it; this one is the reader's
-         * own sentence about the kind of person they are trying to be, handed
-         * back. Putting a performer in front of that would make it his moment
-         * instead of theirs.
-         */
+        // The why is already on the card in the reader's own words; the tap
+        // opens the full reason and the entry it came from.
         openLabel: 'See the entry',
     };
 }
 
 /**
- * Render an observation, or null if this build has no words for its detector.
- *
- * Null rather than a fallback string: a card that cannot say what it found
- * should not appear at all. An observation written by a newer build and read
- * by an older one is the case this protects against, and "Something was
- * noticed" is worse than silence.
+ * Render an observation, or null if this build has no words for its detector —
+ * the case when a newer build wrote an observation an older one is reading.
+ * Silence beats a fallback like "Something was noticed".
  */
 export function renderObservation(observation: StoredObservation): RenderedObservation | null {
     switch (observation.detector) {

@@ -1,27 +1,21 @@
 /**
  * The evidence behind a noticing, and the two answers a reader can give it.
+ * This screen is the difference between an observation and a horoscope: the
+ * only defence against manufactured personalisation is falsifiability, so the
+ * receipts are what the card opens into, never an "advanced" view.
  *
- * This screen is the difference between an observation and a horoscope. The
- * card makes a claim about someone's spiritual life; this is where that claim
- * can be checked and, crucially, refused. The Barnum literature is blunt that
- * perceived personalisation is easier to manufacture than the real thing and
- * that the only defence is falsifiability — so the receipts are not an
- * "advanced" view behind a chevron, they are what the card opens into.
- *
- * Three things are shown, in this order:
+ * Three things, in this order:
  *
  *   the passage being offered, with the one action that matters — read it;
  *   every entry the finding rests on, dated, in the reader's own words;
  *   "That's not it".
  *
- * The verdict sits last on purpose. You should have to look at the evidence
- * before you can reject it, and — the same reason — before you can be
- * persuaded by it. It is one tap, no dialog, no explanation requested: the
- * label is the whole interaction, because a rejection that costs something is
- * a rejection that does not get given.
+ * The verdict sits LAST: you should have to look at the evidence before you
+ * can reject it, or be persuaded by it. One tap, no dialog, no explanation
+ * requested — a rejection that costs something does not get given.
  *
- * Scripture text never appears here. `Read it` hands jw.org a reference and
- * the reader meets the passage in their own Bible, with their own footnotes.
+ * Scripture text never appears here. `Read it` hands jw.org a reference and the
+ * reader meets the passage in their own Bible, with their own footnotes.
  */
 
 import React, { useEffect, useState } from 'react';
@@ -104,15 +98,10 @@ export function ObservationReceipts({
 
     /*
      * Whether this finding is an inference, or something that cannot be wrong.
-     * Derived from the detector rather than passed in, so a new detector cannot
-     * ship asking the reader to refute their own handwriting.
-     *
-     * Commitment quotes them back. Absence states two counts of their own
-     * entries. Neither is a claim about what anything MEANS, so there is
-     * nothing for "that's not it" to deny — offering the button would invite a
-     * reader to argue with arithmetic and teach them the verdict is decorative.
-     * Convergence is the opposite: it asserts that these entries point at that
-     * passage, which is exactly the kind of thing that can be wrong.
+     * Derived from the detector, not passed in, so a new detector cannot ship
+     * asking the reader to refute their own handwriting: commitment quotes them
+     * back and absence states counts, so there is nothing for "that's not it"
+     * to deny. Convergence asserts a connection, which can be wrong.
      */
     const canBeWrong = observation.detector !== 'commitment' && observation.detector !== 'absence';
 
@@ -125,12 +114,8 @@ export function ObservationReceipts({
 
             const loaded = await Promise.all(ids.map(id => getEntryById(id)));
             if (!alive) return;
-            /*
-             * Evidence order is the detector's, oldest first, and it is kept:
-             * the finding reads as a sequence — you wrote this, then this,
-             * then this — and re-sorting here would flatten that back into a
-             * set.
-             */
+            // Evidence order is the detector's, oldest first, and is kept:
+            // the finding reads as a sequence, and re-sorting flattens it.
             setEntries(loaded.filter((entry): entry is JournalEntry => Boolean(entry)));
         })();
         return () => {
@@ -138,19 +123,13 @@ export function ObservationReceipts({
         };
     }, [observation]);
 
-    /*
-     * Only some findings point at scripture. A resolution the reader wrote has
-     * nothing to open, so the button is absent rather than disabled — an
-     * action that does nothing is worse than an action that isn't offered.
-     */
+    // Only some findings point at scripture. Absent rather than disabled: an
+    // action that does nothing is worse than one not offered.
     const passageId = rendered.subjectVerseId;
     const readPassage = () => {
         if (passageId === undefined) return;
-        /*
-         * Recorded before the hand-off, not after. Once `openBibleReference`
-         * sends the reader to jw.org this screen may never run again, and the
-         * strongest signal the card worked would go with it.
-         */
+        // Recorded BEFORE the hand-off: once `openBibleReference` sends the
+        // reader to jw.org this screen may never run again.
         onFollow?.();
         openBibleReference(
             bookNameFromNumber(bookNumberOf(passageId)),
@@ -177,12 +156,9 @@ export function ObservationReceipts({
                     {rendered.kind.toUpperCase()}
                 </Text>
 
-                {/*
-                  * `display` for a verse reference, `title` for a resolution:
-                  * "1 Chronicles 16:26" is three words and carries the weight,
-                  * while "I want to write at least 3 things I'm grateful for
-                  * each day" at display size is a wall.
-                  */}
+                {/* `display` for a verse reference, `title` for a resolution
+                  * — a reference is three words and carries the weight, where
+                  * a whole sentence at display size is a wall. */}
                 <Text
                     variant={rendered.subjectVerseId === undefined ? 'title' : 'display'}
                     style={styles.subject}
@@ -247,23 +223,13 @@ export function ObservationReceipts({
                 })}
 
                 {/*
-                 * What the bottom control offers depends on whether the
-                 * finding can be WRONG.
+                 * The bottom control depends on whether the finding can be
+                 * WRONG. An inference gets "that's not it", which carries the
+                 * whole falsifiability argument. A commitment infers nothing —
+                 * the real answer to being handed an old one is not "that's
+                 * wrong" but "that's done", so it offers to set it down.
                  *
-                 * A convergence infers something — these passages point there
-                 * — and an inference can be mistaken, so it gets "that's not
-                 * it". That control carries the whole falsifiability argument:
-                 * a finding nobody can refuse is a horoscope, and the verdict
-                 * is the only ground truth the app ever gets.
-                 *
-                 * A commitment card infers nothing. It quotes the reader's own
-                 * words back, so there is no claim to refute and "that's not
-                 * it" would be asking whether they wrote what they wrote. The
-                 * real answer to being handed an old commitment is not "that's
-                 * wrong" but "that's done" — so it offers to set it down.
-                 *
-                 * Either way it is last, quiet, and one tap: a response that
-                 * costs something is a response nobody gives.
+                 * Either way: last, quiet, one tap.
                  */}
                 {canBeWrong ? (
                     <ScalePressable

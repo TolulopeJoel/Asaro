@@ -10,28 +10,22 @@ import { detectOemFamily, needsOemAutoStartStep } from './oemRestrictions';
 let isScheduling = false;
 
 /*
- * Why the schedule has to be re-armed on every launch.
+ * Why the schedule is re-armed on every launch.
  *
  * expo-notifications keeps two separate things: a record of each scheduled
- * notification in SharedPreferences, and an actual AlarmManager alarm that
- * fires it. `getAllScheduledNotificationsAsync` reads the records — it never
- * looks at AlarmManager. The two come apart whenever the OS force-stops us,
- * which on Transsion (Tecno/Infinix/itel) and every other vendor listed in
- * oemRestrictions.ts is routine: Android cancels the alarms, the records stay
- * behind untouched.
+ * notification in SharedPreferences, and the AlarmManager alarm that fires it.
+ * `getAllScheduledNotificationsAsync` reads only the RECORDS. The two come
+ * apart on any OS force-stop — routine on Transsion (Tecno/Infinix/itel) and
+ * every vendor in oemRestrictions.ts — where Android cancels the alarms and
+ * leaves the records untouched.
  *
- * `setupDailyNotifications` used to read those records, count twelve future
- * ones and return early, satisfied. After the first force-stop that count is
- * still twelve and the alarms behind it are all gone, so every later launch
- * looked at a full schedule and re-armed nothing. The reminders stopped for
- * good, and no amount of reopening the app — or tapping Reschedule in
- * Settings, which took the same early return — brought them back.
+ * So never trust a full-looking schedule as proof the alarms exist: after one
+ * force-stop the count still reads twelve with nothing behind it, and the
+ * reminders stop for good.
  *
  * A force-stop always means the next run is a cold start, so re-arming once
- * per process launch is both sufficient to recover and cheap (a few dozen
- * alarm registrations). `hasArmedThisLaunch` is module state and therefore
- * false on every cold start; ARM_MAX_AGE_MS covers the other direction, a
- * session left resident for days.
+ * per process launch recovers it cheaply. `hasArmedThisLaunch` is module state
+ * and false on every cold start; ARM_MAX_AGE_MS covers a resident session.
  */
 let hasArmedThisLaunch = false;
 
@@ -42,8 +36,8 @@ const NOTIF_LAST_ARMED_AT = 'notif_last_armed_at';
 
 /**
  * The local date whose reminders were deliberately dropped because the user had
- * already journalled. Re-arming has to preserve that, or a repair would put
- * today's nagging back after they'd earned the silence.
+ * already journalled. Re-arming must preserve it, or a repair puts today's
+ * nagging back after they earned the silence.
  */
 const NOTIF_SKIP_DAY = 'notif_skip_day';
 
@@ -199,14 +193,9 @@ export async function scheduleReminderNotification(
 }
 
 /*
- * Notification messages by slot.
- *
- * The first slot fires at 11:59 — see `middayMin` below — and the name here
- * matters more than it looks. It used to be called `morning`, and when the
- * time moved to just-before-noon only three of these eight lines were
- * rewritten; the rest went on greeting people with "Rise and shine" and "since
- * you woke up" at lunchtime for as long as that mismatch stood. If the slot
- * ever moves again, every line in its array has to move with it.
+ * Notification messages by slot. The first fires at 11:59 — see `middayMin`.
+ * If a slot's time ever moves, EVERY line in its array has to move with it:
+ * copy that greets the morning reads badly at lunchtime and nothing catches it.
  */
 const middayReminders = [
   { title: "Good afternoon o", body: "Àṣàrò here. You haven't read your Bible yet? Ehn ehn, we're starting like this?" },
@@ -445,13 +434,9 @@ export async function setupDailyNotifications(
       return false;
     });
 
-    /*
-     * A full-looking schedule is only trustworthy if the alarms behind it were
-     * armed by this process — see the note at the top of the file. Anything
-     * else (a cold start, a stale arm, an explicit Reschedule from Settings)
-     * rebuilds, because that is the only way to find out whether the alarms
-     * are still there and the only way to put them back if they are not.
-     */
+    // A full-looking schedule is trustworthy only if this process armed it —
+    // see the note at the top. Everything else rebuilds, which is the only way
+    // to find out whether the alarms are still there.
     const mustArm = options.force || !hasArmedThisLaunch || startFromTomorrow;
 
     if (!mustArm && futureDateNotifications.length >= 12) {
@@ -518,14 +503,12 @@ export async function setupDailyNotifications(
 }
 
 /**
- * Put the schedule back if the OS took it away. Safe to call on every launch
- * and every return to the foreground.
+ * Put the schedule back if the OS took it away. Safe on every launch and every
+ * return to the foreground — the repair path for a force-stop.
  *
- * This is the repair path for a force-stop, which is how a Transsion phone —
- * and most other vendor power managers — quietly ends the reminders. It
- * rebuilds at most once per process launch, and once more if a resident
- * session has gone `ARM_MAX_AGE_MS` without re-arming. A day whose reminders
- * were dropped because the user had already journalled stays dropped.
+ * Rebuilds at most once per process launch, and once more if a resident session
+ * passes `ARM_MAX_AGE_MS`. A day whose reminders were dropped because the user
+ * had already journalled stays dropped.
  */
 export async function ensureNotificationsArmed(): Promise<void> {
   if (!await hasNotificationPermissions()) {
@@ -549,10 +532,8 @@ export async function ensureNotificationsArmed(): Promise<void> {
 
 /**
  * Everything that decides whether a reminder can reach the user, in one read.
- *
- * Each of these can be false on its own and produce exactly the same symptom —
- * silence — so the Settings screen shows them rather than making the user
- * guess which of the six it is.
+ * Each can be false alone and produce the same symptom — silence — so Settings
+ * shows them rather than making the user guess which one it is.
  */
 export async function getNotificationDiagnostics(): Promise<{
   hasPermission: boolean;
@@ -571,12 +552,9 @@ export async function getNotificationDiagnostics(): Promise<{
     AsyncStorage.getItem(NOTIF_LAST_ARMED_AT),
   ]);
 
-  /*
-   * A vendor cleaner can set a channel's importance to NONE behind the app's
-   * back. Android refuses to let an app raise importance once the channel
-   * exists, so this can only be reported, never repaired in code — the user
-   * has to turn it back on in system settings.
-   */
+  // A vendor cleaner can set a channel's importance to NONE behind the app's
+  // back. Android refuses to let an app raise importance on an existing
+  // channel, so this can only be reported — the user must fix it in settings.
   let channelBlocked = false;
   if (Platform.OS === 'android') {
     try {

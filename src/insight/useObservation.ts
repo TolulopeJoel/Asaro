@@ -1,24 +1,14 @@
 /**
  * The one noticing Home is currently willing to show, if there is one.
  *
- * Pacing lives here rather than in the card, because it is a decision about
- * the reader's attention rather than about any particular finding. Two rules,
- * both deliberately conservative:
+ * Pacing lives here rather than in the card: it is a decision about the
+ * reader's attention, not about any particular finding. Two conservative rules
+ * — one card at a time, and one new noticing every few days. Scarcity is what
+ * makes a card read as attention rather than analytics.
  *
- *   At most one card at a time. The detector will happily return several and
- *   the graph will keep producing more; a feed of them would turn a noticing
- *   into a nag, and the value of this feature is that it speaks rarely.
- *
- *   At most one new noticing every few days. Scarcity is what makes a card
- *   read as attention rather than analytics.
- *
- * Phase 6 replaces the interval with a ranker trained on the columns
- * `observation.ts` has been filling in since Phase 0 — which is why the
- * instrumentation shipped before the model that needs it.
- *
- * Detection itself is throttled separately: it walks the whole journal against
- * a 597,000-edge graph, which is fast but not free, and nothing about a
- * convergence changes between two app opens on the same morning.
+ * Detection is throttled separately. It walks the whole journal against a
+ * ~597,000-edge graph, and nothing about a convergence changes between two app
+ * opens on the same morning.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -69,10 +59,9 @@ export interface ObservationSlot {
     observation: StoredObservation | null;
     rendered: RenderedObservation | null;
     /**
-     * The card is on screen. Must be called by whatever renders it.
-     *
-     * Not optional and not automatic: nothing else marks a finding shown, so a
-     * surface that forgets this will re-offer the same card for ever.
+     * The card is on screen. Must be called by whatever renders it — nothing
+     * else marks a finding shown, so a surface that forgets it will re-offer
+     * the same card for ever.
      */
     seen: () => Promise<void>;
     /** Mark it seen and opened — the reader is looking at the receipts. */
@@ -108,19 +97,11 @@ export function useObservation(enabled: boolean, surface: Surface = 'home'): Obs
         (async () => {
             try {
                 if (surface === 'home' && (await millisSince(LAST_RUN_KEY)) > DETECT_EVERY_MS) {
-                    /*
-                     * Sequential, not parallel. Both write to the same table
-                     * through one SQLite connection, and the whole pass is a
-                     * few hundred milliseconds on a journal of any realistic
-                     * size — there is nothing to win by interleaving them.
-                     */
+                    // Sequential, not parallel: they share one SQLite
+                    // connection and the whole pass is a few hundred ms.
                     await detectConvergence();
-                    /*
-                     * Milestones need the plan's own progress, which lives
-                     * outside the journal — every other detector here reads
-                     * only what the reader wrote, so this is the one that has
-                     * to be handed something.
-                     */
+                    // Milestones are the only detector needing something from
+                    // outside the journal — the plan's own progress.
                     const done = await getReadingProgress();
                     const planPercent = READING_PLAN_DATA.length
                         ? (done.length / READING_PLAN_DATA.length) * 100
@@ -132,33 +113,21 @@ export function useObservation(enabled: boolean, surface: Surface = 'home'): Obs
                     await stamp(LAST_RUN_KEY);
                 }
 
-                /*
-                 * The quiet period is Home's, not everything's. A card shown
-                 * after saving an entry is already rate-limited by the act of
-                 * writing one — nobody writes three a day — and making it wait
-                 * on Home's timer would mean a reader who journals daily sees
-                 * one a fortnight for no reason either surface cares about.
-                 */
+                // The quiet period is Home's alone. A card after saving is
+                // already rate-limited by the act of writing an entry.
                 if (surface === 'home' && (await millisSince(LAST_SHOWN_KEY)) < QUIET_PERIOD_MS) return;
 
                 const pending = await getPendingObservations(5, surface);
                 if (!mounted.current) return;
 
-                /*
-                 * The first one this build can actually phrase. A finding from
-                 * a newer build whose detector this version has no words for
-                 * is skipped rather than shown as a blank.
-                 */
+                // The first one this build can phrase: a finding from a newer
+                // build is skipped rather than shown blank.
                 for (const candidate of pending) {
                     const words = renderObservation(candidate);
                     if (!words) continue;
                     setObservation(candidate);
                     setRendered(words);
-                    /*
-                     * Selected, not shown. `seen()` does the stamping, and the
-                     * card calls it when it mounts — see below for why the
-                     * difference is worth a callback.
-                     */
+                    // Selected, not shown — `seen()` stamps, called on mount.
                     return;
                 }
             } catch {
@@ -168,25 +137,17 @@ export function useObservation(enabled: boolean, surface: Surface = 'home'): Obs
     }, [enabled, surface]);
 
     /**
-     * Record that the reader was actually shown this.
+     * Record that the reader was actually shown this. Stamped on the card's
+     * mount, never where the candidate is selected — selection only means the
+     * screen loaded, and switching tabs would spend a finding nobody saw.
      *
-     * Stamping used to happen where the candidate is chosen, a few lines up,
-     * which quietly meant "the screen finished loading" rather than "a person
-     * saw it". Home enables this hook the moment stats arrive and the wizard
-     * enables it on reaching the summary step, so switching tabs or backing
-     * out of a draft was enough to spend a finding nobody had laid eyes on.
+     * `shown_at` does four jobs: gates re-offering, orders the rotation, starts
+     * a recurring detector's rest, and files the row in the archive. A
+     * convergence stamped but never rendered ends up under "You've not read
+     * these" — the app telling someone off for ignoring a card it never showed.
      *
-     * That is more than a wasted card, because `shown_at` is doing four jobs
-     * at once: it decides whether a finding may be offered again, orders the
-     * rotation, starts a recurring detector's rest, and — the one that bites —
-     * puts the row in the archive. A convergence stamped but never rendered
-     * turns up under "You've not read these. What are you doing?", which is
-     * the app telling somebody off for ignoring a card it never showed them.
-     *
-     * Mount is not the same as visible; a card below the fold still counts.
-     * Closing that last gap needs viewport tracking, which is a great deal of
-     * machinery for the remainder — this fixes the part that was actually
-     * wrong.
+     * Mount is still not the same as visible; a card below the fold counts.
+     * Closing that needs viewport tracking.
      *
      * Idempotent per finding, so a re-render cannot inflate `shown_count`.
      */
@@ -195,11 +156,8 @@ export function useObservation(enabled: boolean, surface: Surface = 'home'): Obs
         if (!observation || stamped.current === observation.id) return;
         stamped.current = observation.id;
         await markShown(observation.id);
-        /*
-         * Home's quiet period starts when something is shown, so it belongs
-         * here too — begun on selection it would silence Home for three days
-         * over a card that never appeared.
-         */
+        // Home's quiet period starts on showing, not selection — otherwise a
+        // card that never appeared silences Home for three days.
         if (surface === 'home') await stamp(LAST_SHOWN_KEY);
     }, [observation, surface]);
 

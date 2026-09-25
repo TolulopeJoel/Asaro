@@ -55,20 +55,13 @@ type PlanListDataItem =
 /**
  * The four places the Library goes.
  *
- * It held six, in a strip set to scroll — so the sixth, Plan, sat off-screen
- * until you dragged the row sideways. A hidden tab is worse than a crowded
- * one, and the crowding had a cause: the strip was mixing destinations with
- * views of them.
+ * The strip carries destinations only, never views of them — grouping is not
+ * navigation. Recent and Books are one list of entries grouped two ways;
+ * Actions and Follow-ups are one question ("what did I leave hanging?") split
+ * by which column the answer lives in, which is the schema's concern.
  *
- * Recent and Books were never two places. They are one list of entries,
- * grouped two ways, and grouping is not navigation. Actions and Follow-ups
- * were two places holding one question — what did I leave hanging? — split by
- * which column the answer happened to live in, which is the schema's concern
- * and not the reader's.
- *
- * So each of those collapses into a destination with a control inside it, and
- * the top strip carries only things that are genuinely different from each
- * other. Four fit without scrolling, and nothing was lost on the way.
+ * Each of those is a destination with a control inside it, so four fit without
+ * scrolling. Keep it that way: a strip that scrolls hides its own tabs.
  */
 type Section = 'entries' | 'unfinished' | 'echoes' | 'plan';
 
@@ -102,13 +95,10 @@ const DEFAULT_VIEW: Record<Section, Tab> = {
 /**
  * The control inside a destination.
  *
- * "Commitments" and "Questions", not "To do" and "To look up". An action item
- * here is not a task: "I will be kinder to my parents", "I want to give Jehovah
- * my best" — these are standing things about character that nobody completes,
- * written under "How can I realistically apply this in my life?" and prompted
- * with "I will…". A to-do label files a formational answer as a chore, which is
- * the mismatch running through every surface downstream of that question.
- * Sections without an entry here render no second row at all.
+ * "Commitments" and "Questions", never "To do" and "To look up". An action item
+ * is not a task — "I will be kinder to my parents" is a standing thing about
+ * character that nobody completes — and a to-do label files a formational
+ * answer as a chore. Sections with no entry here render no second row.
  */
 const SUBVIEWS: Partial<Record<Section, { key: Tab; label: string }[]>> = {
     entries: [
@@ -119,13 +109,8 @@ const SUBVIEWS: Partial<Record<Section, { key: Tab; label: string }[]>> = {
         { key: 'actions', label: 'Commitments' },
         { key: 'topics', label: 'Questions' },
     ],
-    /*
-     * Themes sits under Echoes rather than beside it. They answer the same
-     * question — what does this journal keep returning to — by different
-     * means: Echoes states a claim it can prove, Themes clusters what it
-     * cannot. Phase 4 replaces the clustering with a named taxonomy and this
-     * second entry retires, leaving Echoes with no control at all.
-     */
+    // Themes sits under Echoes, not beside it: same question, different means
+    // — Echoes states a claim it can prove, Themes clusters what it cannot.
     echoes: [
         { key: 'echoes', label: 'Noticed' },
         { key: 'themes', label: 'Themes' },
@@ -146,9 +131,8 @@ const PlanSectionHeader = React.memo(({
 }) => {
     /*
      * design/all-screens.html #plan: `.cl-label{margin:18px 0 10px}` is a BARE
-     * section name — no panel, no completion badge, no chevron, no checkmark.
-     * Cloth used to draw all four; it still collapses on press, the design
-     * just carries no affordance for that interaction.
+     * section name — no panel, badge, chevron or checkmark. It still collapses
+     * on press; the design just carries no affordance for that.
      */
     return (
         <TouchableOpacity
@@ -186,13 +170,10 @@ const ReadingCard = React.memo(({
     const schedule = !isCompleted && queueIndex !== undefined ? scheduleLabel(queueIndex) : null;
 
     /*
-     * design/all-screens.html #plan, the `.cl` slot.
-     *
-     * Cloth draws each reading as a `.cl-panel` carrying the same two markers —
-     * an ochre diamond through the Hebrew Scriptures, an indigo dot for the
-     * Greek — with the book in the serif and its chapters beneath. Today's
-     * reading takes a 3px ochre rail, which is the only place the accent lands
-     * on this screen besides the markers and the progress bar.
+     * design/all-screens.html #plan, the `.cl` slot: each reading is a
+     * `.cl-panel` with an ochre diamond through the Hebrew Scriptures or an
+     * indigo dot for the Greek, book in the serif, chapters beneath. Today
+     * takes a 3px ochre rail — the only accent here besides markers and bar.
      */
     const isDiamond = item.id <= HEBREW_SCRIPTURES_END;
 
@@ -579,35 +560,24 @@ export default function LibraryScreen() {
     const [themeCount, setThemeCount] = useState<number | null>(null);
     const [planProgress, setPlanProgress] = useState<PlanProgress>({ completed: 0, total: READING_PLAN_DATA.length, percent: 0 });
 
-    /*
-     * `tab` stays the fine-grained view — every per-view behaviour below still
-     * keys on it. `section` is only which of the four destinations is lit, so
-     * drilling into a book keeps Entries lit and its own control on "By book".
-     */
+    // `tab` is the fine-grained view and every behaviour below keys on it;
+    // `section` is only which destination is lit, so drilling into a book keeps
+    // Entries lit and its control on "By book".
     const section = SECTION_OF[tab];
     const subviews = SUBVIEWS[section];
     const activeSubview = tab === 'bookDetail' ? 'books' : tab;
     /*
-     * Themes only earns a working search once it has enough to search —
-     * design/all-screens.html draws the field on `#themes` (its "results"
-     * state, 47 entries deep) but not on `#themesintro` or `#themesearly`,
-     * which are exactly the states where clustering hasn't found much yet.
-     * `themeCount` is null before results exist at all; 5 is where "a little"
-     * becomes "enough to bother searching."
+     * design/all-screens.html draws the search on `#themes` (the results state)
+     * but not on `#themesintro` or `#themesearly` — the states where clustering
+     * has not found much. `themeCount` is null before results exist at all.
      */
     const showThemeSearch = tab === 'themes' && themeCount !== null && themeCount > 5;
     const isSearchTab = tab === 'recent' || showThemeSearch;
 
     const handleNavigate = useCallback((next: Tab) => {
-        /*
-         * Not a mockup rule — the mockup never puts two tabs side by side, so
-         * it never has to say what happens between them. But the header's
-         * height genuinely varies by tab (Recent alone carries the onhero
-         * search field, Plan alone carries its progress bar), and snapping
-         * between those heights on every tap reads as the screen jolting
-         * rather than the tab changing. This
-         * animates the resize instead of jumping it.
-         */
+        // Not a mockup rule — it never puts two tabs side by side. But header
+        // height varies by tab (Recent has the onhero search, Plan its progress
+        // bar), and snapping between them reads as the screen jolting.
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setTab(next);
         setJournalSearch('');
@@ -672,11 +642,10 @@ export default function LibraryScreen() {
                 <Hero ownsTopInset>
                     {tab === 'bookDetail' && journalSelectedBook ? (
                         /*
-                         * design/all-screens.html #book, the `.cl` slot: a
-                         * book takes over the band. The arrow hangs into
-                         * the gutter, the breadcrumb sits above the name,
-                         * and the coverage line replaces the search — the
-                         * screen is about one book, not about finding one.
+                         * design/all-screens.html #book, the `.cl` slot: the
+                         * book takes over the band. Arrow in the gutter,
+                         * breadcrumb above the name, coverage line instead of
+                         * the search — this screen is about one book.
                          */
                         <>
                             <ScalePressable
@@ -703,19 +672,14 @@ export default function LibraryScreen() {
                             <UIText variant="display" tone="onBand">Library</UIText>
                             {/*
                               * `.cl-input.onhero` — the search sits ON the
-                              * indigo band, not under it, so the header
-                              * reads as one block of cloth rather than a
-                              * title with a field beneath.
+                              * indigo band, not under it, so the header reads
+                              * as one block of cloth.
                               *
-                              * The wrapper is always mounted, at the same
-                              * height, on every tab: only Recent has a
-                              * search to do, but the other five still need
-                              * something occupying that height or the band
-                              * changes size when you switch tabs. Plan
-                              * fills it with its own progress instead of
-                              * the zigzag — it already has a number worth
-                              * putting there, so a decorative stand-in
-                              * would be filler where real content fits.
+                              * The wrapper is always mounted at the same height
+                              * on every tab, or the band resizes when you
+                              * switch. Plan fills it with its own progress
+                              * rather than the zigzag, having a real number to
+                              * put there.
                               */}
                             <View style={styles.heroSearch}>
                                 {isSearchTab ? (
@@ -738,19 +702,12 @@ export default function LibraryScreen() {
                 </Hero>
 
 
-                {/*
-                  * The mockup draws no `.cl-segs` on Book detail — its
-                  * `.cl-hero` runs straight into `.cl-strip` then `.cl-body
-                  * tight`. Cloth fell through to here and drew the six-tab
-                  * strip under its own book band.
-                  */}
+                {/* The mockup draws no `.cl-segs` on Book detail — `.cl-hero`
+                  * runs straight into `.cl-strip` then `.cl-body tight`. */}
                 {tab !== 'bookDetail' && (
                     <>
-                        {/*
-                          * Not scrollable any more. Four fit, and a strip that
-                          * scrolls hides whatever sits past the fold — which is
-                          * how Plan ended up invisible.
-                          */}
+                        {/* Not scrollable: four fit, and a strip that scrolls
+                          * hides whatever sits past the fold. */}
                         <Segments
                             items={SECTIONS.map(t => ({ key: t.key, label: t.label }))}
                             value={section}
@@ -794,12 +751,9 @@ export default function LibraryScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 /**
- * The plan's markers, in-palette.
- *
- * The two shapes used to be hardcoded #E53935 and #1E88E5 — imported iOS red
- * and blue that survive neither palette. The distinction the design keeps is
- * shape and hue within the theme: an ochre diamond through the Hebrew
- * Scriptures, a foreground dot for the Greek.
+ * The plan's markers, in-palette — an ochre diamond through the Hebrew
+ * Scriptures, a foreground dot for the Greek. Shape and theme hue only; no
+ * hardcoded colours, which survive neither palette.
  */
 const HEBREW_SCRIPTURES_END = 286;
 
@@ -852,11 +806,10 @@ const styles = StyleSheet.create({
     /** `.cl-input.onhero{margin-top:18px}` */
     heroSearch: { flexDirection: 'row', alignItems: 'center', marginTop: Spacing.layout.cardPadding },
     /*
-     * Fills the same slot as the search field, on Plan only. `height: 54`
-     * matches the search field's own rendered height (and ClothZigzag's) —
-     * the track and label are much shorter, so without an explicit height
-     * here the row would shrink to fit them and the band would resize
-     * switching onto and off Plan, the exact jump this slot exists to avoid.
+     * Fills the search field's slot on Plan only. `height: 54` matches the
+     * search field's rendered height (and ClothZigzag's) — the track and label
+     * are shorter, so without it the band resizes switching onto Plan, the
+     * exact jump this slot exists to avoid.
      */
     heroProgress: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.md, height: 54 },
     heroProgressTrack: { flex: 1, height: 6, overflow: 'hidden' },
@@ -913,11 +866,8 @@ const styles = StyleSheet.create({
     breadcrumbCurrent: { fontSize: 14, fontWeight: '600' },
 
     // ── Search bar ─────────────────────────────────────────────────
-    /*
-     * The mockup's search sits in bare padding — the only line in this region
-     * is the one under the segments below it. The rules that used to bracket
-     * it read as a toolbar the design doesn't have.
-     */
+    // The mockup's search sits in bare padding: the only line in this region
+    // is under the segments below it. Rules bracketing it read as a toolbar.
     searchContainer: {
         paddingHorizontal: Spacing.layout.screenPaddingTight,
         paddingTop: Spacing.xl - 4,
@@ -962,8 +912,8 @@ const styles = StyleSheet.create({
     planChapters: { fontSize: 14, letterSpacing: 0.1 },
     planCheckbox: { width: 26, height: 26, borderRadius: Spacing.borderRadius.lg, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
     // Shape is the signal: a diamond for the first half of the plan, a dot for
-    // the second. Colour only reinforces it, so the pair still reads in Locked
-    // In and for anyone who can't separate the old red from the old blue.
+    // the second. Colour only reinforces it, so the pair still reads for anyone
+    // who cannot separate the two hues.
     keyDiamond: { width: 8, height: 8, transform: [{ rotate: '45deg' }] },
     keyDot: { width: 8, height: 8, borderRadius: Spacing.borderRadius.round },
     struck: { textDecorationLine: 'line-through' },

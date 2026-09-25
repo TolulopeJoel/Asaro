@@ -16,10 +16,8 @@ import { Hero, Screen, Text as UIText } from '@/src/components/ui';
 
 /**
  * The longest and current unbroken runs, with the dates they cover.
- *
- * design/all-screens.html #stats reads these off under the grid. They were
- * never computed — the screen showed a month's total and nothing about streaks
- * — so they are derived here from the same daily counts the grid draws.
+ * design/all-screens.html #stats reads these off under the grid; they are
+ * derived from the same daily counts the grid draws.
  */
 interface Run { days: number; from: Date; to: Date }
 
@@ -85,8 +83,8 @@ export default function StatsScreen() {
         currentMonthStats: { completed: 0, total: 0 },
         isLoading: true
     });
-    // The title used to live in the navigation bar. The mockup puts it in the
-    // hero band, so it becomes state the screen owns.
+    // The mockup puts the title in the hero band rather than the navigation
+    // bar, so it is state this screen owns.
     const [headerTitle, setHeaderTitle] = useState("What you've done");
 
     const loadStats = useCallback(async () => {
@@ -159,14 +157,9 @@ export default function StatsScreen() {
         }, [loadStats])
     );
 
-    /*
-     * Practices, with how each has actually gone.
-     *
-     * They live here rather than on their cards in the Library, which is
-     * where the reader manages what they are carrying — edits it, ticks it,
-     * archives it. "How has this gone over the last fortnight" is a different
-     * question and belongs beside the other records of how things have gone.
-     */
+    // Practices live here rather than on their Library cards: the Library is
+    // where the reader manages what they carry, and "how has this gone" is a
+    // different question that belongs beside the other records.
     const [practices, setPractices] = useState<
         { item: EnhancedActionItem; progress: PracticeProgress }[]
     >([]);
@@ -289,16 +282,10 @@ export default function StatsScreen() {
                     renderItem={renderItem}
                     keyExtractor={(item) => `${item.year}-${item.month}`}
                     contentContainerStyle={styles.scrollContent}
-                    /*
-                     * The runs sit at the TOP, with the current month.
-                     *
-                     * They were the list's footer, which put "how am I doing
-                     * right now" below every month the reader has ever
-                     * written in — a year of grids to scroll past to reach
-                     * the one number that changes daily. The cost of that
-                     * placement grows with exactly the loyalty it is meant to
-                     * reward, which is the wrong way round.
-                     */
+                    // The runs sit at the TOP, with the current month. As a
+                    // footer they sit below every month ever written in, so the
+                    // one number that changes daily costs more to reach the
+                    // longer someone has used the app.
                     ListHeaderComponent={
                         <>
                             {renderHeader()}

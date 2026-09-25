@@ -1,25 +1,19 @@
 /**
- * What you could do right now, on Home.
+ * What you could do right now, on Home. A list of unticked things on a
+ * devotional front page is a chore list, and three rules hold it back:
  *
- * The risk this component runs is obvious: a list of unticked things on a
- * devotional app's front page is a chore list, and the whole action-item
- * rework exists to stop these reading as chores. Three things hold it back
- * from that.
- *
- * It only ever shows what is live TODAY. A practice already kept is absent,
- * an application is never here at all, and a deadline three days out is the
- * furthest ahead it looks. On most days this component renders nothing.
+ * It only shows what is live TODAY — a practice already kept is absent, an
+ * application never appears, and a deadline three days out is the furthest it
+ * looks. Most days this renders nothing.
  *
  * The streak sits beside each practice, so the line reads as something being
- * continued rather than something outstanding. It shows from the first day
- * kept, not the second: day one is the most fragile a practice ever is, and
- * it was the one day the count said nothing.
+ * continued rather than outstanding. It shows from the FIRST day kept: day one
+ * is the most fragile a practice ever is.
  *
- * And the heading is "Today", not "To do" — it names a moment, not a backlog.
+ * The heading is "Today", never "To do" — a moment, not a backlog.
  *
- * A practice kept here stays, ticked, until the screen is left — `useToday`
- * explains why. It is the only row on the strip that is not asking for
- * anything, so it is dimmed and sunk to the bottom, and its box unticks.
+ * A practice kept here stays, ticked, until the screen is left (see
+ * `useToday`), dimmed and sunk to the bottom since it asks for nothing.
  */
 
 import React from 'react';

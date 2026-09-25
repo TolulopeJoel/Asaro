@@ -6,15 +6,11 @@ import { READING_PLAN_DATA } from './readingPlanData';
 import { CoverageRow } from '../land/cloth';
 
 /**
- * Given a book name and chapter start/end, find ALL reading plan items
- * that are now fully covered by the combination of ALL entries in the database.
- */
-/**
  * The chapters a plan item covers, ignoring verse suffixes.
  *
  * "119:64-176" is one chapter; "116-119:63" is four. Getting that backwards
- * marks most of Psalms read off a single entry, which is why this is one
- * function rather than the three near-copies it used to be.
+ * marks most of Psalms read off a single entry — which is why this is one
+ * shared function rather than a copy per call site.
  */
 export function planItemChapters(chapters?: string): { start: number; end: number } | null {
     if (!chapters) return null;
@@ -139,24 +135,16 @@ export const attachActionItems = async (
  * Untick plan readings no longer covered by any entry.
  *
  * The plan's invariant is that an item is ticked **if and only if** entries
- * cover its chapters — the Plan tab enforces it going in, refusing a manual
- * tick with "you need an entry covering this reading". Nothing enforced it
- * coming out. Delete the entry that earned a reading and the tick stayed;
- * shorten an entry's range and the readings it no longer reaches stayed too.
+ * cover its chapters. The Plan tab enforces it going in; this enforces it
+ * coming out, for deleted entries and for ranges that were shortened.
  *
- * The consequences were quiet and compounding. "Still ahead" went blank on
- * books the reader had not finished, plan progress read high, and — since
- * milestones are now scored off that percentage — the app would eventually
- * congratulate somebody for crossing a quarter of a plan they had not
- * crossed. A number nobody maintains is worse than one nobody shows.
+ * Only ever REMOVES. Adding a tick is the save path's job: a reading becomes
+ * done because somebody wrote something, which is an event rather than a state
+ * to be discovered later.
  *
- * Only ever REMOVES. Adding a tick is the save path's job, and it belongs
- * there: a reading becomes done because somebody wrote something, which is an
- * event, not a state to be discovered later.
- *
- * Because every tick is entry-derived by construction, no provenance column
- * is needed to know what may be withdrawn. If manual ticking is ever allowed,
- * this needs one — it would revoke the reader's own claim otherwise.
+ * CAREFUL: this assumes every tick is entry-derived, which is why no
+ * provenance column is needed. Allowing manual ticking means adding one, or
+ * this revokes the reader's own claim.
  */
 export const retractUncoveredReadings = async (): Promise<number[]> => {
     return withDatabase(async (database) => {
@@ -170,11 +158,8 @@ export const retractUncoveredReadings = async (): Promise<number[]> => {
 
         for (const { item_id } of ticked) {
             const item = byId.get(item_id);
-            /*
-             * A tick whose plan item no longer exists — the plan was edited
-             * between releases — is also uncovered by definition, and leaving
-             * it would keep inflating progress for ever.
-             */
+            // A tick whose plan item no longer exists (the plan was edited
+            // between releases) is uncovered by definition.
             if (!item) {
                 dropped.push(item_id);
                 continue;
@@ -183,11 +168,9 @@ export const retractUncoveredReadings = async (): Promise<number[]> => {
             const range = planItemChapters(item.chapters);
             if (!range) continue;
 
-            /*
-             * A paired item ("Obadiah/Jonah") counts as covered if ANY of its
-             * books covers the range. Requiring the joined string to match a
-             * book name would untick all eleven of them on the first run.
-             */
+            // A paired item ("Obadiah/Jonah") is covered if ANY of its books
+            // covers the range — matching the joined string against a book
+            // name unticks all eleven of them on the first run.
             const books = item.book.split('/');
             let covered = false;
             for (const book of books) {
@@ -306,12 +289,9 @@ export const updateJournalEntry = async (id: number, data: JournalEntryInput) =>
         }
     });
 
-    /*
-     * An edit can SHRINK an entry's range — Genesis 12-15 corrected to 12-13 —
-     * and the readings it no longer reaches must come untied. The save path
-     * only ever adds, so without this an edit could tick new items while
-     * leaving the old ones standing.
-     */
+    // An edit can SHRINK a range (Genesis 12-15 corrected to 12-13) and the
+    // save path only ever adds, so without this an edit ticks new items while
+    // leaving the old ones standing.
     await retractUncoveredReadings();
 };
 
@@ -384,11 +364,8 @@ export const deleteJournalEntry = async (id: number) => {
         await database.runAsync(`DELETE FROM action_items WHERE entry_id = ?`, [id]);
         await database.runAsync(`DELETE FROM journal_entries WHERE id = ?`, [id]);
     });
-    /*
-     * The entry is gone, so whatever it was the only evidence for is no
-     * longer done. Runs after the delete commits, never inside it — the
-     * coverage check reads the very table being written.
-     */
+    // Runs after the delete commits, never inside it: the coverage check
+    // reads the very table being written.
     await retractUncoveredReadings();
 };
 
@@ -406,14 +383,12 @@ export const getBookEntryCounts = async (): Promise<Record<string, number>> => {
 /**
  * Every chapter ever written about, with the last date it was.
  *
- * Grouped in SQL and expanded in JS on purpose: an entry spans a range, and
- * SQLite has no cheap way to turn "Genesis 12-15" into four rows. The grouping
- * still does the work that matters — one row per distinct range rather than
- * one per entry — so a journal of thousands arrives as a few hundred rows.
+ * Grouped in SQL and expanded in JS: SQLite has no cheap way to turn "Genesis
+ * 12-15" into four rows, but the grouping still gives one row per distinct
+ * range rather than one per entry.
  *
- * `created_at` rather than `updated_at`: this records when the reading
- * happened, and editing the wording of a reflection two years later did not
- * make you read the chapter again.
+ * `created_at`, not `updated_at` — editing a reflection's wording two years
+ * later did not make you read the chapter again.
  */
 export const getChapterCoverage = async (): Promise<CoverageRow[]> => {
     return await withDatabase(async (database) => {
@@ -557,11 +532,9 @@ export const getFirstEntryDate = async (): Promise<Date | null> => {
 };
 
 /**
- * Whole days since the last entry, or null if there has never been one.
- *
- * Exists so the app can keep the promise its notifications make — "if I don't
- * see you, I'll check up on you." Home used to look identical whether you had
- * been away a day or a month.
+ * Whole days since the last entry, or null if there has never been one. Lets
+ * Home keep the promise the notifications make: "if I don't see you, I'll
+ * check up on you."
  */
 export const getDaysSinceLastEntry = async (): Promise<number | null> => {
     return await withDatabase(async (database) => {
@@ -744,14 +717,8 @@ export const getAllActionItems = async (limit: number = 200, offset: number = 0)
     });
 };
 
-/**
- * Tick an action off, or put it back.
- *
- * `is_completed` has been on the table since the migration that added it, but
- * nothing ever wrote to it — the column existed and the UI didn't. Both styles
- * in design/all-screens.html draw the checkbox (#actions), so the control is
- * part of the design rather than an addition to it.
- */
+/** Tick an action off, or put it back. Both styles in
+ * design/all-screens.html draw the checkbox (#actions). */
 export const toggleActionItemCompletion = async (id: number, completed: boolean): Promise<void> => {
     await withDatabase(async (database) => {
         await database.runAsync(
@@ -762,16 +729,11 @@ export const toggleActionItemCompletion = async (id: number, completed: boolean)
 }
 
 /**
- * Edit an action item in place.
+ * Edit an action item in place — a commitment reveals itself as a daily
+ * practice months after it was written, not while it is being written.
  *
- * The only way to change one of these used to be re-saving the whole entry
- * through the wizard, which is the wrong moment twice over: the text is
- * usually fixed while looking at the list, and a commitment reveals itself as
- * a daily practice months after it was written, not while it is being written.
- *
- * Nulls are meaningful here rather than "leave alone" — clearing a cadence is
- * how a practice becomes an application again, so the caller sends the whole
- * shape it wants.
+ * Nulls MEAN null here, not "leave alone": clearing a cadence is how a practice
+ * becomes an application again, so the caller sends the whole shape it wants.
  */
 export const updateActionItem = async (
     id: number,
@@ -794,13 +756,9 @@ export const updateActionItem = async (
 };
 
 /**
- * Archive a commitment, or bring it back.
- *
- * There is deliberately no delete. Removing an action item would edit the
- * entry it belongs to — the journal would stop saying what it said — and a
- * commitment that has served its purpose has not stopped having been made.
- * Practice completions survive archiving, because the history is most of the
- * point of having kept one.
+ * Archive a commitment, or bring it back. There is deliberately no delete:
+ * removing an action item edits the entry it belongs to, and the journal would
+ * stop saying what it said. Practice completions survive archiving.
  */
 export const setActionItemArchived = async (id: number, archived: boolean): Promise<void> => {
     await withDatabase(async (database) => {

@@ -2,24 +2,16 @@
  * On-device sentence embeddings — the engine behind Themes.
  *
  * Runs bge-small-en-v1.5 (quantized, ~34MB) through ONNX Runtime. Nothing is
- * sent anywhere: a person's reflections never leave the phone, which is the
- * whole reason this is local rather than an API call.
+ * sent anywhere: reflections never leave the phone. Clustering is the only
+ * benchmark that matters here, since Themes groups writing and never retrieves
+ * against a query.
  *
- * It replaced all-MiniLM-L6-v2, which scored around 42 on MTEB's clustering
- * task against this model's ~47-49. Clustering is the only score that matters
- * here — Themes groups writing, it never retrieves against a query — and the
- * swap was close to free: same BERT vocabulary (the bundled vocab.json maps
- * all 30,522 tokens to identical ids, so wordpiece.ts is untouched), same 384
- * dimensions, so nothing about how vectors are stored had to change. The one
- * real difference is pooling, below.
+ * Downloaded on first use rather than bundled, so the install stays small and
+ * people who never open Themes never pay for it.
  *
- * The model is downloaded on first use rather than bundled, so the install
- * stays small and people who never open Themes never pay for it.
- *
- * The maths here mirrors scripts/thought-echoes/echoes.py exactly — same model
- * file, same CLS pooling, same normalisation — so the Python experiments are
- * a valid reference for what this produces. Change one, change the other, or
- * the harness stops predicting what the app will do.
+ * The maths mirrors scripts/thought-echoes/echoes.py exactly — same model file,
+ * same CLS pooling, same normalisation. Change one, change the other, or the
+ * harness stops predicting what the app will do.
  */
 
 import { InferenceSession, Tensor } from 'onnxruntime-react-native';
@@ -41,12 +33,9 @@ const MODEL_URL =
 const MODEL_DIR = `${documentDirectory}models/`;
 const MODEL_PATH = `${MODEL_DIR}bge-small-en-v1.5-quantized.onnx`;
 /**
- * Where bytes land while they are still arriving.
- *
- * The download writes here and is renamed onto MODEL_PATH only once it has
- * completed, so a file at MODEL_PATH always means a whole file. Downloading
- * straight to MODEL_PATH is what made a broken download indistinguishable
- * from a finished one.
+ * Where bytes land while still arriving. Renamed onto MODEL_PATH only once the
+ * transfer completes, so a file at MODEL_PATH always means a WHOLE file —
+ * downloading straight there makes a broken download look finished.
  */
 const MODEL_PART_PATH = `${MODEL_PATH}.part`;
 
@@ -77,21 +66,12 @@ export async function isModelDownloaded(): Promise<boolean> {
 /**
  * Fetch the model if it isn't cached. Safe to call repeatedly.
  *
- * Interrupting this — losing signal, turning the radio off, backgrounding the
- * app — used to poison the install permanently. The download wrote straight to
- * MODEL_PATH as bytes arrived, and `isModelDownloaded` only asks whether that
- * file is over 1MB, against a model of ~34MB. A download cut off anywhere past
- * the first megabyte therefore left a file that every later call read as
- * "already downloaded": `downloadModel` returned without fetching a byte,
- * `InferenceSession.create` choked on the truncated ONNX, and the same error
- * came back no matter how many times you retried or how good the connection
- * was, because nothing ever went back for the rest of the file.
- *
- * Two things stop that. Bytes land on MODEL_PART_PATH and are renamed onto
- * MODEL_PATH only after the transfer is verified complete, so a file at
- * MODEL_PATH always means a whole file rather than however much arrived. And
- * completeness is judged against the length the server advertised, not a
- * 1MB floor that a partial file clears trivially.
+ * Two rules keep an interrupted download from poisoning the install for good.
+ * Bytes land on MODEL_PART_PATH and are renamed onto MODEL_PATH only once the
+ * transfer is verified complete. And completeness is judged against the length
+ * the server advertised — a size floor is cleared trivially by a partial file,
+ * which then reads as "already downloaded" on every later call while ONNX
+ * chokes on it for ever.
  */
 export async function downloadModel(onProgress?: DownloadProgress): Promise<void> {
     if (await isModelDownloaded()) return;
@@ -117,12 +97,8 @@ export async function downloadModel(onProgress?: DownloadProgress): Promise<void
 
         await download.downloadAsync();
 
-        /*
-         * `downloadAsync` resolving is not proof of a complete body — a
-         * connection dropped mid-transfer can settle it with only part of the
-         * file written — so check the bytes on disk against the advertised
-         * length before trusting it.
-         */
+        // `downloadAsync` resolving is not proof of a complete body: a
+        // connection dropped mid-transfer settles it with a partial file.
         const part = await getInfoAsync(MODEL_PART_PATH);
         const written = part.exists ? (part.size ?? 0) : 0;
         const short = expectedBytes > 0 ? written < expectedBytes : written < 1_000_000;
@@ -137,17 +113,13 @@ export async function downloadModel(onProgress?: DownloadProgress): Promise<void
 }
 
 /**
- * Remove model files left by a previous version of the app.
+ * Remove model files left by a previous version of the app. Changing MODEL_URL
+ * changes MODEL_PATH with it, so the old file is never opened again and sits in
+ * the documents directory at full size for the life of the install.
  *
- * Changing MODEL_URL changes MODEL_PATH with it, so the file the old build
- * downloaded is simply never opened again — it just sits in the documents
- * directory taking up its full size for the life of the install. Anyone
- * upgrading from all-MiniLM-L6-v2 would be carrying 23MB of it. Swept by
- * listing the directory rather than by naming the old file, so the next swap
- * cleans up after itself without anyone remembering to add a case here.
- *
- * Best-effort: a model that downloaded fine should not fail because tidying
- * up afterwards did.
+ * Swept by listing the directory rather than naming the old file, so the next
+ * model swap cleans up after itself. Best-effort: a model that downloaded fine
+ * should not fail because tidying up did.
  */
 async function deleteSupersededModels(): Promise<void> {
     try {
@@ -177,15 +149,9 @@ export async function ensureReady(onProgress?: DownloadProgress): Promise<void> 
         try {
             session = await InferenceSession.create(MODEL_PATH);
         } catch (error) {
-            /*
-             * The file is on disk and passed for downloaded, and ONNX still
-             * can't read it — so it is damaged, and no retry that trusts it
-             * will ever get further than this line. Throwing it away is what
-             * turns the next attempt into a real download instead of another
-             * identical failure: downloads predating the .part handling above
-             * (and anything truncated by a full disk or a half-written file)
-             * heal here rather than stranding Themes for good.
-             */
+            // On disk, passed for downloaded, and ONNX still cannot read it:
+            // it is damaged, and no retry that trusts it gets further than this
+            // line. Discarding turns the next attempt into a real download.
             tokenizer = null;
             await deleteAsync(MODEL_PATH, { idempotent: true });
             throw error;
@@ -206,19 +172,14 @@ export function unload(): void {
 }
 
 /**
- * Embed texts into unit-length vectors.
- *
- * Takes the [CLS] vector and L2-normalises it, which is what
- * sentence-transformers does for this model and what makes a dot product a
- * cosine similarity.
+ * Embed texts into unit-length vectors. Takes the [CLS] vector and
+ * L2-normalises it, which is what makes a dot product a cosine similarity.
  *
  * CLS, not mean. bge-small-en-v1.5 ships `pooling_mode_cls_token: true` and
- * was trained with its sentence meaning gathered into that one position;
- * mean-pooling it — correct for the MiniLM this replaced — produces vectors
- * that still look plausible, still normalise, still cluster into *something*,
- * and are quietly wrong. There is no error to catch, so the rule is simply
- * that pooling belongs to the model: read it off the model's own
- * 1_Pooling/config.json rather than inheriting whatever the last one used.
+ * gathers sentence meaning into that one position; mean-pooling it produces
+ * vectors that still look plausible, still normalise, still cluster into
+ * *something*, and are quietly wrong with no error to catch. Pooling belongs to
+ * the model — read it off its own 1_Pooling/config.json on any swap.
  */
 export async function embed(texts: string[]): Promise<Float32Array[]> {
     if (texts.length === 0) return [];
@@ -252,13 +213,10 @@ export async function embed(texts: string[]): Promise<Float32Array[]> {
 
         const results = await session.run(feeds);
 
-        /*
-         * By name where the export provides it. Picking outputNames[0] blind
-         * is fine until a build happens to put `pooler_output` first — that is
-         * a [batch, 384] tensor, so reading position 0 of a sequence that
-         * isn't there would hand back a plausible-looking wrong answer rather
-         * than failing. The dimension check below is the backstop.
-         */
+        // By name, not outputNames[0]: a build that puts `pooler_output`
+        // first gives a [batch, 384] tensor, so reading position 0 of a
+        // sequence that is not there returns plausible nonsense rather than
+        // failing. The dimension check below is the backstop.
         const outputName = session.outputNames.includes('last_hidden_state')
             ? 'last_hidden_state'
             : session.outputNames[0];

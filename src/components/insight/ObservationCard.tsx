@@ -1,14 +1,6 @@
 /**
- * One noticing, on Home, among the other things the app remembers for you.
- *
- * The shape is argued rather than inherited, and it is not the one the mockup
- * sketched. That draft led with "Four entries, one centre" and gave it a
- * giant 4 — which is a headline about the database. `themeQuality.ts` had
- * already written down why that is wrong ("the least interesting true thing
- * about a theme — it is a fact about the clustering, not about the reader"),
- * and the draft repeated the mistake in a larger font.
- *
- * So the card runs the other way round: evidence first, passage last.
+ * One noticing, on Home. Evidence first, passage last — never a count as the
+ * headline, which is a fact about the database rather than the reader:
  *
  *     WHERE YOUR ENTRIES POINT          what kind of card this is
  *     Genesis 35 · Leviticus 19 · …     what you did
@@ -18,24 +10,16 @@
  *     written about it.
  *     1 Chronicles 16:26  →             the payoff
  *
- * The passages carry the count without announcing it, and the verse arrives as
- * a reward rather than a label. Reading it top to bottom is a small argument
- * that ends somewhere the reader has not been.
+ * The passages carry the count without announcing it, and reading top to
+ * bottom is a small argument ending somewhere the reader has not been.
  *
- * At most one tap target, like Flashback beside it: the card opens its
- * receipts. The heavy actions — read the passage, or say it is wrong — live in
- * there, where there is room and where the reader has seen the evidence before
- * they judge it. The only thing on the card itself is a quiet dismiss, because
- * "not now" and "not true" are different answers and the schema keeps them
- * apart.
+ * At most ONE tap target: the card opens its receipts, and the heavy actions
+ * live in there where the reader has seen the evidence first. Only a quiet
+ * dismiss sits on the card, since "not now" and "not true" are different
+ * answers the schema keeps apart.
  *
- * At most, because some findings have nothing worth opening. A convergence
- * inferred something and its entries are the proof; absence reports counts of
- * the reader's own writing and its "evidence" would tell them nothing they did
- * not already have. Those cards are flat and unpressable, and carry a closing
- * remark where the button would have been — a card that lifts under the thumb
- * and then does nothing teaches the reader that these cards are unreliable,
- * which is expensive for the ones that genuinely do open.
+ * At most, because some findings have nothing worth opening — those are flat
+ * and unpressable, with a closing remark where the button would have been.
  */
 
 import React, { useEffect } from 'react';
@@ -51,14 +35,10 @@ import { RenderedObservation } from '../../insight/render';
 interface Props {
     observation: RenderedObservation;
     /**
-     * Called once when this card mounts, to record that it was shown.
-     *
-     * Required rather than optional on purpose. The stamp used to happen where
-     * the finding was chosen, which meant a screen merely loading could spend
-     * one — and `shown_at` decides whether a card returns, when it returns,
-     * and whether it lands in the archive as something the reader answered.
-     * Making this mandatory means a new surface cannot quietly reintroduce
-     * that by leaving a prop off.
+     * Called once when this card mounts, to record that it was shown. Required
+     * rather than optional so a new surface cannot spend a finding by leaving
+     * the prop off — `shown_at` decides whether a card returns, when, and
+     * whether it lands in the archive as something the reader answered.
      */
     onSeen: () => void;
     onOpen: () => void;
@@ -119,12 +99,9 @@ export function ObservationCard({ observation, onSeen, onOpen, onDismiss }: Prop
                 </View>
             )}
 
-            {/*
-              * The evidence, oldest first — the count made visible rather than
-              * stated. Omitted entirely when a detector has no passages to
-              * list: absence rests on counts rather than places, and an empty
-              * strip would leave a gap the reader reads as a loading failure.
-              */}
+            {/* The evidence, oldest first — the count made visible rather
+              * than stated. Omitted entirely for detectors with no passages,
+              * since an empty strip reads as a loading failure. */}
             {observation.evidence.length > 0 && (
                 <Text variant="caption" tone="tertiary" style={styles.evidence}>
                     {observation.evidence.join('  ·  ')}
@@ -146,12 +123,9 @@ export function ObservationCard({ observation, onSeen, onOpen, onDismiss }: Prop
                 </View>
             )}
 
-            {/*
-              * Where the button would have been, on a card that has none.
-              * Given its own line rather than the subject row because it is a
-              * remark, not a label — it is a sentence, and squeezing it beside
-              * a two-line question would wrap it into nonsense.
-              */}
+            {/* Where the button would have been, on a card that has none. Its
+              * own line rather than the subject row: it is a sentence, and
+              * squeezing it beside a two-line question wraps it to nonsense. */}
             {!observation.openLabel && observation.aside && (
                 <Text variant="caption" tone="tertiary" style={styles.aside}>
                     {observation.aside}
@@ -160,14 +134,9 @@ export function ObservationCard({ observation, onSeen, onOpen, onDismiss }: Prop
         </>
     );
 
-    /*
-     * A card only behaves like a button when there is something behind it.
-     *
-     * Absence has no receipts worth opening, and a card that lifts under the
-     * thumb and then does nothing is worse than a flat one — it teaches the
-     * reader that this app's cards are unreliable, which is expensive for the
-     * ones that genuinely do open.
-     */
+    // A card only behaves like a button when something is behind it: one that
+    // lifts under the thumb and does nothing teaches the reader these cards
+    // are unreliable, which is expensive for the ones that do open.
     const canOpen = !!observation.openLabel;
 
     const surface = [styles.cloth, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }];

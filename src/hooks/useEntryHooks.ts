@@ -63,12 +63,9 @@ export function draftProgress(draft: DraftSummary): string {
 }
 
 /**
- * Read a stored draft the way Home wants it.
- *
- * design/all-screens.html #draft. Home used to keep one bit of this payload —
- * whether it existed — and say "Didn't finish?" in a floating bar. The passage
- * and the progress were in the draft the whole time; naming them is what turns
- * a nag into a way back in.
+ * Read a stored draft the way Home wants it. design/all-screens.html #draft:
+ * the passage and the progress are both in the payload, and naming them is
+ * what turns a nag into a way back in.
  */
 export function summariseDraft(json: string | null): DraftSummary | null {
     if (!json || !json.trim()) return null;

@@ -5,27 +5,22 @@ import { Linking, Platform } from 'react-native';
 /**
  * The OEM power managers that stop reminders from firing.
  *
- * Stock Android is not the whole story on a Tecno, Infinix or itel. Those are
- * Transsion phones running HiOS/XOS, and they ship a second, vendor-written
- * power manager — Phone Master — that sits above the AOSP one. It defaults
- * third-party apps to auto-start OFF, and an app in that state gets
- * *force-stopped* rather than merely backgrounded. A force-stop is not a pause:
- * Android cancels every alarm the app registered with AlarmManager and does not
- * put them back. expo-notifications schedules each reminder as exactly such an
- * alarm, so one sweep by Phone Master silently retires the whole schedule.
+ * Transsion phones (Tecno, Infinix, itel, running HiOS/XOS) ship Phone Master,
+ * a vendor power manager above the AOSP one. It defaults third-party apps to
+ * auto-start OFF, and an app in that state is FORCE-STOPPED rather than
+ * backgrounded — which cancels every AlarmManager alarm and does not put them
+ * back. expo-notifications schedules each reminder as exactly such an alarm, so
+ * one sweep retires the whole schedule.
  *
- * The AOSP battery-optimisation whitelist that `battery-optimization.tsx` asks
- * for does not cover this — a user can be whitelisted there and still be
- * force-stopped by Phone Master. The only cure is the vendor's own auto-start
- * screen, which has no public API and no permission to request: it has to be
- * opened by its component name and toggled by hand.
+ * The AOSP battery whitelist `battery-optimization.tsx` asks for does NOT cover
+ * this: a user can be whitelisted there and still be force-stopped. The only
+ * cure is the vendor's own auto-start screen, which has no public API and must
+ * be opened by component name and toggled by hand.
  *
- * The component names below are the ones these vendors ship. They move between
- * firmware versions, so each family lists its candidates in order and
- * `openAutoStartSettings` walks them until one opens — an explicit component
- * that does not exist throws ActivityNotFoundException, which is the signal to
- * try the next. If none open we fall back to the app's own settings page, which
- * always exists.
+ * Those component names move between firmware versions, so each family lists
+ * candidates in order and `openAutoStartSettings` walks them until one opens —
+ * a component that does not exist throws ActivityNotFoundException, which is
+ * the signal to try the next. The app's own settings page is the fallback.
  */
 
 const PACKAGE = 'com.asaro.meditation';

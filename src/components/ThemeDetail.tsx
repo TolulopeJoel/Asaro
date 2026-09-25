@@ -1,23 +1,16 @@
 /**
- * One cluster, opened.
- *
- * design/all-screens.html #themedetail: the name, the size of the thing under
- * it, the verses the writer cited, then every entry the theme rests on,
+ * One cluster, opened. design/all-screens.html #themedetail: the name, the size
+ * beneath it, the verses the writer cited, then every entry the theme rests on,
  * oldest first.
  *
- * Cloth gives the name its band and hangs the two header controls in the top
- * row, so the name — not the count — is what the screen leads with. That is
- * the right call here: the name is the claim the clustering is making and the
- * entry count is the evidence for it, so leading with the count would put the
- * weight on a fact about the database. `themeQuality.ts` already writes down
- * why that is the least interesting true thing about a theme.
+ * The NAME leads, never the count — the name is the claim the clustering makes
+ * and the count is a fact about the database.
  *
- * Answers are grouped by entry rather than listed flat. One entry often
- * contributes two answers to a theme — what it says about Jehovah, and what to
- * do about it — and showing those as two cards reads like a duplicate.
+ * Answers are grouped by entry rather than listed flat: one entry often
+ * contributes two answers to a theme, and two cards read as a duplicate.
  *
- * It is a modal over the Library tab, so it draws no tab bar and the way out
- * is an X rather than a back arrow: there is no stack to pop.
+ * A modal over the Library tab, so no tab bar and the way out is an X — there
+ * is no stack to pop.
  */
 import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
@@ -146,14 +139,10 @@ export function ThemeDetail({ cluster, name, onClose, onRename, onOpenEntry }: P
         </View>
     );
 
-    /*
-     * The tags are the writer's own index — pulled out of the [[Isaiah 55:9]]
-     * markers they typed while writing — which is a better handle on a theme
-     * than the chapter ranges the entries happen to sit in: the ranges say
-     * what was read, the tags say what was reached for. Square and outlined,
-     * never filled: a tag that reads as a button invites a tap this screen
-     * does not answer. The reference inside is still a link.
-     */
+    // The tags are the writer's own index, pulled from the `[[...]]` markers
+    // they typed: ranges say what was read, tags say what was reached for.
+    // Square and outlined, never filled — a tag that reads as a button invites
+    // a tap this screen does not answer.
     const tags = verses.length > 0 && (
         <View style={styles.tagRow}>
             {verses.map(verse => (
