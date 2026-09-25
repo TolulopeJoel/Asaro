@@ -24,6 +24,7 @@
  */
 
 import { getChapterCoverage } from '../../data/database';
+import { withDatabase } from '../../data/db';
 import { ALL_BIBLE_BOOKS } from '../../data/bibleBooks';
 import { weaveCloth } from '../../land/cloth';
 import { recordObservation } from '../observation';
@@ -139,6 +140,37 @@ export async function loadBookTallies(now: number = Date.now()): Promise<BookTal
 }
 
 /**
+ * The entries a milestone rests on.
+ *
+ * `recordObservation` refuses a finding with no evidence, and it is right to:
+ * a detector's job ends at a claim WITH the rows that support it, which is
+ * what lets a card open onto something real and what stops a claim outliving
+ * its basis. This detector shipped passing an empty array and threw on every
+ * run — the invariant caught a genuine gap rather than being in the way.
+ *
+ * For a finished book the evidence is the writing that finished it. For a
+ * plan crossing it is the entry that crossed it: no single row "is" a
+ * percentage, but saving that entry is the event being reported, and pointing
+ * at it is both true and the most useful place to go from the card.
+ */
+async function evidenceEntries(book: string | undefined, limit = 6): Promise<number[]> {
+    return withDatabase(async database => {
+        const rows = book
+            ? await database.getAllAsync<{ id: number }>(
+                `SELECT id FROM journal_entries
+                  WHERE book_name = ?
+                  ORDER BY datetime(created_at) DESC
+                  LIMIT ?`,
+                [book, limit],
+            )
+            : await database.getAllAsync<{ id: number }>(
+                `SELECT id FROM journal_entries ORDER BY datetime(created_at) DESC LIMIT 1`,
+            );
+        return rows.map(row => row.id);
+    });
+}
+
+/**
  * Find what has just been reached, and record it.
  *
  * No retraction, unlike every other detector here. A milestone is not a claim
@@ -155,6 +187,15 @@ export async function detectMilestones(
 
     const ids: number[] = [];
     for (const milestone of milestones) {
+        const entries = await evidenceEntries(milestone.book);
+        /*
+         * A milestone with nothing behind it cannot be recorded, and should
+         * not be: a finished book with no entries in the table is a
+         * contradiction, and reporting it would be reporting a bug as an
+         * achievement.
+         */
+        if (entries.length === 0) continue;
+
         ids.push(
             await recordObservation({
                 detector: 'milestone',
@@ -173,7 +214,7 @@ export async function detectMilestones(
                  * commitment being handed back.
                  */
                 confidence: 0.95,
-                evidence: [],
+                evidence: entries.map(entryId => ({ kind: 'entry' as const, entryId })),
             }),
         );
     }
