@@ -19,9 +19,12 @@ interface BookCardProps {
 /**
  * A book in the library's Books list.
  *
- * The design's own book row: the name, the count pushed to the right edge, a
- * hairline under it. No panel, no ochre badge and no chevron — the row is the
- * affordance, as everywhere else.
+ * A panel carrying the book's name, its entry count as an ochre badge, and a
+ * chevron. The comment here used to describe the opposite of all three — "a
+ * hairline under it, no panel, no ochre badge and no chevron" — because it
+ * was written for the Colossal row, which was deleted while the Cloth code it
+ * sat above survived. A comment that contradicts the code beneath it is worse
+ * than none: the next person trusts it.
  */
 export const BookCard = React.memo(({ book, onNavigate }: BookCardProps) => {
     const { colors } = useTheme();
@@ -49,18 +52,6 @@ export const BookCard = React.memo(({ book, onNavigate }: BookCardProps) => {
 });
 
 const styles = StyleSheet.create({
-    // .co-book — a 46px row, baseline-aligned, count pushed right.
-    bookRow: {
-        flexDirection: 'row',
-        alignItems: 'baseline',
-        gap: Spacing.sm + 2,
-        height: Spacing.touchTarget + 2,
-        borderBottomWidth: Spacing.border.hairline,
-    },
-    // .co-bookc
-    bookRowCount: {
-        marginLeft: 'auto',
-    },
     bookCardWrapper: {
         marginBottom: 12,
     },

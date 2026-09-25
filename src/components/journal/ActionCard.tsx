@@ -13,6 +13,7 @@ import Svg, { Path } from 'react-native-svg';
 import { useTheme } from '../../theme/ThemeContext';
 import { EnhancedActionItem, JournalEntry, getEntryById } from '../../data/database';
 import { ScalePressable } from '../ScalePressable';
+import { CHECKBOX_WIDTH, Checkbox } from './Checkbox';
 import { HyperlinkedText } from '../HyperlinkedText';
 import { Spacing } from '../../theme/spacing';
 import { Text, textStyle } from '../ui';
@@ -61,31 +62,6 @@ function reference(item: EnhancedActionItem): string {
 }
 
 /** The 18px box the mockup puts at the head of every action. */
-function ActionCheckbox({ done, onPress }: { done: boolean; onPress: () => void }) {
-    const { colors } = useTheme();
-    return (
-        <ScalePressable
-            onPress={onPress}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: done }}
-            accessibilityLabel={done ? 'Mark as not done' : 'Mark as done'}
-            hitSlop={Spacing.md}
-            style={[
-                styles.checkbox,
-                done
-                    ? { backgroundColor: colors.textPrimary, borderColor: colors.textPrimary }
-                    : { borderColor: colors.borderStrong },
-            ]}
-        >
-            {done && (
-                <Svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={colors.background} strokeWidth="3.6" strokeLinecap="round">
-                    <Path d="M5 12l5 5L19 7" />
-                </Svg>
-            )}
-        </ScalePressable>
-    );
-}
-
 export const ActionCard = React.memo(({ item, onEntryPress, handleTogglePin, handleToggleAction, progress, onEdit }: ActionCardProps) => {
     const { colors, style: themeStyle } = useTheme();
 
@@ -149,7 +125,7 @@ export const ActionCard = React.memo(({ item, onEntryPress, handleTogglePin, han
         >
             <View style={styles.clothRow}>
                 {showsCheckbox ? (
-                    <ActionCheckbox done={done} onPress={() => handleToggleAction(item)} />
+                    <Checkbox done={done} onPress={() => handleToggleAction(item)} />
                 ) : (
                     <View style={styles.checkboxSpacer} />
                 )}
@@ -206,17 +182,9 @@ const styles = StyleSheet.create({
         minWidth: 0,
     },
     /* Keeps an application's text on the same left edge as everything else. */
-    checkboxSpacer: { width: 18 },
+    checkboxSpacer: { width: CHECKBOX_WIDTH },
     archived: { opacity: 0.5 },
     metaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10 },
-    checkbox: {
-        width: 18,
-        height: 18,
-        marginTop: 2,
-        borderWidth: Spacing.border.hairline,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
     motivation: {
         marginTop: 7,
         paddingLeft: 11,
