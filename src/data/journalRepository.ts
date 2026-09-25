@@ -3,6 +3,7 @@ import { withDatabase } from './db';
 import { ActionItem, JournalEntry, JournalEntryInput, EnhancedActionItem } from './types';
 import { formatDateToLocalString, getTodayDateString } from '../utils/dateUtils';
 import { READING_PLAN_DATA } from './readingPlanData';
+import { CoverageRow } from '../land/cloth';
 
 /**
  * Given a book name and chapter start/end, find ALL reading plan items
@@ -299,6 +300,41 @@ export const getBookEntryCounts = async (): Promise<Record<string, number>> => {
         const counts: Record<string, number> = {};
         rows.forEach(row => { counts[row.book_name] = row.count; });
         return counts;
+    });
+};
+
+/**
+ * Every chapter ever written about, with the last date it was.
+ *
+ * Grouped in SQL and expanded in JS on purpose: an entry spans a range, and
+ * SQLite has no cheap way to turn "Genesis 12-15" into four rows. The grouping
+ * still does the work that matters — one row per distinct range rather than
+ * one per entry — so a journal of thousands arrives as a few hundred rows.
+ *
+ * `created_at` rather than `updated_at`: this records when the reading
+ * happened, and editing the wording of a reflection two years later did not
+ * make you read the chapter again.
+ */
+export const getChapterCoverage = async (): Promise<CoverageRow[]> => {
+    return await withDatabase(async (database) => {
+        const rows = await database.getAllAsync<{
+            book_name: string;
+            chapter_start: number;
+            chapter_end: number | null;
+            last_read: string;
+        }>(
+            `SELECT book_name, chapter_start, chapter_end, MAX(created_at) AS last_read
+             FROM journal_entries
+             WHERE chapter_start IS NOT NULL
+             GROUP BY book_name, chapter_start, chapter_end`
+        );
+
+        return rows.map(row => ({
+            bookName: row.book_name,
+            chapterStart: row.chapter_start,
+            chapterEnd: row.chapter_end,
+            lastRead: row.last_read,
+        }));
     });
 };
 

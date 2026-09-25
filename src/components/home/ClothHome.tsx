@@ -63,6 +63,15 @@ export interface ClothHomeProps {
      * database that nothing follows from.
      */
     planProgress?: { completed: number; total: number; percent: number } | null;
+    /**
+     * Opening the land — every chapter this progress has actually worked.
+     *
+     * The progress bar and the cloth are the same fact at two resolutions: one
+     * says how far through the plan you are, the other says what that came to.
+     * Tapping from the number to the thing it made is the natural move, so the
+     * bar is the door rather than earning a button of its own.
+     */
+    onProgressPress?: () => void;
 }
 
 /**
@@ -130,6 +139,7 @@ export function ClothHome({
     observation,
     today,
     planProgress,
+    onProgressPress,
 }: ClothHomeProps) {
     const { colors } = useTheme();
 
@@ -182,7 +192,13 @@ export function ClothHome({
                 {today}
 
                 {planProgress && (
-                    <View style={[styles.panel, { backgroundColor: colors.backgroundSubtle }]}>
+                    <ScalePressable
+                        style={[styles.panel, { backgroundColor: colors.backgroundSubtle }]}
+                        onPress={onProgressPress}
+                        disabled={!onProgressPress}
+                        accessibilityRole={onProgressPress ? 'button' : undefined}
+                        accessibilityLabel={onProgressPress ? 'See your land' : undefined}
+                    >
                         <View style={styles.progressTop}>
                             <Text variant="label">{`${planProgress.completed} of ${planProgress.total} readings`}</Text>
                             <Text variant="label" tone="accent">{`${planProgress.percent}%`}</Text>
@@ -195,7 +211,7 @@ export function ClothHome({
                                 ]}
                             />
                         </View>
-                    </View>
+                    </ScalePressable>
                 )}
 
                 <View style={[styles.panel, styles.stat, styles.hiddenStat, { backgroundColor: colors.backgroundSubtle }]}>

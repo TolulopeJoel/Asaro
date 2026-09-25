@@ -483,6 +483,7 @@ export default function Index() {
                         flashback={observationCard ? null : flashbackForLockedIn}
                         today={todayStrip}
                         planProgress={planProgress}
+                        onProgressPress={() => router.push('/land')}
                         onBeginReflection={handleBeginReflection}
                         onSettings={() => router.push('/settings')}
                         onWeekPress={() => router.push('/stats')}
@@ -535,6 +536,7 @@ export default function Index() {
                         flashback={observationCard ? null : flashbackForLockedIn}
                         today={todayStrip}
                         planProgress={planProgress}
+                        onProgressPress={() => router.push('/land')}
                         onBeginReflection={handleBeginReflection}
                         onSettings={() => router.push('/settings')}
                         onWeekPress={() => router.push('/stats')}

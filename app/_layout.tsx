@@ -56,6 +56,7 @@ function StackNavigator() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="addEntry" options={{ headerShown: false }} />
       <Stack.Screen name="stats" options={{ headerShown: false }} />
+      <Stack.Screen name="land" options={{ headerShown: false }} />
       <Stack.Screen name="permissions" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="battery-optimization" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="onboarding/name" options={{ headerShown: false, gestureEnabled: false }} />

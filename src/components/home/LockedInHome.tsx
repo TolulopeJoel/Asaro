@@ -68,6 +68,8 @@ export interface LockedInHomeProps {
      * database that nothing follows from.
      */
     planProgress?: { completed: number; total: number; percent: number } | null;
+    /** Opening the land — see ClothHome, where this is argued out. */
+    onProgressPress?: () => void;
 }
 
 /**
@@ -107,6 +109,7 @@ export function LockedInHome({
     observation,
     today,
     planProgress,
+    onProgressPress,
 }: LockedInHomeProps) {
     const { colors } = useTheme();
     const written = weekDays.filter((d) => d.hasEntry).length;
@@ -185,7 +188,12 @@ export function LockedInHome({
                 )}
 
                 {planProgress && (
-                    <>
+                    <ScalePressable
+                        onPress={onProgressPress}
+                        disabled={!onProgressPress}
+                        accessibilityRole={onProgressPress ? 'button' : undefined}
+                        accessibilityLabel={onProgressPress ? 'See your land' : undefined}
+                    >
                         <View style={[styles.rule, { backgroundColor: colors.border }]} />
                         <View style={styles.progressTop}>
                             <Text variant="label">{`${planProgress.completed} of ${planProgress.total} readings`}</Text>
@@ -199,7 +207,7 @@ export function LockedInHome({
                                 ]}
                             />
                         </View>
-                    </>
+                    </ScalePressable>
                 )}
             </View>
         </View>
