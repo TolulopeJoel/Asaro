@@ -20,9 +20,9 @@ export interface DayStatus {
 }
 
 // A completed week is still celebrated — but with the theme's own ramp rather
-// than seven iOS system hues, which belonged to neither palette. Cloth reads as
-// cloth taken deeper into the indigo vat with each dip; Colossal warms from
-// white to ochre. See `celebration` in src/theme/colors.ts.
+// than seven iOS system hues, which belonged to no palette. It reads as cloth
+// taken deeper into the indigo vat with each dip. See `celebration` in
+// src/theme/colors.ts.
 
 export const fetchWeeklyStreakData = async (): Promise<DayStatus[]> => {
     const today = new Date();
@@ -66,17 +66,13 @@ export const fetchWeeklyStreakData = async (): Promise<DayStatus[]> => {
 
 export const WeeklyStreak = React.memo(({
     weekDays: weekDaysProp,
-    lockedIn: lockedInProp,
     onPress,
 }: {
     weekDays?: DayStatus[];
-    /** Overrides the active style. Normally omit it and let the theme decide. */
-    lockedIn?: boolean;
     /** Overrides the default navigate-to-/stats behavior. */
     onPress?: () => void;
 }) => {
-    const { colors, isLockedIn } = useTheme();
-    const lockedIn = lockedInProp ?? isLockedIn;
+    const { colors } = useTheme();
     const [weekDaysState, setWeekDays] = useState<DayStatus[]>([]);
     const weekDays = weekDaysProp || weekDaysState;
     const hasAnimated = useRef(false);
@@ -134,19 +130,17 @@ export const WeeklyStreak = React.memo(({
                             entering={hasAnimated.current ? undefined : FadeInDown.delay(index * 60).duration(400)}
                             style={styles.dayItem}
                         >
-                            {!lockedIn && (
-                                <Text style={[
-                                    styles.dayName,
-                                    {
-                                        color: isFullWeek ? dayColor : (day.isToday ? colors.textPrimary : colors.textTertiary),
-                                        opacity: day.isFuture ? 0.35 : 1,
-                                        fontWeight: day.isToday ? '600' : '500',
-                                        letterSpacing: 1,
-                                    }
-                                ]}>
-                                    {day.dayName.charAt(0)}
-                                </Text>
-                            )}
+                            <Text style={[
+                                styles.dayName,
+                                {
+                                    color: isFullWeek ? dayColor : (day.isToday ? colors.textPrimary : colors.textTertiary),
+                                    opacity: day.isFuture ? 0.35 : 1,
+                                    fontWeight: day.isToday ? '600' : '500',
+                                    letterSpacing: 1,
+                                }
+                            ]}>
+                                {day.dayName.charAt(0)}
+                            </Text>
 
                             {isFullWeek && day.hasEntry ? (
                                 // Each day gets its own rainbow color
@@ -209,8 +203,8 @@ export const WeeklyStreak = React.memo(({
         </>
     );
 
-    // Full week: wrap in the celebration gradient (skipped in Locked In — no borders or boxes there)
-    if (isFullWeek && !lockedIn) {
+    // Full week: wrap in the celebration gradient.
+    if (isFullWeek) {
         return (
             <ScalePressable onPress={() => router.push('/stats')}>
                 <LinearGradient
@@ -223,18 +217,6 @@ export const WeeklyStreak = React.memo(({
                         {cardContent}
                     </View>
                 </LinearGradient>
-            </ScalePressable>
-        );
-    }
-
-    // Locked In Mode: same tap-through to /stats, just without the card chrome.
-    if (lockedIn) {
-        return (
-            <ScalePressable
-                style={[styles.container, { backgroundColor: 'transparent', borderWidth: 0, padding: 0 }]}
-                onPress={onPress ?? (() => router.push('/stats'))}
-            >
-                {cardContent}
             </ScalePressable>
         );
     }

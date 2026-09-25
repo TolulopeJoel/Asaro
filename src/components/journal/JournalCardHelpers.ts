@@ -61,7 +61,7 @@ export const getDynamicCardStyle = (text: string) => {
 /**
  * The `.co-when` column: Today, then a weekday for the last week, then a date.
  *
- * The mockup's Colossal library reads "Today · Sat · Fri · Wed · Tue · Mon"
+ * The mockup's library reads "Today · Sat · Fri · Wed · Tue · Mon"
  * down the right edge rather than "Sep 21 · Jun 26". At 10px uppercase a
  * three-letter day is legible where a full date is not, and it is what makes
  * the column scan as a rhythm instead of a list of numbers. Anything older

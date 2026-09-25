@@ -4,25 +4,15 @@ import { DeviceEventEmitter, StyleSheet, View } from 'react-native';
 import { Text } from '@/src/components/ui/Text';
 import { Tabs, useRouter } from 'expo-router';
 import { ScalePressable } from '@/src/components/ScalePressable';
-import { useRef, useEffect } from 'react';
+import { useRef } from 'react';
 import { Spacing } from '@/src/theme/spacing';
 
 export default function TabLayout() {
-    const { colors: themeColors, isLockedIn } = useTheme();
+    const { colors: themeColors } = useTheme();
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const lastPressTime = useRef<number>(0);
     const lastPressTab = useRef<string | null>(null);
-
-    useEffect(() => {
-        const subscription = DeviceEventEmitter.addListener('locked-in-mode-changed', (val: boolean) => {
-            // Turning the mode on hides the Groups button, but that alone does not move
-            // you off the Groups screen — you'd be left on a hidden tab with nothing
-            // highlighted in the bar. Send the user to Home, which is the mode's surface.
-            if (val) router.navigate('/(tabs)');
-        });
-        return () => subscription.remove();
-    }, [router]);
 
     return (
         <Tabs
@@ -38,15 +28,11 @@ export default function TabLayout() {
                     styles.tabBar,
                     {
                         backgroundColor: colors.tabBar,
-                        // Cloth's bar is an indigo band and needs no line; Colossal's
-                        // is black on black, so the hairline is the only thing
-                        // separating it from the screen (.co-tabs border-top).
-                        borderTopWidth: isLockedIn ? StyleSheet.hairlineWidth : 0,
+                        // Cloth's bar is an indigo band and needs no line.
+                        borderTopWidth: 0,
                         borderTopColor: colors.border,
-                        paddingHorizontal: isLockedIn
-                            ? Spacing.layout.screenPaddingTight
-                            : Spacing.layout.screenPadding,
-                        paddingTop: isLockedIn ? Spacing.lg : 15,
+                        paddingHorizontal: Spacing.layout.screenPadding,
+                        paddingTop: 15,
                         // The mockup's 30px foot, or the home indicator if it is taller.
                         paddingBottom: Math.max(insets.bottom, Spacing.layout.tabBarPadding),
                     },
@@ -54,17 +40,6 @@ export default function TabLayout() {
                     {props.state.routes.map((route, index) => {
                         // Hide dynamic routes from the tab bar
                         if (route.name.includes('[id]')) return null;
-                        /*
-                         * Groups stays in Locked In.
-                         *
-                         * This used to be hidden — "Locked In hides the social
-                         * surface too" — but design/all-screens.html draws the
-                         * Groups hub and Group detail as Colossal screens, with
-                         * three tabs and Groups lit, on every one of its `.co`
-                         * mockups. Hiding the tab made those screens
-                         * unreachable in the style they were drawn for.
-                         */
-
                         const isFocused = props.state.index === index;
                         const shouldHighlight = isFocused;
 
@@ -112,8 +87,8 @@ export default function TabLayout() {
                                 {/*
                                   * The bar is type only. The design carries no icons
                                   * and no highlight pill: the active tab is the one
-                                  * word in the foreground colour (.co-tab.on), which
-                                  * is the whole mechanism in both styles.
+                                  * word in the foreground colour, which is the whole
+                                  * mechanism.
                                   */}
                                 <Text
                                     variant="tab"

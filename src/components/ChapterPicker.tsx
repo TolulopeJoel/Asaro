@@ -50,7 +50,7 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = React.memo(({
     allowRange = true,
     onVerseRangeChange,
 }) => {
-    const { colors, style: themeStyle, isLockedIn } = useTheme();
+    const { colors, style: themeStyle } = useTheme();
     /*
      * Cells are sized in pixels rather than percentages: the grid's gaps are
      * in px, and a percentage width can't subtract them, so six 16.6% cells
@@ -119,18 +119,14 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = React.memo(({
                     const isCap = selected && (chapter === start || chapter === end);
 
                     /*
-                     * The two styles mark a range in opposite directions, and
-                     * that is the design, not an accident.
-                     *
-                     * Colossal fills the interior white and caps the ends in
-                     * ochre. Cloth weaves the interior with the resist mark and
-                     * caps the ends in solid indigo — `.cl-cell.on` carries
-                     * `--mark-img`, `.cl-cell.cap` is `--deep`. So the ends are
-                     * the heavy thing in Cloth and the light thing in Colossal.
+                     * Cloth weaves the interior with the resist mark and caps
+                     * the ends in solid indigo — `.cl-cell.on` carries
+                     * `--mark-img`, `.cl-cell.cap` is `--deep`. The ends are
+                     * the heavy thing.
                      */
-                    const capFill = isLockedIn ? colors.markInk : colors.textPrimary;
-                    const interiorFill = isLockedIn ? colors.textPrimary : colors.backgroundSubtle;
-                    const woven = !isLockedIn && selected && !isCap;
+                    const capFill = colors.textPrimary;
+                    const interiorFill = colors.backgroundSubtle;
+                    const woven = selected && !isCap;
 
                     return (
                         <ScalePressable

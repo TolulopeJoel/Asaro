@@ -13,9 +13,9 @@
  * worked it, which is the thing the metaphor is actually about. It also keeps
  * the land honest — it is made of what they wrote, and nothing else.
  *
- * Cloth only. `terrain.ts` explains why: Colossal is monochrome by rule and a
- * green field would be the loudest thing in it, so rather than ship a grey
- * shadow of this screen there is one version of it.
+ * Cloth only. `terrain.ts` explains why: in a monochrome style a green field
+ * would be the loudest thing on the page, so rather than ship a grey shadow of
+ * this screen there is one version of it.
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
@@ -30,6 +30,7 @@ import { Hero, Screen, Text as UIText } from '@/src/components/ui';
 import { GREEK_BOOKS, HEBREW_BOOKS } from '@/src/data/bibleBooks';
 import { getChapterCoverage } from '@/src/data/database';
 import { BookCloth, Cloth, quietBooks, weaveCloth } from '@/src/land/cloth';
+import { fallowHeading } from '@/src/land/fallowTone';
 import { Spacing } from '@/src/theme/spacing';
 import { useTheme } from '@/src/theme/ThemeContext';
 
@@ -136,13 +137,29 @@ export default function LandScreen() {
                       */}
                     {quiet.length > 0 && (
                         <View style={[styles.quiet, { borderTopColor: colors.border }]}>
-                            <UIText variant="label">LYING FALLOW</UIText>
                             {/*
                               * Fallow is the exact word and it is doing real
                               * work. Land left fallow is resting, not lost, and
                               * it is still yours — which is the whole mechanic
                               * in one farming term the reader already knows.
+                              *
+                              * The heading softens as the ground gets older —
+                              * `fallowTone.ts` argues that out. This section
+                              * reacts to absence, and the character doc makes
+                              * that a rule rather than a preference: the longer
+                              * somebody has been away, the gentler he gets.
                               */}
+                            <UIText variant="label">
+                                {fallowHeading(
+                                    quiet.reduce<number | null>(
+                                        (oldest, book) =>
+                                            book.lastWorkedDays === null
+                                                ? oldest
+                                                : Math.max(oldest ?? 0, book.lastWorkedDays),
+                                        null,
+                                    ),
+                                ).toUpperCase()}
+                            </UIText>
                             {quiet.map(book => (
                                 <UIText key={book.name} variant="body" tone="secondary">
                                     {`${book.name} — ${book.worked} chapters, last worked ${ago(book.lastWorkedDays ?? 0)}`}

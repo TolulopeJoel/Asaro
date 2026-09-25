@@ -6,9 +6,8 @@
  * The screen people spend the most time on gets the least decoration, and it
  * asks one thing rather than showing five and letting you choose.
  *
- * Colossal gives its giant slot to the number (`.co-giant.sm`, in ochre) so the
- * question itself can stay at a readable 26px. Cloth has no giant, so it names
- * the step in a `.cl-label` instead — the same information, one step quieter.
+ * The step is named in a `.cl-label` rather than enlarged, so the question
+ * itself carries the page.
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, View } from 'react-native';
@@ -51,9 +50,6 @@ interface ReflectionFormProps {
   onDiscard?: () => void;
 }
 
-/** "01", "02" — the mockup sets the number two digits wide. */
-const pad = (n: number) => String(n).padStart(2, '0');
-
 export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
   initialAnswers,
   onAnswersChange,
@@ -65,7 +61,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
   onChangePassage,
   onDiscard,
 }) => {
-  const { colors, isLockedIn } = useTheme();
+  const { colors } = useTheme();
   const { showAlert } = useAlert();
   const [answers, setAnswers] = useState<ReflectionAnswers>({
     reflection1: initialAnswers?.reflection1 || '',
@@ -81,9 +77,8 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
    * Which page you are on: 0–4 are the five questions, 5 is the notes.
    *
    * The notes page carries no number, because the mockup's label says "of five
-   * questions" and notes are not a sixth question. Colossal's rule allows a
-   * screen zero colossal elements — Settings uses none — so that page simply
-   * leads with its heading instead.
+   * questions" and notes are not a sixth question — that page simply leads
+   * with its heading instead.
    */
   const [page, setPage] = useState(0);
   const isNotes = page === REFLECTION_QUESTIONS.length;
@@ -175,7 +170,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
   const goBack = () => (page === 0 ? onChangePassage() : setPage(p => p - 1));
   const goForward = () => setPage(p => Math.min(p + 1, REFLECTION_QUESTIONS.length));
 
-  const gutter = isLockedIn ? Spacing.layout.screenPaddingTight : Spacing.layout.screenPadding;
+  const gutter = Spacing.layout.screenPadding;
 
   return (
     <View style={styles.container}>
@@ -203,14 +198,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
 
       <View style={[styles.body, { paddingHorizontal: gutter }]}>
         {/* ── the step you're on ─────────────────────────────────────────── */}
-        {isNotes ? null : isLockedIn ? (
-          <>
-            <UIText variant="heroSmall" tone="accent">{pad(page + 1)}</UIText>
-            <UIText variant="label" style={styles.giantLabel}>
-              {`of ${SPELLED[REFLECTION_QUESTIONS.length]} questions`}
-            </UIText>
-          </>
-        ) : (
+        {isNotes ? null : (
           <UIText variant="label">{`Question ${page + 1} of ${REFLECTION_QUESTIONS.length}`}</UIText>
         )}
 
@@ -301,50 +289,24 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
         )}
 
         {/* ── where you are ──────────────────────────────────────────────── */}
-        {isLockedIn ? (
-          /*
-           * Colossal counts the steps: five bars. The one you're on is
-           * ochre — until it's actually answered, at which point it turns
-           * white like every other answered step, ochre marking only "where
-           * you are", not "what's done".
-           */
-          <View style={styles.progress}>
-            {REFLECTION_QUESTIONS.map((q, i) => (
-              <View
-                key={q.id}
-                style={[
-                  styles.progressStep,
-                  {
-                    backgroundColor: isQuestionAnswered(q)
-                      ? colors.textPrimary
-                      : i === page
-                        ? colors.accent
-                        : colors.border,
-                  },
-                ]}
-              />
-            ))}
+        {/*
+          * Cloth measures where you are — the woven strip fills as you go.
+          * This is the motif doing a job rather than decorating, which is the
+          * one thing the design note for this screen asks of the pattern.
+          *
+          * It fills by `answeredCount`, not `page`: paging past a question
+          * you skipped shouldn't read as ground covered.
+          */}
+        <View style={[styles.clothProgress, { backgroundColor: colors.border }]}>
+          <View
+            style={[
+              styles.clothProgressFill,
+              { width: `${(answeredCount / (REFLECTION_QUESTIONS.length + 1)) * 100}%` },
+            ]}
+          >
+            <ClothMark />
           </View>
-        ) : (
-          /*
-           * Cloth measures it instead — the woven strip fills as you go. This
-           * is the motif doing a job rather than decorating, which is the one
-           * thing the design note for this screen asks of the pattern.
-           *
-           * It fills by `answeredCount`, not `page`: paging past a question
-           * you skipped shouldn't read as ground covered.
-           */
-          <View style={[styles.clothProgress, { backgroundColor: colors.border }]}>
-            <View
-              style={[
-                styles.clothProgressFill,
-                { width: `${(answeredCount / (REFLECTION_QUESTIONS.length + 1)) * 100}%` },
-              ]}
-            >
-              <ClothMark />
-            </View>
-          </View>
-        )}
+        </View>
       </View>
 
       {/* ── the two things you can do next ───────────────────────────────── */}
@@ -384,11 +346,6 @@ interface ReflectionQuestion {
   placeholder: string;
   isActionList?: boolean;
 }
-
-/** The mockup writes the count out — "of five questions", not "of 5". */
-const SPELLED: Record<number, string> = {
-  3: 'three', 4: 'four', 5: 'five', 6: 'six', 7: 'seven',
-};
 
 const REFLECTION_QUESTIONS: ReflectionQuestion[] = [
   {
@@ -438,19 +395,10 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: Spacing.xl + 2,
   },
-  /** `.co-giantl` sits 10px under its numeral. */
-  giantLabel: { marginTop: 10 },
   question: { marginVertical: Spacing.xl },
   answer: { flex: 1 },
 
-  /** Five steps, 4px tall, 18px clear of the answer. */
-  progress: {
-    flexDirection: 'row',
-    gap: Spacing.xs,
-    paddingTop: Spacing.layout.cardPadding,
-  },
-  progressStep: { flex: 1, height: 4 },
-  /** Cloth's strip is one 10px band that fills, not five counted steps. */
+  /** One 10px band that fills as you go. */
   clothProgress: { height: 10, marginTop: Spacing.layout.cardPadding, overflow: 'hidden' },
   clothProgressFill: { height: 10, overflow: 'hidden' },
 

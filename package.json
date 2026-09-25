@@ -10,7 +10,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "build:graph": "node scripts/build-bible-graph.mjs",
-    "verify": "npm run verify:bible && npm run verify:observations && npm run verify:detectors && npm run verify:practice && npm run verify:week && npm run verify:cloth && npm run verify:plots && npm run verify:echoes && npm run verify:ml",
+    "verify": "npm run verify:bible && npm run verify:observations && npm run verify:detectors && npm run verify:practice && npm run verify:week && npm run verify:cloth && npm run verify:plots && npm run verify:fallow && npm run verify:echoes && npm run verify:ml",
     "verify:echoes": "node --disable-warning=ExperimentalWarning scripts/verify-echoes-tone.mjs",
     "verify:bible": "node scripts/verify-bible-graph.mjs",
     "verify:observations": "node --disable-warning=ExperimentalWarning scripts/verify-observations.mjs",
@@ -21,10 +21,10 @@
     "verify:practice": "node scripts/verify-practice.mjs",
     "verify:week": "node scripts/verify-week.mjs",
     "verify:cloth": "node scripts/verify-cloth.mjs",
-    "verify:plots": "node scripts/verify-plots.mjs"
+    "verify:plots": "node scripts/verify-plots.mjs",
+    "verify:fallow": "node scripts/verify-fallow.mjs"
   },
   "dependencies": {
-    "@expo-google-fonts/archivo": "^0.4.2",
     "@expo-google-fonts/fraunces": "^0.4.1",
     "@expo-google-fonts/work-sans": "^0.4.2",
     "@expo/vector-icons": "^15.0.3",

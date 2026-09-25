@@ -1,21 +1,13 @@
 /**
  * The head of a book's own screen.
- *
- * The design's note on this screen is the reason it looks the way it does:
- * there is no single number here worth enlarging, so the book's name takes the
- * colossal slot instead. Everything under it is small — how much of the book
- * you have covered, then the entries themselves.
  */
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { useTheme } from '../../theme/ThemeContext';
 import { JournalEntry } from '../../data/database';
-import { FontFamily, Typography } from '../../theme/typography';
 import { Spacing } from '../../theme/spacing';
 import { Text } from '../ui';
-
-const { size, lineHeight, tracking } = Typography;
 
 /**
  * How many distinct chapters of a book the entries actually cover.
@@ -43,62 +35,18 @@ export interface BookDetailHeaderProps {
     entryCount: number;
 }
 
-export const BookDetailHeader = React.memo(({
-    bookName,
-    totalChapters,
-    coveredCount,
-    entryCount,
-}: BookDetailHeaderProps) => {
-    const { colors, isLockedIn } = useTheme();
-
-    /*
-     * Cloth puts the book's name and its stats on the hero band (see the
-     * library screen's header zone), so all that is left for the list is the
-     * `.cl-label` that opens the run of entries.
-     */
-    if (!isLockedIn) {
-        return (
-            <View style={styles.clothHeader}>
-                <Text variant="label">Your entries</Text>
-            </View>
-        );
-    }
-
-    const chapters = totalChapters
-        ? `${coveredCount} of ${totalChapters} chapters`
-        : `${coveredCount} ${coveredCount === 1 ? 'chapter' : 'chapters'}`;
-    const entries = `${entryCount} ${entryCount === 1 ? 'entry' : 'entries'}`;
-
-    return (
-        <View style={styles.header}>
-            <Text style={[styles.giant, { color: colors.textPrimary }]}>{bookName}</Text>
-            <Text variant="label" style={styles.stats}>{`${chapters} · ${entries}`}</Text>
-            <View style={[styles.rule, { backgroundColor: colors.border }]} />
-            <Text variant="label">Your entries</Text>
-        </View>
-    );
-});
+/*
+ * Cloth puts the book's name and its stats on the hero band (see the library
+ * screen's header zone), so all that is left for the list is the `.cl-label`
+ * that opens the run of entries.
+ */
+export const BookDetailHeader = React.memo((_: BookDetailHeaderProps) => (
+    <View style={styles.clothHeader}>
+        <Text variant="label">Your entries</Text>
+    </View>
+));
 
 const styles = StyleSheet.create({
-    // .co-body's own 26px lead-in, now that the screen starts here.
-    header: {
-        paddingTop: Spacing.xl + 2,
-    },
-    giant: {
-        fontFamily: FontFamily.monoBlack,
-        fontSize: size.giantName,
-        lineHeight: lineHeight.giantName,
-        letterSpacing: Math.round(size.giantName * tracking.giant[1] * 10) / 10,
-    },
-    // .co-giantl
-    stats: {
-        marginTop: Spacing.md + 2,
-    },
-    // .co-hr
-    rule: {
-        height: StyleSheet.hairlineWidth,
-        marginVertical: Spacing.xl + 2,
-    },
     /** `.cl-body.tight` opens straight onto its label. */
     clothHeader: { paddingTop: Spacing.md },
     clothStillAhead: { paddingTop: Spacing.lg },
@@ -115,27 +63,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: Spacing.md - 1,
     },
     clothChipLabel: { fontWeight: '600' },
-    chips: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: Spacing.xs + 2,
-        marginTop: Spacing.md,
-    },
-    chip: {
-        paddingVertical: Spacing.sm - 1,
-        paddingHorizontal: Spacing.md - 1,
-        borderWidth: Spacing.border.hairline,
-    },
-    /*
-     * The mockup sets these chips inline rather than as a class, which is the
-     * design saying they belong to this screen. Kept as a local style for the
-     * same reason — a one-off is not a system role.
-     */
-    chipLabel: {
-        fontFamily: FontFamily.monoBold,
-        fontSize: size.sm,
-        lineHeight: lineHeight.sm,
-    },
 });
 
 export interface StillAheadProps {
@@ -150,43 +77,21 @@ export interface StillAheadProps {
  * the same move the Plan tab makes by never showing you a backlog.
  */
 export const StillAhead = React.memo(({ ranges }: StillAheadProps) => {
-    const { colors, isLockedIn } = useTheme();
+    const { colors } = useTheme();
     if (ranges.length === 0) return null;
 
-    if (!isLockedIn) {
-        /*
-         * Cloth gathers the chips into one `.cl-panel` — the chips are ecru
-         * cut-outs of the page showing through the panel, which is the same
-         * figure/ground move the grid cells make on the chapter picker.
-         */
-        return (
-            <View style={styles.clothStillAhead}>
-                <Text variant="label" style={styles.clothStillAheadLabel}>Still ahead</Text>
-                <View style={[styles.clothChipPanel, { backgroundColor: colors.backgroundSubtle }]}>
-                    {ranges.map((range) => (
-                        <View key={range} style={[styles.clothChip, { backgroundColor: colors.background }]}>
-                            <Text variant="bodySmall" tone="primary" style={styles.clothChipLabel}>{range}</Text>
-                        </View>
-                    ))}
-                </View>
-            </View>
-        );
-    }
-
+    /*
+     * Cloth gathers the chips into one `.cl-panel` — the chips are ecru
+     * cut-outs of the page showing through the panel, which is the same
+     * figure/ground move the grid cells make on the chapter picker.
+     */
     return (
-        <View>
-            <View style={[styles.rule, { backgroundColor: colors.border }]} />
-            <Text variant="label">Still ahead</Text>
-            <View style={styles.chips}>
+        <View style={styles.clothStillAhead}>
+            <Text variant="label" style={styles.clothStillAheadLabel}>Still ahead</Text>
+            <View style={[styles.clothChipPanel, { backgroundColor: colors.backgroundSubtle }]}>
                 {ranges.map((range) => (
-                    <View
-                        key={range}
-                        style={[
-                            styles.chip,
-                            { backgroundColor: colors.backgroundElevated, borderColor: colors.border },
-                        ]}
-                    >
-                        <Text style={[styles.chipLabel, { color: colors.textPrimary }]}>{range}</Text>
+                    <View key={range} style={[styles.clothChip, { backgroundColor: colors.background }]}>
+                        <Text variant="bodySmall" tone="primary" style={styles.clothChipLabel}>{range}</Text>
                     </View>
                 ))}
             </View>

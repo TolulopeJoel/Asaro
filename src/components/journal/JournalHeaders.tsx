@@ -23,7 +23,7 @@ export const DateGroupHeader = React.memo(({ title }: { title: string }) => {
  * "Pinned" / "All actions" over a run of action rows.
  *
  * Unlike the date headings, this one is drawn in both styles — the Actions
- * mockup groups by it in Cloth and Colossal alike, and it is the only place
+ * mockup groups by it, and it is the only place
  * either style says an action is pinned. `Pinned` is set in ochre, which is
  * the mockup's single use of the accent on this screen.
  */

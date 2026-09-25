@@ -1,19 +1,17 @@
 /**
  * One entry, read back.
  *
- * design/all-screens.html #entrydetail draws it in both styles. It opens over
- * Home, over Book detail and over a theme, which makes it the most-reached
- * surface in the app.
+ * design/all-screens.html #entrydetail. It opens over Home, over Book detail
+ * and over a theme, which makes it the most-reached surface in the app.
  *
- * Confirmation and receipt are one element. Cloth puts the reference in the
- * band with the timestamp under it and Colossal spends its giant on the same
- * reference, which retires the rounded date chip the built version carried: a
- * chip is how you label something inside a screen, and this is the screen.
+ * Confirmation and receipt are one element: the reference goes in the band
+ * with the timestamp under it. That retires the rounded date chip the built
+ * version carried — a chip is how you label something inside a screen, and
+ * this is the screen.
  *
- * The rule down the left of each answer is `accentSecondary` — indigo in
- * Cloth, white in Colossal — not the accent. Six ochre rules down one page
- * would spend the accent on structure and leave nothing for the share
- * affordance and the reminder.
+ * The rule down the left of each answer is `accentSecondary`, the indigo —
+ * not the accent. Six ochre rules down one page would spend the accent on
+ * structure and leave nothing for the share affordance and the reminder.
  *
  * The per-answer share icon stays beside its question and the bar at the foot
  * acts on the whole entry: you share *an answer*, you delete *an entry*.
@@ -71,7 +69,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
     isDeleting = false,
     aboveTabBar = false,
 }) => {
-    const { colors, isLockedIn, style: themeStyle } = useTheme();
+    const { colors, style: themeStyle } = useTheme();
     const { showAlert } = useAlert();
     const [isSharingAnswer, setIsSharingAnswer] = useState(false);
 
@@ -331,50 +329,32 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
         >
             <X
                 size={19}
-                color={isLockedIn ? colors.textTertiary : colors.textOnHero}
+                color={colors.textOnHero}
                 strokeWidth={1.9}
             />
         </ScalePressable>
     );
 
     return (
-        <Screen edges={isLockedIn ? ['top'] : []}>
-            {isLockedIn ? (
-                <View style={styles.colossalTop}>
-                    <Text variant="tab" style={styles.mark}>{when}</Text>
+        <Screen edges={[]}>
+            <Hero ownsTopInset>
+                <View style={styles.bandTop}>
+                    <Text variant="display" tone="onBand" style={styles.bandTitle}>
+                        {reference}
+                    </Text>
                     {close}
                 </View>
-            ) : (
-                <Hero ownsTopInset>
-                    <View style={styles.bandTop}>
-                        <Text variant="display" tone="onBand" style={styles.bandTitle}>
-                            {reference}
-                        </Text>
-                        {close}
-                    </View>
-                    <Text variant="sub" tone="onHero" style={styles.bandSub}>{when}</Text>
-                </Hero>
-            )}
+                <Text variant="sub" tone="onHero" style={styles.bandSub}>{when}</Text>
+            </Hero>
 
             <ScrollView
                 style={styles.scroll}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={[
                     styles.content,
-                    {
-                        paddingHorizontal: isLockedIn
-                            ? Spacing.layout.screenPaddingTight
-                            : Spacing.layout.screenPadding,
-                    },
+                    { paddingHorizontal: Spacing.layout.screenPadding },
                 ]}
             >
-                {isLockedIn && (
-                    <>
-                        <Text variant="display">{reference}</Text>
-                        <View style={[styles.rule, { backgroundColor: colors.border }]} />
-                    </>
-                )}
-
                 {hasReflections ? (
                     [
                         entry.reflection_1,
@@ -411,15 +391,6 @@ const styles = StyleSheet.create({
     bandTitle: { flex: 1 },
     /** `.cl-hsub{margin:8px 0 0}` */
     bandSub: { marginTop: Spacing.sm },
-    /** `.co-top` — the timestamp is the mark on this screen. */
-    colossalTop: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.md,
-        paddingHorizontal: Spacing.layout.screenPaddingTight,
-        paddingTop: Spacing.sm,
-    },
-    mark: { flex: 1 },
 
     scroll: { flex: 1 },
     content: {
@@ -427,8 +398,6 @@ const styles = StyleSheet.create({
         paddingBottom: Spacing.xxl,
         gap: Spacing.xl - 2,
     },
-    /** `.co-hr` under the Colossal head. */
-    rule: { height: Spacing.border.hairline, marginTop: Spacing.lg },
 
     /*
      * Each answer hangs off a 3px rule. `borderLeftColor` is supplied per

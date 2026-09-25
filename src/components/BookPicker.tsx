@@ -64,20 +64,9 @@ BookRow.displayName = 'BookRow';
  * A section heading over a run of books.
  *
  * Cloth splits it — the canon's name on the left, "39 books" hanging off the
- * right on the same baseline — while Colossal runs the two together into one
- * `.co-label`. Both mockups are explicit about it, so the split is per style.
+ * right on the same baseline. The mockup is explicit about it.
  */
 function SectionHeading({ name, count, spaced }: { name: string; count: number; spaced?: boolean }) {
-    const { isLockedIn } = useTheme();
-
-    if (isLockedIn) {
-        return (
-            <Text variant="label" style={[styles.section, spaced && styles.sectionAfter]}>
-                {`${name} · ${count} books`}
-            </Text>
-        );
-    }
-
     return (
         <View style={[styles.clothSection, spaced && styles.sectionAfter]}>
             <Text variant="label">{name}</Text>
@@ -94,7 +83,6 @@ export const BookPicker: React.FC<BookPickerProps> = React.memo(({
     availableBooks,
     query = '',
 }) => {
-    const { isLockedIn } = useTheme();
     const hebrew = useMemo(() => HEBREW_BOOKS.filter(b => matchesQuery(b, query)), [query]);
     const greek = useMemo(() => GREEK_BOOKS.filter(b => matchesQuery(b, query)), [query]);
 
@@ -121,7 +109,7 @@ export const BookPicker: React.FC<BookPickerProps> = React.memo(({
                     {hebrew.length > 0 && (
                         <>
                             <SectionHeading
-                                name={isLockedIn ? 'Hebrew-Aramaic' : 'Hebrew-Aramaic Scriptures'}
+                                name="Hebrew-Aramaic Scriptures"
                                 count={HEBREW_BOOKS.length}
                             />
                             {rows(hebrew)}
@@ -130,7 +118,7 @@ export const BookPicker: React.FC<BookPickerProps> = React.memo(({
                     {greek.length > 0 && (
                         <>
                             <SectionHeading
-                                name={isLockedIn ? 'Christian Greek' : 'Christian Greek Scriptures'}
+                                name="Christian Greek Scriptures"
                                 count={GREEK_BOOKS.length}
                                 spaced={hebrew.length > 0}
                             />
@@ -168,7 +156,6 @@ const styles = StyleSheet.create({
         borderBottomWidth: Spacing.border.hairline,
     },
     count: { marginLeft: 'auto' },
-    section: { marginBottom: Spacing.md },
     /** `.cl-label` left, `.cl-sublabel` right, on one baseline. */
     clothSection: {
         flexDirection: 'row',

@@ -30,7 +30,7 @@ export interface DraftData {
 export interface DraftSummary {
     /** "Genesis 12–15" — the passage the draft is already about. */
     passage: string;
-    /** The same, split, for Colossal's two-line giant. */
+    /** The same, split into its two parts. */
     book: string;
     chapters: string;
     /** How many of the five questions came back with something in them. */

@@ -6,8 +6,8 @@
  * the geometry lives in `Motif` (src/theme/spacing.ts) and the ink comes from
  * the palette, so a new motif is a new <Pattern> body and nothing else.
  *
- * In Colossal these render nothing — `patternOpacity` is 0 and the components
- * bail out early. Locked In wears no cloth.
+ * A palette with `patternOpacity` of 0 renders nothing — the components bail
+ * out early rather than drawing an invisible weave.
  */
 import React, { useCallback, useId, useState } from 'react';
 import { LayoutChangeEvent, StyleSheet, View, ViewStyle } from 'react-native';
@@ -124,11 +124,8 @@ export function ClothStrip({ style }: { style?: ViewStyle }) {
  * no meaning of its own the way the rings or the weave do; it exists only to
  * be the same height.
  *
- * Colossal's own header has the identical problem — its search row only
- * appears on Recent — so `force` lets Library reuse this there too. It draws
- * with `markInk`, the same ochre accent Colossal already uses for its other
- * small marks, rather than the wallpaper-style patterns (`patternOpacity`)
- * Colossal otherwise carries none of.
+ * `force` draws it even when the palette carries no pattern, for a screen
+ * that needs the spacer regardless.
  */
 export function ClothZigzag({ style, force = false }: { style?: ViewStyle; force?: boolean }) {
     const { colors } = useTheme();
@@ -162,16 +159,10 @@ export function ClothZigzag({ style, force = false }: { style?: ViewStyle; force
  * The woven mark — today, a selected chapter, a completed day.
  *
  * Fills its parent, so give the parent a size and `overflow: 'hidden'`.
- * In Colossal it paints a flat ochre block instead of a weave, which is the
- * right translation: that style marks by weight, not by texture.
  */
 export function ClothMark({ style }: { style?: ViewStyle }) {
-    const { colors, style: themeStyle } = useTheme();
+    const { colors } = useTheme();
     const pid = `mark-${useId()}`;
-
-    if (themeStyle === 'colossal') {
-        return <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.markInk }, style]} pointerEvents="none" />;
-    }
 
     const { spacing, strokeWidth } = Motif.mark;
 

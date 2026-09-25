@@ -9,7 +9,7 @@ import { Hero, Screen, Text, ThemedButton } from '@/src/components/ui';
 
 export default function PermissionsScreen() {
     const router = useRouter();
-    const { colors, isLockedIn } = useTheme();
+    const { colors } = useTheme();
     const { showAlert } = useAlert();
     const [permissionStatus, setPermissionStatus] = useState<'undetermined' | 'denied'>('undetermined');
 
@@ -62,52 +62,10 @@ export default function PermissionsScreen() {
         'Nothing else. No marketing, ever.',
     ];
 
-    if (isLockedIn) {
-        /*
-         * design/all-screens.html #perms, the `.co` slot.
-         *
-         * No colossal element here — the design's own note says a permission
-         * ask should not shout, so the button carries the weight. This is the
-         * third screen in the set to use none, which is the "at most one, not
-         * always one" rule working rather than failing.
-         */
-        return (
-            <Screen>
-                <View style={styles.colossalTop}>
-                    <Text variant="tab">Permissions</Text>
-                    <Text variant="tab">3 of 3</Text>
-                </View>
-
-                <View style={styles.colossalBody}>
-                    <Text variant="display">Can I Check Up On You? 😏</Text>
-                    <Text variant="sub" style={styles.colossalSub}>
-                        One nudge a day, at a time you choose, and nothing after your sleep hour.
-                    </Text>
-
-                    <View style={[styles.rule, { backgroundColor: colors.border }]} />
-
-                    <Text variant="label">What you&apos;ll get</Text>
-                    {PROMISES.map(promise => (
-                        <View key={promise} style={[styles.colossalRow, { borderBottomColor: colors.border }]}>
-                            <Text variant="reference" style={styles.promise}>{promise}</Text>
-                        </View>
-                    ))}
-                </View>
-
-                <View style={styles.colossalFooter}>
-                    <ThemedButton label="Allow Notifications" variant="accent" block onPress={handleRequestPermission} />
-                    {permissionStatus === 'denied' && (
-                        <ThemedButton label="Open Settings" variant="secondary" block onPress={handleOpenSettings} />
-                    )}
-                </View>
-            </Screen>
-        );
-    }
-
     /*
      * design/all-screens.html #perms, the `.cl` slot. Cloth states the ask on
      * its band and gathers the three promises into one `.cl-panel` separated by
-     * hairlines — the same three lines Colossal sets as bare rows.
+     * hairlines.
      */
     return (
         <Screen edges={[]}>
@@ -144,7 +102,6 @@ const styles = StyleSheet.create({
     /** The band's eyebrow: `margin:0 0 10px`. */
     heroStep: { marginBottom: 10 },
 
-    // ── Colossal ──────────────────────────────────────────────────────────
     /** `.cl-body{padding-top:30px; gap:18px}` */
     clothBody: {
         flex: 1,
@@ -156,32 +113,6 @@ const styles = StyleSheet.create({
     clothPanelLabel: { marginBottom: 7 },
     /** `.cl-hr{margin:9px 0}` between the promises. */
     clothHr: { height: Spacing.border.hairline, marginVertical: 9 },
-    colossalTop: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: Spacing.layout.screenPaddingTight,
-        paddingTop: Spacing.lg,
-    },
-    colossalBody: {
-        flex: 1,
-        paddingHorizontal: Spacing.layout.screenPaddingTight,
-        paddingTop: Spacing.xxl + 12,
-    },
-    colossalSub: { marginTop: Spacing.layout.cardPadding },
-    /** `.co-hr` */
-    rule: { height: Spacing.border.hairline, marginVertical: Spacing.xl + 2 },
-    colossalRow: {
-        paddingVertical: Spacing.md + 3,
-        borderBottomWidth: Spacing.border.hairline,
-    },
-    /** The mockup lightens these rows' weight: a promise, not a heading. */
-    promise: { fontWeight: '500' },
-    colossalFooter: {
-        paddingHorizontal: Spacing.layout.screenPaddingTight,
-        paddingBottom: Spacing.layout.tabBarPadding,
-        gap: 10,
-    },
     heroTitle: {},
     container: {
         flex: 1,

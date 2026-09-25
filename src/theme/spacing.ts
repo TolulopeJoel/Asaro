@@ -2,7 +2,7 @@
  * Spacing, radius and elevation.
  *
  * Both styles are flat and square: Cloth's edges come from colour blocks and
- * hairlines, Colossal's from weight. The radius set is deliberately tiny —
+ * hairlines. The radius set is deliberately tiny —
  * the app previously used 23 distinct border radii, which is the main reason
  * nothing looked like it belonged to the same product.
  */
@@ -18,7 +18,7 @@ export const Spacing = {
 
     layout: {
         screenPadding: 24,
-        screenPaddingTight: 22,   // Colossal runs slightly narrower gutters
+        screenPaddingTight: 22,   // the narrower gutter, for screens that ask for it
         cardPadding: 18,
         gutter: 16,
         heroPaddingTop: 52,
@@ -28,7 +28,7 @@ export const Spacing = {
     /**
      * The design has exactly two radii: square, and round for avatars.
      *
-     * Both Cloth and Colossal are flat and square — every panel, cell, input
+     * Cloth is flat and square — every panel, cell, input
      * and button in design/all-screens.html is `border-radius:0`, and the only
      * curve in the whole mockup is `.cl-avatar{border-radius:50%}`. The 8px
      * that screens were reaching for was never in the design; it is the single

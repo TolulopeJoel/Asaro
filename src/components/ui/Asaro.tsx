@@ -29,7 +29,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Circle, ClipPath, Defs, Ellipse, G, Path, Rect } from 'react-native-svg';
 
-import { useTheme } from '../../theme/ThemeContext';
 import {
     ASARO_ACTIONS, ASARO_LOOKS, ASARO_REST, ASARO_RIG,
     type AsaroAction, type AsaroLook,
@@ -138,8 +137,7 @@ function AsaroBase(
     { size = 96, look, action, lookAt, bust, label }: AsaroProps,
     ref: React.Ref<AsaroHandle>,
 ) {
-    const { style: themeStyle } = useTheme();
-    const resolved: AsaroLook = look ?? (themeStyle === 'colossal' ? 'lockedIn' : 'cloth');
+    const resolved: AsaroLook = look ?? 'cloth';
     const C = ASARO_LOOKS[resolved] ?? ASARO_LOOKS.cloth;
 
     const cropped = bust ?? size < 48;

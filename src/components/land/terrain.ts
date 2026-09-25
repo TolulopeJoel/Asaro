@@ -27,11 +27,10 @@
  * thing across the app — today, emphasis — and on this screen it is spent on
  * the selected parcel rather than on sixty-six fields at once.
  *
- * CLOTH ONLY. The land is not built for Colossal: that style is monochrome by
- * rule, weight carries its whole hierarchy, and a green field would be the
- * loudest thing in it. Rather than ship a grey shadow of this screen, the land
- * is simply a Cloth screen, and these are plain values instead of a palette
- * per style.
+ * CLOTH ONLY. A monochrome style could not carry this screen — weight would
+ * have to do the whole hierarchy, and a green field would be the loudest
+ * thing in it. So the land is simply a Cloth screen, and these are plain
+ * values instead of a palette per style.
  */
 
 export const TERRAIN = {

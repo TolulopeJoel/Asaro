@@ -66,7 +66,7 @@ function reference(item: StoredEmbedding): string {
 }
 
 export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?: (count: number | null) => void } = {}) {
-    const { colors, style: themeStyle, isLockedIn } = useTheme();
+    const { colors, style: themeStyle } = useTheme();
     const router = useRouter();
     const [phase, setPhase] = useState<Phase>('checking');
     const [openIndex, setOpenIndex] = useState<number | null>(null);
@@ -234,36 +234,10 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
 
     if (phase === 'needsModel') {
         /*
-         * design/all-screens.html #themesintro, the `.co` slot. Colossal takes
-         * no colossal element here — there is nothing yet to count — so the
-         * screen is a centred column, and the privacy line is set apart
-         * between two rules rather than folded into the paragraph. Cloth runs
-         * them together; Colossal makes it the one thing you can't skim past.
-         */
-        if (isLockedIn) {
-            return (
-                <View style={styles.colossalCentre}>
-                    <Sparkles size={34} color={colors.accent} strokeWidth={1.6} />
-                    <UIText variant="display">Find your themes</UIText>
-                    <UIText variant="sub">
-                        Àṣàrò can group your entries by what you keep coming back to. It needs a
-                        one-time 34MB download, then it works offline.
-                    </UIText>
-                    <View style={[styles.pledge, { borderColor: colors.border }]}>
-                        <UIText variant="bodySmall" tone="primary" style={styles.pledgeText}>
-                            Your reflections are never sent anywhere.
-                        </UIText>
-                    </View>
-                    <ThemedButton label="Download (34MB)" variant="accent" block onPress={handleDownload} />
-                </View>
-            );
-        }
-
-        /*
          * design/all-screens.html #themesintro, the `.cl` slot: a centred
-         * column in a 34px gutter. Cloth sets the privacy line between two
-         * hairlines just as Colossal does — it is the one sentence on this
-         * screen that must not be skimmed past.
+         * column in a 34px gutter. The privacy line is set between two
+         * hairlines — it is the one sentence on this screen that must not be
+         * skimmed past.
          */
         return (
             <View style={styles.clothCentre}>
@@ -300,40 +274,9 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
 
     if (phase === 'tooEarly') {
         /*
-         * design/all-screens.html #themesearly, the `.co` slot. The colossal
-         * slot goes to how many entries you have, because that is the number
-         * the screen is actually about, and the two-part bar underneath says
-         * the same thing a second way without a second number.
-         */
-        if (isLockedIn) {
-            return (
-                <View style={styles.colossalCentrePlain}>
-                    <View>
-                        <UIText variant="hero">{entryCount}</UIText>
-                        <UIText variant="label" style={styles.giantLabel}>
-                            {`of ${MIN_ENTRIES} entries needed`}
-                        </UIText>
-                    </View>
-                    <View style={[styles.rule, { backgroundColor: colors.border }]} />
-                    <View>
-                        <UIText variant="title">Not yet</UIText>
-                        <UIText variant="sub" style={styles.afterHeading}>
-                            Themes start to mean something around fifteen substantial entries.
-                            Before that they mostly describe the reading plan rather than you.
-                        </UIText>
-                    </View>
-                    <View style={styles.progressBar}>
-                        <View style={{ flex: Math.max(entryCount, 0.001), height: 6, backgroundColor: colors.accent }} />
-                        <View style={{ flex: Math.max(MIN_ENTRIES - entryCount, 0.001), height: 6, backgroundColor: colors.border }} />
-                    </View>
-                </View>
-            );
-        }
-
-        /*
          * design/all-screens.html #themesearly, the `.cl` slot. Cloth states
-         * the shortfall as a sentence and draws the same two-part bar under it,
-         * in indigo against the hairline rather than ochre against the surface.
+         * the shortfall as a sentence and draws a two-part bar under it, in
+         * indigo against the hairline.
          */
         return (
             <View style={styles.clothCentre}>
@@ -391,19 +334,12 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
         <FlatList
             data={clusters}
             keyExtractor={(_, index) => `cluster-${index}`}
-            contentContainerStyle={isLockedIn ? styles.colossalList : styles.list}
+            contentContainerStyle={styles.list}
             ListHeaderComponent={
-                isLockedIn ? (
-                    /* The count itself is the screen's colossal element, set in
-                     * the header above this list, so all that is left to say
-                     * here is what to do with it. */
-                    <UIText variant="sub" style={styles.colossalIntro}>Name the ones you recognise.</UIText>
-                ) : (
-                    <UIText variant="bodySmall" tone="secondary" style={styles.intro}>
-                        {clusters.length} {clusters.length === 1 ? 'pattern' : 'patterns'} across your
-                        entries. Name the ones you recognise.
-                    </UIText>
-                )
+                <UIText variant="bodySmall" tone="secondary" style={styles.intro}>
+                    {clusters.length} {clusters.length === 1 ? 'pattern' : 'patterns'} across your
+                    entries. Name the ones you recognise.
+                </UIText>
             }
             renderItem={({ item, index }) => {
                 /*
@@ -448,100 +384,18 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
                  */
                 const displayName = savedName?.name ?? suggested[index];
 
-                if (isLockedIn) {
-                    /*
-                     * design/all-screens.html #themes, the `.co` slot: a run of
-                     * hairline-separated blocks rather than cards. A theme that
-                     * has a name leads with it; one that hasn't leads with what
-                     * it is made of and offers the field, which is why there is
-                     * no separate "Name this theme" button in this style.
-                     */
-                    const meta = [span ?? entryCountLabel, ...books].join(' · ');
-                    /*
-                     * Open only on request now. This used to be
-                     * `!savedName || …`, so every unnamed theme sat under an
-                     * open text field — reasonable when unnamed meant blank,
-                     * nagging once a theme already reads with a name. Naming
-                     * is still reachable here the moment you ask for it, and
-                     * from the pencil in the detail view.
-                     */
-                    const naming = namingIndex === index;
-
-                    return (
-                        <View style={[styles.colossalTheme, { borderBottomColor: colors.border }]}>
-                            <ScalePressable onPress={() => setOpenIndex(index)}>
-                                <UIText
-                                    variant="subtitle"
-                                    tone={savedName ? undefined : 'secondary'}
-                                    style={styles.colossalName}
-                                >
-                                    {displayName}
-                                </UIText>
-                                <UIText variant="label" tone="accent" style={styles.colossalMeta} numberOfLines={1}>
-                                    {meta}
-                                </UIText>
-                                {reps.map((member, i) => (
-                                    <View key={`${member.entryId}-${member.field}-${i}`}>
-                                        <UIText variant="meta">
-                                            {reference(member)} · {FIELD_LABELS[member.field] ?? member.field}
-                                        </UIText>
-                                        <HyperlinkedText
-                                            style={[
-                                                textStyle(themeStyle, 'bodySmall'),
-                                                styles.colossalSnippet,
-                                                { color: colors.textSecondary },
-                                            ]}
-                                            numberOfLines={2}
-                                            text={member.text}
-                                        />
-                                    </View>
-                                ))}
-                            </ScalePressable>
-
-                            {naming && (
-                                <View style={styles.colossalNameRow}>
-                                    <TextInput
-                                        style={[
-                                            styles.colossalInput,
-                                            textStyle(themeStyle, 'bodySmall'),
-                                            {
-                                                backgroundColor: colors.backgroundElevated,
-                                                color: colors.textPrimary,
-                                                borderColor: colors.border,
-                                            },
-                                        ]}
-                                        placeholder="What is this really about?"
-                                        placeholderTextColor={colors.textTertiary}
-                                        value={namingIndex === index ? draftName : ''}
-                                        onFocus={() => {
-                                            setNaming(index);
-                                            setDraftName(displayName);
-                                        }}
-                                        onChangeText={setDraftName}
-                                        onSubmitEditing={() => handleSaveName(index)}
-                                    />
-                                    <ScalePressable
-                                        onPress={() => handleSaveName(index)}
-                                        accessibilityRole="button"
-                                        accessibilityLabel="Save name"
-                                        style={[styles.colossalSave, { backgroundColor: colors.buttonPrimary }]}
-                                    >
-                                        <Check size={15} color={colors.buttonPrimaryText} strokeWidth={3} />
-                                    </ScalePressable>
-                                </View>
-                            )}
-                        </View>
-                    );
-                }
-
                 /*
                  * design/all-screens.html #themes, the `.cl` slot: an unnamed
                  * theme's panel shows the field DIRECTLY — an ochre-labelled
                  * input plus Save/Cancel — never a separate "Name this theme"
                  * button. That button only ever appears once a theme already
-                 * has a name, as "Rename". Same rule Colossal already follows.
+                 * has a name, as "Rename".
+                 *
+                 * Open only on request. This used to be `!savedName || …`, so
+                 * every unnamed theme sat under an open text field —
+                 * reasonable when unnamed meant blank, nagging once a theme
+                 * already reads with a name.
                  */
-                // Open only on request — see the Colossal branch above.
                 const naming = namingIndex === index;
 
                 return (
@@ -611,8 +465,7 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
                                 {/*
                                   * `.cl-btn.ghost{aria-label="Cancel"}` is drawn
                                   * alongside Save on BOTH the named and unnamed
-                                  * panel in the mockup — unlike Colossal, which
-                                  * carries only Save. So this is unconditional.
+                                  * panel in the mockup, so this is unconditional.
                                   */}
                                 <ScalePressable
                                     onPress={() => {
@@ -696,63 +549,6 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
 }
 
 const styles = StyleSheet.create({
-    // ── Colossal ──────────────────────────────────────────────────────────
-    /** The first-run column: `flex:1; justify-content:center; gap:18`. */
-    colossalCentre: {
-        flex: 1,
-        justifyContent: 'center',
-        gap: Spacing.lg + 2,
-        paddingHorizontal: Spacing.layout.screenPaddingTight,
-    },
-    /** The same column where the mockup sets its own spacing between blocks. */
-    colossalCentrePlain: {
-        flex: 1,
-        justifyContent: 'center',
-        paddingHorizontal: Spacing.layout.screenPaddingTight,
-    },
-    /** `.co-giantl` sits 10px under its numeral. */
-    giantLabel: { marginTop: 10 },
-    /** `.co-hr` */
-    rule: { height: Spacing.border.hairline, marginVertical: Spacing.xl + 2 },
-    afterHeading: { marginTop: 14 },
-    progressBar: { flexDirection: 'row', gap: 3, marginTop: Spacing.xl - 2 },
-    /** The privacy line, held between two rules so it can't be skimmed past. */
-    pledge: {
-        borderTopWidth: Spacing.border.hairline,
-        borderBottomWidth: Spacing.border.hairline,
-        paddingVertical: 13,
-    },
-    pledgeText: { fontWeight: '700' },
-
-    /** The results list runs in Colossal's own 22px gutter. */
-    colossalList: {
-        paddingHorizontal: Spacing.layout.screenPaddingTight,
-        paddingTop: Spacing.lg + 2,
-        paddingBottom: 80,
-    },
-    colossalIntro: { marginBottom: Spacing.lg + 2 },
-    colossalTheme: {
-        paddingBottom: Spacing.lg,
-        marginBottom: Spacing.lg,
-        borderBottomWidth: Spacing.border.hairline,
-    },
-    colossalName: { marginBottom: 6 },
-    colossalMeta: { marginBottom: 10 },
-    colossalSnippet: { marginTop: 2, marginBottom: 9 },
-    colossalNameRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 3 },
-    colossalInput: {
-        flex: 1,
-        borderWidth: Spacing.border.hairline,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: 11,
-    },
-    colossalSave: {
-        paddingHorizontal: 14,
-        paddingVertical: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-
     /** `.cl` themes states: centred in a 34px gutter, gap 16. */
     clothCentre: {
         flex: 1,
@@ -786,8 +582,7 @@ const styles = StyleSheet.create({
     /**
      * `.cl-panel{background:var(--panel); padding:18px}` — filled, never
      * outlined. Cloth separates by colour block; the 1px border this used to
-     * carry is Colossal's device, and having both made the panel read as a
-     * card from a third design.
+     * carry made the panel read as a card from another design.
      */
     card: {
         padding: Spacing.layout.cardPadding,

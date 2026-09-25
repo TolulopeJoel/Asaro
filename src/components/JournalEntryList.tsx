@@ -69,16 +69,10 @@ interface JournalEntryListProps {
     onSearchChange: (query: string) => void;
     onSelectedBookChange: (book?: BibleBook) => void;
     onCountChange?: (count: number) => void;
-    /** Actions not yet ticked off — Colossal's giant on the Actions tab. */
-    onOpenActionCountChange?: (count: number) => void;
-    /** Follow-ups not yet closed — the same, on the Follow-ups tab. */
-    onOpenTopicCountChange?: (count: number) => void;
     /** Distinct chapters of the open book that entries cover — Cloth's hero line. */
     onCoveredChange?: (covered: number) => void;
-    /** Entries against the open book — Cloth's hero band, Colossal's .co-giantl. */
+    /** Entries against the open book — Cloth's hero band. */
     onBookEntryCountChange?: (count: number) => void;
-    /** Distinct books with at least one entry — Colossal's giant on the Books tab. */
-    onBooksWithEntriesCountChange?: (count: number) => void;
 }
 
 
@@ -92,13 +86,10 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
     onSearchChange,
     onSelectedBookChange,
     onCountChange,
-    onOpenActionCountChange,
-    onOpenTopicCountChange,
     onCoveredChange,
     onBookEntryCountChange,
-    onBooksWithEntriesCountChange,
 }) => {
-    const { colors, isLockedIn } = useTheme();
+    const { colors } = useTheme();
     const [entries, setEntries] = useState<JournalEntry[]>([]);
     const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
     const [bookEntries, setBookEntries] = useState<JournalEntry[]>([]);
@@ -151,7 +142,6 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
                 .sort((a, b) => b.entryCount - a.entryCount);
 
             setAvailableBooks(booksWithEntries);
-            onBooksWithEntriesCountChange?.(booksWithEntries.length);
         } catch (error) {
             console.error('Error loading entries:', error);
         } finally {
@@ -202,34 +192,19 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
             );
             setPracticeProgress(new Map(progress));
 
-            /*
-             * The count is what is still open, and an application is never
-             * closed — counting them would make the number grow forever and
-             * mean nothing. Practices count when today is not yet done.
-             */
-            onOpenActionCountChange?.(
-                data.filter(item => {
-                    if (item.archived_at) return false;
-                    const kind = actionKindOf(item);
-                    if (kind === 'application') return false;
-                    if (kind === 'action') return !item.is_completed;
-                    return !new Map(progress).get(item.id!)?.doneNow;
-                }).length,
-            );
         } catch (error) {
             console.error('Error loading actions:', error);
         }
-    }, [onOpenActionCountChange]);
+    }, []);
 
     const loadTopics = useCallback(async () => {
         try {
             const data = await getAllStudyTopics();
             setTopicsList(data);
-            onOpenTopicCountChange?.(data.filter(t => !t.study_completed).length);
         } catch (error) {
             console.error('Error loading topics:', error);
         }
-    }, [onOpenTopicCountChange]);
+    }, []);
 
     const handleToggleTopic = useCallback(async (item: JournalEntry) => {
         try {
@@ -602,9 +577,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
      * No icon well. The glyph used to sit inside an 84px tinted box at
      * borderRadius.lg, which was the largest rounded shape in an app that has
      * none. Cloth keeps the glyph bare on the stroke at 34px, the treatment
-     * #themesearly already uses. Colossal takes no glyph at all: it has no
-     * decorative marks anywhere, and where it has no number to enlarge the
-     * type carries the screen on its own, set left rather than centred.
+     * #themesearly already uses.
      *
      * None of the eight gets a button. What fills them is already on screen —
      * the field above, the tab beside, the entry you have not written.
@@ -637,24 +610,19 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
         }
 
         return (
-            <View style={[styles.emptyState, isLockedIn ? styles.emptyColossal : styles.emptyCloth]}>
-                {!isLockedIn &&
-                    React.createElement(iconName, {
-                        size: 34,
-                        color: colors.textTertiary,
-                        strokeWidth: 1.5,
-                    })}
-                <Text variant="title" style={isLockedIn ? undefined : styles.centred}>{title}</Text>
-                <Text
-                    variant="body"
-                    tone="secondary"
-                    style={isLockedIn ? undefined : styles.centred}
-                >
+            <View style={[styles.emptyState, styles.emptyCloth]}>
+                {React.createElement(iconName, {
+                    size: 34,
+                    color: colors.textTertiary,
+                    strokeWidth: 1.5,
+                })}
+                <Text variant="title" style={styles.centred}>{title}</Text>
+                <Text variant="body" tone="secondary" style={styles.centred}>
                     {subtext}
                 </Text>
             </View>
         );
-    }, [viewMode, debouncedSearchQuery, colors, isLockedIn]);
+    }, [viewMode, debouncedSearchQuery, colors]);
 
     const [completedPlanIds, setCompletedPlanIds] = useState<Set<number>>(new Set());
 
@@ -742,11 +710,9 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
                     keyExtractor={(item) => item.id.toString()}
                     contentContainerStyle={[
                         {
-                            // The list runs in the screen's own gutter — 22 in
-                            // Colossal, 24 in Cloth — not a third value.
-                            paddingHorizontal: isLockedIn
-                                ? Spacing.layout.screenPaddingTight
-                                : Spacing.layout.screenPadding,
+                            // The list runs in the screen's own gutter, not a
+                            // third value.
+                            paddingHorizontal: Spacing.layout.screenPadding,
                             paddingBottom: Spacing.xxl,
                             paddingTop: (viewMode === 'recent' || viewMode === 'bookDetail') ? 0 : 20,
                         },
@@ -916,7 +882,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: Spacing.xxl + 2,
     },
-    /** Set left, like everything else Colossal puts on a page. */
-    emptyColossal: { paddingHorizontal: Spacing.layout.screenPaddingTight },
+    /** Set left, like everything else on the page. */
     centred: { textAlign: 'center' },
 });

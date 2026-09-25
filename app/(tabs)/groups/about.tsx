@@ -9,7 +9,7 @@ import { Text } from '@/src/components/ui';
 import { Hero, Screen } from '@/src/components/ui';
 
 export default function AboutGroupsScreen() {
-    const { colors, isLockedIn } = useTheme();
+    const { colors } = useTheme();
 
     // Eight feature cards used to carry eight iOS system hues. The series is a
     // short ordered set that belongs to whichever style is active, so it wraps
@@ -115,9 +115,7 @@ export default function AboutGroupsScreen() {
                         style={[
                             styles.sectionCard,
                             { borderLeftColor: hue(section.colorIndex) },
-                            isLockedIn
-                                ? { borderBottomColor: colors.border }
-                                : { backgroundColor: colors.cardBackground },
+                            { backgroundColor: colors.cardBackground },
                         ]}
                     >
                         <View style={styles.titleRow}>

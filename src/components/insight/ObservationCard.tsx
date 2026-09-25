@@ -2,7 +2,7 @@
  * One noticing, on Home, among the other things the app remembers for you.
  *
  * The shape is argued rather than inherited, and it is not the one the mockup
- * sketched. That draft led with "Four entries, one centre" and gave Colossal a
+ * sketched. That draft led with "Four entries, one centre" and gave it a
  * giant 4 — which is a headline about the database. `themeQuality.ts` had
  * already written down why that is wrong ("the least interesting true thing
  * about a theme — it is a fact about the clustering, not about the reader"),
@@ -66,7 +66,7 @@ interface Props {
 }
 
 export function ObservationCard({ observation, onSeen, onOpen, onDismiss }: Props) {
-    const { colors, isLockedIn } = useTheme();
+    const { colors } = useTheme();
 
     /*
      * Keyed on the callback, which the hook rebuilds per finding — so this
@@ -77,16 +77,14 @@ export function ObservationCard({ observation, onSeen, onOpen, onDismiss }: Prop
     }, [onSeen]);
 
     /*
-     * Both styles say the same thing in the same order. Colossal does not get
-     * a different argument, only a different weight — it drops the card
-     * chrome for a hairline and lets the passage carry the emphasis, which is
-     * what that style does everywhere else in the app.
+     * The card says one thing in one order: the topic, then the sentence,
+     * then the passage.
      */
     const subjectFirst = !!observation.subjectFirst;
 
     const subjectLine = (
         <Text
-            variant={isLockedIn ? 'subtitle' : 'reference'}
+            variant="reference"
             style={styles.subject}
             numberOfLines={subjectFirst ? 3 : 2}
         >
@@ -97,7 +95,7 @@ export function ObservationCard({ observation, onSeen, onOpen, onDismiss }: Prop
     const body = (
         <>
             <View style={styles.header}>
-                <Text variant="label" tone={isLockedIn ? 'accent' : 'secondary'}>
+                <Text variant="label" tone="secondary">
                     {observation.kind.toUpperCase()}
                 </Text>
                 <ScalePressable
@@ -172,9 +170,7 @@ export function ObservationCard({ observation, onSeen, onOpen, onDismiss }: Prop
      */
     const canOpen = !!observation.openLabel;
 
-    const surface = isLockedIn
-        ? [styles.colossal, { borderTopColor: colors.border }]
-        : [styles.cloth, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }];
+    const surface = [styles.cloth, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }];
 
     if (!canOpen) return <View style={surface}>{body}</View>;
 
@@ -195,11 +191,6 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderRadius: Spacing.borderRadius.lg,
         padding: Spacing.lg,
-    },
-    colossal: {
-        borderTopWidth: 1,
-        paddingTop: Spacing.lg,
-        paddingBottom: Spacing.sm,
     },
     header: {
         flexDirection: 'row',

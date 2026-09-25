@@ -3,10 +3,10 @@
  *
  * Twenty screens in the mockups are built from roughly this set — hero, strip,
  * card, row, segments, button. Nothing invents its own container, which is
- * what keeps the three styles as themes rather than three separate apps.
+ * what keeps a style a theme rather than a separate app.
  *
- * Shape comes from the theme rather than from constants here, because Classic
- * is rounded and bordered where the other two are flat and square.
+ * Shape comes from the theme rather than from constants here, because it is
+ * the axis a second style is most likely to move.
  */
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, View, ViewProps, ViewStyle } from 'react-native';
@@ -52,9 +52,7 @@ export function Screen({ children, style, edges = ['top'] }: {
 /**
  * The hero band.
  *
- * Cloth: indigo ground carrying the rings motif, followed by the crosshatch
- * strip. Colossal: no band at all — the title sits on the page as a small
- * eyebrow, because that style marks a screen by scale, not by a coloured area.
+ * Indigo ground carrying the rings motif, followed by the crosshatch strip.
  *
  * `topPadding` overrides the default distance from the top of the band to its
  * content (`Spacing.layout.heroPaddingTop`) for a screen whose own mockup asks
@@ -71,10 +69,10 @@ export function Hero({ children, style, topPadding = Spacing.layout.heroPaddingT
      * By default <Screen> pads its top edge by insets.top, so a transient
      * status bar never lands on a header (see useScreenInsets — the app hides
      * the bar, but Android can bring it back without reporting real insets).
-     * That padding sits on Screen's own background ABOVE the band, which is
-     * invisible on Colossal's black ground but shows on Cloth as a strip of
-     * ecru above the indigo — the band stopping short of the top of the screen
-     * instead of reaching it the way every mockup draws it.
+     * That padding sits on Screen's own background ABOVE the band, which
+     * shows as a strip of ecru above the indigo — the band stopping short of
+     * the top of the screen instead of reaching it the way every mockup draws
+     * it.
      *
      * A screen fixes that by dropping 'top' from <Screen edges> and setting
      * this, which moves the same reserved space inside the band: the indigo
@@ -89,7 +87,7 @@ export function Hero({ children, style, topPadding = Spacing.layout.heroPaddingT
      */
     ownsTopInset?: boolean;
 }) {
-    const { colors, style: themeStyle } = useTheme();
+    const { colors } = useTheme();
     const insets = useScreenInsets();
 
     /*
@@ -107,11 +105,6 @@ export function Hero({ children, style, topPadding = Spacing.layout.heroPaddingT
             : topPadding,
     };
 
-    // Colossal wears no band: it marks a screen by scale, not by a colour area.
-    if (themeStyle !== 'cloth') {
-        return <View style={[styles.heroPlain, style, top]}>{children}</View>;
-    }
-
     return (
         <>
             <View style={[styles.heroCloth, { backgroundColor: colors.textPrimary }, style, top]}>
@@ -126,22 +119,10 @@ export function Hero({ children, style, topPadding = Spacing.layout.heroPaddingT
 /**
  * A panel.
  *
- * Cloth fills it, Colossal separates with a hairline and no fill, Classic
- * rounds and outlines it — the three ways this app has ever grouped things.
+ * Cloth fills it; the shape tokens decide whether it also rounds and outlines.
  */
 export function Card({ children, style, ...rest }: ViewProps & { children: React.ReactNode }) {
-    const { colors, shape, style: themeStyle } = useTheme();
-
-    if (themeStyle === 'colossal') {
-        return (
-            <View
-                style={[styles.cardColossal, { borderBottomColor: colors.border }, style]}
-                {...rest}
-            >
-                {children}
-            </View>
-        );
-    }
+    const { colors, shape } = useTheme();
 
     return (
         <View
@@ -193,11 +174,10 @@ export interface SegmentsProps {
 /**
  * The tab strip.
  *
- * Underline in Cloth, plain weighted text in Colossal.
+ * An underlined row of labels.
  */
 export function Segments({ items, value, onChange, scrollable = false }: SegmentsProps) {
-    const { colors, style: themeStyle } = useTheme();
-    const isCloth = themeStyle === 'cloth';
+    const { colors } = useTheme();
 
     const buttons = items.map((item) => {
         const active = item.key === value;
@@ -210,9 +190,9 @@ export function Segments({ items, value, onChange, scrollable = false }: Segment
                 accessibilityRole="tab"
                 accessibilityState={{ selected: active }}
                 style={[
-                    isCloth ? styles.segCloth : styles.segColossal,
-                    scrollable && isCloth && styles.segScrollable,
-                    isCloth && active && { borderBottomColor: colors.accent },
+                    styles.segCloth,
+                    scrollable && styles.segScrollable,
+                    active && { borderBottomColor: colors.accent },
                 ]}
             >
                 <Text variant="tab" tone={active ? 'primary' : 'tertiary'}>
@@ -222,18 +202,15 @@ export function Segments({ items, value, onChange, scrollable = false }: Segment
         );
     });
 
-    const inlineStyle = isCloth ? styles.segsCloth : styles.segsColossal;
     // Scrollable draws its hairline on the wrapper, so the content must not
     // repeat it — a second line inside the ScrollView slides with the labels.
-    const scrollStyle = isCloth ? styles.segsScrollCloth : styles.segsScrollColossal;
-
     if (scrollable) {
         return (
             <View style={{ borderBottomWidth: Spacing.border.hairline, borderBottomColor: colors.border }}>
                 <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={scrollStyle}
+                    contentContainerStyle={styles.segsScrollCloth}
                 >
                     {buttons}
                 </ScrollView>
@@ -241,7 +218,7 @@ export function Segments({ items, value, onChange, scrollable = false }: Segment
         );
     }
 
-    return <View style={[inlineStyle, { borderBottomColor: colors.border }]}>{buttons}</View>;
+    return <View style={[styles.segsCloth, { borderBottomColor: colors.border }]}>{buttons}</View>;
 }
 
 const styles = StyleSheet.create({
@@ -255,17 +232,9 @@ const styles = StyleSheet.create({
         paddingBottom: Spacing.xl - 2,
     },
     heroContent: { position: 'relative' },
-    heroPlain: {
-        paddingTop: Spacing.layout.heroPaddingTop,
-        paddingHorizontal: Spacing.layout.screenPaddingTight,
-    },
 
     cardFilled: {
         padding: Spacing.layout.cardPadding,
-    },
-    cardColossal: {
-        paddingVertical: Spacing.lg - 1,
-        borderBottomWidth: Spacing.border.hairline,
     },
 
     row: {
@@ -287,20 +256,6 @@ const styles = StyleSheet.create({
         borderBottomWidth: Spacing.border.marker,
         borderBottomColor: 'transparent',
     },
-    segsColossal: {
-        flexDirection: 'row',
-        gap: Spacing.lg + 2,
-        paddingHorizontal: Spacing.layout.screenPaddingTight,
-        paddingBottom: Spacing.md + 2,
-        borderBottomWidth: Spacing.border.hairline,
-    },
-    segsScrollColossal: {
-        flexDirection: 'row',
-        gap: Spacing.lg + 2,
-        paddingHorizontal: Spacing.layout.screenPaddingTight,
-        paddingBottom: Spacing.md + 2,
-    },
-    segColossal: { paddingVertical: Spacing.xs },
     segScrollable: { flex: 0, paddingHorizontal: Spacing.lg },
     segsScrollCloth: {
         flexDirection: 'row',

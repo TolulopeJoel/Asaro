@@ -36,14 +36,12 @@ export function ThemedButton({
     style,
     accessibilityHint,
 }: ThemedButtonProps) {
-    const { colors, shape, style: themeStyle } = useTheme();
+    const { colors, shape } = useTheme();
     const scale = useRef(new Animated.Value(1)).current;
 
     const spring = useCallback((to: number) => {
         Animated.spring(scale, { toValue: to, useNativeDriver: true, speed: 40, bounciness: 4 }).start();
     }, [scale]);
-
-    const isColossal = themeStyle === 'colossal';
 
     const surface: ViewStyle =
         variant === 'secondary'
@@ -52,7 +50,6 @@ export function ThemedButton({
                 ? { backgroundColor: colors.accent }
                 : { backgroundColor: colors.buttonPrimary };
 
-    // Colossal's accent button sits on black, so its label must be black too.
     const labelColor =
         variant === 'secondary' ? colors.buttonSecondaryText
             : variant === 'accent' ? colors.background
@@ -67,7 +64,7 @@ export function ThemedButton({
      * reads as the thing to press, and on Cloth's warm ground it reads as
      * ochre gone wrong rather than ochre withheld. The mockup draws the
      * hairline colour carrying tertiary text — one flat block that is plainly
-     * not the primary action — and that is the same pair in both styles.
+     * not the primary action.
      */
     const mutedSurface: ViewStyle = { backgroundColor: colors.border, borderWidth: 0 };
 
@@ -84,7 +81,7 @@ export function ThemedButton({
                 accessibilityState={{ disabled: inactive, busy: loading }}
                 style={[
                     styles.base,
-                    isColossal ? styles.padColossal : styles.padCloth,
+                    styles.padCloth,
                     { borderRadius: shape.button },
                     surface,
                     block && styles.block,
@@ -114,7 +111,5 @@ const styles = StyleSheet.create({
 
     },
     padCloth: { paddingVertical: Spacing.md + 1, paddingHorizontal: Spacing.xl - 2 },
-    // co-btn is a uniform 17px box in the mockup, not a wider pill.
-    padColossal: { paddingVertical: Spacing.lg + 1, paddingHorizontal: Spacing.lg + 1 },
     block: { width: '100%', alignSelf: 'stretch' },
 });

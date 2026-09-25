@@ -46,7 +46,7 @@
 export type AsaroAction =
     | 'wave' | 'nod' | 'point' | 'thumbsUp' | 'celebrate' | 'shrug' | 'sigh' | 'think';
 
-export type AsaroLook = 'cloth' | 'lockedIn';
+export type AsaroLook = 'cloth';
 
 /**
  * One action's keyframes.
@@ -257,26 +257,6 @@ export const ASARO_LOOKS: Record<AsaroLook, {
         mark: '#6f3f2f',
         cheek: '#a44b43',
         cheeks: true,
-    },
-    lockedIn: {
-        face: '#c97355',
-        shade: '#b1654b',
-        // Locked In does one thing at a time; the volume is stated, not modelled.
-        shadeOpacity: 0.25,
-        // Same as the face: against black the silhouette should read as one mass.
-        crest: '#c97355',
-        rim: 'rgba(255,255,255,0.28)',
-        brow: '#44271d',
-        eyeWhite: '#ffffff',
-        eyeRim: 'rgba(0,0,0,0.18)',
-        iris: '#5a3426',
-        pupil: '#180e0a',
-        mouth: '#44271d',
-        // Kept at full strength in Locked In even though the blush is dropped:
-        // the marks are identity, not ornament, and that mode strips ornament.
-        mark: '#6f3f2f',
-        cheek: '#a44b43',
-        cheeks: false,
     },
 };
 

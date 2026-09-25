@@ -19,26 +19,12 @@ interface BookCardProps {
 /**
  * A book in the library's Books list.
  *
- * Colossal draws the design's own book row (`.co-book`): the name, the count
- * pushed to the right edge, a hairline under it. No panel, no ochre badge and
- * no chevron — the row is the affordance, as everywhere else in the style.
+ * The design's own book row: the name, the count pushed to the right edge, a
+ * hairline under it. No panel, no ochre badge and no chevron — the row is the
+ * affordance, as everywhere else.
  */
 export const BookCard = React.memo(({ book, onNavigate }: BookCardProps) => {
-    const { colors, isLockedIn } = useTheme();
-
-    if (isLockedIn) {
-        return (
-            <ScalePressable
-                style={[styles.bookRow, { borderBottomColor: colors.border }]}
-                onPress={() => onNavigate(book)}
-            >
-                <Text variant="cell">{book.name}</Text>
-                <Text variant="meta" style={styles.bookRowCount}>
-                    {book.entryCount} {book.entryCount === 1 ? 'entry' : 'entries'}
-                </Text>
-            </ScalePressable>
-        );
-    }
+    const { colors } = useTheme();
 
     return (
         <View style={styles.bookCardWrapper}>

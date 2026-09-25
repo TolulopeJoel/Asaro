@@ -21,7 +21,7 @@ export default function JoinGroupScreen() {
     const [code, setCode] = useState('');
     const [loading, setLoading] = useState(false);
     const { user, displayName } = useAuth();
-    const { colors, style: themeStyle, isLockedIn } = useTheme();
+    const { colors, style: themeStyle } = useTheme();
     const { showAlert } = useAlert();
     const router = useRouter();
     const db = getFirestore();
@@ -100,85 +100,6 @@ export default function JoinGroupScreen() {
             setLoading(false);
         }
     };
-
-    if (isLockedIn) {
-        /*
-         * design/all-screens.html #join, the `.co` slot.
-         *
-         * The code is the whole screen: no card, no icon, just the field set
-         * large on an ochre underline so it reads as the one thing to fill in.
-         * The sign-in path sits below its own rule, because it answers a
-         * different question — "what if I have no code?" — rather than being a
-         * second way to do the same thing.
-         */
-        return (
-            <Screen>
-                <View style={styles.colossalTop}>
-                    <ScalePressable
-                        onPress={() => router.back()}
-                        accessibilityRole="button"
-                        accessibilityLabel="Back"
-                        hitSlop={Spacing.md}
-                        style={styles.backArrow}
-                    >
-                        <ChevronLeft size={20} color={colors.textTertiary} strokeWidth={2} />
-                    </ScalePressable>
-                    <Text variant="tab">Join a circle</Text>
-                </View>
-
-                <ScrollView contentContainerStyle={styles.colossalContent} keyboardShouldPersistTaps="handled">
-                    <Text variant="label">Group code</Text>
-                    <TextInput
-                        style={[
-                            styles.colossalInput,
-                            textStyle(themeStyle, 'display'),
-                            // The design tracks the code apart rather than
-                            // together — it is six separate characters to read
-                            // back to someone, not a word.
-                            { letterSpacing: 2.4, color: colors.textPrimary, borderBottomColor: colors.accent },
-                        ]}
-                        placeholder="XXXXXX"
-                        placeholderTextColor={colors.textTertiary}
-                        value={code}
-                        onChangeText={setCode}
-                        autoCapitalize="characters"
-                        autoCorrect={false}
-                        maxLength={10}
-                        accessibilityLabel="Group code"
-                    />
-                    <Text variant="sub" style={styles.colossalHint}>
-                        Ask whoever set up the circle for its six-character code.
-                    </Text>
-
-                    <View style={[styles.rule, { backgroundColor: colors.border }]} />
-
-                    <ThemedButton
-                        label={loading ? 'Joining…' : 'Join this circle'}
-                        variant="accent"
-                        block
-                        loading={loading}
-                        disabled={loading || !code.trim()}
-                        onPress={handleJoin}
-                    />
-
-                    <View style={[styles.rule, { backgroundColor: colors.border }]} />
-
-                    <Text variant="label">No code?</Text>
-                    <Text variant="sub" style={styles.colossalHint}>
-                        Groups sync through your account, so you&apos;ll need to sign in before
-                        joining one.
-                    </Text>
-                    <ThemedButton
-                        label="Sign in to Join Them"
-                        variant="secondary"
-                        block
-                        style={styles.signIn}
-                        onPress={() => router.push('/(tabs)/groups/auth' as any)}
-                    />
-                </ScrollView>
-            </Screen>
-        );
-    }
 
     /*
      * design/all-screens.html #join, the `.cl` slot.
@@ -267,30 +188,7 @@ const styles = StyleSheet.create({
         flex: 1,
     },
 
-    // ── Colossal ──────────────────────────────────────────────────────────
-    colossalTop: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.md,
-        paddingHorizontal: Spacing.layout.screenPaddingTight,
-        paddingTop: Spacing.lg,
-    },
     backArrow: { marginLeft: -6 },
-    colossalContent: {
-        paddingHorizontal: Spacing.layout.screenPaddingTight,
-        paddingTop: Spacing.xl + 2,
-        paddingBottom: Spacing.xxl,
-    },
-    /** Underlined, not boxed — the field is the screen. */
-    colossalInput: {
-        textAlign: 'center',
-        paddingVertical: Spacing.xl,
-        borderBottomWidth: Spacing.border.strong,
-    },
-    colossalHint: { marginTop: Spacing.lg },
-    /** `.co-hr` */
-    rule: { height: Spacing.border.hairline, marginVertical: Spacing.xl + 2 },
-    signIn: { marginTop: Spacing.layout.cardPadding },
 
     // ── Cloth ─────────────────────────────────────────────────────────────
     /** `.cl-top` — just the back arrow on this screen. */
@@ -317,6 +215,6 @@ const styles = StyleSheet.create({
         gap: Spacing.xs,
     },
     clothPanelLabel: { marginBottom: 7 },
-    /** `.cl-btn.ghost{margin-top:14px}` — not full width, unlike Colossal's. */
+    /** `.cl-btn.ghost{margin-top:14px}` — not full width. */
     clothSignIn: { marginTop: Spacing.md + 2, alignSelf: 'flex-start' },
 });

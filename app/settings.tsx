@@ -27,7 +27,6 @@ import {
     Bell,
     RefreshCw,
     ChevronLeft,
-    Moon,
     Archive,
     Download,
 } from 'lucide-react-native';
@@ -108,7 +107,6 @@ const SettingsItem = ({
     destructive,
     showChevron = true,
     colors,
-    isLockedIn,
 }: {
     label: string;
     value?: string;
@@ -117,17 +115,13 @@ const SettingsItem = ({
     destructive?: boolean;
     showChevron?: boolean;
     colors: any;
-    isLockedIn?: boolean;
 }) => {
     /*
-     * design/all-screens.html #settings — both slots draw the same row: the
-     * label on the left, its value on the right, and nothing else. No icon
-     * chip and no chevron; a list where every row carries both reads as
-     * texture rather than as information, and this is the longest list in the
-     * app. A value of "On" is the one thing here worth the accent.
-     *
-     * Only the face differs, which is what the variant system is for: Cloth
-     * sets the label in Work Sans at `body`, Colossal in Archivo at `.co-ref`.
+     * design/all-screens.html #settings — the label on the left, its value on
+     * the right, and nothing else. No icon chip and no chevron; a list where
+     * every row carries both reads as texture rather than as information, and
+     * this is the longest list in the app. A value of "On" is the one thing
+     * here worth the accent.
      */
     void icon; void showChevron;
 
@@ -138,7 +132,7 @@ const SettingsItem = ({
             accessibilityRole="button"
         >
             <UIText
-                variant={isLockedIn ? 'reference' : 'body'}
+                variant="body"
                 tone={destructive ? 'danger' : 'primary'}
                 style={styles.settingRowLabel}
             >
@@ -152,7 +146,7 @@ const SettingsItem = ({
 };
 
 export default function Settings() {
-    const { colors, setStyle: setThemeStyle, isLockedIn } = useTheme();
+    const { colors } = useTheme();
     const router = useRouter();
     const { showAlert } = useAlert();
 
@@ -517,7 +511,7 @@ export default function Settings() {
 
 
     return (
-        <Screen edges={isLockedIn ? ['top'] : []}>
+        <Screen edges={[]}>
             <Stack.Screen options={{ headerShown: false }} />
             <ScrollView
                 ref={scrollViewRef}
@@ -525,43 +519,22 @@ export default function Settings() {
                 contentContainerStyle={[
                     styles.scrollContent,
                     /*
-                     * Both bodies carry their own gutter — clothBody at 24,
-                     * colossalBody at 22 — so the scroll view must never add
-                     * scrollContent's 24 on top. Cloth used to double up here:
-                     * 24 (scrollContent) + 24 (clothBody) sat the screen 48px
-                     * in from the edge instead of the mockup's 24.
+                     * clothBody carries its own 24px gutter, so the scroll view
+                     * must never add scrollContent's 24 on top: 24 + 24 sat the
+                     * screen 48px in from the edge instead of the mockup's 24.
                      */
                     styles.scrollContentNoGutter,
                 ]}
                 showsVerticalScrollIndicator={false}
             >
-                {isLockedIn ? (
-                    /*
-                     * Settings is the one screen with nothing worth enlarging,
-                     * so Colossal uses no colossal element at all — the design's
-                     * rule is at most one per screen, never always one.
-                     */
-                    <View style={styles.colossalTop}>
-                        <ScalePressable
-                            onPress={() => router.back()}
-                            style={styles.colossalBack}
-                            accessibilityRole="button"
-                            accessibilityLabel="Back"
-                            hitSlop={Spacing.md}
-                        >
-                            <ChevronLeft size={20} color={colors.textTertiary} strokeWidth={2} />
-                        </ScalePressable>
-                        <UIText variant="tab">Settings</UIText>
-                    </View>
-                ) : (
-                    /*
+                {/*
                      * design/all-screens.html #settings, the `.cl` slot: Cloth
                      * drops to a single header band and puts the profile on it —
                      * the avatar in ochre, the name at 24px, and how long you
                      * have been reading underneath. No screen title: the band
-                     * is about you, not about the word "Settings".
-                     */
-                    <Hero ownsTopInset>
+                  * is about you, not about the word "Settings".
+                  */}
+                <Hero ownsTopInset>
                         <ScalePressable
                             onPress={() => router.back()}
                             style={styles.clothBack}
@@ -594,52 +567,18 @@ export default function Settings() {
                                 )}
                             </View>
                         </ScalePressable>
-                    </Hero>
-                )}
+                </Hero>
 
                 {/*
-                  * design/all-screens.html #settings — one body, both styles.
+                  * design/all-screens.html #settings.
                   *
-                  * Both slots give Settings the same architecture: labelled runs
-                  * of plain rows — Reminders, Your data, Engine Room, About —
-                  * with no panel anywhere on the screen. Neither draws an
-                  * Appearance selector or a Style card picker: the style switch
-                  * is expressed as a ROW ("Locked In Mode · On"), and light/dark
-                  * has no second Cloth palette to choose between yet.
-                  *
-                  * Cloth carries the profile on its hero band; Colossal has no
-                  * band, so it leads the body with the same row instead.
+                  * Settings is labelled runs of plain rows — Reminders, Your
+                  * data, Engine Room, About — with no panel anywhere on the
+                  * screen, and no Appearance selector: light/dark has no second
+                  * Cloth palette to choose between yet. The profile rides on
+                  * the hero band above.
                   */}
-                <View style={isLockedIn ? styles.colossalBody : styles.clothBody}>
-                    {isLockedIn && (
-                        <>
-                            <ScalePressable
-                                disabled={!isAdmin}
-                                onPress={() => setShowPhotoEditor(v => !v)}
-                                accessibilityRole={isAdmin ? 'button' : undefined}
-                                accessibilityLabel={isAdmin ? 'Edit profile photo' : undefined}
-                                style={styles.colossalProfile}
-                            >
-                                <Avatar
-                                    id={user?.uid}
-                                    name={user?.displayName || 'Reader'}
-                                    url={photoURL}
-                                    size={52}
-                                    radius={26}
-                                />
-                                <View style={styles.colossalProfileText}>
-                                    <UIText variant="subtitle">{user?.displayName || 'Reader'}</UIText>
-                                    {readingSince && (
-                                        <UIText variant="bodySmall" style={styles.colossalProfileSub}>
-                                            {`Reading since ${readingSince}`}
-                                        </UIText>
-                                    )}
-                                </View>
-                            </ScalePressable>
-                            <View style={[styles.rule, { backgroundColor: colors.border }]} />
-                        </>
-                    )}
-
+                <View style={styles.clothBody}>
                     {/* Admins keep the photo editor; it opens under the profile
                         rather than as a section neither mockup draws. */}
                     {isAdmin && showPhotoEditor && (
@@ -652,9 +591,8 @@ export default function Settings() {
                         />
                     )}
 
-                    <UIText variant="label" style={isLockedIn ? styles.sectionLabel : styles.clothSectionLabel}>Reminders</UIText>
+                    <UIText variant="label" style={styles.clothSectionLabel}>Reminders</UIText>
                     <SettingsItem
-                        isLockedIn={isLockedIn}
                         label="Sleep time"
                         value={formatSleepTime(sleepTime)}
                         icon={Bed}
@@ -662,27 +600,15 @@ export default function Settings() {
                         colors={colors}
                     />
                     <SettingsItem
-                        isLockedIn={isLockedIn}
                         label="Notifications"
                         value={notificationsOn === null ? '—' : notificationsOn ? 'On' : 'Off'}
                         icon={Bell}
                         onPress={openNotificationSettings}
                         colors={colors}
                     />
-                    <SettingsItem
-                        isLockedIn={isLockedIn}
-                        label="Locked In Mode"
-                        value={isLockedIn ? 'On' : 'Off'}
-                        icon={Moon}
-                        onPress={() => setThemeStyle(isLockedIn ? 'cloth' : 'colossal')}
-                        colors={colors}
-                    />
 
-                    {isLockedIn && <View style={[styles.rule, { backgroundColor: colors.border }]} />}
-
-                    <UIText variant="label" style={isLockedIn ? styles.sectionLabel : styles.clothSectionLabel}>Your data</UIText>
+                    <UIText variant="label" style={styles.clothSectionLabel}>Your data</UIText>
                     <SettingsItem
-                        isLockedIn={isLockedIn}
                         label="Share entries backup"
                         value={isExporting ? 'Working…' : undefined}
                         icon={Archive}
@@ -690,7 +616,6 @@ export default function Settings() {
                         colors={colors}
                     />
                     <SettingsItem
-                        isLockedIn={isLockedIn}
                         label="Import entries"
                         value={isImporting ? 'Working…' : undefined}
                         icon={Download}
@@ -698,13 +623,11 @@ export default function Settings() {
                         colors={colors}
                     />
 
-                    {isLockedIn && <View style={[styles.rule, { backgroundColor: colors.border }]} />}
 
                     {/* Both mockups show these plainly rather than behind the
                         five-tap easter egg they used to hide under. */}
-                    <UIText variant="label" style={isLockedIn ? styles.sectionLabel : styles.clothSectionLabel}>Engine Room</UIText>
+                    <UIText variant="label" style={styles.clothSectionLabel}>Engine Room</UIText>
                     <SettingsItem
-                        isLockedIn={isLockedIn}
                         label="Reschedule notifications"
                         value={isLoadingNotifications ? 'Working…' : undefined}
                         icon={RefreshCw}
@@ -712,14 +635,12 @@ export default function Settings() {
                         colors={colors}
                     />
                     <SettingsItem
-                        isLockedIn={isLockedIn}
                         label="Send test notification"
                         icon={Bell}
                         onPress={handleTestNotification}
                         colors={colors}
                     />
                     <SettingsItem
-                        isLockedIn={isLockedIn}
                         label="Why am I not getting reminders?"
                         icon={Bell}
                         onPress={handleDeliveryCheck}
@@ -727,17 +648,13 @@ export default function Settings() {
                     />
 
                     {/*
-                      * Cloth gives Version its own "About"; Colossal folds it
-                      * into Engine Room. Both are what their mockup draws. No
-                      * rule here — Cloth's mockup never draws `.cl-hr`
-                      * anywhere on this screen; only the label's own
-                      * margin-top:20 (clothSectionLabel) separates sections.
+                      * Version gets its own "About". No rule here — the
+                      * mockup never draws `.cl-hr` anywhere on this screen;
+                      * only the label's own margin-top:20 (clothSectionLabel)
+                      * separates sections.
                       */}
-                    {!isLockedIn && (
-                        <UIText variant="label" style={styles.clothSectionLabel}>About</UIText>
-                    )}
+                    <UIText variant="label" style={styles.clothSectionLabel}>About</UIText>
                     <SettingsItem
-                        isLockedIn={isLockedIn}
                         label="Version"
                         value={Constants.expoConfig?.version || '1.0.0'}
                         icon={Bell}
@@ -755,12 +672,12 @@ export default function Settings() {
             </ScrollView>
 
             {/*
-              * The mockup's footer, in both styles. Every setting here already
+              * The mockup's footer. Every setting here already
               * persists the moment it changes — there is no pending state to
               * commit — so the button does the only honest thing left and
               * closes the screen.
               */}
-            <View style={[styles.colossalFooter, !isLockedIn && styles.clothFooter]}>
+            <View style={styles.footer}>
                 <ThemedButton label="Save Changes" block onPress={() => router.back()} />
             </View>
         </Screen>
@@ -768,16 +685,6 @@ export default function Settings() {
 }
 
 const styles = StyleSheet.create({
-    // ── Colossal ──────────────────────────────────────────────────────────
-    colossalTop: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.md,
-        paddingHorizontal: Spacing.layout.screenPaddingTight,
-        paddingTop: Spacing.lg,
-        paddingBottom: Spacing.xl - 2,
-    },
-    colossalBack: { marginLeft: -6 },
     /** Cloth's band: the arrow hangs into the gutter, the profile sits under it. */
     clothBack: { marginLeft: -6, alignSelf: 'flex-start' },
     clothProfile: {
@@ -788,21 +695,6 @@ const styles = StyleSheet.create({
     },
     clothProfileText: { flex: 1, minWidth: 0 },
     clothProfileSub: { marginTop: 3 },
-    /** `.co-body{padding:26px 22px 0}`, overridden to 22 on this screen. */
-    colossalBody: {
-        paddingHorizontal: Spacing.layout.screenPaddingTight,
-        paddingTop: Spacing.xl - 2,
-    },
-    colossalProfile: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.md + 2,
-    },
-    colossalProfileText: { flex: 1, minWidth: 0 },
-    colossalProfileSub: { marginTop: 4 },
-    /** `.co-hr{height:1px; background:var(--hair); margin:26px 0}` */
-    rule: { height: Spacing.border.hairline, marginVertical: Spacing.xl + 2 },
-    /** `.co-label{margin:0 0 10px}` */
     sectionLabel: { marginBottom: 10 },
     /** `.cl-label{margin:20px 0 4px}` */
     clothSectionLabel: { marginTop: 20, marginBottom: 4 },
@@ -811,13 +703,12 @@ const styles = StyleSheet.create({
     clothBody: {
         paddingHorizontal: Spacing.layout.screenPadding,
     },
-    clothFooter: { paddingHorizontal: Spacing.layout.screenPadding },
-    colossalFooter: {
-        paddingHorizontal: Spacing.layout.screenPaddingTight,
+    footer: {
+        paddingHorizontal: Spacing.layout.screenPadding,
         paddingTop: Spacing.md + 2,
         paddingBottom: Spacing.layout.tabBarPadding,
     },
-    /** `.cl-row{padding:16px 0}` / `.co-row{padding:15px 0}` — one row, both styles. */
+    /** `.cl-row{padding:16px 0}` */
     settingRow: {
         flexDirection: 'row',
         alignItems: 'baseline',

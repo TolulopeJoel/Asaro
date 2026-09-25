@@ -1,9 +1,9 @@
 /**
  * Shape, per style.
  *
- * Both styles are flat and square today, so these values agree — but shape
- * stays a theme token rather than a constant, because it is the axis a future
- * style is most likely to move, and a palette swap cannot express it.
+ * Cloth is flat and square — but shape stays a theme token rather than a
+ * constant, because it is the axis a future style is most likely to move, and
+ * a palette swap cannot express it.
  */
 import { Spacing } from './spacing';
 
@@ -22,24 +22,12 @@ export interface ThemeShape {
     cardBorder: boolean;
     /** Lift under cards. Flat styles use `none`. */
     elevation: typeof Spacing.elevation.none | typeof Spacing.elevation.overlay;
-    /** Gap between stacked cards; Classic is airier than the flat styles. */
+    /** Gap between stacked cards. */
     stackGap: number;
 }
 
 /** Cloth — flat, square, separated by colour blocks and hairlines. */
 export const clothShape: ThemeShape = {
-    card: Spacing.borderRadius.none,
-    button: Spacing.borderRadius.none,
-    input: Spacing.borderRadius.none,
-    chip: Spacing.borderRadius.none,
-    hairline: Spacing.border.hairline,
-    cardBorder: false,
-    elevation: Spacing.elevation.none,
-    stackGap: Spacing.lg,
-};
-
-/** Colossal — flat and square too; weight does the separating. */
-export const colossalShape: ThemeShape = {
     card: Spacing.borderRadius.none,
     button: Spacing.borderRadius.none,
     input: Spacing.borderRadius.none,

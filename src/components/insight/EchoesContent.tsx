@@ -165,8 +165,8 @@ function formatDate(raw: string | null): string {
     });
 }
 
-export function EchoesContent({ onCountChange }: { onCountChange?: (n: number) => void } = {}) {
-    const { colors, isLockedIn } = useTheme();
+export function EchoesContent() {
+    const { colors } = useTheme();
     const router = useRouter();
     const [rows, setRows] = useState<Row[] | null>(null);
     const [open, setOpen] = useState<Row | null>(null);
@@ -181,8 +181,7 @@ export function EchoesContent({ onCountChange }: { onCountChange?: (n: number) =
             .filter((row): row is Row => row !== null);
 
         setRows(legible);
-        onCountChange?.(legible.length);
-    }, [onCountChange]);
+    }, []);
 
     useFocusEffect(
         useCallback(() => {
@@ -232,18 +231,13 @@ export function EchoesContent({ onCountChange }: { onCountChange?: (n: number) =
     if (rows.length === 0) {
         return (
             /* design/all-screens.html #empties — the same shape as the other
-               seven: Cloth centred under a bare glyph, Colossal set left with
-               no glyph at all. */
-            <View style={[styles.empty, isLockedIn ? styles.emptyColossal : styles.emptyCloth]}>
-                {!isLockedIn && <Sparkles size={34} color={colors.textTertiary} strokeWidth={1.5} />}
-                <Text variant="title" style={isLockedIn ? undefined : styles.centred}>
+               seven: centred under a bare glyph. */
+            <View style={[styles.empty, styles.emptyCloth]}>
+                <Sparkles size={34} color={colors.textTertiary} strokeWidth={1.5} />
+                <Text variant="title" style={styles.centred}>
                     Nothing noticed yet
                 </Text>
-                <Text
-                    variant="body"
-                    tone="secondary"
-                    style={isLockedIn ? undefined : styles.centred}
-                >
+                <Text variant="body" tone="secondary" style={styles.centred}>
                     Àṣàrò watches for passages your entries keep circling without ever landing on.
                     When it finds one, it will appear on Home — not here.
                 </Text>
@@ -273,13 +267,11 @@ export function EchoesContent({ onCountChange }: { onCountChange?: (n: number) =
                         <ScalePressable
                             onPress={() => setOpen(item)}
                             style={[
-                                isLockedIn ? styles.colossalRow : styles.clothRow,
-                                isLockedIn
-                                    ? { borderBottomColor: colors.border }
-                                    : {
-                                        backgroundColor: colors.cardBackground,
-                                        borderColor: colors.cardBorder,
-                                    },
+                                styles.clothRow,
+                                {
+                                    backgroundColor: colors.cardBackground,
+                                    borderColor: colors.cardBorder,
+                                },
                                 /*
                                  * A rejected finding is dimmed rather than
                                  * hidden. It stays part of the record — the
@@ -304,7 +296,7 @@ export function EchoesContent({ onCountChange }: { onCountChange?: (n: number) =
                                 </Text>
                             </View>
 
-                            <Text variant={isLockedIn ? 'subtitle' : 'reference'} style={styles.subject}>
+                            <Text variant="reference" style={styles.subject}>
                                 {item.rendered.subject}
                             </Text>
 
@@ -348,7 +340,6 @@ const styles = StyleSheet.create({
         gap: Spacing.lg,
     },
     emptyCloth: { alignItems: 'center', paddingHorizontal: Spacing.xxl + 2 },
-    emptyColossal: { paddingHorizontal: Spacing.layout.screenPaddingTight },
     centred: { textAlign: 'center' },
     list: {
         padding: Spacing.layout.screenPadding,
@@ -359,11 +350,6 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderRadius: Spacing.borderRadius.lg,
         padding: Spacing.lg,
-        gap: Spacing.xs,
-    },
-    colossalRow: {
-        borderBottomWidth: 1,
-        paddingBottom: Spacing.lg,
         gap: Spacing.xs,
     },
     rejected: { opacity: 0.45 },

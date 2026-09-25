@@ -1,12 +1,11 @@
 /**
  * One action item.
  *
- * design/all-screens.html #actions. Both styles face the same problem — an
- * action carries two texts of unequal weight, the thing to do and why — and
- * each solves it with what it has. Colossal indents the motivation behind a
- * hairline on a bare row; Cloth sets the action in the serif inside a filled
- * `.cl-panel` and lets the face carry the difference. A pinned action gets an
- * ochre left rail in Cloth and a "Pinned" heading in both.
+ * design/all-screens.html #actions. An action carries two texts of unequal
+ * weight — the thing to do and why — and the design solves it with the serif
+ * rather than with a rule: the action is set in the serif inside a filled
+ * `.cl-panel` and the face carries the difference. A pinned action gets an
+ * ochre left rail and a "Pinned" heading.
  */
 import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -88,7 +87,7 @@ function ActionCheckbox({ done, onPress }: { done: boolean; onPress: () => void 
 }
 
 export const ActionCard = React.memo(({ item, onEntryPress, handleTogglePin, handleToggleAction, progress, onEdit }: ActionCardProps) => {
-    const { colors, isLockedIn, style: themeStyle } = useTheme();
+    const { colors, style: themeStyle } = useTheme();
 
     /*
      * What this item is decides whether a checkbox appears at all.
@@ -129,73 +128,6 @@ export const ActionCard = React.memo(({ item, onEntryPress, handleTogglePin, han
         }
     };
 
-    if (isLockedIn) {
-        return (
-            <View style={[styles.colossalRow, { borderBottomColor: colors.border }, struckOut && styles.done, isArchived && styles.archived]}>
-                {showsCheckbox ? (
-                    <ActionCheckbox done={done} onPress={() => handleToggleAction(item)} />
-                ) : (
-                    <View style={styles.checkboxSpacer} />
-                )}
-                <ScalePressable
-                    style={styles.colossalMain}
-                    onPress={onEdit ? () => onEdit(item) : undefined}
-                    disabled={!onEdit}
-                    accessibilityRole={onEdit ? 'button' : undefined}
-                    accessibilityHint={onEdit ? 'Edit this' : undefined}
-                >
-                    <HyperlinkedText
-                        style={[
-                            textStyle(themeStyle, 'subtitle'),
-                            { color: colors.textPrimary },
-                            struckOut && styles.struck,
-                        ]}
-                        text={item.action}
-                    />
-                    {item.motivation ? (
-                        /*
-                         * The motivation is indented behind a rule. That rule is
-                         * the whole reason this screen works in Colossal: an
-                         * action carries two texts of unequal weight, and without
-                         * it the second one reads as another thing to do.
-                         */
-                        <View style={[styles.motivation, { borderLeftColor: colors.border }]}>
-                            <HyperlinkedText
-                                style={[textStyle(themeStyle, 'bodySmall'), { color: colors.textSecondary }]}
-                                text={item.motivation}
-                            />
-                        </View>
-                    ) : null}
-                    <View style={styles.metaRow}>
-                        <ScalePressable onPress={openEntry} accessibilityRole="button" accessibilityLabel={`Open ${reference(item)}`}>
-                            <Text variant="meta" style={styles.colossalRef}>{reference(item)}</Text>
-                        </ScalePressable>
-                        {streak && <Text variant="meta" tone="accent">{streak}</Text>}
-                        {due && <Text variant="meta" tone="accent">{due}</Text>}
-                    </View>
-                </ScalePressable>
-                {/*
-                  * The mockup draws no pin here — it expresses pinning with the
-                  * "Pinned" section above. Keeping a control means keeping the
-                  * ability to pin at all, so it sits at the row's right edge in
-                  * the same grey as everything else and doesn't touch the
-                  * silhouette the design set.
-                  */}
-                <TouchableOpacity
-                    onPress={() => handleTogglePin(item)}
-                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                    accessibilityRole="button"
-                    accessibilityLabel={item.is_pinned ? 'Unpin action' : 'Pin action'}
-                >
-                    <Svg width="15" height="15" viewBox="0 0 24 24" fill={item.is_pinned ? colors.accent : 'none'} stroke={item.is_pinned ? colors.accent : colors.textTertiary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: [{ rotate: '30deg' }] }}>
-                        <Path d="M12 17v5" />
-                        <Path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
-                    </Svg>
-                </TouchableOpacity>
-            </View>
-        );
-    }
-
     /*
      * design/all-screens.html #actions, the `.cl` slot.
      *
@@ -222,7 +154,7 @@ export const ActionCard = React.memo(({ item, onEntryPress, handleTogglePin, han
                     <View style={styles.checkboxSpacer} />
                 )}
                 <ScalePressable
-                    style={styles.colossalMain}
+                    style={styles.rowMain}
                     onPress={onEdit ? () => onEdit(item) : undefined}
                     disabled={!onEdit}
                     accessibilityRole={onEdit ? 'button' : undefined}
@@ -269,15 +201,7 @@ export const ActionCard = React.memo(({ item, onEntryPress, handleTogglePin, han
 ActionCard.displayName = 'ActionCard';
 
 const styles = StyleSheet.create({
-    // ── Colossal ──────────────────────────────────────────────────────────
-    colossalRow: {
-        flexDirection: 'row',
-        gap: Spacing.md,
-        paddingBottom: Spacing.lg - 1,
-        marginBottom: Spacing.lg - 1,
-        borderBottomWidth: Spacing.border.hairline,
-    },
-    colossalMain: {
+    rowMain: {
         flex: 1,
         minWidth: 0,
     },
@@ -297,9 +221,6 @@ const styles = StyleSheet.create({
         marginTop: 7,
         paddingLeft: 11,
         borderLeftWidth: Spacing.border.hairline,
-    },
-    colossalRef: {
-        marginTop: 9,
     },
     done: {
         opacity: 0.45,

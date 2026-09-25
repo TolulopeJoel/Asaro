@@ -2,12 +2,11 @@
  * Typed text.
  *
  * Callers ask for a role — `title`, `label`, `quote` — and the active style
- * decides the face, size and weight. Cloth answers in Fraunces over Work Sans;
- * Colossal answers in Archivo and lets weight do the hierarchy.
+ * decides the face, size and weight. Cloth answers in Fraunces over Work Sans.
  *
  * Every value is taken from the approved mockup, design/all-screens.html — the
- * `.cl-*` rules for Cloth, `.co-*` for Colossal. Each variant below names the
- * rule it implements, so a drift from the design is a one-line diff to find.
+ * `.cl-*` rules. Each variant below names the rule it implements, so a drift
+ * from the design is a one-line diff to find.
  *
  * Screens should not set `fontSize` or `fontFamily` directly. That habit is
  * what produced 13 raw font sizes and a serif token that was defined and then
@@ -29,17 +28,13 @@ export interface TextProps extends RNTextProps {
 }
 
 /**
- * `onBand` is the title of a <Hero>, and it is style-dependent by nature.
- *
- * Cloth's hero is an indigo band, so its title is the ecru `textInverse`.
- * Colossal draws no band at all — the title sits on the page — so the same
- * `textInverse` is #000000 on a #000000 ground and the heading vanishes. Four
- * screens shipped that way. A tone that resolves per style removes the trap
- * rather than asking every caller to remember it.
+ * `onBand` is the title of a <Hero>: Cloth's hero is an indigo band, so its
+ * title is the ecru `textInverse`. It stays a named tone rather than a literal
+ * so a style that draws no band can answer it differently.
  */
-function toneColor(tone: TextProps['tone'], colors: ThemeColors, themeStyle: ThemeStyle): string {
+function toneColor(tone: TextProps['tone'], colors: ThemeColors): string {
     switch (tone) {
-        case 'onBand': return themeStyle === 'cloth' ? colors.textInverse : colors.textPrimary;
+        case 'onBand': return colors.textInverse;
         case 'secondary': return colors.textSecondary;
         case 'tertiary': return colors.textTertiary;
         case 'muted': return colors.textMuted;
@@ -63,14 +58,11 @@ const { size, lineHeight, tracking } = Typography;
  * what a device can render, and the rounded number is the one a designer can
  * check against the mockup.
  */
-function track(px: number, variant: TextVariant, styleIndex: 0 | 1): number {
+function track(px: number, variant: TextVariant): number {
     const em = tracking[variant as keyof typeof tracking];
     if (!em) return 0;
-    return Math.round(px * em[styleIndex] * 10) / 10;
+    return Math.round(px * em * 10) / 10;
 }
-
-const CLOTH = 0;
-const COLOSSAL = 1;
 
 /**
  * Cloth — Fraunces over Work Sans.
@@ -80,60 +72,59 @@ const COLOSSAL = 1;
  * role has no mockup rule — `quote` — it keeps the size it already had.
  */
 const cloth: Record<TextVariant, TextStyle> = {
-    // Cloth has no colossal slot; its largest element is the stat numeral.
+    // Cloth's largest element is the stat numeral.
     // .cl-statn
     hero: {
         fontFamily: FontFamily.displayHeavy,
         fontSize: size.xxxl,
         lineHeight: lineHeight.xxxl,
-        letterSpacing: track(size.xxxl, 'hero', CLOTH),
+        letterSpacing: track(size.xxxl, 'hero'),
     },
     /**
-     * Cloth has no second giant either: `.cl-statn` is the largest thing it
-     * draws, so `heroSmall` answers with the same value `hero` does. Colossal
-     * is where the two steps differ.
+     * `.cl-statn` is the largest thing Cloth draws, so `heroSmall` answers
+     * with the same value `hero` does.
      */
     // .cl-statn
     heroSmall: {
         fontFamily: FontFamily.displayHeavy,
         fontSize: size.xxxl,
         lineHeight: lineHeight.xxxl,
-        letterSpacing: track(size.xxxl, 'heroSmall', CLOTH),
+        letterSpacing: track(size.xxxl, 'heroSmall'),
     },
     // .cl-htitle — the hero band title.
     display: {
         fontFamily: FontFamily.displayHeavy,
         fontSize: size.xxl,
         lineHeight: lineHeight.xxl,
-        letterSpacing: track(size.xxl, 'display', CLOTH),
+        letterSpacing: track(size.xxl, 'display'),
     },
     // .cl-h.xl
     headline: {
         fontFamily: FontFamily.display,
         fontSize: size.xxlPlus,
         lineHeight: lineHeight.xxlPlus,
-        letterSpacing: track(size.xxlPlus, 'headline', CLOTH),
+        letterSpacing: track(size.xxlPlus, 'headline'),
     },
     // .cl-h.lg
     title: {
         fontFamily: FontFamily.display,
         fontSize: size.xlPlus,
         lineHeight: lineHeight.xlPlus,
-        letterSpacing: track(size.xlPlus, 'title', CLOTH),
+        letterSpacing: track(size.xlPlus, 'title'),
     },
     // .cl-h.md
     subtitle: {
         fontFamily: FontFamily.display,
         fontSize: size.xlMinus,
         lineHeight: lineHeight.xlMinus,
-        letterSpacing: track(size.xlMinus, 'subtitle', CLOTH),
+        letterSpacing: track(size.xlMinus, 'subtitle'),
     },
     // .cl-ref
     reference: {
         fontFamily: FontFamily.display,
         fontSize: size.lgHalf,
         lineHeight: lineHeight.lgHalf,
-        letterSpacing: track(size.lgHalf, 'reference', CLOTH),
+        letterSpacing: track(size.lgHalf, 'reference'),
     },
     // .cl-input, and running text.
     body: {
@@ -158,7 +149,7 @@ const cloth: Record<TextVariant, TextStyle> = {
         fontFamily: FontFamily.bodySemibold,
         fontSize: size.xsHalf,
         lineHeight: lineHeight.xsHalf,
-        letterSpacing: track(size.xsHalf, 'label', CLOTH),
+        letterSpacing: track(size.xsHalf, 'label'),
         textTransform: 'uppercase',
     },
     // .cl-bookc / .cl-statl
@@ -166,14 +157,14 @@ const cloth: Record<TextVariant, TextStyle> = {
         fontFamily: FontFamily.body,
         fontSize: size.xsPlus,
         lineHeight: lineHeight.xsPlus,
-        letterSpacing: track(size.xsPlus, 'caption', CLOTH),
+        letterSpacing: track(size.xsPlus, 'caption'),
     },
     // .cl-when
     meta: {
         fontFamily: FontFamily.body,
         fontSize: size.xsHalf,
         lineHeight: lineHeight.xsHalf,
-        letterSpacing: track(size.xsHalf, 'meta', CLOTH),
+        letterSpacing: track(size.xsHalf, 'meta'),
         textTransform: 'uppercase',
     },
     // .cl-tab — the segmented control (.cl-seg) shares this role at .09em,
@@ -182,7 +173,7 @@ const cloth: Record<TextVariant, TextStyle> = {
         fontFamily: FontFamily.bodySemibold,
         fontSize: size.xsPlus,
         lineHeight: lineHeight.xsPlus,
-        letterSpacing: track(size.xsPlus, 'tab', CLOTH),
+        letterSpacing: track(size.xsPlus, 'tab'),
         textTransform: 'uppercase',
     },
     // .cl-cell / .cl-pill / .cl-bookn / .cl-avatar
@@ -190,7 +181,7 @@ const cloth: Record<TextVariant, TextStyle> = {
         fontFamily: FontFamily.display,
         fontSize: size.mdPlus,
         lineHeight: lineHeight.mdPlus,
-        letterSpacing: track(size.mdPlus, 'cell', CLOTH),
+        letterSpacing: track(size.mdPlus, 'cell'),
     },
     quote: {
         fontFamily: FontFamily.displayItalic,
@@ -198,154 +189,23 @@ const cloth: Record<TextVariant, TextStyle> = {
         lineHeight: lineHeight.xl,
         fontStyle: 'italic',
     },
-    // .cl-btn — note Cloth's button is not uppercased; Colossal's is.
+    // .cl-btn — note Cloth's button is not uppercased.
     button: {
         fontFamily: FontFamily.bodySemibold,
         fontSize: size.smPlus,
         lineHeight: lineHeight.smPlus,
-        letterSpacing: track(size.smPlus, 'button', CLOTH),
+        letterSpacing: track(size.smPlus, 'button'),
     },
 };
 
-/**
- * Colossal — Archivo throughout, weight carrying the hierarchy.
- * Mirrors the mockup's `.co-*` rules.
- */
-const colossal: Record<TextVariant, TextStyle> = {
-    // .co-giant.n — the one colossal element on a screen.
-    hero: {
-        fontFamily: FontFamily.monoBlack,
-        fontSize: size.colossal,
-        lineHeight: lineHeight.colossal,
-        letterSpacing: track(size.colossal, 'hero', COLOSSAL),
-    },
-    // .co-giant.sm — the giant one step down, for a question number.
-    heroSmall: {
-        fontFamily: FontFamily.monoBlack,
-        fontSize: size.colossalSm,
-        lineHeight: lineHeight.colossalSm,
-        letterSpacing: track(size.colossalSm, 'heroSmall', COLOSSAL),
-    },
-    // .co-h.lg
-    display: {
-        fontFamily: FontFamily.monoBlack,
-        fontSize: size.display,
-        lineHeight: lineHeight.display,
-        letterSpacing: track(size.display, 'display', COLOSSAL),
-    },
-    /**
-     * .co-h.lg — Colossal has one big head, so `headline` and `display` agree.
-     * The duplication is deliberate: Cloth needs the two steps, and a style is
-     * allowed to answer a role with the same value it gave another.
-     */
-    headline: {
-        fontFamily: FontFamily.monoBlack,
-        fontSize: size.display,
-        lineHeight: lineHeight.display,
-        letterSpacing: track(size.display, 'headline', COLOSSAL),
-    },
-    // .co-h.md
-    title: {
-        fontFamily: FontFamily.monoBlack,
-        fontSize: size.xl2,
-        lineHeight: lineHeight.xl2,
-        letterSpacing: track(size.xl2, 'title', COLOSSAL),
-    },
-    // .co-h.sm
-    subtitle: {
-        fontFamily: FontFamily.monoBlack,
-        fontSize: size.lgPlus,
-        lineHeight: lineHeight.lgPlus,
-        letterSpacing: track(size.lgPlus, 'subtitle', COLOSSAL),
-    },
-    // .co-ref
-    reference: {
-        fontFamily: FontFamily.monoBold,
-        fontSize: size.md,
-        lineHeight: lineHeight.md,
-        letterSpacing: track(size.md, 'reference', COLOSSAL),
-    },
-    // .co-input, and running text.
-    body: {
-        fontFamily: FontFamily.mono,
-        fontSize: size.md,
-        lineHeight: lineHeight.lg,
-    },
-    // .co-snip
-    bodySmall: {
-        fontFamily: FontFamily.mono,
-        fontSize: size.smHalf,
-        lineHeight: lineHeight.smHalf,
-    },
-    // .co-sub
-    sub: {
-        fontFamily: FontFamily.mono,
-        fontSize: size.mdHalf,
-        lineHeight: lineHeight.mdHalf,
-    },
-    // .co-label / .co-giantl
-    label: {
-        fontFamily: FontFamily.monoBold,
-        fontSize: size.xs,
-        lineHeight: lineHeight.xs,
-        letterSpacing: track(size.xs, 'label', COLOSSAL),
-        textTransform: 'uppercase',
-    },
-    // .co-bookc
-    caption: {
-        fontFamily: FontFamily.monoBold,
-        fontSize: size.xs,
-        lineHeight: lineHeight.xs,
-        letterSpacing: track(size.xs, 'caption', COLOSSAL),
-    },
-    // .co-when
-    meta: {
-        fontFamily: FontFamily.monoBold,
-        fontSize: size.xs,
-        lineHeight: lineHeight.xs,
-        letterSpacing: track(size.xs, 'meta', COLOSSAL),
-        textTransform: 'uppercase',
-    },
-    // .co-tab — as in Cloth, .co-seg and .co-mark share this role.
-    tab: {
-        fontFamily: FontFamily.monoBold,
-        fontSize: size.xsPlus,
-        lineHeight: lineHeight.xsPlus,
-        letterSpacing: track(size.xsPlus, 'tab', COLOSSAL),
-        textTransform: 'uppercase',
-    },
-    // .co-cell / .co-pill / .co-bookn / .co-avatar
-    cell: {
-        fontFamily: FontFamily.monoBold,
-        fontSize: size.mdPlus,
-        lineHeight: lineHeight.mdPlus,
-        letterSpacing: track(size.mdPlus, 'cell', COLOSSAL),
-    },
-    quote: {
-        fontFamily: FontFamily.mono,
-        fontSize: size.lg,
-        lineHeight: lineHeight.xl,
-    },
-    // .co-btn
-    button: {
-        fontFamily: FontFamily.monoBold,
-        fontSize: size.sm,
-        lineHeight: lineHeight.sm,
-        letterSpacing: track(size.sm, 'button', COLOSSAL),
-        textTransform: 'uppercase',
-    },
-};
-
-
-const VARIANTS: Record<ThemeStyle, Record<TextVariant, TextStyle>> = { cloth, colossal };
+const VARIANTS: Record<ThemeStyle, Record<TextVariant, TextStyle>> = { cloth };
 
 /**
  * Variants whose natural tone is not `primary`, per style.
  *
- * This is per-style because the mockup makes it so: Cloth's eyebrow is ochre
- * (`.cl-label{color:var(--ochre)}`) while Colossal holds ochre in reserve for
- * today and sets its eyebrow in grey (`.co-label{color:var(--ink3)}`). A single
- * shared default would have to get one of the two styles wrong.
+ * Kept per-style because the mockup makes tone a style decision: Cloth's
+ * eyebrow is ochre (`.cl-label{color:var(--ochre)}`), and another style would
+ * be free to answer differently.
  */
 const DEFAULT_TONE: Record<ThemeStyle, Partial<Record<TextVariant, TextProps['tone']>>> = {
     cloth: {
@@ -357,15 +217,6 @@ const DEFAULT_TONE: Record<ThemeStyle, Partial<Record<TextVariant, TextProps['to
         tab: 'secondary',
         quote: 'primary',
     },
-    colossal: {
-        label: 'tertiary',
-        meta: 'tertiary',
-        caption: 'tertiary',
-        bodySmall: 'secondary',
-        sub: 'secondary',
-        tab: 'tertiary',
-        quote: 'primary',
-    },
 };
 
 export function Text({ variant = 'body', tone, style, children, ...rest }: TextProps) {
@@ -374,7 +225,7 @@ export function Text({ variant = 'body', tone, style, children, ...rest }: TextP
 
     return (
         <RNText
-            style={[VARIANTS[themeStyle][variant], { color: toneColor(resolved, colors, themeStyle) }, style]}
+            style={[VARIANTS[themeStyle][variant], { color: toneColor(resolved, colors) }, style]}
             {...rest}
         >
             {children}

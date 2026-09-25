@@ -124,26 +124,22 @@ const TextArea: React.FC<{
                 <View style={bare ? textAreaStyles.containerBare : textAreaStyles.container}>
                     <View style={bare ? [
                         /*
-                         * The writing band, per style.
+                         * The writing band.
                          *
-                         * Colossal sets the answer between two hairlines on the
-                         * page's own ground. Cloth writes on a `.cl-panel` ruled
-                         * every 28px — the mockup's lined paper, which is the one
-                         * place in the design where a surface is decorated for
-                         * the sake of what happens on it rather than to separate
-                         * two things.
+                         * Cloth writes on a `.cl-panel` ruled every 28px — the
+                         * mockup's lined paper, which is the one place in the
+                         * design where a surface is decorated for the sake of
+                         * what happens on it rather than to separate two things.
                          */
                         textAreaStyles.inputContainerBare,
-                        themeStyle === 'cloth'
-                            ? { backgroundColor: colors.backgroundSubtle }
-                            : { borderTopWidth: Spacing.border.hairline, borderBottomWidth: Spacing.border.hairline, borderColor: colors.border },
+                        { backgroundColor: colors.backgroundSubtle },
                     ] : [
                         textAreaStyles.inputContainer,
                         { backgroundColor: colors.cardBackground, borderColor: colors.border },
                         isAnswered && { borderColor: colors.border, backgroundColor: colors.background },
                         disabled && { backgroundColor: colors.background },
                     ]}>
-                        {bare && themeStyle === 'cloth' && <RuledPaper color={colors.border} />}
+                        {bare && <RuledPaper color={colors.border} />}
                         <TextInput
                             ref={regularTextInputRef}
                             inputAccessoryViewID="bible-picker"

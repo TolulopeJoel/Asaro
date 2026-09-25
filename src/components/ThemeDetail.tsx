@@ -1,17 +1,16 @@
 /**
  * One cluster, opened.
  *
- * design/all-screens.html #themedetail draws this in both styles: the name,
- * the size of the thing under it, the verses the writer cited, then every
- * entry the theme rests on, oldest first.
+ * design/all-screens.html #themedetail: the name, the size of the thing under
+ * it, the verses the writer cited, then every entry the theme rests on,
+ * oldest first.
  *
  * Cloth gives the name its band and hangs the two header controls in the top
- * row; Colossal spends its one giant on the name itself. That is unusual —
- * the giant is normally a numeral — and it is the right call here: the name is
- * the claim the clustering is making and the entry count is the evidence for
- * it, so enlarging the count would put the weight on a fact about the
- * database. `themeQuality.ts` already writes down why that is the least
- * interesting true thing about a theme.
+ * row, so the name — not the count — is what the screen leads with. That is
+ * the right call here: the name is the claim the clustering is making and the
+ * entry count is the evidence for it, so leading with the count would put the
+ * weight on a fact about the database. `themeQuality.ts` already writes down
+ * why that is the least interesting true thing about a theme.
  *
  * Answers are grouped by entry rather than listed flat. One entry often
  * contributes two answers to a theme — what it says about Jehovah, and what to
@@ -69,7 +68,7 @@ function formatDate(raw: string): string {
 }
 
 export function ThemeDetail({ cluster, name, onClose, onRename, onOpenEntry }: Props) {
-    const { colors, isLockedIn, style: themeStyle } = useTheme();
+    const { colors, style: themeStyle } = useTheme();
 
     /**
      * Group by entry: one entry often contributes two answers to a theme (what
@@ -140,7 +139,7 @@ export function ThemeDetail({ cluster, name, onClose, onRename, onOpenEntry }: P
             >
                 <X
                     size={19}
-                    color={isLockedIn ? colors.textTertiary : colors.textOnHero}
+                    color={colors.textOnHero}
                     strokeWidth={1.9}
                 />
             </ScalePressable>
@@ -151,9 +150,9 @@ export function ThemeDetail({ cluster, name, onClose, onRename, onOpenEntry }: P
      * The tags are the writer's own index — pulled out of the [[Isaiah 55:9]]
      * markers they typed while writing — which is a better handle on a theme
      * than the chapter ranges the entries happen to sit in: the ranges say
-     * what was read, the tags say what was reached for. Square and outlined in
-     * both styles, never filled: a tag that reads as a button invites a tap
-     * this screen does not answer. The reference inside is still a link.
+     * what was read, the tags say what was reached for. Square and outlined,
+     * never filled: a tag that reads as a button invites a tap this screen
+     * does not answer. The reference inside is still a link.
      */
     const tags = verses.length > 0 && (
         <View style={styles.tagRow}>
@@ -169,40 +168,25 @@ export function ThemeDetail({ cluster, name, onClose, onRename, onOpenEntry }: P
     );
 
     return (
-        <Screen edges={isLockedIn ? ['top'] : []}>
-            {isLockedIn ? (
-                <View style={styles.colossalTop}>{controls}</View>
-            ) : (
-                <Hero ownsTopInset>
-                    {controls}
-                    <Text variant="display" tone="onBand" style={styles.clothTitle}>
-                        {title}
-                    </Text>
-                    <Text variant="sub" tone="onHero" style={styles.clothSub}>
-                        {meta}
-                    </Text>
-                </Hero>
-            )}
+        <Screen edges={[]}>
+            <Hero ownsTopInset>
+                {controls}
+                <Text variant="display" tone="onBand" style={styles.clothTitle}>
+                    {title}
+                </Text>
+                <Text variant="sub" tone="onHero" style={styles.clothSub}>
+                    {meta}
+                </Text>
+            </Hero>
 
             <ScrollView
                 contentContainerStyle={[
                     styles.content,
-                    { paddingHorizontal: isLockedIn ? Spacing.layout.screenPaddingTight : Spacing.layout.screenPadding },
+                    { paddingHorizontal: Spacing.layout.screenPadding },
                 ]}
                 showsVerticalScrollIndicator={false}
             >
-                {isLockedIn && (
-                    <>
-                        <Text variant="display">{title}</Text>
-                        <Text variant="label" style={styles.giantLabel}>{meta}</Text>
-                    </>
-                )}
-
                 {tags}
-
-                {/* `.co-hr` — Colossal opens the list with a rule; Cloth's filled
-                    panels separate themselves and need none. */}
-                {isLockedIn && <View style={[styles.rule, { backgroundColor: colors.border }]} />}
 
                 {entries.map(group => (
                     <ScalePressable
@@ -210,7 +194,7 @@ export function ThemeDetail({ cluster, name, onClose, onRename, onOpenEntry }: P
                         onPress={() => onOpenEntry(group[0].entryId)}
                         accessibilityRole="button"
                         accessibilityHint="Opens this entry"
-                        style={!isLockedIn && styles.clothCardGap}
+                        style={styles.clothCardGap}
                     >
                         <Card>
                             <View style={styles.cardHeader}>
@@ -248,16 +232,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: Spacing.lg,
     },
-    colossalTop: {
-        paddingHorizontal: Spacing.layout.screenPaddingTight,
-        paddingTop: Spacing.sm,
-    },
     /** `.cl-htitle{margin-top:8px}` under the control row. */
     clothTitle: { marginTop: Spacing.sm },
     /** `.cl-hsub{margin:8px 0 0}` */
     clothSub: { marginTop: Spacing.sm },
-    /** `.co-giantl` sits 10px under what it labels. */
-    giantLabel: { marginTop: 10 },
 
     content: {
         paddingTop: Spacing.layout.cardPadding,
@@ -275,12 +253,7 @@ const styles = StyleSheet.create({
         paddingVertical: 5,
         borderWidth: Spacing.border.hairline,
     },
-    /** `.co-hr{margin:26px 0}`, less the padding the tag row already spent. */
-    rule: {
-        height: Spacing.border.hairline,
-        marginBottom: Spacing.sm,
-    },
-    /** Cloth panels stack with air between them; Colossal's hairline is the gap. */
+    /** Cloth panels stack with air between them. */
     clothCardGap: { marginBottom: Spacing.md },
     cardHeader: {
         flexDirection: 'row',

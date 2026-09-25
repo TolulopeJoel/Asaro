@@ -31,13 +31,6 @@ import {
   WorkSans_500Medium,
   WorkSans_600SemiBold,
 } from '@expo-google-fonts/work-sans';
-import {
-  Archivo_400Regular,
-  Archivo_500Medium,
-  Archivo_700Bold,
-  Archivo_900Black,
-} from '@expo-google-fonts/archivo';
-
 
 function StackNavigator() {
   const { colors } = useTheme();
@@ -73,10 +66,6 @@ export default function RootLayout() {
     WorkSans_400Regular,
     WorkSans_500Medium,
     WorkSans_600SemiBold,
-    Archivo_400Regular,
-    Archivo_500Medium,
-    Archivo_700Bold,
-    Archivo_900Black,
   });
 
   const [dbInitialized, setDbInitialized] = useState(false);
@@ -244,9 +233,9 @@ export default function RootLayout() {
     );
   }
 
-  // Both styles are typographic: Cloth is Fraunces over Work Sans, Colossal is
-  // Schibsted Grotesk throughout. Rendering before they load would show a
-  // system-font flash and reflow every screen, so hold the splash until then.
+  // The type is Fraunces over Work Sans. Rendering before they load would
+  // show a system-font flash and reflow every screen, so hold the splash
+  // until then.
   if (!fontsLoaded && !fontError) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>

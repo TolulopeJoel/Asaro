@@ -7,7 +7,6 @@ import {
     toggleReadingItem,
 } from "@/src/data/database";
 import { READING_PLAN_DATA, ReadingItem } from "@/src/data/readingPlanData";
-import { useTheme } from "@/src/theme/ThemeContext";
 import { Spacing } from "@/src/theme/spacing";
 import { Typography } from "@/src/theme/typography";
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -28,7 +27,6 @@ import { ObservationCard } from '@/src/components/insight/ObservationCard';
 import { ObservationReceipts } from '@/src/components/insight/ObservationReceipts';
 import { AnimatedModal } from '@/src/components/AnimatedModal';
 import { getDailyTitle } from '@/src/data/homeTitles';
-import { LockedInHome } from '@/src/components/home/LockedInHome';
 import { ClothHome } from '@/src/components/home/ClothHome';
 import { formatDateToLocalString } from '@/src/utils/dateUtils';
 import { Screen } from '@/src/components/ui';
@@ -189,7 +187,6 @@ export default function Index() {
     const [isDeleting, setIsDeleting] = useState(false);
     const { showAlert } = useAlert();
     const scrollViewRef = useRef<ScrollView>(null);
-    const { isLockedIn } = useTheme();
     const router = useRouter();
 
     const loadStats = useCallback(async () => {
@@ -342,7 +339,7 @@ export default function Index() {
      * "Sunday, 21 September" — the date under Cloth's hero title.
      *
      * The band says what day it is because Cloth's home is the one screen that
-     * greets you; Colossal states the reading instead and skips the date.
+     * greets you.
      */
     const homeDateLine = useMemo(
         () => new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }),
@@ -350,9 +347,9 @@ export default function Index() {
     );
 
     /**
-     * The flashback, flattened to the three strings both home screens show.
+     * The flashback, flattened to the three strings the home screen shows.
      */
-    const flashbackForLockedIn = useMemo(() => {
+    const flashbackLine = useMemo(() => {
         if (!flashbackEntry) return null;
         const { entry, type } = flashbackEntry;
         const text = [entry.reflection_1, entry.reflection_2, entry.reflection_4, entry.notes]
@@ -397,51 +394,6 @@ export default function Index() {
         </>
     );
 
-    /**
-     * Colossal is a different screen, not a restyle.
-     *
-     * The mockup's Locked In home is five elements on a black ground with no
-     * hero band, no entry count, no reminders and no add button. Branching the
-     * whole composition here — rather than threading `isLockedIn` through eight
-     * shared components — is what keeps each style honest to its own design.
-     */
-    if (isLockedIn) {
-        return (
-            <Screen>
-                {isLoading ? (
-                    <View style={{ flex: 1, justifyContent: 'center' }}>
-                        <LoadingView size={48} />
-                    </View>
-                ) : (
-                    <LockedInHome
-                        greeting={getDailyTitle()}
-                        reading={nextReading}
-                        readingNumber={nextReading?.id}
-                        weekDays={weekDays}
-                        flashback={observationCard ? null : flashbackForLockedIn}
-                        today={todayStrip}
-                        planProgress={planProgress}
-                        onProgressPress={() => router.push('/land')}
-                        onBeginReflection={handleBeginReflection}
-                        onSettings={() => router.push('/settings')}
-                        onWeekPress={() => router.push('/stats')}
-                        onFlashbackPress={
-                            flashbackEntry ? () => handleEntryPress(flashbackEntry.entry) : undefined
-                        }
-                        observation={observationCard}
-                        draft={draft}
-                        onResumeDraft={() =>
-                            router.push({ pathname: '/addEntry', params: { resuming: 'true' } })
-                        }
-                        onAddEntry={() => router.push('/addEntry')}
-                    />
-                )}
-                <HomeDetailModal />
-                {echoReceipts}
-            </Screen>
-        );
-    }
-
     return (
         /*
          * No top inset here: ClothHome's <Hero ownsTopInset> takes that space
@@ -475,7 +427,7 @@ export default function Index() {
                         readingNumber={nextReading?.id}
                         weekDays={weekDays}
                         entryCount={stats.totalEntries}
-                        flashback={observationCard ? null : flashbackForLockedIn}
+                        flashback={observationCard ? null : flashbackLine}
                         today={todayStrip}
                         planProgress={planProgress}
                         onProgressPress={() => router.push('/land')}

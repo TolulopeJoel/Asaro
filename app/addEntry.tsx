@@ -27,7 +27,7 @@ import { KEYBOARD_BEHAVIOR } from '../src/utils/keyboard';
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function MeditationSessionScreen() {
-    const { colors, isLockedIn } = useTheme();
+    const { colors } = useTheme();
     const { showAlert } = useAlert();
     const router = useRouter();
     const params = useLocalSearchParams();
@@ -468,11 +468,10 @@ export default function MeditationSessionScreen() {
     /*
      * Only the Cloth Book, Chapter and summary steps wear a band, and a band takes the
      * top inset into itself (<Hero ownsTopInset>) so the cloth runs to the top
-     * of the screen. Every other step — Colossal throughout, and Cloth's
-     * reflection wizard — draws its own top bar and still needs Screen to
-     * reserve that space.
+     * of the screen. The reflection wizard draws its own top bar and still
+     * needs Screen to reserve that space.
      */
-    const bandOwnsTop = !isLockedIn && (currentStep === 'book' || currentStep === 'chapter' || currentStep === 'summary');
+    const bandOwnsTop = currentStep === 'book' || currentStep === 'chapter' || currentStep === 'summary';
 
     return (
         <Screen edges={bandOwnsTop ? [] : ['top']}>

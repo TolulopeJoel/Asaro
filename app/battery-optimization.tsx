@@ -19,7 +19,7 @@ import { Hero, Screen, Text, ThemedButton } from '@/src/components/ui';
  */
 export default function BatteryOptimizationScreen() {
     const router = useRouter();
-    const { colors, isLockedIn } = useTheme();
+    const { colors } = useTheme();
 
     const checkBatteryOptimization = async () => {
         if (Platform.OS !== 'android') {
@@ -98,49 +98,6 @@ export default function BatteryOptimizationScreen() {
             : []),
     ];
 
-    if (isLockedIn) {
-        /*
-         * design/all-screens.html #perms, the `.co` slot. One giant per screen,
-         * not always one — this ask carries none, same as Permissions.
-         */
-        return (
-            <Screen>
-                <View style={styles.colossalTop}>
-                    <Text variant="tab">Battery</Text>
-                </View>
-
-                <View style={styles.colossalBody}>
-                    <Text variant="display">Don&apos;t Let Me Sleep</Text>
-                    <Text variant="sub" style={styles.colossalSub}>
-                        Your phone will probably lie to you about how bad this is for the
-                        battery. Àṣàrò needs to run in the background to keep its word.
-                    </Text>
-
-                    <View style={[styles.rule, { backgroundColor: colors.border }]} />
-
-                    <Text variant="label">What this is for</Text>
-                    {REASONS.map(reason => (
-                        <View key={reason} style={[styles.colossalRow, { borderBottomColor: colors.border }]}>
-                            <Text variant="reference" style={styles.reason}>{reason}</Text>
-                        </View>
-                    ))}
-                </View>
-
-                <View style={styles.colossalFooter}>
-                    <ThemedButton label="Fix Settings" variant="accent" block onPress={handleFixSettings} />
-                    {showAutoStart && (
-                        <ThemedButton
-                            label={`Allow Auto-Start (${oemAutoStartLabel()})`}
-                            variant="secondary"
-                            block
-                            onPress={handleAutoStart}
-                        />
-                    )}
-                </View>
-            </Screen>
-        );
-    }
-
     /*
      * design/all-screens.html #perms, the `.cl` slot — the same composition
      * Permissions builds: band, one panel of reasons, one button.
@@ -197,29 +154,4 @@ const styles = StyleSheet.create({
     clothPanelLabel: { marginBottom: 7 },
     clothHr: { height: Spacing.border.hairline, marginVertical: 9 },
 
-    // ── Colossal ──────────────────────────────────────────────────────────
-    colossalTop: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: Spacing.layout.screenPaddingTight,
-        paddingTop: Spacing.lg,
-    },
-    colossalBody: {
-        flex: 1,
-        paddingHorizontal: Spacing.layout.screenPaddingTight,
-        paddingTop: Spacing.xxl + 12,
-    },
-    colossalSub: { marginTop: Spacing.layout.cardPadding },
-    rule: { height: Spacing.border.hairline, marginVertical: Spacing.xl + 2 },
-    colossalRow: {
-        paddingVertical: Spacing.md + 3,
-        borderBottomWidth: Spacing.border.hairline,
-    },
-    reason: { fontWeight: '500' },
-    colossalFooter: {
-        paddingHorizontal: Spacing.layout.screenPaddingTight,
-        paddingBottom: Spacing.layout.tabBarPadding,
-        gap: 10,
-    },
 });

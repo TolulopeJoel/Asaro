@@ -41,14 +41,14 @@ interface Props {
 }
 
 export function TodayStrip({ items, onKeep, onUndo, onOpen }: Props) {
-    const { colors, isLockedIn } = useTheme();
+    const { colors } = useTheme();
 
     // Absent, not empty. A block with nothing in it is still clutter.
     if (items.length === 0) return null;
 
     return (
         <View style={styles.wrap}>
-            <Text variant="label" tone={isLockedIn ? 'accent' : 'secondary'}>
+            <Text variant="label" tone="secondary">
                 TODAY
             </Text>
 

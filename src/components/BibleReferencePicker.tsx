@@ -18,8 +18,7 @@ import { Text, textStyle } from './ui';
 
 const CHIP_THRESHOLD = 30;
 
-/** Colossal runs a 22px gutter, Cloth a 24px one; the band follows the text. */
-const PICKER_GUTTER = Spacing.layout.screenPaddingTight;
+/** The band follows the text's own gutter. */
 const PICKER_GUTTER_CLOTH = Spacing.layout.screenPadding;
 
 type Phase =
@@ -242,7 +241,7 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
     onInteraction,
     floating = false,
 }) => {
-    const { colors, isLockedIn } = useTheme();
+    const { colors } = useTheme();
 
     const [phase, setPhase] = useState<Phase>('book');
     const [selectedBook, setSelectedBook] = useState<BibleBook | null>(null);
@@ -676,7 +675,7 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
         ? `${selectedBook.name} has ${selectedBook.chapters} chapters — type a number or keep scrolling.`
         : null;
 
-    const gutter = isLockedIn ? PICKER_GUTTER : PICKER_GUTTER_CLOTH;
+    const gutter = PICKER_GUTTER_CLOTH;
 
     const content = (
         <Animated.View
@@ -694,23 +693,15 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
             {/*
               * Cloth marks the boundary between writing and picking with the
               * crosshatch strip — the one job the design says pattern is
-              * unambiguously good at. Colossal has no cloth to cut, so it uses
-              * a hairline instead.
+              * unambiguously good at.
               */}
-            {!isLockedIn && <ClothStrip />}
-            <View
-                style={[
-                    styles.ribbon,
-                    isLockedIn
-                        ? { backgroundColor: colors.backgroundElevated, borderTopWidth: Spacing.border.hairline, borderTopColor: colors.border }
-                        : { backgroundColor: colors.backgroundSubtle },
-                ]}
-            >
+            <ClothStrip />
+            <View style={[styles.ribbon, { backgroundColor: colors.backgroundSubtle }]}>
                 {/*
                  * The band says what it is asking for before it offers the
                  * pills. design/all-screens.html #refpicker puts that prompt in
-                 * a `.co-label` above the row — without it the strip is a line
-                 * of numbers with no stated question, which is exactly what it
+                 * a label above the row — without it the strip is a line of
+                 * numbers with no stated question, which is exactly what it
                  * used to be.
                  */}
                 <View style={[styles.promptRow, { paddingHorizontal: gutter }]}>

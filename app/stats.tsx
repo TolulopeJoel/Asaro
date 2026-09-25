@@ -77,7 +77,7 @@ interface StatsState {
 }
 
 export default function StatsScreen() {
-    const { colors, isLockedIn } = useTheme();
+    const { colors } = useTheme();
     const router = useRouter();
     const [state, setState] = useState<StatsState>({
         allTimeData: {},
@@ -207,9 +207,8 @@ export default function StatsScreen() {
     /**
      * A run of unbroken days.
      *
-     * Colossal sets it between rules with the dates hanging off the right;
-     * Cloth gathers the same three lines into a `.cl-panel`. Both are what
-     * their mockup draws.
+     * Cloth gathers the three lines into a `.cl-panel`, which is what the
+     * mockup draws.
      */
     const Run = ({ label, run, accent }: { label: string; run: Run | null; accent?: boolean }) => {
         const days = run ? `${run.days} ${run.days === 1 ? 'day' : 'days'}` : 'None yet';
@@ -219,27 +218,12 @@ export default function StatsScreen() {
                 : `${dayMonth(run.from)}–${dayMonth(run.to)}`
             : null;
 
-        if (!isLockedIn) {
-            return (
-                <View style={[styles.clothRunPanel, { backgroundColor: colors.backgroundSubtle }]}>
-                    <UIText variant="label" style={styles.runLabel}>{label}</UIText>
-                    <UIText variant="subtitle" tone={accent ? 'accent' : 'primary'}>{days}</UIText>
-                    {when && <UIText variant="bodySmall" style={styles.clothRunWhen}>{when}</UIText>}
-                </View>
-            );
-        }
-
         return (
-            <>
-                <View style={[styles.rule, { backgroundColor: colors.border }]} />
-                <View style={styles.runRow}>
-                    <View>
-                        <UIText variant="label" style={styles.runLabel}>{label}</UIText>
-                        <UIText variant="subtitle" tone={accent ? 'accent' : 'primary'}>{days}</UIText>
-                    </View>
-                    {when && <UIText variant="meta">{when}</UIText>}
-                </View>
-            </>
+            <View style={[styles.clothRunPanel, { backgroundColor: colors.backgroundSubtle }]}>
+                <UIText variant="label" style={styles.runLabel}>{label}</UIText>
+                <UIText variant="subtitle" tone={accent ? 'accent' : 'primary'}>{days}</UIText>
+                {when && <UIText variant="bodySmall" style={styles.clothRunWhen}>{when}</UIText>}
+            </View>
         );
     };
 
@@ -248,8 +232,8 @@ export default function StatsScreen() {
             {/*
               * design/all-screens.html #stats, the `.cl` slot: two panels side
               * by side, each a numeral over its label. Cloth leads with the
-              * figures rather than the grid — it has no colossal slot to spend,
-              * so the two `.cl-statn` numerals carry the screen between them.
+              * figures rather than the grid — the two `.cl-statn` numerals
+              * carry the screen between them.
               */}
             <View style={styles.clothStatsRow}>
                 <View style={[styles.clothStatPanel, { backgroundColor: colors.backgroundSubtle }]}>
@@ -278,53 +262,22 @@ export default function StatsScreen() {
     }, [state.allTimeData]);
 
     return (
-        <Screen edges={isLockedIn ? ['top'] : []}>
-            {isLockedIn ? (
-                /*
-                 * design/all-screens.html #stats, the `.co` slot. The month is
-                 * the mark, the count of days completed is the colossal
-                 * element, and the runs sit under the grid between rules. The
-                 * mood emoji Cloth carries in its title is dropped: it fights
-                 * the monochrome, which is the same call the design makes on
-                 * Group detail.
-                 */
-                <>
-                    <View style={styles.colossalTop}>
-                        <ScalePressable
-                            onPress={() => router.back()}
-                            accessibilityRole="button"
-                            accessibilityLabel="Back"
-                            hitSlop={Spacing.md}
-                            style={styles.backArrow}
-                        >
-                            <ChevronLeft size={20} color={colors.textTertiary} strokeWidth={2} />
-                        </ScalePressable>
-                        <UIText variant="tab">{`${currentMonthName} ${new Date().getFullYear()}`}</UIText>
-                    </View>
-                    <View style={styles.colossalCount}>
-                        <UIText variant="hero">{state.currentMonthStats.completed}</UIText>
-                        <UIText variant="label" style={styles.giantLabel}>
-                            {`completed of ${state.currentMonthStats.total} days`}
-                        </UIText>
-                    </View>
-                </>
-            ) : (
-                <Hero ownsTopInset>
-                    <ScalePressable
-                        onPress={() => router.back()}
-                        accessibilityRole="button"
-                        accessibilityLabel="Back"
-                        hitSlop={Spacing.md}
-                        style={styles.clothBack}
-                    >
-                        <ChevronLeft size={20} color={colors.accent} strokeWidth={1.9} />
-                    </ScalePressable>
-                    <UIText variant="display" tone="onBand" style={styles.clothHeroTitle}>{headerTitle}</UIText>
-                    <UIText variant="sub" tone="onHero" style={styles.heroSub}>
-                        {`${currentMonthName} ${new Date().getFullYear()}`}
-                    </UIText>
-                </Hero>
-            )}
+        <Screen edges={[]}>
+            <Hero ownsTopInset>
+                <ScalePressable
+                    onPress={() => router.back()}
+                    accessibilityRole="button"
+                    accessibilityLabel="Back"
+                    hitSlop={Spacing.md}
+                    style={styles.clothBack}
+                >
+                    <ChevronLeft size={20} color={colors.accent} strokeWidth={1.9} />
+                </ScalePressable>
+                <UIText variant="display" tone="onBand" style={styles.clothHeroTitle}>{headerTitle}</UIText>
+                <UIText variant="sub" tone="onHero" style={styles.heroSub}>
+                    {`${currentMonthName} ${new Date().getFullYear()}`}
+                </UIText>
+            </Hero>
 
             {state.isLoading ? (
                 <View style={{ flex: 1, justifyContent: 'center' }}>
@@ -335,10 +288,7 @@ export default function StatsScreen() {
                     data={state.months}
                     renderItem={renderItem}
                     keyExtractor={(item) => `${item.year}-${item.month}`}
-                    contentContainerStyle={[
-                        styles.scrollContent,
-                        isLockedIn && styles.scrollContentColossal,
-                    ]}
+                    contentContainerStyle={styles.scrollContent}
                     /*
                      * The runs sit at the TOP, with the current month.
                      *
@@ -351,9 +301,7 @@ export default function StatsScreen() {
                      */
                     ListHeaderComponent={
                         <>
-                            {isLockedIn
-                                ? <View style={[styles.rule, { backgroundColor: colors.border }]} />
-                                : renderHeader()}
+                            {renderHeader()}
                             <Run label="Current run" run={current} accent />
                             <Run label="Longest run" run={longest} />
 
@@ -412,30 +360,8 @@ const styles = StyleSheet.create({
         marginTop: Spacing.sm,
     },
 
-    // ── Colossal ──────────────────────────────────────────────────────────
-    colossalTop: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.md,
-        paddingHorizontal: Spacing.layout.screenPaddingTight,
-        paddingTop: Spacing.lg,
-    },
-    backArrow: { marginLeft: -6 },
-    colossalCount: {
-        paddingHorizontal: Spacing.layout.screenPaddingTight,
-        paddingTop: Spacing.xl + 2,
-    },
-    giantLabel: { marginTop: 10 },
-    scrollContentColossal: {
-        paddingHorizontal: Spacing.layout.screenPaddingTight,
-    },
     /** `.co-hr` */
     rule: { height: Spacing.border.hairline, marginVertical: Spacing.xl + 2 },
-    runRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'baseline',
-    },
     runLabel: { marginBottom: 6 },
     /** `.cl-panel` × 2, side by side with a 12px gap. */
     clothBack: { marginLeft: -6, alignSelf: 'flex-start' },

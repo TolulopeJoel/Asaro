@@ -48,11 +48,10 @@ export const CustomAlert: React.FC = () => {
                     {/*
                       * `title`, not `display`.
                       *
-                      * An alert floats over a screen that has already spent its
-                      * one colossal element, and `display` is 40px `.co-h.lg` in
-                      * Colossal — a second giant on top of the first, which is
-                      * the one rule the style does not bend. `.co-h.md` is the
-                      * heading step below it.
+                      * An alert floats over a screen that has already spent
+                      * its one oversized element, so it takes the heading step
+                      * below `display` rather than stacking a second giant on
+                      * top of the first.
                       */}
                     <Text variant="title" style={styles.title}>{title}</Text>
                     <Text variant="body" tone="secondary" style={styles.message}>{message}</Text>

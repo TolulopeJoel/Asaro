@@ -1,8 +1,7 @@
 /**
- * Two styles, one token set.
+ * One style, one token set.
  *
- *   cloth     — the default. Àdìrẹ indigo on undyed cotton, ochre for "today".
- *   colossal  — Locked In. Black, white, one ochre, nothing else.
+ *   cloth     — Àdìrẹ indigo on undyed cotton, ochre for "today".
  *
  * Every screen reads these names, never a literal. If a colour is needed that
  * isn't here, it belongs here first — that is the whole point of the file.
@@ -17,14 +16,13 @@
  *
  * Note the mismatch this makes explicit: these platform surfaces are still the
  * original vibrant orange, while Cloth's accent is the deeper, less saturated
- * #c9762c that reads correctly on ecru. Colossal's accent is #e18f43, so the
- * icon currently matches Locked In rather than the default. Reconciling that
- * means regenerating the icon and splash assets, which is a brand decision
- * rather than a refactor — so it is flagged, not quietly changed.
+ * #c9762c that reads correctly on ecru. Reconciling that means regenerating
+ * the icon and splash assets, which is a brand decision rather than a
+ * refactor — so it is flagged, not quietly changed.
  */
 export const BRAND_ACCENT = '#E18F43';
 
-/** Shape every palette must satisfy. Adding a key here forces both styles to answer for it. */
+/** Shape every palette must satisfy. Adding a key here forces the palette to answer for it. */
 export interface ThemeColors {
     // Grounds
     background: string;
@@ -103,8 +101,8 @@ export interface ThemeColors {
      *
      * This replaces a hardcoded iOS rainbow. The celebration was worth keeping
      * — a finished week should look like something — but seven system hues
-     * belonged to neither palette. Cloth reads as a cloth lowered further into
-     * the vat with each dip; Colossal warms from white to ochre.
+     * belonged to the palette. Cloth reads as a cloth lowered further into
+     * the vat with each dip.
      */
     celebration: readonly string[];
 
@@ -204,97 +202,13 @@ export const cloth: ThemeColors = {
     text: '#17263f',
 };
 
-/**
- * Colossal — Locked In.
- *
- * Weight carries the whole hierarchy. One colossal element per screen at most
- * (Settings, Permissions and the reference picker deliberately use none), and
- * ochre is held in reserve for today.
- */
-export const colossal: ThemeColors = {
-    background: '#000000',
-    backgroundElevated: '#101010',
-    backgroundSubtle: '#1e1e1e',
-
-    textPrimary: '#ffffff',
-    textSecondary: '#8a8a8a',
-    textTertiary: '#5c5c5c',
-    textMuted: '#3d3d3d',
-    textInverse: '#000000',
-    textOnHero: '#8a8a8a',
-
-    border: '#1e1e1e',
-    borderSubtle: '#141414',
-    borderStrong: '#333333',
-    borderActive: '#e18f43',
-
-    accent: '#e18f43',
-    accentDark: '#c4762f',
-    accentLight: '#eda869',
-
-    accentSecondary: '#ffffff',
-    accentSecondaryDark: '#cccccc',
-    accentSecondaryLight: '#ffffff',
-
-    success: '#6fbf7f',
-    successSurface: '#12200f',
-    warning: '#e0a44a',
-    warningSurface: '#241a09',
-    danger: '#e2685a',
-    dangerSurface: '#26100d',
-    info: '#8fb6e0',
-    infoSurface: '#0d1620',
-
-    cardBackground: '#101010',
-    cardBorder: '#1e1e1e',
-    cardHover: '#161616',
-    searchBackground: '#101010',
-
-    buttonPrimary: '#ffffff',
-    buttonPrimaryText: '#000000',
-    buttonSecondary: 'transparent',
-    buttonSecondaryText: '#8a8a8a',
-    buttonSecondaryBorder: '#1e1e1e',
-
-    indicatorActive: '#e18f43',
-    indicatorInactive: '#1e1e1e',
-
-    badge: '#101010',
-    badgeBorder: '#1e1e1e',
-    badgeText: '#e18f43',
-
-    tabBar: '#000000',
-    tabIndicator: '#ffffff',
-    tabLabel: '#5c5c5c',
-    tabLabelActive: '#ffffff',
-
-    icon: '#e18f43',
-    iconSecondary: '#000000',
-    iconActive: '#eda869',
-
-    celebration: ['#ffffff', '#f0dcc6', '#eec9a0', '#ecb87f', '#e9a862', '#e69a4f', '#e18f43'],
-    series: ['#ffffff', '#e18f43', '#8a8a8a', '#c4762f', '#5c5c5c', '#eda869'],
-
-    // Colossal wears no cloth. The pattern component renders nothing here.
-    patternInk: 'transparent',
-    patternOpacity: 0,
-    markInk: '#e18f43',
-
-    primary: '#e18f43',
-    card: '#101010',
-    text: '#ffffff',
-};
-
 export const Colors = {
     cloth,
-    colossal,
 
     /**
      * Back-compat. `light`/`dark` both resolve to Cloth for now — Cloth's dark
-     * counterpart is the next palette to design, and pointing `dark` at
-     * Colossal would collapse the distinction between dark mode and Locked In.
+     * counterpart is the next palette to design.
      */
     light: cloth,
     dark: cloth,
-    lockedIn: colossal,
 };

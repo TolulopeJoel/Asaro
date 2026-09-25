@@ -132,18 +132,6 @@ const SUBVIEWS: Partial<Record<Section, { key: Tab; label: string }[]>> = {
     ],
 };
 
-/**
- * The `.co-mark` over each tab — the small caps line the mockup puts where
- * Cloth puts its hero band. Books drills into a screen with its own header, so
- * it never reads this.
- */
-const MARK: Partial<Record<Section, string>> = {
-    entries: 'Library',
-    unfinished: 'Library · Working on',
-    echoes: 'Library · Echoes',
-    plan: 'Library · Plan',
-};
-
 // ─── Plan Section Header ──────────────────────────────────────────────────────
 
 const PlanSectionHeader = React.memo(({
@@ -156,20 +144,17 @@ const PlanSectionHeader = React.memo(({
     completedCount: number;
     totalCount: number;
 }) => {
-    const { isLockedIn } = useTheme();
-
     /*
-     * design/all-screens.html #plan: `.cl-label{margin:18px 0 10px}` and
-     * `.co-label{margin:18px 0 12px}` are both a BARE section name — no panel,
-     * no completion badge, no chevron, no checkmark. Cloth used to draw all
-     * four; it still collapses on press, the design just carries no affordance
-     * for that interaction in either style.
+     * design/all-screens.html #plan: `.cl-label{margin:18px 0 10px}` is a BARE
+     * section name — no panel, no completion badge, no chevron, no checkmark.
+     * Cloth used to draw all four; it still collapses on press, the design
+     * just carries no affordance for that interaction.
      */
     return (
         <TouchableOpacity
             activeOpacity={0.8}
             onPress={onToggle}
-            style={isLockedIn ? styles.colossalSection : styles.clothPlanSectionHeader}
+            style={styles.clothPlanSectionHeader}
         >
             <UIText variant="label">{title}</UIText>
         </TouchableOpacity>
@@ -193,54 +178,12 @@ const ReadingCard = React.memo(({
     queueIndex?: number;
     onToggle: (id: number, completed: boolean) => void;
 }) => {
-    const { colors, isLockedIn } = useTheme();
+    const { colors } = useTheme();
 
-    /*
-     * Colossal draws `.co-row`: a marker, the reference on one line, and the
-     * state on the right — "Done" in grey, "Today" in ochre. Completed rows
-     * strike through and drop to 45%, which is the whole completion signal;
-     * the filled checkbox the card used is chrome the design doesn't have.
-     */
     // "Today", "Tomorrow", "Thu", "Oct 12" — counted from today down the
     // readings still left, so falling behind moves the dates rather than
     // stacking up overdue ones.
     const schedule = !isCompleted && queueIndex !== undefined ? scheduleLabel(queueIndex) : null;
-
-    if (isLockedIn) {
-        const marker = item.id <= HEBREW_SCRIPTURES_END ? styles.markerDiamond : styles.markerDot;
-        const markerInk = item.id <= HEBREW_SCRIPTURES_END ? colors.accent : colors.textPrimary;
-
-        return (
-            <ScalePressable
-                style={[styles.colossalRow, { borderBottomColor: colors.border }, isCompleted && styles.rowDone]}
-                onPress={() => onToggle(item.id, !isCompleted)}
-            >
-                <View style={[marker, { backgroundColor: markerInk }]} />
-                <View style={styles.colossalRowMain}>
-                    {/*
-                      * A finished reading drops to the same ink as its "Done"
-                      * tag, so the whole row reads as one settled thing rather
-                      * than a bright reference with a quiet label beside it.
-                      */}
-                    <UIText
-                        variant="reference"
-                        tone={isCompleted ? 'tertiary' : undefined}
-                        style={isCompleted ? styles.struck : undefined}
-                    >
-                        {`${item.book}${item.chapters ? ` ${formatRange(item.chapters)}` : ''}`}
-                    </UIText>
-                    {!item.chapters && <UIText variant="bodySmall">Full Book</UIText>}
-                </View>
-                {isCompleted ? (
-                    <UIText variant="meta">Done</UIText>
-                ) : schedule ? (
-                    <UIText variant="meta" tone={schedule.urgent ? 'accent' : undefined}>
-                        {schedule.text}
-                    </UIText>
-                ) : null}
-            </ScalePressable>
-        );
-    }
 
     /*
      * design/all-screens.html #plan, the `.cl` slot.
@@ -271,7 +214,7 @@ const ReadingCard = React.memo(({
                     { backgroundColor: isDiamond ? colors.accent : colors.textPrimary },
                 ]}
             />
-            <View style={styles.colossalRowMain}>
+            <View style={styles.planRowMain}>
                 <UIText
                     variant="subtitle"
                     tone={isCompleted ? 'tertiary' : 'primary'}
@@ -310,11 +253,8 @@ interface JournalContentProps {
     onSearchChange: (q: string) => void;
     onSelectedBookChange: (book: BibleBook | undefined) => void;
     onCountChange: (count: number) => void;
-    onOpenActionCountChange: (count: number) => void;
-    onOpenTopicCountChange: (count: number) => void;
     onCoveredChange: (covered: number) => void;
     onBookEntryCountChange: (count: number) => void;
-    onBooksWithEntriesCountChange: (count: number) => void;
 }
 
 function JournalContent({
@@ -325,11 +265,8 @@ function JournalContent({
     onSearchChange,
     onSelectedBookChange,
     onCountChange,
-    onOpenActionCountChange,
-    onOpenTopicCountChange,
     onCoveredChange,
     onBookEntryCountChange,
-    onBooksWithEntriesCountChange,
 }: JournalContentProps) {
     const router = useRouter();
     const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -351,11 +288,8 @@ function JournalContent({
                 onSearchChange={onSearchChange}
                 onSelectedBookChange={onSelectedBookChange}
                 onCountChange={onCountChange}
-                onOpenActionCountChange={onOpenActionCountChange}
-                onOpenTopicCountChange={onOpenTopicCountChange}
                 onCoveredChange={onCoveredChange}
                 onBookEntryCountChange={onBookEntryCountChange}
-                onBooksWithEntriesCountChange={onBooksWithEntriesCountChange}
             />
         </View>
     );
@@ -370,7 +304,7 @@ export interface PlanProgress {
 }
 
 function PlanContent({ onProgressChange }: { onProgressChange: (p: PlanProgress) => void }) {
-    const { colors, isLockedIn } = useTheme();
+    const { colors } = useTheme();
     const router = useRouter();
     const [completedItems, setCompletedItems] = useState<Set<number>>(new Set());
     const [progress, setProgress] = useState(0);
@@ -614,11 +548,7 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: PlanProgress)
                     keyExtractor={keyExtractor}
                     contentContainerStyle={[
                         styles.planListContent,
-                        {
-                            paddingHorizontal: isLockedIn
-                                ? Spacing.layout.screenPaddingTight
-                                : Spacing.layout.screenPadding,
-                        },
+                        { paddingHorizontal: Spacing.layout.screenPadding },
                     ]}
                     ListHeaderComponent={renderHeader}
                     ListFooterComponent={renderFooter}
@@ -636,7 +566,7 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: PlanProgress)
 // ─── Main Library Screen ──────────────────────────────────────────────────────
 
 export default function LibraryScreen() {
-    const { colors, style: themeStyle, isLockedIn } = useTheme();
+    const { colors, style: themeStyle } = useTheme();
     const router = useRouter();
     const params = useLocalSearchParams();
 
@@ -644,15 +574,11 @@ export default function LibraryScreen() {
     const [journalSearch, setJournalSearch] = useState('');
     const [journalSelectedBook, setJournalSelectedBook] = useState<BibleBook | undefined>();
     const [journalCount, setJournalCount] = useState(0);
-    const [openActionCount, setOpenActionCount] = useState(0);
-    const [openTopicCount, setOpenTopicCount] = useState(0);
     const [coveredCount, setCoveredCount] = useState(0);
     /** Entries against the open book — not the app-wide journalCount. */
     const [bookEntryCount, setBookEntryCount] = useState(0);
     /** Distinct books with at least one entry — the Books tab's giant. */
-    const [booksWithEntriesCount, setBooksWithEntriesCount] = useState(0);
     const [themeCount, setThemeCount] = useState<number | null>(null);
-    const [echoCount, setEchoCount] = useState(0);
     const [planProgress, setPlanProgress] = useState<PlanProgress>({ completed: 0, total: READING_PLAN_DATA.length, percent: 0 });
 
     /*
@@ -679,9 +605,9 @@ export default function LibraryScreen() {
          * Not a mockup rule — the mockup never puts two tabs side by side, so
          * it never has to say what happens between them. But the header's
          * height genuinely varies by tab (Recent alone carries the onhero
-         * search field, Plan alone carries its progress bar, Colossal's giant
-         * appears or not per tab), and snapping between those heights on every
-         * tap reads as the screen jolting rather than the tab changing. This
+         * search field, Plan alone carries its progress bar), and snapping
+         * between those heights on every tap reads as the screen jolting
+         * rather than the tab changing. This
          * animates the resize instead of jumping it.
          */
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -698,73 +624,14 @@ export default function LibraryScreen() {
         }
     }, [params.openEntryId]);
 
-    /**
-     * Colossal's one number for the tab you are on.
-     *
-     * `null` means this tab has nothing worth enlarging right now. The
-     * mockup gives Themes' slot to its own empty state before clustering has
-     * run at all — but every other tab keeps its giant up regardless of what
-     * it's counting, so Themes stands in an "X" rather than vanishing the
-     * slot: a placeholder, not a number pretending to mean something before
-     * there's anything to count, but the header stays the same shape
-     * switching onto and off a tab that isn't ready yet.
-     */
     /** "17 of 50 chapters" for Cloth's book band. */
     const bookCoverage = journalSelectedBook?.chapters
         ? `${coveredCount} of ${journalSelectedBook.chapters} chapters`
         : `${coveredCount} ${coveredCount === 1 ? 'chapter' : 'chapters'}`;
 
-    const giant: { value: number | string; label: string } | null = (() => {
-        switch (tab) {
-            case 'plan':
-                return {
-                    value: planProgress.completed,
-                    label: `of ${planProgress.total} readings · ${planProgress.percent}%`,
-                };
-            case 'books':
-                return {
-                    value: booksWithEntriesCount,
-                    label: booksWithEntriesCount === 1 ? 'book written in' : 'books written in',
-                };
-            case 'actions':
-                return {
-                    value: openActionCount,
-                    label: openActionCount === 1 ? 'action still open' : 'actions still open',
-                };
-            case 'topics':
-                return {
-                    value: openTopicCount,
-                    label: openTopicCount === 1 ? 'follow-up open' : 'follow-ups open',
-                };
-            case 'echoes':
-                /*
-                 * What has been noticed, not how many entries were read to
-                 * notice it. Zero is a true and useful answer here — it says
-                 * the app has not spoken yet — so it gets the slot rather
-                 * than a placeholder.
-                 */
-                return {
-                    value: echoCount,
-                    label: echoCount === 1 ? 'thing noticed' : 'things noticed',
-                };
-            case 'themes':
-                return themeCount === null
-                    ? { value: 'X', label: 'patterns pending' }
-                    : {
-                        value: themeCount,
-                        label: `${themeCount === 1 ? 'pattern' : 'patterns'} across ${journalCount} entries`,
-                    };
-            default:
-                return {
-                    value: journalCount,
-                    label: journalCount === 1 ? 'entry written' : 'entries written',
-                };
-        }
-    })();
-
     /**
-     * The search field. Cloth renders it on the hero band in the translucent
-     * `.onhero` treatment; Colossal renders it on the page under the giant.
+     * The search field, on the hero band in the translucent `.onhero`
+     * treatment.
      */
     const searchField = (
         <>
@@ -772,17 +639,11 @@ export default function LibraryScreen() {
                 style={[
                     styles.searchInput,
                     textStyle(themeStyle, 'body'),
-                    isLockedIn
-                        ? {
-                            backgroundColor: colors.searchBackground,
-                            color: colors.textPrimary,
-                            borderColor: colors.border,
-                        }
-                        : {
-                            backgroundColor: colors.textInverse + '1A',
-                            color: colors.textInverse,
-                            borderColor: colors.textInverse + '47',
-                        },
+                    {
+                        backgroundColor: colors.textInverse + '1A',
+                        color: colors.textInverse,
+                        borderColor: colors.textInverse + '47',
+                    },
                 ]}
                 placeholder={
                     tab === 'bookDetail' && journalSelectedBook
@@ -791,7 +652,7 @@ export default function LibraryScreen() {
                             ? `Search ${journalCount} entries…`
                             : 'Search entries…'
                 }
-                placeholderTextColor={isLockedIn ? colors.textTertiary : colors.textOnHero}
+                placeholderTextColor={colors.textOnHero}
                 value={journalSearch}
                 onChangeText={setJournalSearch}
                 autoCapitalize="none"
@@ -799,162 +660,91 @@ export default function LibraryScreen() {
             />
             {journalSearch.length > 0 && (
                 <ScalePressable style={styles.clearSearch} onPress={() => setJournalSearch('')}>
-                    <UIText variant="title" tone={isLockedIn ? 'secondary' : 'inverse'}>×</UIText>
+                    <UIText variant="title" tone="inverse">×</UIText>
                 </ScalePressable>
             )}
         </>
     );
 
     return (
-        <Screen edges={isLockedIn ? ['top'] : []}>
+        <Screen edges={[]}>
 
             {/* ── Header Zone ───────────────────────────────────────────────── */}
-            {isLockedIn && tab === 'bookDetail' ? (
-                /*
-                 * A book takes the whole screen in Colossal.
-                 *
-                 * The mockup gives Book detail its own `.co-top` — a back arrow
-                 * and the word "Books" — and nothing else above it: no count, no
-                 * search, no filters. It reads as a place you went to rather than
-                 * a filter you applied, and the arrow is the way back. Cloth keeps
-                 * the breadcrumb, which is what its own mockup draws.
-                 */
-                <View style={styles.colossalTopRow}>
-                    <ScalePressable
-                        onPress={() => handleNavigate('books')}
-                        accessibilityRole="button"
-                        accessibilityLabel="Back to books"
-                        hitSlop={Spacing.md}
-                        style={styles.backArrow}
-                    >
-                        <ChevronLeft size={20} color={colors.textTertiary} strokeWidth={2} />
-                    </ScalePressable>
-                    <UIText variant="tab">Books</UIText>
-                </View>
-            ) : (
             <View>
-                {isLockedIn ? (
-                    <>
-                        <View style={styles.colossalTop}>
-                            <UIText variant="tab">{MARK[section] ?? 'Library'}</UIText>
-                        </View>
-                        {/*
-                          * The giant states whatever the current tab counts —
-                          * entries written on Recent, readings completed on
-                          * Plan, actions still open on Actions. Each tab gets
-                          * one number, which is the rule the style is built on;
-                          * Themes gets none until it has patterns to count,
-                          * because its other two states own the slot themselves.
-                          */}
-                        {giant && (
-                            <View style={styles.colossalCount}>
-                                <UIText variant="hero">{giant.value}</UIText>
-                                <UIText variant="label">{giant.label}</UIText>
-                            </View>
-                        )}
-                    </>
-                ) : (
-                    <Hero ownsTopInset>
-                        {tab === 'bookDetail' && journalSelectedBook ? (
-                            /*
-                             * design/all-screens.html #book, the `.cl` slot: a
-                             * book takes over the band. The arrow hangs into
-                             * the gutter, the breadcrumb sits above the name,
-                             * and the coverage line replaces the search — the
-                             * screen is about one book, not about finding one.
-                             */
-                            <>
-                                <ScalePressable
-                                    onPress={() => handleNavigate('books')}
-                                    accessibilityRole="button"
-                                    accessibilityLabel="Back to books"
-                                    hitSlop={Spacing.md}
-                                    style={styles.heroBack}
-                                >
-                                    <ChevronLeft size={20} color={colors.accent} strokeWidth={1.9} />
-                                </ScalePressable>
-                                <UIText variant="label" tone="onHero" style={styles.heroCrumb}>
-                                    {`Books / ${journalSelectedBook.name}`}
-                                </UIText>
-                                <UIText variant="display" tone="onBand" style={styles.heroBookName}>
-                                    {journalSelectedBook.name}
-                                </UIText>
-                                <UIText variant="sub" tone="onHero">
-                                    {`${bookCoverage} · ${bookEntryCount} ${bookEntryCount === 1 ? 'entry' : 'entries'}`}
-                                </UIText>
-                            </>
-                        ) : (
-                            <>
-                                <UIText variant="display" tone="onBand">Library</UIText>
-                                {/*
-                                  * `.cl-input.onhero` — the search sits ON the
-                                  * indigo band, not under it, so the header
-                                  * reads as one block of cloth rather than a
-                                  * title with a field beneath.
-                                  *
-                                  * The wrapper is always mounted, at the same
-                                  * height, on every tab: only Recent has a
-                                  * search to do, but the other five still need
-                                  * something occupying that height or the band
-                                  * changes size when you switch tabs. Plan
-                                  * fills it with its own progress instead of
-                                  * the zigzag — it already has a number worth
-                                  * putting there, so a decorative stand-in
-                                  * would be filler where real content fits.
-                                  */}
-                                <View style={styles.heroSearch}>
-                                    {isSearchTab ? (
-                                        searchField
-                                    ) : tab === 'plan' ? (
-                                        <View style={styles.heroProgress}>
-                                            <View style={[styles.heroProgressTrack, { backgroundColor: colors.textInverse + '33' }]}>
-                                                <View style={[styles.heroProgressFill, { width: `${planProgress.percent}%`, backgroundColor: colors.accent }]} />
-                                            </View>
-                                            <UIText variant="label" tone="onHero">
-                                                {`${parseFloat(planProgress.percent.toFixed(2))}%`}
-                                            </UIText>
+                <Hero ownsTopInset>
+                    {tab === 'bookDetail' && journalSelectedBook ? (
+                        /*
+                         * design/all-screens.html #book, the `.cl` slot: a
+                         * book takes over the band. The arrow hangs into
+                         * the gutter, the breadcrumb sits above the name,
+                         * and the coverage line replaces the search — the
+                         * screen is about one book, not about finding one.
+                         */
+                        <>
+                            <ScalePressable
+                                onPress={() => handleNavigate('books')}
+                                accessibilityRole="button"
+                                accessibilityLabel="Back to books"
+                                hitSlop={Spacing.md}
+                                style={styles.heroBack}
+                            >
+                                <ChevronLeft size={20} color={colors.accent} strokeWidth={1.9} />
+                            </ScalePressable>
+                            <UIText variant="label" tone="onHero" style={styles.heroCrumb}>
+                                {`Books / ${journalSelectedBook.name}`}
+                            </UIText>
+                            <UIText variant="display" tone="onBand" style={styles.heroBookName}>
+                                {journalSelectedBook.name}
+                            </UIText>
+                            <UIText variant="sub" tone="onHero">
+                                {`${bookCoverage} · ${bookEntryCount} ${bookEntryCount === 1 ? 'entry' : 'entries'}`}
+                            </UIText>
+                        </>
+                    ) : (
+                        <>
+                            <UIText variant="display" tone="onBand">Library</UIText>
+                            {/*
+                              * `.cl-input.onhero` — the search sits ON the
+                              * indigo band, not under it, so the header
+                              * reads as one block of cloth rather than a
+                              * title with a field beneath.
+                              *
+                              * The wrapper is always mounted, at the same
+                              * height, on every tab: only Recent has a
+                              * search to do, but the other five still need
+                              * something occupying that height or the band
+                              * changes size when you switch tabs. Plan
+                              * fills it with its own progress instead of
+                              * the zigzag — it already has a number worth
+                              * putting there, so a decorative stand-in
+                              * would be filler where real content fits.
+                              */}
+                            <View style={styles.heroSearch}>
+                                {isSearchTab ? (
+                                    searchField
+                                ) : tab === 'plan' ? (
+                                    <View style={styles.heroProgress}>
+                                        <View style={[styles.heroProgressTrack, { backgroundColor: colors.textInverse + '33' }]}>
+                                            <View style={[styles.heroProgressFill, { width: `${planProgress.percent}%`, backgroundColor: colors.accent }]} />
                                         </View>
-                                    ) : (
-                                        <ClothZigzag />
-                                    )}
-                                </View>
-                            </>
-                        )}
-                    </Hero>
-                )}
-
-                {/*
-                  * Same slot, same reasoning as Cloth's band above: mounted
-                  * on every tab so this row is one height throughout, not
-                  * only appearing (and changing the header's height) on
-                  * Recent and Plan. Search on Recent, progress on Plan, and
-                  * the same zigzag ribbon Cloth uses everywhere else — drawn
-                  * with `force` since Colossal otherwise shows no patterns,
-                  * but this is a small ochre accent, the same weight as the
-                  * other marks Colossal already draws, not a wallpaper.
-                  */}
-                {isLockedIn && tab !== 'bookDetail' && (
-                    <View style={styles.searchContainer}>
-                        {isSearchTab ? (
-                            searchField
-                        ) : tab === 'plan' ? (
-                            <View style={[styles.colossalSlot, { flexDirection: 'row', alignItems: 'center' }]}>
-                                <View style={[styles.planProgressTrack, { backgroundColor: colors.border }]}>
-                                    <View style={[styles.planProgressFill, { width: `${planProgress.percent}%`, backgroundColor: colors.accent }]} />
-                                </View>
+                                        <UIText variant="label" tone="onHero">
+                                            {`${parseFloat(planProgress.percent.toFixed(2))}%`}
+                                        </UIText>
+                                    </View>
+                                ) : (
+                                    <ClothZigzag />
+                                )}
                             </View>
-                        ) : (
-                            <ClothZigzag force style={styles.colossalSlot} />
-                        )}
-                    </View>
-                )}
+                        </>
+                    )}
+                </Hero>
+
 
                 {/*
-                  * Neither mockup draws `.cl-segs` / `.co-segs` on Book detail
-                  * — its `.cl-hero` runs straight into `.cl-strip` then
-                  * `.cl-body tight`, and Colossal's early return above already
-                  * skips this block entirely. Cloth fell through to here and
-                  * drew the six-tab strip under its own book band.
+                  * The mockup draws no `.cl-segs` on Book detail — its
+                  * `.cl-hero` runs straight into `.cl-strip` then `.cl-body
+                  * tight`. Cloth fell through to here and drew the six-tab
+                  * strip under its own book band.
                   */}
                 {tab !== 'bookDetail' && (
                     <>
@@ -978,13 +768,12 @@ export default function LibraryScreen() {
                     </>
                 )}
             </View>
-            )}
 
             {/* ── Content Zone ──────────────────────────────────────────────── */}
             {tab === 'plan' ? (
                 <PlanContent onProgressChange={setPlanProgress} />
             ) : tab === 'echoes' ? (
-                <EchoesContent onCountChange={setEchoCount} />
+                <EchoesContent />
             ) : tab === 'themes' ? (
                 <ThemesContent onPatternCountChange={setThemeCount} />
             ) : (
@@ -996,11 +785,8 @@ export default function LibraryScreen() {
                     onSearchChange={setJournalSearch}
                     onSelectedBookChange={setJournalSelectedBook}
                     onCountChange={setJournalCount}
-                    onOpenActionCountChange={setOpenActionCount}
-                    onOpenTopicCountChange={setOpenTopicCount}
                     onCoveredChange={setCoveredCount}
                     onBookEntryCountChange={setBookEntryCount}
-                    onBooksWithEntriesCountChange={setBooksWithEntriesCount}
                 />
             )}
         </Screen>
@@ -1020,25 +806,12 @@ export default function LibraryScreen() {
 const HEBREW_SCRIPTURES_END = 286;
 
 const styles = StyleSheet.create({
-    // .co-label over a run of rows: margin:18px 0 12px
-    colossalSection: {
-        paddingTop: Spacing.lg + 2,
-        paddingBottom: Spacing.md,
-    },
     // .cl-label over a run of rows: margin:18px 0 10px
     clothPlanSectionHeader: {
         paddingTop: Spacing.lg + 2,
         paddingBottom: Spacing.sm + 2,
     },
-    // .co-row, centred rather than baseline — these rows carry a marker.
-    colossalRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.md,
-        paddingVertical: Spacing.lg - 1,
-        borderBottomWidth: Spacing.border.hairline,
-    },
-    colossalRowMain: {
+    planRowMain: {
         flex: 1,
         minWidth: 0,
     },
@@ -1072,14 +845,6 @@ const styles = StyleSheet.create({
         height: 8,
         borderRadius: Spacing.borderRadius.round,
     },
-    // .co-top with a back arrow, for a screen you navigated into.
-    colossalTopRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: Spacing.layout.screenPaddingTight,
-        paddingTop: Spacing.lg,
-    },
     // The mockup hangs the arrow into the gutter so the glyph, not its box,
     // lines up with the text below it.
     backArrow: {
@@ -1102,25 +867,6 @@ const styles = StyleSheet.create({
     heroBack: { marginLeft: -6, alignSelf: 'flex-start' },
     heroCrumb: { marginTop: 10 },
     heroBookName: { marginTop: Spacing.sm },
-    /*
-     * The Colossal search row's fixed-height inner slot — see the comment
-     * above its call site. `flex: 1`: it's the sole child of `searchContainer`
-     * (a row), and without it collapses to its own intrinsic width instead of
-     * filling the row — the Plan branch's progress track is flex:1 inside
-     * this, so a width-less parent squeezed the track (and its fill) to
-     * nothing rather than just holding the reserved height.
-     */
-    colossalSlot: { flex: 1, height: 54, justifyContent: 'center' },
-    colossalTop: {
-        paddingHorizontal: Spacing.layout.screenPaddingTight,
-        paddingTop: Spacing.lg,
-    },
-    // .co-giant.n over .co-giantl
-    colossalCount: {
-        paddingHorizontal: Spacing.layout.screenPaddingTight,
-        paddingTop: Spacing.xl + 2,
-        gap: Spacing.sm + 2,
-    },
     container: { flex: 1 },
 
     // ── Header: single tab row ─────────────────────────────────────

@@ -1,7 +1,6 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
 import { Asaro, AsaroAction, Card, Text } from './ui';
 
@@ -63,21 +62,13 @@ export function tierForDays(days: number | null): Tier | null {
 }
 
 export function WelcomeBack({ daysAway }: { daysAway: number | null }) {
-    const { style: themeStyle } = useTheme();
     const tier = tierForDays(daysAway);
     if (!tier) return null;
 
     return (
         <Card>
             <View style={styles.row}>
-                {/* Locked In performs a flat nod rather than the warmer gesture:
-                    that mode does not do warmth, and pretending otherwise is the
-                    one place the character would ring false. */}
-                <Asaro
-                    size={74}
-                    action={themeStyle === 'colossal' ? 'nod' : tier.action}
-                    label="Àṣàrò"
-                />
+                <Asaro size={74} action={tier.action} label="Àṣàrò" />
 
                 <View style={styles.copy}>
                     <Text variant="subtitle">{tier.heading}</Text>

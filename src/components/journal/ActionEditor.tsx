@@ -14,7 +14,7 @@
  *
  * design/all-screens.html #actionedit draws it in both styles, and draws it in
  * the state worth agreeing on: the reason missing, the label saying so, and
- * Save refusing. No colossal element — a form has no fact to enlarge, and the
+ * Save refusing. Nothing is enlarged — a form has no fact to enlarge, and the
  * giant would land on a field label.
  */
 
@@ -53,7 +53,7 @@ const KIND_NOTE: Record<ActionKind, string> = {
 };
 
 export function ActionEditor({ item, onClose, onSave, onArchive }: Props) {
-    const { colors, isLockedIn, style: themeStyle } = useTheme();
+    const { colors, style: themeStyle } = useTheme();
 
     const [action, setAction] = useState(item.action ?? '');
     const [motivation, setMotivation] = useState(item.motivation ?? '');
@@ -162,9 +162,7 @@ export function ActionEditor({ item, onClose, onSave, onArchive }: Props) {
                     contentContainerStyle={[
                         styles.content,
                         {
-                            paddingHorizontal: isLockedIn
-                                ? Spacing.layout.screenPaddingTight
-                                : Spacing.layout.screenPadding,
+                            paddingHorizontal: Spacing.layout.screenPadding,
                         },
                     ]}
                     showsVerticalScrollIndicator={false}

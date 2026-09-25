@@ -31,8 +31,8 @@ const RoleCell = ({
     onPress: () => void;
     label: string;
 }) => {
-    const { colors, isLockedIn } = useTheme();
-    const woven = selected && !isLockedIn;
+    const { colors } = useTheme();
+    const woven = selected;
 
     return (
         <ScalePressable
@@ -64,7 +64,7 @@ export default function AuthScreen() {
     const [isSignUp, setIsSignUp] = useState(false);
     const [gender, setGender] = useState<'m' | 'f' | null>(null);
     const [loading, setLoading] = useState(false);
-    const { colors, isLockedIn } = useTheme();
+    const { colors } = useTheme();
     const { showAlert } = useAlert();
     const router = useRouter();
 
@@ -133,15 +133,8 @@ export default function AuthScreen() {
               * indicator — "Welcome Back" or "Create Account" — so there is no
               * segmented control above the form: the two modes are not two
               * places, and the link at the foot already moves between them.
-              * Colossal has no band, so it names the place in a mark and lets
-              * the same words take its giant.
               */}
-            {isLockedIn && (
-                <View style={styles.colossalTop}>
-                    <Text variant="tab">{'\u00c0\u1e63\u00e0r\u00f2 \u00b7 Groups'}</Text>
-                </View>
-            )}
-            <Hero ownsTopInset={!isLockedIn} topPadding={isLockedIn ? Spacing.lg : undefined}>
+            <Hero ownsTopInset>
                 <Text variant="display" tone="onBand">
                     {isSignUp ? 'Create\nAccount' : 'Welcome\nBack'}
                 </Text>
@@ -244,10 +237,6 @@ export default function AuthScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-    },
-    colossalTop: {
-        paddingHorizontal: Spacing.layout.screenPaddingTight,
-        paddingTop: Spacing.sm,
     },
     content: {
         flex: 1,

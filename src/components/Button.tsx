@@ -147,7 +147,7 @@ export const Button: React.FC<ButtonProps> = ({
     /*
      * This label used to render in react-native's bare Text with only a size
      * and a fixed 0.3px tracking — the platform system face in both styles,
-     * never Work Sans or Archivo, and never Colossal's uppercase. Reading the
+     * never Work Sans, and never uppercased. Reading the
      * fontFamily/textTransform/letterSpacing off the design system's `button`
      * role (`.cl-btn` / `.co-btn`) is what ThemedButton already does; this
      * legacy component still has call sites, so it needs the same face.
@@ -169,7 +169,7 @@ export const Button: React.FC<ButtonProps> = ({
     /*
      * The loading dots have to sit on the button they are inside.
      *
-     * This was a literal '#FFFFFF', which is white-on-white on a Colossal
+     * This was a literal '#FFFFFF', which is white-on-white on a light
      * primary — that style's `buttonPrimary` IS white, so a loading button
      * looked empty. Reading the label colour back off the variant keeps the
      * dots legible in both styles without a per-style branch.

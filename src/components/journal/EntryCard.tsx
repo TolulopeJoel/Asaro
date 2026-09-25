@@ -20,15 +20,13 @@ interface EntryCardProps {
 /**
  * One entry in the library list.
  *
- * Both styles draw the same row — `.cl-row` and `.co-row` are the same
- * composition: the reference, a one-line snippet under it, and how long ago on
- * the right, separated by a hairline. Only the type differs, and that is what
- * the variant system is for: `reference` is Fraunces 17 in Cloth and Archivo
- * 14 in Colossal, `bodySmall` is 13 against 12.5, `meta` 10.5 against 10.
+ * `.cl-row`: the reference, a one-line snippet under it, and how long ago on
+ * the right, separated by a hairline. The type comes from the variant system
+ * — `reference` is Fraunces 17, `bodySmall` 13, `meta` 10.5.
  *
- * It used to branch — a row for Colossal, a bordered card with a date, an ochre
- * reference badge, a chevron and four reflection dots for Cloth. None of that
- * chrome is in either mockup; the design's library is a run of type on cloth.
+ * It used to be a bordered card with a date, an ochre reference badge, a
+ * chevron and four reflection dots. None of that chrome is in the mockup; the
+ * design's library is a run of type on cloth.
  */
 export const EntryCard = React.memo(({ entry, omitBookName = false, onEntryPress }: EntryCardProps) => {
     const { colors } = useTheme();

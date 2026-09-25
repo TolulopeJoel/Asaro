@@ -7,7 +7,7 @@ import { BibleBook } from '../../data/bibleBooks';
 import { ChapterRange, VerseRange } from '../../hooks/useEntryHooks';
 import { ReflectionAnswers, ReflectionForm } from '../ReflectionForm';
 import { ScalePressable } from '../ScalePressable';
-import { BookPicker, countMatches } from '../BookPicker';
+import { BookPicker } from '../BookPicker';
 import { ChapterPicker } from '../ChapterPicker';
 import { Hero, Text, ThemedButton, textStyle } from '../ui';
 import { formatRange, spell } from '../../utils/reference';
@@ -25,84 +25,47 @@ interface BookStepProps {
 /**
  * Choose a book.
  *
- * design/all-screens.html #books. There is no count worth enlarging on a
- * picker, so the giant slot goes to what you have typed — which doubles as
- * feedback that the filter is live. With the field empty it shows nothing:
- * the style allows a screen zero colossal elements, never two.
+ * design/all-screens.html #books.
  */
 export const BookStep = React.memo(({ selectedBook, onBookSelect, onExit }: BookStepProps) => {
-    const { colors, style: themeStyle, isLockedIn } = useTheme();
+    const { colors, style: themeStyle } = useTheme();
     const [query, setQuery] = useState('');
-    const gutter = isLockedIn ? Spacing.layout.screenPaddingTight : Spacing.layout.screenPadding;
-    const matches = countMatches(query);
+    const gutter = Spacing.layout.screenPadding;
 
     const filterField = (
         <TextInput
             style={[
                 styles.input,
                 textStyle(themeStyle, 'body'),
-                isLockedIn
-                    ? { backgroundColor: colors.searchBackground, borderColor: colors.border, color: colors.textPrimary }
-                    : { backgroundColor: colors.textInverse + '1A', borderColor: colors.textInverse + '47', color: colors.textInverse },
+                { backgroundColor: colors.textInverse + '1A', borderColor: colors.textInverse + '47', color: colors.textInverse },
             ]}
             value={query}
             onChangeText={setQuery}
             placeholder={`Filter ${TOTAL_BOOKS} books…`}
-            placeholderTextColor={isLockedIn ? colors.textTertiary : colors.textOnHero}
+            placeholderTextColor={colors.textOnHero}
             autoCapitalize="none"
             autoCorrect={false}
             accessibilityLabel="Filter books"
         />
     );
 
-    if (!isLockedIn) {
-        /*
-         * design/all-screens.html #books, the `.cl` slot. Cloth names the
-         * screen on its band and puts the filter there with it — there is no
-         * giant, because Cloth has no colossal slot to spend and the query is
-         * already legible in the field you typed it into.
-         */
-        return (
-            <View style={styles.stepContainer}>
-                <Hero ownsTopInset>
-                    <View style={styles.clothHeroTop}>
-                        <Text variant="display" tone="onBand" style={styles.mark}>Choose a book</Text>
-                        <ScalePressable onPress={onExit} accessibilityRole="button" accessibilityLabel="Close" hitSlop={Spacing.md}>
-                            <X size={19} color={colors.accent} strokeWidth={1.9} />
-                        </ScalePressable>
-                    </View>
-                    <View style={styles.clothHeroField}>{filterField}</View>
-                </Hero>
-                <View style={[styles.list, { paddingHorizontal: gutter, paddingTop: Spacing.xl - 4 }]}>
-                    <BookPicker selectedBook={selectedBook} onBookSelect={onBookSelect} query={query} />
-                </View>
-            </View>
-        );
-    }
-
+    /*
+     * design/all-screens.html #books, the `.cl` slot. Cloth names the screen
+     * on its band and puts the filter there with it — the query is already
+     * legible in the field you typed it into.
+     */
     return (
         <View style={styles.stepContainer}>
-            <View style={[styles.topBar, { paddingHorizontal: gutter }]}>
-                <Text variant="tab" style={styles.mark}>Choose a book</Text>
-                <ScalePressable onPress={onExit} accessibilityRole="button" accessibilityLabel="Close" hitSlop={Spacing.md}>
-                    <X size={19} color={colors.textTertiary} strokeWidth={1.9} />
-                </ScalePressable>
-            </View>
-
-            {query.trim().length > 0 && (
-                <View style={[styles.giant, { paddingHorizontal: gutter }]}>
-                    <Text variant="heroSmall" tone="accent" numberOfLines={1} adjustsFontSizeToFit>
-                        {query.trim()}
-                    </Text>
-                    <Text variant="label" style={styles.giantLabel}>
-                        {`${matches} of ${TOTAL_BOOKS} books match`}
-                    </Text>
+            <Hero ownsTopInset>
+                <View style={styles.clothHeroTop}>
+                    <Text variant="display" tone="onBand" style={styles.mark}>Choose a book</Text>
+                    <ScalePressable onPress={onExit} accessibilityRole="button" accessibilityLabel="Close" hitSlop={Spacing.md}>
+                        <X size={19} color={colors.accent} strokeWidth={1.9} />
+                    </ScalePressable>
                 </View>
-            )}
-
-            <View style={[styles.filter, { paddingHorizontal: gutter }]}>{filterField}</View>
-
-            <View style={[styles.list, { paddingHorizontal: gutter }]}>
+                <View style={styles.clothHeroField}>{filterField}</View>
+            </Hero>
+            <View style={[styles.list, { paddingHorizontal: gutter, paddingTop: Spacing.xl - 4 }]}>
                 <BookPicker selectedBook={selectedBook} onBookSelect={onBookSelect} query={query} />
             </View>
         </View>
@@ -124,12 +87,10 @@ interface ChapterStepProps {
 /**
  * Which chapters.
  *
- * design/all-screens.html #chapters. The two slots diverge past the grid:
- * Colossal's live selection IS the screen's colossal element, set directly
- * under a bare `.co-top`; Cloth has no colossal slot to spend, so it puts the
- * book itself on a full `.cl-hero` band (with a Back AND a Close button, since
- * the mockup draws both) and states the current selection as a `.cl-panel`
- * summary with a Clear button, ahead of the grid rather than above it.
+ * design/all-screens.html #chapters. Cloth puts the book itself on a full
+ * `.cl-hero` band (with a Back AND a Close button, since the mockup draws
+ * both) and states the current selection as a `.cl-panel` summary with a
+ * Clear button, ahead of the grid rather than above it.
  */
 export const ChapterStep = React.memo(({
     selectedBook,
@@ -141,8 +102,8 @@ export const ChapterStep = React.memo(({
     onContinue,
     canContinue
 }: ChapterStepProps) => {
-    const { colors, isLockedIn } = useTheme();
-    const gutter = isLockedIn ? Spacing.layout.screenPaddingTight : Spacing.layout.screenPadding;
+    const { colors } = useTheme();
+    const gutter = Spacing.layout.screenPadding;
 
     const start = selectedChapters?.start ?? 0;
     const end = selectedChapters?.end || start;
@@ -151,127 +112,72 @@ export const ChapterStep = React.memo(({
     const count = picked ? end - start + 1 : 0;
     const clearSelection = () => onChapterSelect({ start: 0 });
 
-    if (!isLockedIn) {
-        return (
-            <View style={styles.stepContainer}>
-                <Hero ownsTopInset>
-                    <View style={styles.clothChapterTop}>
-                        <ScalePressable
-                            onPress={onBack}
-                            accessibilityRole="button"
-                            accessibilityLabel="Back to books"
-                            hitSlop={Spacing.md}
-                            style={styles.backArrow}
-                        >
-                            <ChevronLeft size={20} color={colors.accent} strokeWidth={1.9} />
-                        </ScalePressable>
-                        <ScalePressable
-                            onPress={onExit}
-                            accessibilityRole="button"
-                            accessibilityLabel="Close"
-                            hitSlop={Spacing.md}
-                        >
-                            <X size={19} color={colors.accent} strokeWidth={1.9} />
-                        </ScalePressable>
-                    </View>
-                    <Text variant="display" tone="onBand" style={styles.clothHeroTitle}>
-                        {selectedBook?.name ?? 'Chapters'}
-                    </Text>
-                    {selectedBook && (
-                        <Text variant="sub" tone="onHero" style={styles.clothHeroSub}>
-                            {`${selectedBook.chapters} chapters`}
-                        </Text>
-                    )}
-                </Hero>
-
-                <View style={[styles.clothBody, { paddingHorizontal: gutter }]}>
-                    {picked && selectedBook && (
-                        <View style={[styles.clothSummary, { backgroundColor: colors.backgroundSubtle }]}>
-                            <Text variant="title" numberOfLines={1} style={styles.clothSummaryText}>
-                                {`${count === 1 ? 'Chapter' : 'Chapters'} ${range}`}
-                            </Text>
-                            <ThemedButton
-                                label="Clear"
-                                variant="secondary"
-                                style={styles.clothClearButton}
-                                onPress={clearSelection}
-                            />
-                        </View>
-                    )}
-
-                    <ScrollView
-                        style={styles.list}
-                        showsVerticalScrollIndicator={false}
-                        keyboardShouldPersistTaps="handled"
-                    >
-                        <ChapterPicker
-                            selectedBook={selectedBook}
-                            selectedChapters={selectedChapters}
-                            onChapterSelect={onChapterSelect}
-                            onVerseRangeChange={onVerseRangeChange}
-                            allowRange={true}
-                        />
-                    </ScrollView>
-                </View>
-
-                <View style={[styles.stepFooter, { paddingHorizontal: gutter }]}>
-                    <ThemedButton
-                        label={picked && selectedBook ? `Use ${selectedBook.name} ${range}` : 'Pick a chapter'}
-                        variant="primary"
-                        block
-                        disabled={!canContinue}
-                        onPress={onContinue}
-                    />
-                </View>
-            </View>
-        );
-    }
-
     return (
         <View style={styles.stepContainer}>
-            <View style={[styles.topBar, { paddingHorizontal: gutter }]}>
-                <ScalePressable
-                    onPress={onBack}
-                    accessibilityRole="button"
-                    accessibilityLabel="Back to books"
-                    hitSlop={Spacing.md}
-                    style={styles.backArrow}
-                >
-                    <ChevronLeft size={20} color={colors.textTertiary} strokeWidth={2} />
-                </ScalePressable>
-                <Text variant="tab" numberOfLines={1} style={styles.mark}>
-                    {selectedBook ? `${selectedBook.name} · ${selectedBook.chapters} chapters` : 'Chapters'}
-                </Text>
-            </View>
-
-            {picked && (
-                <View style={[styles.giant, { paddingHorizontal: gutter }]}>
-                    <Text variant="heroSmall" numberOfLines={1} adjustsFontSizeToFit>{range}</Text>
-                    <Text variant="label" style={styles.giantLabel}>
-                        {`${spell(count)} ${count === 1 ? 'chapter' : 'chapters'} selected`}
-                    </Text>
+            <Hero ownsTopInset>
+                <View style={styles.clothChapterTop}>
+                    <ScalePressable
+                        onPress={onBack}
+                        accessibilityRole="button"
+                        accessibilityLabel="Back to books"
+                        hitSlop={Spacing.md}
+                        style={styles.backArrow}
+                    >
+                        <ChevronLeft size={20} color={colors.accent} strokeWidth={1.9} />
+                    </ScalePressable>
+                    <ScalePressable
+                        onPress={onExit}
+                        accessibilityRole="button"
+                        accessibilityLabel="Close"
+                        hitSlop={Spacing.md}
+                    >
+                        <X size={19} color={colors.accent} strokeWidth={1.9} />
+                    </ScalePressable>
                 </View>
-            )}
+                <Text variant="display" tone="onBand" style={styles.clothHeroTitle}>
+                    {selectedBook?.name ?? 'Chapters'}
+                </Text>
+                {selectedBook && (
+                    <Text variant="sub" tone="onHero" style={styles.clothHeroSub}>
+                        {`${selectedBook.chapters} chapters`}
+                    </Text>
+                )}
+            </Hero>
 
-            <ScrollView
-                style={styles.list}
-                contentContainerStyle={[styles.gridScroll, { paddingHorizontal: gutter }]}
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-            >
-                <ChapterPicker
-                    selectedBook={selectedBook}
-                    selectedChapters={selectedChapters}
-                    onChapterSelect={onChapterSelect}
-                    onVerseRangeChange={onVerseRangeChange}
-                    allowRange={true}
-                />
-            </ScrollView>
+            <View style={[styles.clothBody, { paddingHorizontal: gutter }]}>
+                {picked && selectedBook && (
+                    <View style={[styles.clothSummary, { backgroundColor: colors.backgroundSubtle }]}>
+                        <Text variant="title" numberOfLines={1} style={styles.clothSummaryText}>
+                            {`${count === 1 ? 'Chapter' : 'Chapters'} ${range}`}
+                        </Text>
+                        <ThemedButton
+                            label="Clear"
+                            variant="secondary"
+                            style={styles.clothClearButton}
+                            onPress={clearSelection}
+                        />
+                    </View>
+                )}
+
+                <ScrollView
+                    style={styles.list}
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                >
+                    <ChapterPicker
+                        selectedBook={selectedBook}
+                        selectedChapters={selectedChapters}
+                        onChapterSelect={onChapterSelect}
+                        onVerseRangeChange={onVerseRangeChange}
+                        allowRange={true}
+                    />
+                </ScrollView>
+            </View>
 
             <View style={[styles.stepFooter, { paddingHorizontal: gutter }]}>
                 <ThemedButton
                     label={picked && selectedBook ? `Use ${selectedBook.name} ${range}` : 'Pick a chapter'}
-                    variant="accent"
+                    variant="primary"
                     block
                     disabled={!canContinue}
                     onPress={onContinue}
@@ -289,7 +195,7 @@ interface ReflectionStepProps {
     isEditMode: boolean;
     onBack: () => void;
     onDiscard: () => void;
-    /** Leave the entry entirely — the `.co-top` close button. */
+    /** Leave the entry entirely — the top bar's close button. */
     onExit: () => void;
     saveButtonText?: string;
 }
@@ -351,8 +257,7 @@ interface SummaryStepProps {
  * not two: a tick inside a ring says "done" and nothing else, while the
  * passage and the date say done *and* what was done. Cloth puts both in the
  * band — the wizard runs bandless while you write, so the band returning is
- * itself the signal that you have arrived somewhere — and Colossal gives the
- * passage its giant under a "Recorded" mark.
+ * itself the signal that you have arrived somewhere.
  *
  * No second large element. The count of answers is a fact about the form
  * rather than about the reader, so it rides in the supporting line and never
@@ -369,63 +274,34 @@ export const SummaryStep = React.memo(({
     onShare,
     observation,
 }: SummaryStepProps) => {
-    const { colors, isLockedIn } = useTheme();
     const meta = `${spell(answerCount)} ${answerCount === 1 ? 'answer' : 'answers'} · ${formattedDate}`;
 
     return (
         <View style={styles.stepContainer}>
-            {isLockedIn ? (
-                <View
-                    style={[
-                        styles.topBar,
-                        { paddingHorizontal: Spacing.layout.screenPaddingTight },
-                    ]}
-                >
-                    <Text variant="tab">Recorded</Text>
-                </View>
-            ) : (
-                <Hero ownsTopInset>
-                    <Text variant="label">Recorded</Text>
-                    <Text variant="display" tone="onBand" style={styles.savedTitle}>
-                        {selectionSummary}
-                    </Text>
-                    <Text variant="sub" tone="onHero" style={styles.savedMeta}>{meta}</Text>
-                </Hero>
-            )}
+            <Hero ownsTopInset>
+                <Text variant="label">Recorded</Text>
+                <Text variant="display" tone="onBand" style={styles.savedTitle}>
+                    {selectionSummary}
+                </Text>
+                <Text variant="sub" tone="onHero" style={styles.savedMeta}>{meta}</Text>
+            </Hero>
 
             <ScrollView
                 key="step-summary"
                 style={styles.scrollView}
                 contentContainerStyle={[
                     styles.savedContent,
-                    {
-                        paddingHorizontal: isLockedIn
-                            ? Spacing.layout.screenPaddingTight
-                            : Spacing.layout.screenPadding,
-                    },
+                    { paddingHorizontal: Spacing.layout.screenPadding },
                 ]}
                 showsVerticalScrollIndicator={false}
             >
-                {isLockedIn && (
-                    <>
-                        <Text variant="label" tone="accent">Read</Text>
-                        <Text variant="display" style={styles.savedTitle}>{selectionSummary}</Text>
-                        <Text variant="sub" style={styles.savedMeta}>{meta}</Text>
-                        <View style={[styles.savedRule, { backgroundColor: colors.border }]} />
-                    </>
-                )}
-
                 {observation}
             </ScrollView>
 
             <View
                 style={[
                     styles.savedFooter,
-                    {
-                        paddingHorizontal: isLockedIn
-                            ? Spacing.layout.screenPaddingTight
-                            : Spacing.layout.screenPadding,
-                    },
+                    { paddingHorizontal: Spacing.layout.screenPadding },
                 ]}
             >
                 <ThemedButton label="Check in Library" block onPress={onDone} />
@@ -448,30 +324,19 @@ const styles = StyleSheet.create({
 
     // ── the picker screens ────────────────────────────────────────────────
     /** `.co-top` — a mark, and the way out. */
-    topBar: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.md,
-        paddingTop: Spacing.lg,
-    },
     // The mockup hangs the arrow into the gutter so the glyph, not its box,
     // lines up with what sits below it.
     backArrow: { marginLeft: -6 },
     mark: { flex: 1 },
-    giant: { paddingTop: Spacing.xl + 2 },
     /** Cloth's band: the title and its close button, then the filter under them. */
     clothHeroTop: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
     clothHeroField: { marginTop: Spacing.layout.cardPadding },
-    /** `.co-giantl` sits 10px under its numeral. */
-    giantLabel: { marginTop: 10 },
-    filter: { paddingTop: Spacing.xl - 2, paddingBottom: Spacing.layout.cardPadding },
     input: {
         borderWidth: Spacing.border.hairline,
         paddingHorizontal: Spacing.md + 2,
         paddingVertical: Spacing.md + 2,
     },
     list: { flex: 1 },
-    gridScroll: { paddingTop: Spacing.xl - 2, paddingBottom: Spacing.xl },
     stepFooter: {
         paddingTop: Spacing.md + 2,
         paddingBottom: Spacing.layout.tabBarPadding,
@@ -555,11 +420,6 @@ const styles = StyleSheet.create({
         paddingBottom: Spacing.xl,
     },
     /** `.co-hr` between the passage and what came back. */
-    savedRule: {
-        height: Spacing.border.hairline,
-        marginTop: Spacing.xl + 2,
-        marginBottom: Spacing.xl - 2,
-    },
     savedFooter: {
         alignItems: 'center',
         gap: Spacing.xs + 2,
