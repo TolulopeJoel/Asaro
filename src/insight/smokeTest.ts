@@ -97,8 +97,27 @@ const PREVIEW_MILESTONE: 'shortBook' | 'longBook' | 'planHalf' | 'planDone' | nu
 export async function runPhase0SmokeTest(): Promise<string> {
     const out: string[] = [];
     const say = (line: string) => out.push(line);
-    const ok = (label: string, detail = '') => say(`  ok   ${label}${detail ? ` — ${detail}` : ''}`);
     const bad = (label: string, detail = '') => say(`  FAIL ${label}${detail ? ` — ${detail}` : ''}`);
+
+    /**
+     * Run a block, and if it throws say so and carry on.
+     *
+     * The detector pass, the table dump, the re-arm and the surface probe used
+     * to share one try/catch two hundred and fifty lines long, labelled
+     * "re-arming threw". So a milestone recorded without evidence — a failure
+     * three sections earlier — reported itself as a re-arm problem and
+     * silently deleted every diagnostic after it, including the one probe that
+     * says what each surface would actually draw. A debug tool that hides its
+     * own output the moment anything goes wrong is worse than none.
+     */
+    const stage = async (name: string, run: () => Promise<void>) => {
+        try {
+            await run();
+        } catch (error: any) {
+            bad(`${name} threw`, error?.message ?? String(error));
+        }
+    };
+    const ok = (label: string, detail = '') => say(`  ok   ${label}${detail ? ` — ${detail}` : ''}`);
     const check = (passed: boolean, label: string, detail = '') => {
         if (passed) ok(label, detail);
         else bad(label, detail);
@@ -272,15 +291,29 @@ export async function runPhase0SmokeTest(): Promise<string> {
 
     // ── make it visible ──────────────────────────────────────────────────────
     say('\nRe-arming for a look');
-    try {
+
+    /*
+     * One stage per detector, not one try around all of them.
+     *
+     * They shared a block, so the first to throw cancelled every detector
+     * after it — a milestone recorded without evidence meant `detectStudy`
+     * never ran, no study row was ever written, and the surface probe
+     * correctly reported nothing waiting. Three symptoms, one cause, and
+     * nothing on screen connecting them. Detectors are independent by
+     * design; the harness should not be the thing that couples them.
+     */
+    await stage('convergence', async () => {
         const ids = await detectConvergence();
         ok('convergences recorded', `${ids.length}`);
+    });
 
+    await stage('commitment', async () => {
         const open = await loadCommitments();
         const worth = rankCommitments(open);
         ok('standing commitments', `${open.length} total, ${worth.length} worth handing back`);
         const commitmentIds = await detectCommitments();
         ok('commitments recorded', `${commitmentIds.length}`);
+    });
 
         /*
          * Milestones report the shelf as well as the finding, because a
@@ -288,11 +321,14 @@ export async function runPhase0SmokeTest(): Promise<string> {
          * at all look identical from outside — and its guards are built to be
          * silent almost always.
          */
+    await stage('milestone', async () => {
         const tallies = await loadBookTallies();
         const finished = tallies.filter(b => b.total > 0 && b.worked >= b.total);
         ok(
             'books finished',
-            `${finished.length} of ${tallies.length}${finished.length ? ` — ${finished.map(b => b.name).join(', ')}` : ''}`,
+            finished.length
+                ? finished.map(b => `${b.name} (${b.worked}/${b.total}, last ${b.lastWorkedDays}d)`).join(', ')
+                : `none of ${tallies.length}`,
         );
         const milestoneIds = await detectMilestones(0);
         ok('milestones recorded', `${milestoneIds.length}`);
@@ -316,6 +352,7 @@ export async function runPhase0SmokeTest(): Promise<string> {
                 `${PREVIEW_MILESTONE} — save an entry to see it; set PREVIEW_MILESTONE = null when done`,
             );
         }
+    });
 
         /*
          * Study reports how many topics it is holding as well as how many it
@@ -323,6 +360,7 @@ export async function runPhase0SmokeTest(): Promise<string> {
          * may be sitting on a dozen and hand back exactly one. Seeing only the
          * one would look like a detector that had barely found anything.
          */
+    await stage('study', async () => {
         const topics = await loadTopics();
         const openTopics = qualifyingTopics(topics);
         const dated = openTopics.filter(topic => topic.reminderPassed).length;
@@ -332,6 +370,7 @@ export async function runPhase0SmokeTest(): Promise<string> {
         );
         const studyIds = await detectStudy();
         ok('study recorded', `${studyIds.length}`);
+    });
 
         /*
          * Absence reports its counts even when it declines to fire. A detector
@@ -339,6 +378,7 @@ export async function runPhase0SmokeTest(): Promise<string> {
          * because it is reading the wrong column look identical from outside,
          * and this is the surface where that difference would otherwise hide.
          */
+    await stage('absence', async () => {
         const answered = await loadAbsenceEntries();
         const tally = { jehovah: 0, message: 0, apply: 0, others: 0 };
         for (const entry of answered) for (const key of entry.answered) tally[key] += 1;
@@ -355,6 +395,9 @@ export async function runPhase0SmokeTest(): Promise<string> {
         );
         const absenceIds = await detectAbsence();
         ok('absences recorded', `${absenceIds.length}`);
+    });
+
+    await stage('the table dump and re-arm', async () => {
 
         /*
          * What is actually in the table, per detector. "afterSave → nothing"
@@ -431,9 +474,36 @@ export async function runPhase0SmokeTest(): Promise<string> {
                     [REARM_DETECTOR],
                 ),
             );
+
+            /*
+             * Standing the rivals down, which is the whole difference between
+             * "put it back in the queue" and "let me look at it".
+             *
+             * Re-arming alone only clears the target's `shown_at`. The queue
+             * is ordered by confidence, so a detector at 0.4 that has just
+             * been re-armed still sits behind an unshown milestone at 0.95 —
+             * the switch reported success and the card never appeared, which
+             * is the most misleading thing a debug affordance can do.
+             *
+             * Marking the others shown is honest rather than destructive:
+             * they HAVE been shown, and the alternative is deleting rows that
+             * hold the reader's own history with a finding.
+             */
+            const surface = surfaceOf(REARM_DETECTOR);
+            const rivals = DETECTORS.filter(d => d !== REARM_DETECTOR && surfaceOf(d) === surface);
+            const stoodDown = await withDatabase(db =>
+                db.runAsync(
+                    `UPDATE observations
+                        SET shown_at = COALESCE(shown_at, CURRENT_TIMESTAMP)
+                      WHERE detector IN (${rivals.map(() => '?').join(',')})
+                        AND shown_at IS NULL`,
+                    rivals as unknown as any[],
+                ),
+            );
+
             ok(
                 `forced ${REARM_DETECTOR} back`,
-                `${forced.changes} row(s) — set REARM_DETECTOR = null when done`,
+                `${forced.changes} row(s) re-armed, ${stoodDown.changes} rival ${surface} row(s) stood down — set REARM_DETECTOR = null when done`,
             );
         }
 
@@ -441,11 +511,19 @@ export async function runPhase0SmokeTest(): Promise<string> {
         // and hold no record of what the reader has done.
         await AsyncStorage.multiRemove(['insight_last_detection', 'insight_last_shown']);
         ok('pacing throttles cleared');
+    });
 
-        /*
-         * What each surface would actually draw, so a quiet screen can be told
-         * apart from a broken one without hunting through the app.
-         */
+    /*
+     * What each surface would actually draw, so a quiet screen can be told
+     * apart from a broken one without hunting through the app.
+     *
+     * Its own stage on purpose. This is the single most useful thing the
+     * smoke test prints, and while it lived inside the block above, any
+     * failure in the two hundred lines before it took this with it — which is
+     * precisely when you most need to see it.
+     */
+    await stage('the surface probe', async () => {
+        say('\n  What each surface would draw:');
         for (const surface of ['home', 'afterSave'] as const) {
             const pending = await getPendingObservations(3, surface);
             const legible = pending.map(renderObservation).filter(Boolean);
@@ -453,8 +531,20 @@ export async function runPhase0SmokeTest(): Promise<string> {
                 say(`      ${surface.padEnd(9)} → nothing`);
                 continue;
             }
-            say(`      ${surface.padEnd(9)} → ${legible.length} waiting`);
-            for (const r of legible) say(`                    ${r!.kind}: ${r!.subject.slice(0, 46)}`);
+            say(`      ${surface.padEnd(9)} → ${legible.length} waiting, top first`);
+            pending.forEach((observation, index) => {
+                const rendered = renderObservation(observation);
+                if (!rendered) return;
+                /*
+                 * The detector and its confidence, because "nothing showed"
+                 * and "something else outranked it" look identical from the
+                 * app and are fixed by completely different things.
+                 */
+                say(
+                    `                 ${index === 0 ? '▸' : ' '} ${String(observation.detector).padEnd(11)}` +
+                    ` ${observation.confidence.toFixed(2)}  ${rendered.kind}: ${rendered.subject.slice(0, 38)}`,
+                );
+            });
         }
         const engaged = await withDatabase(db =>
             db.getAllAsync<any>(
@@ -480,9 +570,7 @@ export async function runPhase0SmokeTest(): Promise<string> {
         const archive = await getRecentObservations(5);
         say(`      archive   \u2192 ${archive.length} in Echoes \u203a Noticed`);
         say('\n  Home shows the first; the save screen shows the other.');
-    } catch (error: any) {
-        bad('re-arming threw', error?.message);
-    }
+    });
 
     unloadGraph();
     say('\n────────────────────────────────────────────────────────\n');

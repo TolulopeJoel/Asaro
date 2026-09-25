@@ -363,8 +363,8 @@ function renderStudy(claim: Record<string, unknown>): RenderedObservation {
         kind: 'You wanted to look into this',
         evidence: passage ? [passage] : [],
         claim: named
-            ? `You set a time for this one and it went by. ${passage ? `It came out of ${passage}, ` : ''}${ago}.`
-            : `You wrote this down ${ago}${passage ? `, reading ${passage}` : ''}.`,
+            ? `You set a time for this one and it went by. You wrote it ${ago}${passage ? `, while you read ${passage}` : ''}.`
+            : `You wrote this down ${ago}${passage ? `, while you read ${passage}` : ''}.`,
         subject: trimQuote(topic),
         subjectFirst: true,
         openLabel: 'Open that entry',
