@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '../storage/storageKeys';
 import { BibleBook } from '../data/bibleBooks';
 import { ReflectionAnswers } from '../components/ReflectionForm';
-import { formatRange } from '../utils/reference';
+import { formatRange, spell } from '../utils/reference';
 
 export type Step = 'book' | 'chapter' | 'reflection' | 'summary';
 
@@ -40,6 +40,27 @@ export interface DraftSummary {
 
 /** The five questions the wizard asks, for the "three of five" line. */
 const QUESTION_COUNT = 5;
+
+/**
+ * How far into an entry you got, as a line Home can print.
+ *
+ * Both home styles built this the same way — `${spell(answered)} of
+ * ${spell(total)} answered` — and both therefore said "no of five answered"
+ * on a draft nobody had typed into yet, because `spell(0)` is "no". That is
+ * the MOST likely draft there is: pick a passage, reach the questions, put
+ * the phone down. The first thing a reader saw of the new draft block was a
+ * grammatical error.
+ *
+ * Kept here rather than fixed twice in two files, since a phrase built in two
+ * places is a phrase that will diverge in two places.
+ */
+export function draftProgress(draft: DraftSummary): string {
+    /* No count on an empty draft. "Nothing answered yet, of five" reads like a
+     * score; the total only means something once there is progress to measure
+     * against it. */
+    if (draft.answered === 0) return 'Nothing answered yet';
+    return `${spell(draft.answered)} of ${spell(draft.total)} answered`;
+}
 
 /**
  * Read a stored draft the way Home wants it.

@@ -26,8 +26,8 @@ import { DayStatus } from '../WeeklyStreak';
 import { useTheme } from '../../theme/ThemeContext';
 import { FontFamily, Typography } from '../../theme/typography';
 import { Spacing } from '../../theme/spacing';
-import { formatRange, spell } from '../../utils/reference';
-import { DraftSummary } from '../../hooks/useEntryHooks';
+import { formatRange } from '../../utils/reference';
+import { DraftSummary, draftProgress } from '../../hooks/useEntryHooks';
 
 const { size, lineHeight, tracking } = Typography;
 
@@ -163,7 +163,7 @@ export function LockedInHome({
                         <Text style={[styles.giantBook, { color: colors.textPrimary }]}>{draft.book}</Text>
                         <Text style={[styles.giantRef, { color: colors.accent }]}>{draft.chapters}</Text>
                         <Text style={[styles.series, { color: colors.textTertiary }]}>
-                            {`${spell(draft.answered)} of ${spell(draft.total)} answered`}
+                            {draftProgress(draft)}
                         </Text>
                         <ThemedButton
                             label="Pick it up"

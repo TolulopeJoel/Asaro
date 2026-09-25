@@ -27,8 +27,8 @@ import { ThemedButton } from '../ui/ThemedButton';
 import { DayStatus } from '../WeeklyStreak';
 import { useTheme } from '../../theme/ThemeContext';
 import { Spacing } from '../../theme/spacing';
-import { formatRange, spell } from '../../utils/reference';
-import { DraftSummary } from '../../hooks/useEntryHooks';
+import { formatRange } from '../../utils/reference';
+import { DraftSummary, draftProgress } from '../../hooks/useEntryHooks';
 
 export interface ClothHomeProps {
     /** The rotating line in the hero band. */
@@ -205,7 +205,7 @@ export function ClothHome({
                         <Text variant="label" style={styles.label}>Unfinished</Text>
                         <Text variant="headline">{draft.passage}</Text>
                         <Text variant="sub">
-                            {`${spell(draft.answered)} of ${spell(draft.total)} answered`}
+                            {draftProgress(draft)}
                         </Text>
                         <ThemedButton
                             label="Pick it up"
