@@ -444,6 +444,7 @@ export default function MeditationSessionScreen() {
                 return (
                     <SummaryStep
                         observation={echoCard}
+                        noteSeed={savedEntryId}
                         selectionSummary={selectionSummary}
                         formattedDate={formattedDate}
                         answerCount={answerCount}

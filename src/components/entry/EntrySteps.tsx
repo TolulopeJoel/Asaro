@@ -5,6 +5,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { Spacing } from '../../theme/spacing';
 import { BibleBook } from '../../data/bibleBooks';
 import { ChapterRange, VerseRange } from '../../hooks/useEntryHooks';
+import { savedNote } from '../../data/savedNotes';
 import { ReflectionAnswers, ReflectionForm } from '../ReflectionForm';
 import { ScalePressable } from '../ScalePressable';
 import { BookPicker } from '../BookPicker';
@@ -248,6 +249,13 @@ interface SummaryStepProps {
      * and above the actions so leaving is never blocked by it.
      */
     observation?: React.ReactNode;
+    /**
+     * The saved entry's id, used to pick what he says when there is no card.
+     *
+     * A seed rather than the line itself, so the choosing stays in one place
+     * with the words it chooses between. See `savedNotes.ts`.
+     */
+    noteSeed?: number;
 }
 
 /**
@@ -273,6 +281,7 @@ export const SummaryStep = React.memo(({
     onDone,
     onShare,
     observation,
+    noteSeed,
 }: SummaryStepProps) => {
     const meta = `${spell(answerCount)} ${answerCount === 1 ? 'answer' : 'answers'} · ${formattedDate}`;
 
@@ -295,7 +304,17 @@ export const SummaryStep = React.memo(({
                 ]}
                 showsVerticalScrollIndicator={false}
             >
-                {observation}
+                {/*
+                  * The card if there is one, and a word from him if there is
+                  * not. Never both — two voices over one moment is the thing
+                  * §6 warns about, and having no card is the condition rather
+                  * than a coincidence.
+                  */}
+                {observation ?? (
+                    <Text variant="body" tone="secondary" style={styles.savedNote}>
+                        {savedNote(noteSeed)}
+                    </Text>
+                )}
             </ScrollView>
 
             <View
@@ -366,6 +385,8 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.lg,
     },
     clothSummaryText: { flex: 1 },
+    /* Sits where a card would, so the screen keeps its shape either way. */
+    savedNote: { paddingTop: Spacing.sm },
     clothClearButton: { marginLeft: 'auto' },
     scrollView: {
         flex: 1,
