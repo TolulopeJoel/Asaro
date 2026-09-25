@@ -11,7 +11,11 @@
  * Built from entries rather than from ticked plan items, deliberately. A
  * ticked plan item says the reader passed over a chapter; an entry says they
  * worked it, which is the thing the metaphor is actually about. It also keeps
- * the cloth honest — it is made of what they wrote, and nothing else.
+ * the land honest — it is made of what they wrote, and nothing else.
+ *
+ * Cloth only. `terrain.ts` explains why: Colossal is monochrome by rule and a
+ * green field would be the loudest thing in it, so rather than ship a grey
+ * shadow of this screen there is one version of it.
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
@@ -44,7 +48,7 @@ function ago(days: number): string {
 }
 
 export default function LandScreen() {
-    const { colors, isLockedIn } = useTheme();
+    const { colors } = useTheme();
     const router = useRouter();
 
     const [cloth, setCloth] = useState<Cloth | null>(null);
@@ -64,45 +68,26 @@ export default function LandScreen() {
         }, []),
     );
 
-    const hebrew = useMemo(
-        () => cloth?.books.slice(0, HEBREW_BOOKS.length) ?? [],
-        [cloth],
-    );
-    const greek = useMemo(
-        () => cloth?.books.slice(HEBREW_BOOKS.length) ?? [],
-        [cloth],
-    );
     const quiet = useMemo(
         () => (cloth ? quietBooks(cloth, QUIET_DAYS, QUIET_LIMIT) : []),
         [cloth],
     );
 
-    const back = (
-        <ScalePressable
-            onPress={() => router.back()}
-            accessibilityRole="button"
-            accessibilityLabel="Back"
-            hitSlop={Spacing.md}
-            style={styles.back}
-        >
-            <ChevronLeft size={20} color={isLockedIn ? colors.textTertiary : colors.accent} strokeWidth={2} />
-        </ScalePressable>
-    );
-
     return (
-        <Screen edges={isLockedIn ? ['top'] : []}>
-            {isLockedIn ? (
-                <View style={styles.colossalTop}>
-                    {back}
-                    <UIText variant="tab">Your land</UIText>
-                </View>
-            ) : (
-                <Hero ownsTopInset>
-                    {back}
-                    <UIText variant="display" tone="onBand" style={styles.heroTitle}>Your land</UIText>
-                    <UIText variant="sub" tone="onHero">Every chapter you have worked</UIText>
-                </Hero>
-            )}
+        <Screen edges={[]}>
+            <Hero ownsTopInset>
+                <ScalePressable
+                    onPress={() => router.back()}
+                    accessibilityRole="button"
+                    accessibilityLabel="Back"
+                    hitSlop={Spacing.md}
+                    style={styles.back}
+                >
+                    <ChevronLeft size={20} color={colors.accent} strokeWidth={2} />
+                </ScalePressable>
+                <UIText variant="display" tone="onBand" style={styles.heroTitle}>Your land</UIText>
+                <UIText variant="sub" tone="onHero">Every chapter you have planted</UIText>
+            </Hero>
 
             {!cloth ? (
                 <View style={styles.loading}>
@@ -125,9 +110,10 @@ export default function LandScreen() {
                     <ClothLegend />
 
                     {/*
-                      * Tapping a book says what it is rather than navigating.
-                      * At 8px a cell is too small to label, and a cloth whose
-                      * blocks cannot be identified is decoration.
+                      * Tapping a parcel says what it is rather than navigating.
+                      * The name is watermarked on the ground, but abbreviated
+                      * and shrunk to fit — this is where "Lev" becomes
+                      * Leviticus, with what has actually been planted in it.
                       */}
                     {selected && (
                         <View style={[styles.selected, { borderColor: colors.border }]}>
@@ -140,15 +126,19 @@ export default function LandScreen() {
                         </View>
                     )}
 
-                    <View style={styles.section}>
-                        <UIText variant="label">HEBREW SCRIPTURES</UIText>
-                        <BibleCloth books={hebrew} onBookPress={setSelected} />
-                    </View>
-
-                    <View style={styles.section}>
-                        <UIText variant="label">GREEK SCRIPTURES</UIText>
-                        <BibleCloth books={greek} onBookPress={setSelected} />
-                    </View>
+                    {/*
+                      * One holding, Genesis to Revelation, with no break at
+                      * Matthew. Splitting it into two fields drew a boundary
+                      * the reading does not have: someone who reads the plan
+                      * crosses from Malachi to Matthew without the ground
+                      * changing under them, and the whole point of the land is
+                      * that it is one place they are working through.
+                      */}
+                    <BibleCloth
+                        books={cloth.books}
+                        selected={selected?.name ?? null}
+                        onBookPress={setSelected}
+                    />
 
                     {/*
                       * The invitation, and the only place the screen asks for
@@ -180,13 +170,6 @@ export default function LandScreen() {
 
 const styles = StyleSheet.create({
     back: { alignSelf: 'flex-start', marginBottom: Spacing.sm },
-    colossalTop: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.sm,
-        paddingHorizontal: Spacing.lg,
-        paddingTop: Spacing.md,
-    },
     heroTitle: { marginBottom: Spacing.xs },
     loading: { flex: 1, justifyContent: 'center' },
     content: { padding: Spacing.lg, gap: Spacing.xl, paddingBottom: Spacing.xxl },
