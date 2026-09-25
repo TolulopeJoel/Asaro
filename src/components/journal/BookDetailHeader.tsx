@@ -49,7 +49,10 @@ export const BookDetailHeader = React.memo((_: BookDetailHeaderProps) => (
 const styles = StyleSheet.create({
     /** `.cl-body.tight` opens straight onto its label. */
     clothHeader: { paddingTop: Spacing.md },
-    clothStillAhead: { paddingTop: Spacing.lg },
+    /* Its space goes underneath at the top of a screen and above it at the
+     * bottom — the gap belongs between the strip and the entries either way. */
+    clothStillAheadTop: { paddingTop: Spacing.md, paddingBottom: Spacing.lg },
+    clothStillAheadBottom: { paddingTop: Spacing.lg },
     clothStillAheadLabel: { marginBottom: Spacing.sm },
     /** `.cl-panel` holding the chips, wrapped at a 6px gap. */
     clothChipPanel: {
@@ -65,18 +68,41 @@ const styles = StyleSheet.create({
     clothChipLabel: { fontWeight: '600' },
 });
 
+/**
+ * Where the strip sits, which depends on how long it is — see `AHEAD_AT_TOP`.
+ * It only changes the padding here; the list decides the position.
+ */
+export type StillAheadPlace = 'top' | 'bottom';
+
 export interface StillAheadProps {
     /** Chapter ranges from the reading plan that this book still has left. */
     ranges: string[];
+    place: StillAheadPlace;
 }
+
+/**
+ * How many readings may sit above the entries before the strip is moved down.
+ *
+ * The real cost is VERTICAL ROWS, not the number of chips — they wrap about
+ * five to a row, so ten is two rows and still reads as a heading, while
+ * Genesis's seventeen is four and pushes the entries off the screen entirely.
+ * Counting items is the cheap proxy for measuring them.
+ *
+ * It also falls out pleasantly: a book you have nearly finished shows what is
+ * left up top, and a book you have barely started keeps its long list out of
+ * the way until you have scrolled your own entries.
+ */
+export const AHEAD_AT_TOP = 10;
 
 /**
  * "Still ahead" — the plan's remaining readings for this book, as chips.
  *
- * It closes the screen on what is left rather than on what is done, which is
- * the same move the Plan tab makes by never showing you a backlog.
+ * It OPENS the book's screen. It used to close it, which meant it sat under
+ * every entry the reader had written in that book: fine on Jeremiah with two,
+ * unreachable on Genesis with twenty. What it says is what to read next, and
+ * that is the one thing on the screen worth seeing before you have scrolled.
  */
-export const StillAhead = React.memo(({ ranges }: StillAheadProps) => {
+export const StillAhead = React.memo(({ ranges, place }: StillAheadProps) => {
     const { colors } = useTheme();
     if (ranges.length === 0) return null;
 
@@ -86,7 +112,7 @@ export const StillAhead = React.memo(({ ranges }: StillAheadProps) => {
      * figure/ground move the grid cells make on the chapter picker.
      */
     return (
-        <View style={styles.clothStillAhead}>
+        <View style={place === 'top' ? styles.clothStillAheadTop : styles.clothStillAheadBottom}>
             <Text variant="label" style={styles.clothStillAheadLabel}>Still ahead</Text>
             <View style={[styles.clothChipPanel, { backgroundColor: colors.backgroundSubtle }]}>
                 {ranges.map((range) => (

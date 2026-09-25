@@ -9,6 +9,41 @@ import { CoverageRow } from '../land/cloth';
  * Given a book name and chapter start/end, find ALL reading plan items
  * that are now fully covered by the combination of ALL entries in the database.
  */
+/**
+ * The chapters a plan item covers, ignoring verse suffixes.
+ *
+ * "119:64-176" is one chapter; "116-119:63" is four. Getting that backwards
+ * marks most of Psalms read off a single entry, which is why this is one
+ * function rather than the three near-copies it used to be.
+ */
+export function planItemChapters(chapters?: string): { start: number; end: number } | null {
+    if (!chapters) return null;
+
+    const parts = chapters.split('-');
+    const firstHasVerse = parts[0].includes(':');
+    const start = parseInt(parts[0].split(':')[0], 10);
+
+    let end: number;
+    if (parts.length > 1) {
+        // A verse on the FIRST part means the second part is a verse in the
+        // same chapter, not another chapter.
+        end = firstHasVerse ? start : parseInt(parts[parts.length - 1].split(':')[0], 10);
+    } else {
+        end = start;
+    }
+
+    if (isNaN(start) || isNaN(end)) return null;
+    return { start, end };
+}
+
+/** Whether a plan item's book name refers to this book. */
+export function planItemCoversBook(planBook: string, bookName: string): boolean {
+    const plan = planBook.toLowerCase();
+    const book = bookName.toLowerCase();
+    // The plan pairs some books up: "Obadiah/Jonah", "2 John/3 John/Jude".
+    return plan === book || plan.split('/').includes(book);
+}
+
 export const findMatchingReadingPlanItems = async (
     database: SQLite.SQLiteDatabase,
     bookName: string,
@@ -21,32 +56,11 @@ export const findMatchingReadingPlanItems = async (
     const matched: number[] = [];
 
     for (const item of READING_PLAN_DATA) {
-        const bookMatches = item.book.toLowerCase() === bookName.toLowerCase() ||
-            item.book.toLowerCase().split('/').includes(bookName.toLowerCase());
+        if (!planItemCoversBook(item.book, bookName)) continue;
 
-        if (!bookMatches) continue;
-
-        // Parse the plan item's chapter range (ignore verse suffixes like "119:64-176")
-        const rawChapters = item.chapters;
-        if (!rawChapters) continue;
-
-        // Strip verse notation
-        const parts = rawChapters.split('-');
-        const firstHasVerse = parts[0].includes(':');
-        const planStart = parseInt(parts[0].split(':')[0], 10);
-
-        let planEnd: number;
-        if (parts.length > 1) {
-            if (firstHasVerse) {
-                planEnd = planStart;
-            } else {
-                planEnd = parseInt(parts[parts.length - 1].split(':')[0], 10);
-            }
-        } else {
-            planEnd = planStart;
-        }
-
-        if (isNaN(planStart) || isNaN(planEnd)) continue;
+        const range = planItemChapters(item.chapters);
+        if (!range) continue;
+        const { start: planStart, end: planEnd } = range;
 
         // Check if the current entry even touches this plan item
         const overlapsWithCurrentEntry = chapterStart <= planEnd && effectiveEnd >= planStart;
@@ -119,6 +133,78 @@ export const attachActionItems = async (
         ...entry,
         action_items: itemsByEntry.get(entry.id!) || [],
     }));
+};
+
+/**
+ * Untick plan readings no longer covered by any entry.
+ *
+ * The plan's invariant is that an item is ticked **if and only if** entries
+ * cover its chapters — the Plan tab enforces it going in, refusing a manual
+ * tick with "you need an entry covering this reading". Nothing enforced it
+ * coming out. Delete the entry that earned a reading and the tick stayed;
+ * shorten an entry's range and the readings it no longer reaches stayed too.
+ *
+ * The consequences were quiet and compounding. "Still ahead" went blank on
+ * books the reader had not finished, plan progress read high, and — since
+ * milestones are now scored off that percentage — the app would eventually
+ * congratulate somebody for crossing a quarter of a plan they had not
+ * crossed. A number nobody maintains is worse than one nobody shows.
+ *
+ * Only ever REMOVES. Adding a tick is the save path's job, and it belongs
+ * there: a reading becomes done because somebody wrote something, which is an
+ * event, not a state to be discovered later.
+ *
+ * Because every tick is entry-derived by construction, no provenance column
+ * is needed to know what may be withdrawn. If manual ticking is ever allowed,
+ * this needs one — it would revoke the reader's own claim otherwise.
+ */
+export const retractUncoveredReadings = async (): Promise<number[]> => {
+    return withDatabase(async (database) => {
+        const ticked = await database.getAllAsync<{ item_id: number }>(
+            `SELECT item_id FROM reading_progress`
+        );
+        if (ticked.length === 0) return [];
+
+        const byId = new Map(READING_PLAN_DATA.map(item => [item.id, item]));
+        const dropped: number[] = [];
+
+        for (const { item_id } of ticked) {
+            const item = byId.get(item_id);
+            /*
+             * A tick whose plan item no longer exists — the plan was edited
+             * between releases — is also uncovered by definition, and leaving
+             * it would keep inflating progress for ever.
+             */
+            if (!item) {
+                dropped.push(item_id);
+                continue;
+            }
+
+            const range = planItemChapters(item.chapters);
+            if (!range) continue;
+
+            /*
+             * A paired item ("Obadiah/Jonah") counts as covered if ANY of its
+             * books covers the range. Requiring the joined string to match a
+             * book name would untick all eleven of them on the first run.
+             */
+            const books = item.book.split('/');
+            let covered = false;
+            for (const book of books) {
+                if (await checkRangeCovered(database, book.trim(), range.start, range.end)) {
+                    covered = true;
+                    break;
+                }
+            }
+
+            if (!covered) dropped.push(item_id);
+        }
+
+        for (const id of dropped) {
+            await database.runAsync(`DELETE FROM reading_progress WHERE item_id = ?`, [id]);
+        }
+        return dropped;
+    });
 };
 
 export const createJournalEntry = async (data: JournalEntryInput) => {
@@ -219,6 +305,14 @@ export const updateJournalEntry = async (id: number, data: JournalEntryInput) =>
             }
         }
     });
+
+    /*
+     * An edit can SHRINK an entry's range — Genesis 12-15 corrected to 12-13 —
+     * and the readings it no longer reaches must come untied. The save path
+     * only ever adds, so without this an edit could tick new items while
+     * leaving the old ones standing.
+     */
+    await retractUncoveredReadings();
 };
 
 export const getJournalEntries = async (limit = 50, offset = 0): Promise<JournalEntry[]> => {
@@ -290,6 +384,12 @@ export const deleteJournalEntry = async (id: number) => {
         await database.runAsync(`DELETE FROM action_items WHERE entry_id = ?`, [id]);
         await database.runAsync(`DELETE FROM journal_entries WHERE id = ?`, [id]);
     });
+    /*
+     * The entry is gone, so whatever it was the only evidence for is no
+     * longer done. Runs after the delete commits, never inside it — the
+     * coverage check reads the very table being written.
+     */
+    await retractUncoveredReadings();
 };
 
 export const getBookEntryCounts = async (): Promise<Record<string, number>> => {

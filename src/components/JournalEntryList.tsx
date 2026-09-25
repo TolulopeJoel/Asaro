@@ -21,7 +21,7 @@ import { setActionItemArchived, updateActionItem } from '../data/journalReposito
 import { TopicCard } from './journal/TopicCard';
 import { BookCard, BookWithCount } from './journal/BookCard';
 import { ActionSectionHeader, DateGroupHeader, TopicHeader } from './journal/JournalHeaders';
-import { BookDetailHeader, StillAhead, coveredChapters } from './journal/BookDetailHeader';
+import { AHEAD_AT_TOP, BookDetailHeader, StillAhead, coveredChapters } from './journal/BookDetailHeader';
 import { READING_PLAN_DATA } from '../data/readingPlanData';
 import { getReadingProgress } from '../data/database';
 import { formatRange } from '../utils/reference';
@@ -718,8 +718,30 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
                         },
                         getFlatListData.length === 0 && styles.emptyContainer
                     ]}
+                    /*
+                     * "Still ahead" changes ends depending on its length.
+                     *
+                     * It began as a footer, which meant it sat below every
+                     * entry the reader had written in that book — visible on
+                     * Jeremiah with two entries, unreachable on Genesis with
+                     * twenty. Moving it to the top fixed that and created the
+                     * opposite problem: seventeen chips is four rows, and a
+                     * book you have just started opened on a wall of readings
+                     * with your own writing pushed off the screen.
+                     *
+                     * So a short remainder leads and a long one follows. Both
+                     * placements are right for the case they serve, and the
+                     * cost of each is only paid by the other's.
+                     */
+                    ListHeaderComponent={
+                        viewMode === 'bookDetail' && stillAhead.length <= AHEAD_AT_TOP
+                            ? <StillAhead ranges={stillAhead} place="top" />
+                            : null
+                    }
                     ListFooterComponent={
-                        viewMode === 'bookDetail' ? <StillAhead ranges={stillAhead} /> : null
+                        viewMode === 'bookDetail' && stillAhead.length > AHEAD_AT_TOP
+                            ? <StillAhead ranges={stillAhead} place="bottom" />
+                            : null
                     }
                     showsVerticalScrollIndicator={false}
                     initialNumToRender={10}

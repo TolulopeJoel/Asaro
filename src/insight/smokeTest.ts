@@ -72,6 +72,28 @@ const REARM = false;
  */
 const REARM_DETECTOR: DetectorName | null = null;
 
+/**
+ * Put a milestone card on screen without having reached one.
+ *
+ * `milestone` is the only detector that cannot be tested by waiting. The
+ * others eventually fire on a journal that simply grows: a commitment ages
+ * into range, a topic passes three weeks, an imbalance widens. A milestone
+ * needs a book actually finished or a quarter of the plan actually crossed,
+ * and its anti-backfill guards mean even a reader with four completed books
+ * sees nothing unless they closed one this week. Correct, and untestable.
+ *
+ * So this records a synthetic one. It is keyed `preview:…` rather than
+ * `book:Ruth`, and that matters more than it looks: dedupe keys are how a
+ * milestone is offered exactly once ever, so previewing under a real key
+ * would burn it — the day the reader genuinely finished Ruth, the card would
+ * be silently skipped as already seen.
+ *
+ * Set back to null when you have seen it. The row stays behind, which is
+ * harmless — `preview:` collides with nothing — but it will keep reappearing
+ * in the pending queue until it is dismissed like any other card.
+ */
+const PREVIEW_MILESTONE: 'shortBook' | 'longBook' | 'planHalf' | 'planDone' | null = 'shortBook';
+
 export async function runPhase0SmokeTest(): Promise<string> {
     const out: string[] = [];
     const say = (line: string) => out.push(line);
@@ -274,6 +296,26 @@ export async function runPhase0SmokeTest(): Promise<string> {
         );
         const milestoneIds = await detectMilestones(0);
         ok('milestones recorded', `${milestoneIds.length}`);
+
+        if (PREVIEW_MILESTONE) {
+            const previews = {
+                shortBook: { kind: 'book', book: 'Ruth', chapters: 4 },
+                longBook: { kind: 'book', book: 'Genesis', chapters: 50 },
+                planHalf: { kind: 'plan', mark: 50 },
+                planDone: { kind: 'plan', mark: 100 },
+            } as const;
+            await recordObservation({
+                detector: 'milestone',
+                dedupeKey: `preview:${PREVIEW_MILESTONE}`,
+                claim: previews[PREVIEW_MILESTONE],
+                confidence: 0.99,
+                evidence: [],
+            });
+            ok(
+                'preview milestone armed',
+                `${PREVIEW_MILESTONE} — save an entry to see it; set PREVIEW_MILESTONE = null when done`,
+            );
+        }
 
         /*
          * Study reports how many topics it is holding as well as how many it

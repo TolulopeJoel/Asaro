@@ -116,7 +116,7 @@ export const READING_PLAN_DATA: ReadingItem[] = [
     { id: 102, section: "When the Kings Ruled Israel", book: "2 Samuel", chapters: "17-18", isKey: true },
     { id: 103, section: "When the Kings Ruled Israel", book: "2 Samuel", chapters: "19-20", isKey: true },
     { id: 104, section: "When the Kings Ruled Israel", book: "2 Samuel", chapters: "21-22", isKey: true },
-    { id: 105, section: "When the Kings Ruled Israel", book: "2 Samuel", chapters: "23-25", isKey: true },
+    { id: 105, section: "When the Kings Ruled Israel", book: "2 Samuel", chapters: "23-24", isKey: true },
     { id: 106, section: "When the Kings Ruled Israel", book: "1 Kings", chapters: "1-2", isKey: true },
     { id: 107, section: "When the Kings Ruled Israel", book: "1 Kings", chapters: "3-5", isKey: true },
     { id: 108, section: "When the Kings Ruled Israel", book: "1 Kings", chapters: "6-7", isKey: true },
