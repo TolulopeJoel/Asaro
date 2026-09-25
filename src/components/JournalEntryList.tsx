@@ -61,7 +61,6 @@ type ListItem =
 
 interface JournalEntryListProps {
     onEntryPress: (entry: JournalEntry) => void;
-    refreshTrigger?: number;
     viewMode: ViewMode;
     searchQuery: string;
     selectedBook?: BibleBook;
@@ -78,7 +77,6 @@ interface JournalEntryListProps {
 
 export const JournalEntryList: React.FC<JournalEntryListProps> = ({
     onEntryPress,
-    refreshTrigger,
     viewMode,
     searchQuery,
     selectedBook,
@@ -269,6 +267,16 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
     // Note: useFocusEffect below handles initial + subsequent loads
 
     // Refresh entries when screen comes into focus (e.g., after edit/delete)
+    /*
+     * The only reload path. A `refreshTrigger` prop used to sit beside this
+     * running the identical four loads, for the case of an in-screen modal
+     * closing — which never lost focus and so never re-fired this. Entries
+     * open as a route (`/library/[id]`) rather than a modal, so returning
+     * from one pops the stack, focus comes back and this runs. Nothing ever
+     * called the setter, the trigger sat at zero for the life of the app, and
+     * the whole mechanism was dead code describing a screen that no longer
+     * exists.
+     */
     useFocusEffect(
         useCallback(() => {
             loadEntries(true);
@@ -279,18 +287,6 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
             if (viewMode === 'topics') loadTopics();
         }, [viewMode, selectedBook, loadBookEntries, loadActions, loadTopics])
     );
-
-    // Refresh when refreshTrigger changes (e.g., after modal close)
-    useEffect(() => {
-        if (refreshTrigger !== undefined && refreshTrigger > 0) {
-            loadEntries(true);
-            if (viewMode === 'bookDetail' && selectedBook) {
-                loadBookEntries();
-            }
-            if (viewMode === 'actions') loadActions();
-            if (viewMode === 'topics') loadTopics();
-        }
-    }, [refreshTrigger]);
 
 
     // Debounce search query

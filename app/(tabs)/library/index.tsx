@@ -269,7 +269,6 @@ function JournalContent({
     onBookEntryCountChange,
 }: JournalContentProps) {
     const router = useRouter();
-    const [refreshTrigger, setRefreshTrigger] = useState(0);
 
     const handleEntryPress = (entry: JournalEntry) => {
         router.push(`/library/${entry.id}`);
@@ -280,7 +279,6 @@ function JournalContent({
         <View style={{ flex: 1 }}>
             <JournalEntryList
                 onEntryPress={handleEntryPress}
-                refreshTrigger={refreshTrigger}
                 viewMode={viewMode}
                 searchQuery={searchQuery}
                 selectedBook={selectedBook}
