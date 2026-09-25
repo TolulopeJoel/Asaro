@@ -2,7 +2,32 @@ import { withDatabase, getDbVersion, setDbVersion } from './db';
 
 const CURRENT_DB_VERSION = 14;
 
+/**
+ * The migration run, shared by everyone who asks for it.
+ *
+ * Migrations are not safe to run twice at once. Each step reads the current
+ * version, decides what is pending and applies it — so two concurrent runs
+ * both read the same version, both conclude the same step is outstanding and
+ * both try to apply it. One wins; the other hits an existing table or a
+ * duplicate column and the whole thing returns false.
+ *
+ * Which happens more often than it sounds. React re-invokes effects in
+ * development, and `_layout`'s init effect carries no guard of its own, so
+ * the very first thing the app does on a reload is start this twice.
+ *
+ * Caching the promise makes the second caller await the first run rather than
+ * begin another — the same fix `getDb` needed, for the same reason, one layer
+ * up. The result is cached on failure too: a failed migration is a state the
+ * app must surface, not something to retry silently on the next render.
+ */
+let migrating: Promise<boolean> | null = null;
+
 export const initializeDatabase = async (): Promise<boolean> => {
+    if (!migrating) migrating = runMigrations();
+    return migrating;
+};
+
+const runMigrations = async (): Promise<boolean> => {
     try {
         return await withDatabase(async (database) => {
             const currentVersion = await getDbVersion(database);
@@ -438,6 +463,11 @@ export const initializeDatabase = async (): Promise<boolean> => {
             return true;
         });
     } catch (error) {
+        /*
+         * Logged with the cause. "Failed to initialize database" on its own
+         * says only that something went wrong somewhere in twelve migrations,
+         * which is the message this spent a while being.
+         */
         console.error('Database init error:', error);
         return false;
     }
