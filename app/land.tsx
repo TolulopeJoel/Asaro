@@ -31,6 +31,7 @@ import { GREEK_BOOKS, HEBREW_BOOKS } from '@/src/data/bibleBooks';
 import { getChapterCoverage } from '@/src/data/database';
 import { BookCloth, Cloth, quietBooks, weaveCloth } from '@/src/land/cloth';
 import { fallowHeading } from '@/src/land/fallowTone';
+import { landSubtitle, parcelLine } from '@/src/land/landTone';
 import { Spacing } from '@/src/theme/spacing';
 import { useTheme } from '@/src/theme/ThemeContext';
 
@@ -100,12 +101,13 @@ export default function LandScreen() {
                   */}
                 <UIText variant="sub" tone="onHero" numberOfLines={1}>
                     {selected
-                        ? selected.worked === 0
-                            ? `${selected.name} — ${selected.total} chapters, none yet`
-                            : `${selected.name} — ${selected.worked} of ${selected.total}, last ${ago(selected.lastWorkedDays ?? 0)}`
-                        : cloth
-                            ? `${cloth.worked} of ${cloth.total.toLocaleString()} chapters planted`
-                            : 'Every chapter you have planted'}
+                        ? parcelLine(
+                            selected.name,
+                            selected.worked,
+                            selected.total,
+                            ago(selected.lastWorkedDays ?? 0),
+                        )
+                        : landSubtitle(cloth?.worked ?? 0, cloth?.total ?? 0)}
                 </UIText>
             </Hero>
 
