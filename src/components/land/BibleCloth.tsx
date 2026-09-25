@@ -1,19 +1,35 @@
 /**
- * The cloth itself.
+ * The land, drawn as farmland seen from above.
  *
- * Sixty-six blocks, one per book, each a grid of chapter cells. It is drawn as
- * adire rather than as a chart because it is one: repeated squares in ochre on
- * ecru is what the Cloth style already is, and a book someone has lived in
- * should look like worked cloth, not like a filled progress bar.
+ * The first version of this was a grid of evenly spaced squares, which is a
+ * contribution graph — and a contribution graph is exactly the wrong object
+ * here. It says "units of output, logged", and the whole point of the land is
+ * that it says "ground you have worked".
  *
- * Why blocks and not a single 1,189-cell field: the field would be prettier
- * and would say nothing. Broken into books, the negative space is legible —
- * a dense Gospels cluster beside an untouched Chronicles is a portrait of how
- * somebody actually reads, and no two readers produce the same one.
+ * Four things do the work of turning one into the other:
  *
- * The ramp is a single hue at five strengths, never a second colour. Two hues
- * would read as two categories — good and bad, kept and failed — and there is
- * no failure being depicted here. There is only more and less recent.
+ *   **Furrows, not tiles.** Cells are wider than they are tall and there is no
+ *   gap between them along a row, so consecutive chapters fuse into one
+ *   unbroken bed. Since people read in ranges, a real reader's plot comes out
+ *   as long ploughed lines rather than as confetti. The gaps run only BETWEEN
+ *   rows, which is where a furrow actually is.
+ *
+ *   **Parcels of different size and shape.** A book's plot is proportioned
+ *   from its chapter count, and each row of the field is packed and then
+ *   stretched to fill the width. Psalms is an estate, Obadiah is an allotment,
+ *   and the field tiles the way land does instead of marching in a grid.
+ *
+ *   **Soil, not paper.** An unworked chapter is untilled GROUND, not an empty
+ *   box: the plot is filled with earth and the worked parts are dyed over it.
+ *   Nothing on this screen is a hole.
+ *
+ *   **Hedgerows.** A hairline round each parcel, and a path of background
+ *   between them. It is what makes sixty-six plots read as a landholding
+ *   rather than as a chart with unusual spacing.
+ *
+ * The ramp stays one hue at five strengths. Two hues would read as two
+ * categories — good and bad — and there is no failure being depicted here,
+ * only ground worked more and less recently.
  */
 
 import React from 'react';
@@ -25,26 +41,62 @@ import { Spacing } from '../../theme/spacing';
 import { useTheme } from '../../theme/ThemeContext';
 import { Text } from '../ui';
 
-/** Cells across a book block before it wraps to the next row. */
-const COLUMNS = 8;
-const CELL = 8;
-const GAP = 2;
+/** A single bed: wider than tall, so a run of them reads as a ploughed line. */
+const BED_HEIGHT = 6;
+/** The furrow between beds. The only gap inside a parcel. */
+const FURROW = 2;
+/** The track between parcels. */
+const TRACK = Spacing.xs;
+
+/**
+ * Width of a parcel in abstract units before a row is stretched to fit.
+ *
+ * Square-root rather than linear: Psalms has a hundred and fifty times
+ * Obadiah's chapters, and a parcel a hundred and fifty times as wide is not a
+ * field, it is a corridor. The root keeps the ordering honest — bigger books
+ * really are bigger plots — while holding every one of them on a phone.
+ *
+ * The floor of three is not aesthetic. It is the narrowest a parcel can be and
+ * still carry its own name, and an unlabelled speck is not a plot of land, it
+ * is a smudge.
+ */
+function unitsFor(chapters: number): number {
+    return Math.min(14, Math.max(3, Math.ceil(Math.sqrt(chapters * 2))));
+}
+
+/**
+ * Chapters per bed-row, balanced so the parcel stays a rectangle.
+ *
+ * Dividing evenly and letting the remainder trail would leave a ragged last
+ * row on most books, and a field of parcels with bites out of their corners
+ * looks like a rendering bug rather than like land. Spreading the remainder
+ * gives rows that differ by one chapter, which shows up as beds of slightly
+ * different width — which is what a real ploughed field looks like anyway.
+ */
+function bedRows(chapters: number, columns: number): number[] {
+    const rows = Math.max(1, Math.ceil(chapters / columns));
+    const base = Math.floor(chapters / rows);
+    const extra = chapters % rows;
+    return Array.from({ length: rows }, (_, index) => base + (index < extra ? 1 : 0));
+}
 
 /**
  * Opacity per tier, faintest last.
  *
- * `FADE_FLOOR` is the point of the whole array. A chapter read years ago sits
- * at 0.22 and never goes lower, because it has to stay visibly *worked* — the
- * file this reads from exists to guarantee that nothing the reader did ever
- * disappears, and this is where that promise is either kept or quietly broken
- * by a designer reaching for a prettier gradient.
+ * `FADE_FLOOR` is the point of the whole array. A chapter worked years ago
+ * sits here and goes no lower, because it has to stay visibly distinct from
+ * untilled ground — `src/land/cloth.ts` exists to guarantee that nothing the
+ * reader did ever disappears, and this is the line where that promise is kept
+ * or quietly broken by someone reaching for a prettier gradient. It is higher
+ * than it looks like it needs to be because it is dyed over soil rather than
+ * over paper, and the soil already carries some of the hue.
  */
-const FADE_FLOOR = 0.22;
+const FADE_FLOOR = 0.3;
 const TIER_ALPHA: Record<Exclude<Tier, 0>, number> = {
     1: 1,
-    2: 0.72,
-    3: 0.5,
-    4: 0.34,
+    2: 0.74,
+    3: 0.56,
+    4: 0.42,
     5: FADE_FLOOR,
 };
 
@@ -58,39 +110,101 @@ function tint(hex: string, alpha: number): string {
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-function BookBlock({ book, onPress }: { book: BookCloth; onPress?: (book: BookCloth) => void }) {
+function Parcel({ book, onPress }: { book: BookCloth; onPress?: (book: BookCloth) => void }) {
     const { colors } = useTheme();
-    const untouched = book.worked === 0;
+
+    const columns = unitsFor(book.total);
+    const rows = bedRows(book.total, columns);
+
+    // Walk the chapters in order, handing each row its slice.
+    let cursor = 0;
+    const beds = rows.map(count => {
+        const slice = book.cells.slice(cursor, cursor + count);
+        cursor += count;
+        return slice;
+    });
 
     return (
         <ScalePressable
-            style={styles.block}
+            style={[styles.parcel, { flexGrow: columns, flexBasis: 0 }]}
             onPress={onPress ? () => onPress(book) : undefined}
             disabled={!onPress}
             accessibilityRole={onPress ? 'button' : undefined}
             accessibilityLabel={`${book.name}, ${book.worked} of ${book.total} chapters`}
         >
-            <View style={[styles.cells, { width: COLUMNS * CELL + (COLUMNS - 1) * GAP }]}>
-                {book.cells.map((tier, index) => (
-                    <View
-                        key={index}
-                        style={[
-                            styles.cell,
-                            tier === 0
-                                ? { backgroundColor: 'transparent', borderColor: colors.borderSubtle }
-                                : {
-                                    backgroundColor: tint(colors.accent, TIER_ALPHA[tier]),
-                                    borderColor: tint(colors.accent, TIER_ALPHA[tier]),
-                                },
-                        ]}
-                    />
+            <View
+                style={[
+                    styles.ground,
+                    { backgroundColor: colors.backgroundSubtle, borderColor: colors.border },
+                ]}
+            >
+                {beds.map((bed, rowIndex) => (
+                    <View key={rowIndex} style={styles.bedRow}>
+                        {bed.map((tier, index) => (
+                            <View
+                                key={index}
+                                style={[
+                                    styles.bed,
+                                    /*
+                                     * Untilled chapters are left transparent so
+                                     * the parcel's own soil shows through — the
+                                     * ground is continuous under the crop, which
+                                     * is what stops an unread book reading as a
+                                     * hole in the field.
+                                     */
+                                    tier !== 0 && { backgroundColor: tint(colors.accent, TIER_ALPHA[tier]) },
+                                ]}
+                            />
+                        ))}
+                    </View>
                 ))}
             </View>
-            <Text variant="meta" tone={untouched ? 'muted' : 'tertiary'} numberOfLines={1}>
+            {/*
+              * Shrink-to-fit rather than truncate. The narrowest parcels are
+              * three units wide and some of their names ("1Thess") do not fit
+              * at full size — and a plot labelled "1The…" is worse than a plot
+              * labelled small.
+              */}
+            <Text
+                variant="meta"
+                tone={book.worked === 0 ? 'muted' : 'tertiary'}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+            >
                 {book.abbrv}
             </Text>
         </ScalePressable>
     );
+}
+
+/**
+ * Parcels packed into rows of the field.
+ *
+ * Canonical order is preserved — the holding is still the Bible, and reading
+ * it as a map depends on Genesis being where Genesis goes. Rows simply break
+ * when the next parcel would not fit, and then stretch, the way strips of land
+ * meet a track.
+ */
+const ROW_UNITS = 30;
+
+function packRows(books: BookCloth[]): BookCloth[][] {
+    const rows: BookCloth[][] = [];
+    let row: BookCloth[] = [];
+    let used = 0;
+
+    for (const book of books) {
+        const units = unitsFor(book.total);
+        if (row.length > 0 && used + units > ROW_UNITS) {
+            rows.push(row);
+            row = [];
+            used = 0;
+        }
+        row.push(book);
+        used += units;
+    }
+    if (row.length > 0) rows.push(row);
+    return rows;
 }
 
 export function BibleCloth({
@@ -100,10 +214,16 @@ export function BibleCloth({
     books: BookCloth[];
     onBookPress?: (book: BookCloth) => void;
 }) {
+    const rows = packRows(books);
+
     return (
         <View style={styles.field}>
-            {books.map(book => (
-                <BookBlock key={book.name} book={book} onPress={onBookPress} />
+            {rows.map((row, index) => (
+                <View key={index} style={styles.fieldRow}>
+                    {row.map(book => (
+                        <Parcel key={book.name} book={book} onPress={onBookPress} />
+                    ))}
+                </View>
             ))}
         </View>
     );
@@ -116,38 +236,32 @@ export function ClothLegend() {
 
     return (
         <View style={styles.legend}>
-            <Text variant="meta" tone="tertiary">Recent</Text>
-            <View style={styles.legendCells}>
+            <Text variant="meta" tone="tertiary">Worked recently</Text>
+            <View style={[styles.legendStrip, { borderColor: colors.border, backgroundColor: colors.backgroundSubtle }]}>
                 {tiers.map(tier => (
                     <View
                         key={tier}
-                        style={[
-                            styles.cell,
-                            {
-                                backgroundColor: tint(colors.accent, TIER_ALPHA[tier]),
-                                borderColor: tint(colors.accent, TIER_ALPHA[tier]),
-                            },
-                        ]}
+                        style={[styles.legendBed, { backgroundColor: tint(colors.accent, TIER_ALPHA[tier]) }]}
                     />
                 ))}
-                <View style={[styles.cell, styles.legendGap, { borderColor: colors.borderSubtle }]} />
+                {/* Untilled, shown as the parcel soil it actually is. */}
+                <View style={styles.legendBed} />
+                <View style={styles.legendBed} />
             </View>
-            <Text variant="meta" tone="tertiary">Not yet</Text>
+            <Text variant="meta" tone="tertiary">Untilled</Text>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    field: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        alignItems: 'flex-start',
-        gap: Spacing.md,
-    },
-    block: { gap: Spacing.xs },
-    cells: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP },
-    cell: { width: CELL, height: CELL, borderWidth: 1 },
+    field: { gap: TRACK },
+    fieldRow: { flexDirection: 'row', alignItems: 'flex-start', gap: TRACK },
+    parcel: { gap: 2 },
+    ground: { borderWidth: 1, padding: 1, gap: FURROW },
+    bedRow: { flexDirection: 'row' },
+    /* No horizontal gap: adjacent worked chapters must fuse into one bed. */
+    bed: { flexGrow: 1, flexBasis: 0, height: BED_HEIGHT },
     legend: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-    legendCells: { flexDirection: 'row', gap: GAP, alignItems: 'center' },
-    legendGap: { marginLeft: Spacing.xs, backgroundColor: 'transparent' },
+    legendStrip: { flexDirection: 'row', borderWidth: 1, padding: 1, flex: 1 },
+    legendBed: { flexGrow: 1, flexBasis: 0, height: BED_HEIGHT },
 });

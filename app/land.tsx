@@ -29,7 +29,7 @@ import { BookCloth, Cloth, quietBooks, weaveCloth } from '@/src/land/cloth';
 import { Spacing } from '@/src/theme/spacing';
 import { useTheme } from '@/src/theme/ThemeContext';
 
-/** Past this, a book has gone quiet enough to be worth naming. */
+/** Past this, a parcel has been resting long enough to be worth naming. */
 const QUIET_DAYS = 120;
 const QUIET_LIMIT = 3;
 
@@ -118,7 +118,7 @@ export default function LandScreen() {
                     <View style={styles.summary}>
                         <UIText variant="hero">{cloth.worked}</UIText>
                         <UIText variant="label">
-                            {`chapters worked of ${cloth.total.toLocaleString()}`}
+                            {`chapters under cultivation of ${cloth.total.toLocaleString()}`}
                         </UIText>
                     </View>
 
@@ -158,10 +158,16 @@ export default function LandScreen() {
                       */}
                     {quiet.length > 0 && (
                         <View style={[styles.quiet, { borderTopColor: colors.border }]}>
-                            <UIText variant="label">GONE QUIET</UIText>
+                            <UIText variant="label">LYING FALLOW</UIText>
+                            {/*
+                              * Fallow is the exact word and it is doing real
+                              * work. Land left fallow is resting, not lost, and
+                              * it is still yours — which is the whole mechanic
+                              * in one farming term the reader already knows.
+                              */}
                             {quiet.map(book => (
                                 <UIText key={book.name} variant="body" tone="secondary">
-                                    {`${book.name} — ${book.worked} chapters, last ${ago(book.lastWorkedDays ?? 0)}`}
+                                    {`${book.name} — ${book.worked} chapters, last worked ${ago(book.lastWorkedDays ?? 0)}`}
                                 </UIText>
                             ))}
                         </View>
