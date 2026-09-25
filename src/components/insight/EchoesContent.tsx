@@ -19,6 +19,7 @@
 
 import React, { useCallback, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
+import { Sparkles } from 'lucide-react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 
 import { useTheme } from '../../theme/ThemeContext';
@@ -230,11 +231,19 @@ export function EchoesContent({ onCountChange }: { onCountChange?: (n: number) =
 
     if (rows.length === 0) {
         return (
-            <View style={styles.empty}>
-                <Text variant={isLockedIn ? 'title' : 'subtitle'} style={styles.centred}>
+            /* design/all-screens.html #empties — the same shape as the other
+               seven: Cloth centred under a bare glyph, Colossal set left with
+               no glyph at all. */
+            <View style={[styles.empty, isLockedIn ? styles.emptyColossal : styles.emptyCloth]}>
+                {!isLockedIn && <Sparkles size={34} color={colors.textTertiary} strokeWidth={1.5} />}
+                <Text variant="title" style={isLockedIn ? undefined : styles.centred}>
                     Nothing noticed yet
                 </Text>
-                <Text variant="body" tone="secondary" style={styles.centred}>
+                <Text
+                    variant="body"
+                    tone="secondary"
+                    style={isLockedIn ? undefined : styles.centred}
+                >
                     Àṣàrò watches for passages your entries keep circling without ever landing on.
                     When it finds one, it will appear on Home — not here.
                 </Text>
@@ -336,9 +345,10 @@ const styles = StyleSheet.create({
     empty: {
         flex: 1,
         justifyContent: 'center',
-        paddingHorizontal: Spacing.layout.screenPadding,
-        gap: Spacing.md,
+        gap: Spacing.lg,
     },
+    emptyCloth: { alignItems: 'center', paddingHorizontal: Spacing.xxl + 2 },
+    emptyColossal: { paddingHorizontal: Spacing.layout.screenPaddingTight },
     centred: { textAlign: 'center' },
     list: {
         padding: Spacing.layout.screenPadding,

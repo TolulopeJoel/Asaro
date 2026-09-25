@@ -639,6 +639,24 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
         return items;
     }, [viewMode, filteredEntries, debouncedSearchQuery, availableBooks, bookEntries, selectedBook, groupEntriesByDate, actionsList, topicsList, isArchiveCollapsed]);
 
+    /*
+     * Nothing here yet.
+     *
+     * design/all-screens.html #empties. Eight of these, one per place a list
+     * can be empty, and for Questions and Commitments they are often the only
+     * thing on screen for weeks — so the copy carries the app's voice and the
+     * layout gets out of its way.
+     *
+     * No icon well. The glyph used to sit inside an 84px tinted box at
+     * borderRadius.lg, which was the largest rounded shape in an app that has
+     * none. Cloth keeps the glyph bare on the stroke at 34px, the treatment
+     * #themesearly already uses. Colossal takes no glyph at all: it has no
+     * decorative marks anywhere, and where it has no number to enlarge the
+     * type carries the screen on its own, set left rather than centred.
+     *
+     * None of the eight gets a button. What fills them is already on screen —
+     * the field above, the tab beside, the entry you have not written.
+     */
     const renderEmptyState = useCallback(() => {
         let iconName: any = Notebook;
         let title = "It's awful quiet in here...";
@@ -667,15 +685,24 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
         }
 
         return (
-            <View style={styles.emptyState}>
-                <View style={[styles.emptyIconContainer, { backgroundColor: colors.backgroundSubtle }]}>
-                    {React.createElement(iconName, { size: 32, color: colors.textTertiary })}
-                </View>
-                <Text variant="subtitle" style={styles.emptyStateText}>{title}</Text>
-                <Text variant="body" tone="secondary" style={styles.emptyStateSubtext}>{subtext}</Text>
+            <View style={[styles.emptyState, isLockedIn ? styles.emptyColossal : styles.emptyCloth]}>
+                {!isLockedIn &&
+                    React.createElement(iconName, {
+                        size: 34,
+                        color: colors.textTertiary,
+                        strokeWidth: 1.5,
+                    })}
+                <Text variant="title" style={isLockedIn ? undefined : styles.centred}>{title}</Text>
+                <Text
+                    variant="body"
+                    tone="secondary"
+                    style={isLockedIn ? undefined : styles.centred}
+                >
+                    {subtext}
+                </Text>
             </View>
         );
-    }, [viewMode, debouncedSearchQuery, colors]);
+    }, [viewMode, debouncedSearchQuery, colors, isLockedIn]);
 
     const [completedPlanIds, setCompletedPlanIds] = useState<Set<number>>(new Set());
 
@@ -928,19 +955,16 @@ const styles = StyleSheet.create({
     },
     emptyState: {
         flex: 1,
-        alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: 48,
+        gap: Spacing.lg,
         paddingVertical: 100,
     },
-    emptyIconContainer: {
-        width: 84,
-        height: 84,
-        borderRadius: Spacing.borderRadius.lg,
+    /** Centred under its glyph, in from the gutter so the line breaks early. */
+    emptyCloth: {
         alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 24,
+        paddingHorizontal: Spacing.xxl + 2,
     },
-    emptyStateText: { textAlign: 'center', marginBottom: 12 },
-    emptyStateSubtext: { textAlign: 'center' },
+    /** Set left, like everything else Colossal puts on a page. */
+    emptyColossal: { paddingHorizontal: Spacing.layout.screenPaddingTight },
+    centred: { textAlign: 'center' },
 });
