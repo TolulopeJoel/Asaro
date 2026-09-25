@@ -1,6 +1,9 @@
 import { MonthGrid } from '@/src/components/stats/MonthGrid';
+import { PracticeHistory } from '@/src/components/journal/PracticeHistory';
+import { actionKindOf, isCadence } from '@/src/data/actionKind';
+import { PracticeProgress, practiceProgress } from '@/src/data/practiceRepository';
 import { LoadingView } from '@/src/components/LoadingView';
-import { getDailyEntryCounts, getFirstEntryDate } from '@/src/data/database';
+import { EnhancedActionItem, getAllActionItems, getDailyEntryCounts, getFirstEntryDate } from '@/src/data/database';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { formatDateToLocalString, getLocalMidnight } from '@/src/utils/dateUtils';
@@ -156,6 +159,47 @@ export default function StatsScreen() {
         }, [loadStats])
     );
 
+    /*
+     * Practices, with how each has actually gone.
+     *
+     * They live here rather than on their cards in the Library, which is
+     * where the reader manages what they are carrying — edits it, ticks it,
+     * archives it. "How has this gone over the last fortnight" is a different
+     * question and belongs beside the other records of how things have gone.
+     */
+    const [practices, setPractices] = useState<
+        { item: EnhancedActionItem; progress: PracticeProgress }[]
+    >([]);
+
+    useFocusEffect(
+        useCallback(() => {
+            let alive = true;
+            (async () => {
+                try {
+                    const all = await getAllActionItems(200);
+                    const live = all.filter(
+                        item => !item.archived_at && actionKindOf(item) === 'practice' && isCadence(item.cadence),
+                    );
+                    const withProgress = await Promise.all(
+                        live.map(async item => ({
+                            item,
+                            progress: await practiceProgress(item.id!, item.cadence),
+                        })),
+                    );
+                    // Kept longest first: the established ones are the record.
+                    withProgress.sort((a, b) => b.progress.streak - a.progress.streak);
+                    if (alive) setPractices(withProgress);
+                } catch {
+                    // Stats never breaks for this.
+                    if (alive) setPractices([]);
+                }
+            })();
+            return () => {
+                alive = false;
+            };
+        }, []),
+    );
+
     const currentMonthName = new Date().toLocaleDateString('en-US', { month: 'long' });
 
     const { longest, current } = React.useMemo(() => runs(state.allTimeData), [state.allTimeData]);
@@ -295,13 +339,43 @@ export default function StatsScreen() {
                         styles.scrollContent,
                         isLockedIn && styles.scrollContentColossal,
                     ]}
-                    ListHeaderComponent={isLockedIn
-                        ? <View style={[styles.rule, { backgroundColor: colors.border }]} />
-                        : renderHeader}
-                    ListFooterComponent={
+                    /*
+                     * The runs sit at the TOP, with the current month.
+                     *
+                     * They were the list's footer, which put "how am I doing
+                     * right now" below every month the reader has ever
+                     * written in — a year of grids to scroll past to reach
+                     * the one number that changes daily. The cost of that
+                     * placement grows with exactly the loyalty it is meant to
+                     * reward, which is the wrong way round.
+                     */
+                    ListHeaderComponent={
                         <>
-                            <Run label="Longest run" run={longest} />
+                            {isLockedIn
+                                ? <View style={[styles.rule, { backgroundColor: colors.border }]} />
+                                : renderHeader()}
                             <Run label="Current run" run={current} accent />
+                            <Run label="Longest run" run={longest} />
+
+                            {practices.length > 0 && (
+                                <View style={styles.practices}>
+                                    <View style={[styles.rule, { backgroundColor: colors.border }]} />
+                                    <UIText variant="label">PRACTICES</UIText>
+                                    {practices.map(({ item, progress }) => (
+                                        <View key={item.id} style={styles.practice}>
+                                            <UIText variant="body" numberOfLines={2}>{item.action}</UIText>
+                                            {isCadence(item.cadence) && (
+                                                <PracticeHistory
+                                                    completions={progress.completions}
+                                                    cadence={item.cadence}
+                                                />
+                                            )}
+                                        </View>
+                                    ))}
+                                </View>
+                            )}
+
+                            <View style={styles.runsGap} />
                         </>
                     }
                     showsVerticalScrollIndicator={false}
@@ -326,6 +400,11 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.xl,
         gap: Spacing.lg,
     },
+    /* Space between the runs and the first month grid, so the summary reads
+     * as a block of its own rather than as a caption on January. */
+    runsGap: { height: Spacing.xl },
+    practices: { marginTop: Spacing.xl, gap: Spacing.md },
+    practice: { gap: Spacing.xs },
     statsCard: {},
     monthLabel: {},
     /** `.cl-hsub{margin:8px 0 0}` */

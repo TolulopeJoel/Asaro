@@ -17,9 +17,8 @@ import { ScalePressable } from '../ScalePressable';
 import { HyperlinkedText } from '../HyperlinkedText';
 import { Spacing } from '../../theme/spacing';
 import { Text, textStyle } from '../ui';
-import { ActionKind, actionKindOf, completes, isCadence } from '../../data/actionKind';
+import { ActionKind, actionKindOf, completes } from '../../data/actionKind';
 import { PracticeProgress } from '../../data/practiceRepository';
-import { PracticeHistory } from './PracticeHistory';
 
 interface ActionCardProps {
     item: EnhancedActionItem;
@@ -111,13 +110,12 @@ export const ActionCard = React.memo(({ item, onEntryPress, handleTogglePin, han
     const showsCheckbox = completes(kind) && !isArchived;
     const streak = kind === 'practice' ? streakLabel(progress?.streak ?? 0, item.cadence) : null;
     /*
-     * The cells sit under the meta row rather than beside the streak, because
-     * they are the thing that stays true on the day the streak reads zero.
+     * The history cells used to sit here, under the meta row. They belong on
+     * Stats instead: the Library is where the reader MANAGES what they are
+     * carrying — edit it, tick it, pin it, archive it — and a record of the
+     * last fortnight answers a different question entirely. A row that has to
+     * be both a control and a chart is worse at both.
      */
-    const history =
-        kind === 'practice' && progress && isCadence(item.cadence) && !isArchived ? (
-            <PracticeHistory completions={progress.completions} cadence={item.cadence} />
-        ) : null;
     const due = kind === 'action' ? dueLabel(item.due_at) : null;
     /* Only an action stays struck through — a practice ticked today is not finished. */
     const struckOut = kind === 'action' && done;
@@ -175,7 +173,6 @@ export const ActionCard = React.memo(({ item, onEntryPress, handleTogglePin, han
                         {streak && <Text variant="meta" tone="accent">{streak}</Text>}
                         {due && <Text variant="meta" tone="accent">{due}</Text>}
                     </View>
-                    {history}
                 </ScalePressable>
                 {/*
                   * The mockup draws no pin here — it expresses pinning with the
@@ -252,7 +249,6 @@ export const ActionCard = React.memo(({ item, onEntryPress, handleTogglePin, han
                         {streak && <Text variant="meta" tone="accent">{streak}</Text>}
                         {due && <Text variant="meta" tone="accent">{due}</Text>}
                     </View>
-                    {history}
                 </ScalePressable>
                 <TouchableOpacity
                     onPress={() => handleTogglePin(item)}
