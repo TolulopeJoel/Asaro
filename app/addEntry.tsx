@@ -255,7 +255,7 @@ export default function MeditationSessionScreen() {
                 await updateJournalEntry(targetId, entryData);
                 await runPostSaveNotifications(false, answers.studyFurtherReminder, answers.studyFurther);
                 if (isEditMode) {
-                    showAlert({ title: 'Success', message: 'Entry updated successfully' });
+                    showAlert({ title: 'Updated', message: 'Your entry is saved.' });
                     router.back();
                 } else {
                     await AsyncStorage.removeItem(STORAGE_KEYS.REFLECTION_DRAFT);

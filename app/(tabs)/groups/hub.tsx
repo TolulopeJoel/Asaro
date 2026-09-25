@@ -11,7 +11,7 @@ import { Spacing } from '@/src/theme/spacing';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { useRouter } from 'expo-router';
 import { Users, CloudOff, RefreshCw, Plus, ChevronRight, Flame } from 'lucide-react-native';
-import { getFirestore, collection, doc, onSnapshot, getDocs, query, where, documentId } from '@react-native-firebase/firestore';
+import { getFirestore, collection, doc, onSnapshot, getDocs, query, where, documentId, limit } from '@react-native-firebase/firestore';
 import { Button } from '@/src/components/Button';
 import { Skeleton } from '@/src/components/Skeleton';
 import { Avatar } from '@/src/components/Avatar';
@@ -23,6 +23,22 @@ export default function GroupsScreen() {
     const router = useRouter();
     const db = getFirestore();
     const [joinedGroups, setJoinedGroups] = useState<any[]>([]);
+    /**
+     * Groups that have nobody holding Admin, so the empty description can say
+     * WHY it is empty.
+     *
+     * Only a group's Admin can write the description — see the Iron Man rule
+     * on the About screen — so "somebody should write one" is a fair nudge
+     * pointed at an Admin and an unfair one pointed at a group that has not
+     * got one. The second case is the funnier line anyway: the description is
+     * blank because nobody has read for twenty-one days in a month yet.
+     *
+     * Admin lives on each group's `members` subcollection, which this screen
+     * otherwise never reads. The extra query is taken ONLY for groups whose
+     * description is already empty — most groups have one, so most sessions
+     * pay nothing for the joke.
+     */
+    const [adminless, setAdminless] = useState<Set<string>>(new Set());
     const [checkingGroups, setCheckingGroups] = useState(true);
     const [isOffline, setIsOffline] = useState(false);
     const scrollViewRef = useRef<ScrollView>(null);
@@ -68,6 +84,33 @@ export default function GroupsScreen() {
                             snap.docs.map((docSnap: any) => ({ id: docSnap.id, ...docSnap.data() }))
                         );
                         setJoinedGroups(groupsData);
+
+                        /* Only the blank ones, and only ever one doc each. */
+                        const blank = groupsData.filter((g: any) => !g.description);
+                        if (blank.length > 0) {
+                            const checked = await Promise.all(
+                                blank.map(async (g: any) => {
+                                    try {
+                                        const admins = await getDocs(
+                                            query(
+                                                collection(db, 'groups', g.id, 'members'),
+                                                where('role', '==', 'admin'),
+                                                limit(1),
+                                            ),
+                                        );
+                                        return admins.empty ? g.id : null;
+                                    } catch {
+                                        /* Offline, or rules say no. Fall back to
+                                         * the neutral line rather than accusing
+                                         * a group of something unverified. */
+                                        return null;
+                                    }
+                                }),
+                            );
+                            setAdminless(new Set(checked.filter(Boolean) as string[]));
+                        } else {
+                            setAdminless(new Set());
+                        }
                     } catch (error) {
                         console.error('Error fetching group metadata:', error);
                         // Don't clear existing groups — keep showing whatever we have
@@ -94,7 +137,7 @@ export default function GroupsScreen() {
             <Screen edges={[]}>
                 <Hero ownsTopInset>
                     <Text variant="display" tone="onBand">Better{'\n'}Together</Text>
-                    <Text variant="sub" tone="onHero" style={styles.heroSub}>Consistency is key. Read together!</Text>
+                    <Text variant="sub" tone="onHero" style={styles.heroSub}>Read together. I am watching all of you. 👀</Text>
                 </Hero>
                 <ScrollView
                     ref={scrollViewRef}
@@ -199,7 +242,9 @@ export default function GroupsScreen() {
                                     <View style={styles.groupInfo}>
                                         <Text variant="body">{group.name}</Text>
                                         <Text variant="bodySmall" tone="secondary" style={styles.groupDesc}>
-                                            {group.description || 'Consistency is key. Read together!'}
+                                            {group.description
+                                                || `No description. Somebody should write one.${adminless.has(group.id) ? ' Oh. Nobody here is Admin. 😂' : ''
+                                                }`}
                                         </Text>
                                     </View>
                                     <ChevronRight size={18} color={colors.textTertiary} />

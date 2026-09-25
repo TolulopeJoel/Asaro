@@ -113,7 +113,7 @@ export default function AuthScreen() {
                     }
                 }
 
-                showAlert({ title: 'Success', message: 'Account created successfully!' });
+                showAlert({ title: 'Account created', message: 'You are in.' });
             } else {
                 await signInWithEmailAndPassword(authInstance, email, password);
             }

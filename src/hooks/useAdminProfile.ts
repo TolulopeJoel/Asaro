@@ -58,7 +58,7 @@ export const useAdminProfile = () => {
                 }
             }
             setPhotoURL(url.trim());
-            showAlert({ title: 'Success', message: 'Profile photo updated successfully' });
+            showAlert({ title: 'Done', message: 'Photo changed.' });
         } catch (error) {
             console.error('Failed to save profile:', error);
             showAlert({ title: 'Error', message: 'Failed to update profile photo' });

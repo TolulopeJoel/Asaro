@@ -240,8 +240,7 @@ const WeekClosed = ({ colors, label }: { colors: any; label: string }) => (
     <View style={{ paddingVertical: Spacing.xl, gap: Spacing.sm }}>
         <Text variant="label" style={{ color: colors.textTertiary }}>{label.toUpperCase()}</Text>
         <Text variant="sub" style={{ color: colors.textSecondary }}>
-            Everyone&apos;s week is gathered up on Sunday. Until then, this is between you and
-            your own reading.
+            You will see everybody on Sunday. Till then, face your own reading. 😌
         </Text>
     </View>
 );
@@ -1362,7 +1361,7 @@ export default function GroupDetailScreen() {
                                         <Sun size={28} color={colors.textTertiary} />
                                     )}
                                     <Text variant="quote" tone="tertiary" style={styles.emptyFeedText}>
-                                        {isOffline ? 'Feed unavailable offline. Check back when connected.' : 'No activity yet. Be the first!'}
+                                        {isOffline ? 'Feed unavailable offline. Check back when connected.' : 'Nobody has read anything. Including you o.'}
                                     </Text>
                                 </View>
                             )}

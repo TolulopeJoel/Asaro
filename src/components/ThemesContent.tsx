@@ -263,7 +263,7 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
                 ? `Downloading… ${Math.round(progress * 100)}%`
                 : progress > 0 && progress < 1
                   ? `Reading your entries… ${Math.round(progress * 100)}%`
-                  : 'Looking for patterns…';
+                  : 'Give me a minute. I am reading everything.';
         return (
             <View style={styles.center}>
                 <ActivityIndicator color={colors.accent} />
