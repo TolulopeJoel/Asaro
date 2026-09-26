@@ -27,6 +27,7 @@ import {
     practiceProgress,
     unmarkPracticeDone,
 } from '../data/practiceRepository';
+import { KeepMoment, forgetMoment, momentOnKeep } from '../grove/loadGrove';
 
 const DAY_MS = 86_400_000;
 
@@ -42,6 +43,8 @@ export interface TodayItem {
     overdue: boolean;
     /** Kept from this screen, this visit. Practices only — see the header. */
     kept: boolean;
+    /** What that keep did to its tree, when it was worth a word. */
+    moment?: KeepMoment;
 }
 
 export interface Today {
@@ -68,6 +71,8 @@ export function useToday(enabled: boolean): Today {
     // leaving Home clears it — by then the tap is no longer the thing just
     // done.
     const keptHere = useRef<Set<number>>(new Set());
+    // What each keep here did to its tree. Kept alongside `keptHere`, and for the same visit.
+    const momentsHere = useRef<Map<number, KeepMoment>>(new Map());
 
     const load = useCallback(async () => {
         if (!enabled) return;
@@ -91,6 +96,7 @@ export function useToday(enabled: boolean): Today {
                         streak: progress.streak,
                         overdue: false,
                         kept: progress.doneNow,
+                        moment: momentsHere.current.get(item.id!),
                     });
                     continue;
                 }
@@ -134,6 +140,12 @@ export function useToday(enabled: boolean): Today {
         async (item: EnhancedActionItem) => {
             keptHere.current.add(item.id!);
             await markPracticeDone(item.id!);
+            try {
+                const moment = await momentOnKeep(item);
+                if (moment) momentsHere.current.set(item.id!, moment);
+            } catch {
+                // A tree that cannot be read never stops the keep.
+            }
             load();
         },
         [load],
@@ -147,6 +159,9 @@ export function useToday(enabled: boolean): Today {
     const undo = useCallback(
         async (item: EnhancedActionItem) => {
             keptHere.current.delete(item.id!);
+            const moment = momentsHere.current.get(item.id!);
+            momentsHere.current.delete(item.id!);
+            if (moment?.key) await forgetMoment(moment.key).catch(() => { });
             await unmarkPracticeDone(item.id!);
             load();
         },

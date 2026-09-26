@@ -24,6 +24,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { Spacing } from '../../theme/spacing';
 import { ScalePressable } from '../ScalePressable';
 import { Text } from '../ui';
+import { Tree } from '../grove/Tree';
 import { TodayItem } from '../../hooks/useToday';
 
 interface Props {
@@ -50,69 +51,83 @@ export function TodayStrip({ items, onKeep, onUndo, onOpen }: Props) {
                 {items.map(entry => {
                     const isPractice = entry.kind === 'practice';
                     return (
-                        <View
-                            key={entry.item.id}
-                            style={[styles.row, { borderBottomColor: colors.border }]}
-                        >
-                            {/*
-                              * Only a practice can be kept from here. An action
-                              * has a deadline and a completion that sticks, so
-                              * it is closed where it lives rather than in
-                              * passing on the front page.
-                              */}
-                            {isPractice ? (
+                        <View key={entry.item.id} style={[styles.entry, { borderBottomColor: colors.border }]}>
+                            <View style={styles.row}>
+                                {/*
+                                  * Only a practice can be kept from here. An action
+                                  * has a deadline and a completion that sticks, so
+                                  * it is closed where it lives rather than in
+                                  * passing on the front page.
+                                  */}
+                                {isPractice ? (
+                                    <ScalePressable
+                                        onPress={() => (entry.kept ? onUndo(entry) : onKeep(entry))}
+                                        accessibilityRole="checkbox"
+                                        accessibilityState={{ checked: entry.kept }}
+                                        accessibilityLabel={
+                                            entry.kept
+                                                ? `Undo ${entry.item.action} for today`
+                                                : `Mark ${entry.item.action} done for today`
+                                        }
+                                        hitSlop={Spacing.md}
+                                        style={[
+                                            styles.box,
+                                            entry.kept
+                                                ? { backgroundColor: colors.textPrimary, borderColor: colors.textPrimary }
+                                                : { borderColor: colors.borderStrong },
+                                        ]}
+                                    >
+                                        <Check size={11} color={entry.kept ? colors.background : 'transparent'} />
+                                    </ScalePressable>
+                                ) : (
+                                    <View style={[styles.marker, { backgroundColor: entry.overdue ? colors.accent : colors.border }]} />
+                                )}
+
                                 <ScalePressable
-                                    onPress={() => (entry.kept ? onUndo(entry) : onKeep(entry))}
-                                    accessibilityRole="checkbox"
-                                    accessibilityState={{ checked: entry.kept }}
-                                    accessibilityLabel={
-                                        entry.kept
-                                            ? `Undo ${entry.item.action} for today`
-                                            : `Mark ${entry.item.action} done for today`
-                                    }
-                                    hitSlop={Spacing.md}
-                                    style={[
-                                        styles.box,
-                                        entry.kept
-                                            ? { backgroundColor: colors.textPrimary, borderColor: colors.textPrimary }
-                                            : { borderColor: colors.borderStrong },
-                                    ]}
+                                    style={styles.main}
+                                    disabled={!onOpen}
+                                    onPress={onOpen ? () => onOpen(entry) : undefined}
+                                    accessibilityRole={onOpen ? 'button' : undefined}
                                 >
-                                    <Check size={11} color={entry.kept ? colors.background : 'transparent'} />
+                                    <Text
+                                        variant="body"
+                                        numberOfLines={2}
+                                        tone={entry.kept ? 'tertiary' : undefined}
+                                    >
+                                        {entry.item.action}
+                                    </Text>
                                 </ScalePressable>
-                            ) : (
-                                <View style={[styles.marker, { backgroundColor: entry.overdue ? colors.accent : colors.border }]} />
-                            )}
 
-                            <ScalePressable
-                                style={styles.main}
-                                disabled={!onOpen}
-                                onPress={onOpen ? () => onOpen(entry) : undefined}
-                                accessibilityRole={onOpen ? 'button' : undefined}
-                            >
-                                <Text
-                                    variant="body"
-                                    numberOfLines={2}
-                                    tone={entry.kept ? 'tertiary' : undefined}
+                                {/*
+                                  * The whole point of the kept row. On the tap this
+                                  * is the number that just went up, so it stays at
+                                  * full strength while the line around it dims.
+                                  */}
+                                {isPractice && entry.streak >= 1 && (
+                                    <Text variant="meta" tone="accent">
+                                        {`${entry.streak}${entry.item.cadence === 'weekly' ? 'w' : 'd'}`}
+                                    </Text>
+                                )}
+                                {!isPractice && (
+                                    <Text variant="meta" tone={entry.overdue ? 'accent' : 'tertiary'}>
+                                        {entry.overdue ? 'was due' : 'due'}
+                                    </Text>
+                                )}
+                            </View>
+
+                            {/* What that keep just grew. Undone with the tick, and
+                              * gone with the row when Home is left. */}
+                            {entry.moment && (
+                                <View
+                                    style={[styles.moment, { backgroundColor: colors.backgroundSubtle }]}
+                                    accessibilityLiveRegion="polite"
                                 >
-                                    {entry.item.action}
-                                </Text>
-                            </ScalePressable>
-
-                            {/*
-                              * The whole point of the kept row. On the tap this
-                              * is the number that just went up, so it stays at
-                              * full strength while the line around it dims.
-                              */}
-                            {isPractice && entry.streak >= 1 && (
-                                <Text variant="meta" tone="accent">
-                                    {`${entry.streak}${entry.item.cadence === 'weekly' ? 'w' : 'd'}`}
-                                </Text>
-                            )}
-                            {!isPractice && (
-                                <Text variant="meta" tone={entry.overdue ? 'accent' : 'tertiary'}>
-                                    {entry.overdue ? 'was due' : 'due'}
-                                </Text>
+                                    <Tree stage={entry.moment.stage} species={entry.moment.species} size={52} fit />
+                                    <View style={styles.momentText}>
+                                        <Text variant="label" tone="accent">{entry.moment.title}</Text>
+                                        <Text variant="bodySmall" tone="secondary">{entry.moment.line}</Text>
+                                    </View>
+                                </View>
                             )}
                         </View>
                     );
@@ -125,13 +140,21 @@ export function TodayStrip({ items, onKeep, onUndo, onOpen }: Props) {
 const styles = StyleSheet.create({
     wrap: { gap: Spacing.sm },
     list: { borderTopWidth: 1 },
+    entry: { borderBottomWidth: 1 },
     row: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: Spacing.md,
         paddingVertical: Spacing.md,
-        borderBottomWidth: 1,
     },
+    moment: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.md,
+        padding: Spacing.sm + 2,
+        marginBottom: Spacing.md,
+    },
+    momentText: { flex: 1, minWidth: 0, gap: 2 },
     main: { flex: 1, minWidth: 0 },
     box: {
         width: 18,

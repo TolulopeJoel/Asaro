@@ -112,3 +112,93 @@ export function assignSpecies(ids: number[], given: Record<string, number>): Rec
     }
     return out;
 }
+
+/**
+ * The stages worth a word when reached. Close together in the first month,
+ * when a new practice is most likely to be dropped; spaced out once it holds.
+ */
+export const MOMENT_STAGES = [1, 3, 4, FIRST_TREE_STAGE, FIRST_FRUIT_STAGE, 7, 8, 9];
+
+export interface GrowthMoment {
+    kind: 'stage' | 'back';
+    /** The stage reached. For `back`, the stage it stands at. */
+    stage: number;
+    title: string;
+    line: string;
+}
+
+const WORDS: Record<number, string> = {
+    2: 'Two', 3: 'Three', 4: 'Four', 5: 'Five', 6: 'Six', 7: 'Seven', 8: 'Eight', 9: 'Nine', 10: 'Ten',
+    13: 'Thirteen', 18: 'Eighteen', 30: 'Thirty', 50: 'Fifty', 75: 'Seventy-five', 100: 'A hundred',
+};
+/** "Thirty days", "Six weeks" — and a daily week or fortnight said as one. */
+const counted = (n: number, cadence: Cadence) => {
+    if (cadence === 'daily' && n === 7) return 'A week';
+    if (cadence === 'daily' && n === 14) return 'Two weeks';
+    return `${WORDS[n] ?? String(n)} ${cadence === 'daily' ? 'days' : 'weeks'}`;
+};
+const withArticle = (name: string) => `${/^[aeiou]/i.test(name) ? 'an' : 'a'} ${name.toLowerCase()}`;
+
+/**
+ * What keeping a practice just did, worth saying: a stage reached, or a thirsty
+ * tree kept again. Null when a keep only added a day. Once-ever for stages is
+ * the caller's to remember; coming back is worth saying every time it happens.
+ */
+export function momentOf(
+    cadence: Cadence,
+    keptBefore: number,
+    keptAfter: number,
+    species: number,
+    wasThirsty: boolean,
+): GrowthMoment | null {
+    if (keptAfter <= keptBefore) return null;
+    const before = growthOf(cadence, keptBefore).stage;
+    const after = growthOf(cadence, keptAfter).stage;
+    const tiers = THRESHOLDS[cadence];
+
+    if (after > before && MOMENT_STAGES.includes(after)) {
+        const span = counted(tiers[after], cadence);
+        if (after === 1) return { kind: 'stage', stage: after, title: 'Planted', line: `Planted. Come back ${cadence === 'daily' ? 'tomorrow' : 'next week'} and water it.` };
+        if (after === 3) return { kind: 'stage', stage: after, title: 'A shoot', line: `${span}. It has a stem now.` };
+        if (after === 4) return { kind: 'stage', stage: after, title: 'A sapling', line: `${span}. It's standing up on its own.` };
+        if (after === 7) return { kind: 'stage', stage: after, title: 'Fruiting', line: `${span}. More fruit than last time.` };
+        if (after === 8) return { kind: 'stage', stage: after, title: 'A full tree', line: `${span}. A full tree now. It didn't get there by accident.` };
+        if (after === FIRST_TREE_STAGE) {
+            const name = withArticle(SPECIES[species % SPECIES.length].name);
+            return { kind: 'stage', stage: after, title: `It's ${name}`, line: `It's ${name}. It was always going to be.` };
+        }
+        if (after === FIRST_FRUIT_STAGE) return { kind: 'stage', stage: after, title: 'First fruit', line: `First fruit. ${span} of it. I noticed.` };
+        return { kind: 'stage', stage: after, title: 'Heavy with fruit', line: `Heavy with fruit. ${span}, and I watched every one.` };
+    }
+    if (wasThirsty) return backTo(after);
+    return null;
+}
+
+/** Coming back says nothing about the gap — the tree lifting is the whole remark. */
+export const backTo = (stage: number): GrowthMoment =>
+    ({ kind: 'back', stage, title: 'Back to it', line: 'Back to it. It lifts already.' });
+
+/**
+ * Days after an anniversary it can still be marked. Past it the moment is
+ * history, not news — and without it, every old practice would announce one on
+ * its first keep after this shipped.
+ */
+export const ANNIVERSARY_WINDOW = 14;
+
+/**
+ * An anniversary of the practice, if one has just come round: six months, then
+ * each year. The tree has stopped growing by then, so these are what a
+ * long-kept practice still hears.
+ */
+export function anniversaryOf(daysSinceStart: number, stage: number): { id: string; moment: GrowthMoment } | null {
+    const within = (day: number) => daysSinceStart >= day && daysSinceStart <= day + ANNIVERSARY_WINDOW;
+    const years = Math.floor(daysSinceStart / 365);
+    if (years >= 1 && within(years * 365)) {
+        const line = years === 1
+            ? "A year of it. I've stopped counting. I haven't."
+            : `${WORDS[years] ?? String(years)} years of it. I was here for all of them.`;
+        return { id: `y${years}`, moment: { kind: 'stage', stage, title: years === 1 ? 'A year' : `${years} years`, line } };
+    }
+    if (within(182)) return { id: 'm6', moment: { kind: 'stage', stage, title: 'Six months', line: "Six months. This one's yours now." } };
+    return null;
+}
