@@ -27,6 +27,7 @@ import { BookCloth, ChapterRef, Tier } from '../../land/cloth';
 import { Cell, layoutCells } from '../../land/plots';
 import { useTheme } from '../../theme/ThemeContext';
 import { Asaro, Text } from '../ui';
+import { Tree } from '../grove/Tree';
 import { TERRAIN, mudFor } from './terrain';
 import {
     Speck,
@@ -155,6 +156,22 @@ const FRINGE_STEP = 11;
  */
 const MARKER_SIZE = 48;
 
+/**
+ * A tree's width in chapters, by stage: a sprout sits inside its chapter, a
+ * tree bearing fruit spreads over its neighbours as a real one would.
+ */
+const TREE_SPAN = [0.9, 1.05, 1.25, 1.5, 1.9, 2.4, 2.9, 3.3, 3.7, 4.1];
+
+/** A practice's tree, standing on the chapter it was written from. */
+export interface LandTree {
+    id: number;
+    bookName: string;
+    chapter: number;
+    stage: number;
+    species: number;
+    thirsty: boolean;
+}
+
 const rect = (x: number, y: number, w: number, h: number) => `M${x} ${y}h${w}v${h}h${-w}Z`;
 
 /**
@@ -224,6 +241,8 @@ export function BibleCloth({
     onBookPress,
     marker,
     onMarkerLayout,
+    trees,
+    onTreePress,
 }: {
     books: BookCloth[];
     /** Name of the holding currently identified, if any. */
@@ -233,6 +252,8 @@ export function BibleCloth({
     marker?: ChapterRef | null;
     /** His offset from the top of the land, once placed. */
     onMarkerLayout?: (y: number) => void;
+    trees?: LandTree[];
+    onTreePress?: (id: number) => void;
 }) {
     // Measured, not assumed: the grid divides a real width into whole columns,
     // and a guess leaves a ragged strip down the side of every other phone.
@@ -358,6 +379,19 @@ export function BibleCloth({
         const book = books.findIndex(b => b.name === marker.bookName);
         return cells.find(cell => cell.book === book && cell.chapter === marker.chapter);
     }, [marker, books, cells]);
+
+    // Lower rows last, so a tree nearer the reader stands in front of one behind it.
+    const planted = useMemo(() => {
+        if (!trees?.length) return [];
+        return trees
+            .map(tree => {
+                const book = books.findIndex(b => b.name === tree.bookName);
+                const cell = cells.find(c => c.book === book && c.chapter === tree.chapter);
+                return cell ? { tree, cell } : null;
+            })
+            .filter((p): p is { tree: LandTree; cell: Cell } => p !== null)
+            .sort((a, b) => a.cell.row - b.cell.row);
+    }, [trees, books, cells]);
 
     const onFieldPress = (event: GestureResponderEvent) => {
         if (!onBookPress || size <= 0) return;
@@ -536,6 +570,31 @@ export function BibleCloth({
                 </Svg>
             )}
 
+            {/* Each tree's trunk meets the lower part of its chapter. Only the
+              * middle of a tree answers a tap, so a wide canopy does not steal
+              * the books beneath it. */}
+            {size > 0 && planted.map(({ tree, cell }) => {
+                const w = size * TREE_SPAN[tree.stage];
+                const h = w * 1.2;
+                const left = VERGE_SIDE + (cell.column + 0.5) * size - w / 2;
+                const top = VERGE_DEPTH + (cell.row + 0.85) * size - h * (112 / 120);
+                return (
+                    <View key={tree.id} pointerEvents="box-none" style={[styles.tree, { left, top, width: w, height: h }]}>
+                        <View pointerEvents="none">
+                            <Tree stage={tree.stage} species={tree.species} thirsty={tree.thirsty} size={w} ground={false} />
+                        </View>
+                        {onTreePress && (
+                            <Pressable
+                                onPress={() => onTreePress(tree.id)}
+                                accessibilityRole="button"
+                                accessibilityLabel={`${tree.bookName} ${tree.chapter}, a practice's tree`}
+                                style={[styles.treeHit, { left: w * 0.25, width: w * 0.5, top: h * 0.2, height: h * 0.75 }]}
+                            />
+                        )}
+                    </View>
+                );
+            })}
+
             {/* Last, so the verge cannot grow over him on an edge chapter. He
               * stands on the chapter's middle, leaving its lower half showing. */}
             {markerCell && size > 0 && (
@@ -562,6 +621,8 @@ const styles = StyleSheet.create({
     field: { position: 'relative' },
     nameBox: { position: 'absolute', justifyContent: 'center', alignItems: 'center' },
     marker: { position: 'absolute' },
+    tree: { position: 'absolute' },
+    treeHit: { position: 'absolute' },
     /* Opacity is set per book — see NAME_ON_BARE. */
     name: { letterSpacing: 0.4, fontWeight: '700' },
 });

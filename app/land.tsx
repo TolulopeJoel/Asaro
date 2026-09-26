@@ -14,14 +14,17 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ChevronLeft } from 'lucide-react-native';
+import { ChevronLeft, X } from 'lucide-react-native';
 
-import { BibleCloth } from '@/src/components/land/BibleCloth';
+import { BibleCloth, LandTree } from '@/src/components/land/BibleCloth';
+import { TreeDetail } from '@/src/components/grove/Grove';
 import { LoadingView } from '@/src/components/LoadingView';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { Hero, Screen, Text as UIText } from '@/src/components/ui';
 import { GREEK_BOOKS, HEBREW_BOOKS } from '@/src/data/bibleBooks';
-import { getChapterCoverage } from '@/src/data/database';
+import { getAllActionItems, getChapterCoverage } from '@/src/data/database';
+import { actionKindOf, isCadence } from '@/src/data/actionKind';
+import { GroveTree, loadGrove } from '@/src/grove/loadGrove';
 import { BookCloth, ChapterRef, Cloth, nextChapter, quietBooks, weaveCloth } from '@/src/land/cloth';
 import { fallowHeading } from '@/src/land/fallowTone';
 import { landSubtitle, parcelLine } from '@/src/land/landTone';
@@ -52,6 +55,8 @@ export default function LandScreen() {
     const [cloth, setCloth] = useState<Cloth | null>(null);
     const [next, setNext] = useState<ChapterRef | null>(null);
     const [selected, setSelected] = useState<BookCloth | null>(null);
+    const [grove, setGrove] = useState<GroveTree[]>([]);
+    const [openTree, setOpenTree] = useState<number | null>(null);
 
     useFocusEffect(
         useCallback(() => {
@@ -64,12 +69,37 @@ export default function LandScreen() {
                     setCloth(woven);
                     setNext(nextChapter(rows, books));
                 }
+                // Every practice keeps its tree here, resting ones included:
+                // a tree never dies, it only goes thirsty.
+                try {
+                    const items = await getAllActionItems(200);
+                    const live = items.filter(
+                        item => !item.archived_at && actionKindOf(item) === 'practice' && isCadence(item.cadence),
+                    );
+                    const trees = await loadGrove(live);
+                    if (alive) setGrove(trees);
+                } catch {
+                    if (alive) setGrove([]);
+                }
             })();
             return () => {
                 alive = false;
             };
         }, []),
     );
+
+    const trees = useMemo<LandTree[]>(
+        () => grove.map(t => ({
+            id: t.item.id!,
+            bookName: t.item.book_name,
+            chapter: t.item.chapter_start,
+            stage: t.growth.stage,
+            species: t.species,
+            thirsty: t.thirsty || t.resting,
+        })),
+        [grove],
+    );
+    const tapped = grove.find(t => t.item.id === openTree) ?? null;
 
     const quiet = useMemo(
         () => (cloth ? quietBooks(cloth, QUIET_DAYS, QUIET_LIMIT) : []),
@@ -119,7 +149,15 @@ export default function LandScreen() {
                     <BibleCloth
                         books={cloth.books}
                         selected={selected?.name ?? null}
-                        onBookPress={book => setSelected(current => (current?.name === book.name ? null : book))}
+                        onBookPress={book => {
+                            setOpenTree(null);
+                            setSelected(current => (current?.name === book.name ? null : book));
+                        }}
+                        trees={trees}
+                        onTreePress={id => {
+                            setSelected(null);
+                            setOpenTree(current => (current === id ? null : id));
+                        }}
                         marker={next}
                         // A third of the way down, so the field he is walking
                         // into shows below him.
@@ -155,6 +193,21 @@ export default function LandScreen() {
                     )}
                 </ScrollView>
             )}
+
+            {tapped && (
+                <View style={[styles.treeCard, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
+                    <ScalePressable
+                        onPress={() => setOpenTree(null)}
+                        accessibilityRole="button"
+                        accessibilityLabel="Close"
+                        hitSlop={Spacing.md}
+                        style={styles.treeClose}
+                    >
+                        <X size={18} color={colors.textTertiary} />
+                    </ScalePressable>
+                    <TreeDetail tree={tapped} divided={false} />
+                </View>
+            )}
         </Screen>
     );
 }
@@ -167,6 +220,17 @@ const styles = StyleSheet.create({
      * difference between a map and a picture of a map. Anything that is not
      * the land pads itself. */
     content: { paddingBottom: Spacing.xxl },
+    /* A tapped tree opens over the foot of the land, like a card turned up. */
+    treeCard: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom: 0,
+        borderTopWidth: 1,
+        padding: Spacing.lg,
+        paddingBottom: Spacing.xl,
+    },
+    treeClose: { position: 'absolute', top: Spacing.md, right: Spacing.md, zIndex: 1 },
     quiet: {
         borderTopWidth: 1,
         marginTop: Spacing.xl,

@@ -35,14 +35,15 @@ function RootedLine({ series, color, fill }: { series: number[]; color: string; 
     );
 }
 
-function Detail({ tree }: { tree: GroveTree }) {
+/** One tree, opened: where it stands, how far it has grown, and how rooted it is. */
+export function TreeDetail({ tree, divided = true }: { tree: GroveTree; divided?: boolean }) {
     const { colors } = useTheme();
     const { item, growth, kept, cadence, rooted, thirsty, species, startedOn } = tree;
     const now = rooted[rooted.length - 1] ?? 0;
     const shape = growth.stage >= 5 ? `${SPECIES[species].name}, planted` : 'Planted';
 
     return (
-        <View style={[styles.detail, { borderTopColor: colors.border }]}>
+        <View style={divided ? [styles.detail, { borderTopColor: colors.border }] : undefined}>
             <View style={styles.detailHead}>
                 <Tree stage={growth.stage} species={species} thirsty={thirsty} size={76} />
                 <View style={styles.detailText}>
@@ -107,7 +108,7 @@ export function Grove({ trees }: { trees: GroveTree[] }) {
                 })}
             </View>
 
-            {selected && <Detail tree={selected} />}
+            {selected && <TreeDetail tree={selected} />}
 
             {resting.length > 0 && (
                 <View style={[styles.tray, { borderTopColor: colors.border }]}>
