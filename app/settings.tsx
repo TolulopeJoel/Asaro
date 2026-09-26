@@ -1,7 +1,9 @@
 import { useTheme } from '@/src/theme/ThemeContext';
 import {
+    Asaro,
     Hero,
     Screen,
+    type AsaroHandle,
     Text as UIText,
     ThemedButton,
 } from '@/src/components/ui';
@@ -30,7 +32,6 @@ import {
     ChevronLeft,
     Archive,
     Download,
-    Smile,
 } from 'lucide-react-native';
 import { getFirestore, doc, setDoc, getDoc, writeBatch, query, where, onSnapshot, collectionGroup } from '@react-native-firebase/firestore';
 import { useAuth } from '@/src/context/AuthContext';
@@ -143,11 +144,33 @@ const SettingsItem = ({
     );
 };
 
+/** Shows the face itself: a look is not something to choose by name. */
+const AsaroLookRow = ({ colors }: { colors: any }) => {
+    const look = useAsaroLook();
+    const face = useRef<AsaroHandle>(null);
+    const next = look === 'female' ? 'male' : 'female';
+
+    return (
+        <ScalePressable
+            style={[styles.settingRow, styles.asaroRow, { borderBottomColor: colors.border }]}
+            onPress={() => {
+                void setAsaroLook(next);
+                face.current?.play('wave');
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={`Àṣàrò, ${look === 'female' ? 'her' : 'him'}. Switch look.`}
+        >
+            <UIText variant="body" tone="primary" style={styles.settingRowLabel}>Àṣàrò</UIText>
+            <UIText variant="meta" tone="secondary">{look === 'female' ? 'Her' : 'Him'}</UIText>
+            <Asaro ref={face} size={52} />
+        </ScalePressable>
+    );
+};
+
 export default function Settings() {
     const { colors } = useTheme();
     const router = useRouter();
     const { showAlert } = useAlert();
-    const asaroLook = useAsaroLook();
 
     const [scheduledNotifications, setScheduledNotifications] = useState<any[]>([]);
     const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
@@ -593,13 +616,7 @@ export default function Settings() {
                         onPress={openNotificationSettings}
                         colors={colors}
                     />
-                    <SettingsItem
-                        label="Àṣàrò"
-                        value={asaroLook === 'female' ? 'Her' : 'Him'}
-                        icon={Smile}
-                        onPress={() => setAsaroLook(asaroLook === 'female' ? 'male' : 'female')}
-                        colors={colors}
-                    />
+                    <AsaroLookRow colors={colors} />
 
                     <UIText variant="label" style={styles.clothSectionLabel}>Your data</UIText>
                     <SettingsItem
@@ -706,6 +723,8 @@ const styles = StyleSheet.create({
     },
     /** The mockup lightens a settings label: it names a thing, not a heading. */
     settingRowLabel: { flex: 1, fontWeight: '500' },
+    /** The face sets the row's height, so centre rather than baseline-align. */
+    asaroRow: { alignItems: 'center', paddingVertical: Spacing.sm },
 
     container: {
         flex: 1,
