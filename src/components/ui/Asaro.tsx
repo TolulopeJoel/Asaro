@@ -21,7 +21,7 @@ import Svg, { Circle, ClipPath, Defs, Ellipse, G, Path } from 'react-native-svg'
 
 import {
     ASARO_ACTIONS, ASARO_LOOKS, ASARO_REST, ASARO_RIG,
-    type AsaroAction, type AsaroLook,
+    type AsaroAction, type AsaroLook, type HairShape,
 } from '../../theme/asaroRig';
 
 const AG = Animated.createAnimatedComponent(G);
@@ -51,6 +51,7 @@ export interface AsaroProps {
 const R = ASARO_RIG;
 const E = R.eye;
 const M = R.mouth;
+const H = R.hair;
 const REST = ASARO_REST;
 
 /** Stable ordering so a worklet can address an action by index. */
@@ -200,12 +201,12 @@ function AsaroBase(
 ) {
     const resolved: AsaroLook = look ?? 'cloth';
     const C = ASARO_LOOKS[resolved] ?? ASARO_LOOKS.cloth;
-    /*
-     * The look's own hair, or the crest the character was designed around.
-     * Both are `{ back, front?, px, py }` so the render path below does not
-     * have to know which it got.
-     */
-    const hair = C.hair ?? { back: R.crest.d, px: R.crest.px, py: R.crest.py };
+    /* The look's own hair, or the crest the character was designed around. */
+    const hair: HairShape = C.hair ?? {
+        back: R.crest.d, sway: { back: 1, front: 1 }, px: R.crest.px, py: R.crest.py,
+    };
+    const swayBack = hair.sway.back;
+    const swayFront = hair.sway.front;
     const brows = BROWS[resolved] ?? BROWS.cloth;
 
     const cropped = bust ?? size < 48;
@@ -346,10 +347,15 @@ function AsaroBase(
         };
     });
 
-    const crestProps = useAnimatedProps(() => {
+    const hairBackProps = useAnimatedProps(() => {
         const sway = Math.sin(breath.value * Math.PI * 2 * 0.37);
-        return { rotation: sway * 1.8 + ch(act.value, prog.value, C_CREST, REST.crest) };
-    });
+        return { rotation: (sway * 1.8 + ch(act.value, prog.value, C_CREST, REST.crest)) * swayBack };
+    }, [swayBack]);
+
+    const hairFrontProps = useAnimatedProps(() => {
+        const sway = Math.sin(breath.value * Math.PI * 2 * 0.37);
+        return { rotation: (sway * 1.8 + ch(act.value, prog.value, C_CREST, REST.crest)) * swayFront };
+    }, [swayFront]);
 
     const browLProps = useAnimatedProps(() => ({
         translateY: ch(act.value, prog.value, C_BROWL, REST.browL),
@@ -555,15 +561,23 @@ function AsaroBase(
             </Defs>
 
             <AG animatedProps={headProps} originX={R.pivotX} originY={R.pivotY}>
-                {/*
-                  * Hair, behind the head. A look may substitute its own shape
-                  * for the default crest; both sway on the same channel, so a
-                  * `celebrate` throws long hair about exactly as it throws the
-                  * brushstroke.
-                  */}
-                {!cropped && (
-                    <AG animatedProps={crestProps} originX={hair.px} originY={hair.py}>
-                        <Path d={hair.back} fill={C.crest} />
+                {/* Hair behind the head, swaying on the crest channel. */}
+                {!cropped && hair.back && (
+                    <AG animatedProps={hairBackProps} originX={hair.px} originY={hair.py}>
+                        <Path
+                            d={hair.back} fill={C.crest} stroke={C.rim}
+                            strokeWidth={H.rimW} strokeLinejoin="round"
+                        />
+                        {hair.under && (
+                            <Path d={hair.under} fill={C.hairDark} opacity={H.underOpacity} />
+                        )}
+                        {hair.backStrands?.map((d) => (
+                            <Path
+                                key={d} d={d} fill="none" stroke={C.hairDark}
+                                strokeWidth={H.strandW} strokeLinecap="round"
+                                opacity={H.strandOpacity}
+                            />
+                        ))}
                     </AG>
                 )}
 
@@ -590,18 +604,6 @@ function AsaroBase(
                 ))}
 
                 <Path d={R.face} fill={C.face} />
-
-                {/*
-                  * A fringe sits in FRONT of the face, which is the only part
-                  * of the head that does. It is drawn before the eyes so it
-                  * can cross the forehead without ever covering them — the
-                  * eyes carry the expression and nothing may sit on them.
-                  */}
-                {!cropped && hair.front && (
-                    <AG animatedProps={crestProps} originX={hair.px} originY={hair.py}>
-                        <Path d={hair.front} fill={C.crest} />
-                    </AG>
-                )}
 
                 {/* Everything soft is clipped to the face, so no extreme of any
                     action can push a cheek or an open mouth past the jaw. */}
@@ -663,6 +665,41 @@ function AsaroBase(
                 </G>
 
                 <Path d={R.face} fill="none" stroke={C.rim} strokeWidth={R.rimW} />
+
+                {/*
+                  * Hair in FRONT of the face: over its outline, so the rim does
+                  * not run through the hair, but under the eyes and brows,
+                  * which carry the expression and must never be covered.
+                  */}
+                {!cropped && hair.front && (
+                    <AG animatedProps={hairFrontProps} originX={hair.px} originY={hair.py}>
+                        <Path
+                            d={hair.front} fill={C.crest} stroke={C.rim}
+                            strokeWidth={H.rimW} strokeLinejoin="round"
+                        />
+                        {hair.strands?.map((d) => (
+                            <Path
+                                key={d} d={d} fill="none" stroke={C.hairDark}
+                                strokeWidth={H.strandW} strokeLinecap="round"
+                                opacity={H.strandOpacity}
+                            />
+                        ))}
+                        {hair.coils?.map((d) => (
+                            <Path
+                                key={d} d={d} fill="none" stroke={C.hairLight}
+                                strokeWidth={H.coilW} strokeLinecap="round"
+                                opacity={H.coilOpacity}
+                            />
+                        ))}
+                        {hair.sheen?.d.map((d) => (
+                            <Path
+                                key={d} d={d} fill="none" stroke={C.hairLight}
+                                strokeWidth={hair.sheen!.w} strokeLinecap="round"
+                                opacity={hair.sheen!.opacity}
+                            />
+                        ))}
+                    </AG>
+                )}
 
                 {eye(E.lx, eyeLClip, irisLProps, lidLProps, lidLineLProps, squintLProps)}
                 {eye(E.rx2, eyeRClip, irisRProps, lidRProps, lidLineRProps, squintRProps)}

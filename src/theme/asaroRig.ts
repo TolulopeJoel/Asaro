@@ -144,6 +144,14 @@ export const ASARO_RIG = {
     pivotY: 111,
     rimW: 3,
 
+    /** Hair outline and the strokes laid over it. */
+    hair: {
+        rimW: 2.5,
+        strandW: 2, strandOpacity: 0.7,
+        coilW: 1.4, coilOpacity: 0.6,
+        underOpacity: 0.4,
+    },
+
     /**
      * The crest. A tapered brushstroke off the crown, set right of centre so
      * the silhouette is never accidentally symmetrical.
@@ -286,14 +294,29 @@ export const ASARO_RIG = {
     },
 } as const;
 
-/** Per-look palette. Everything but `face` is the minimum needed to survive
- * the ground the character stands on; `face` is the signature colour. */
-/** Hair geometry a look may substitute for the default crest. */
+/**
+ * Hair geometry a look may substitute for the default crest.
+ *
+ * `back` sits behind the head; `front` sits over the face and its outline,
+ * under the eyes and brows. Each carries its own detail strokes, and each
+ * sways on the crest channel scaled by `sway`: hair attached at the scalp
+ * barely moves, while length can swing.
+ */
 export interface HairShape {
-    /** Behind the head, so length can fall past the jaw. */
-    back: string;
-    /** In front of the face. Omit for a silhouette with no fringe. */
+    back?: string;
+    /** Darker layer over `back`, in `hairDark`: depth behind the neck. */
+    under?: string;
+    /** Strokes over `back`, in `hairDark`. */
+    backStrands?: string[];
     front?: string;
+    /** Strokes over `front`, in `hairDark`. */
+    strands?: string[];
+    /** Short curls over `front`, in `hairLight`: texture for coily hair. */
+    coils?: string[];
+    /** Highlight strokes over `front`, in `hairLight`. */
+    sheen?: { d: string[]; w: number; opacity: number };
+    /** Fraction of the crest channel each layer turns by. */
+    sway: { back: number; front: number };
     /** Pivot for the sway, in viewBox units. */
     px: number;
     py: number;
@@ -302,6 +325,8 @@ export interface HairShape {
 export const ASARO_LOOKS: Record<AsaroLook, {
     face: string; shade: string; shadeOpacity: number;
     crest: string; rim: string; brow: string; mark: string;
+    /** Hair shadow and highlight, either side of `crest`. */
+    hairDark: string; hairLight: string;
     eyeWhite: string; eyeRim: string; iris: string; pupil: string;
     mouth: string; cheek: string; cheeks: boolean;
     /** Tonal lines drawn in the skin: the nose and the inner ear. */
@@ -342,8 +367,10 @@ export const ASARO_LOOKS: Record<AsaroLook, {
         face: '#c97355',
         shade: '#b1654b',
         shadeOpacity: 0.38,
-        // Darker than the face, so the crest separates from it on a light ground.
-        crest: '#a96147',
+        // Near-black espresso: his hair, not a second skin tone.
+        crest: '#3a241b',
+        hairDark: '#24160f',
+        hairLight: '#6b4634',
         rim: '#6f3f2f',
         // Darker than the iris. A brow the face can swallow cannot carry an
         // expression, and the brow is this character's loudest channel.
@@ -366,16 +393,48 @@ export const ASARO_LOOKS: Record<AsaroLook, {
         marks: false,
         hair: {
             /*
-             * Short hair reads from the HAIRLINE, not the outline — the
-             * silhouette barely leaves the skull, so the shape lives in the
-             * front piece and the mass is only a rim above the crown.
+             * Short coily hair with a line-up: a bumpy outline around the
+             * crown, a crisp hairline with squared temples, and sideburns to
+             * the top of the ear. All of it sits on the scalp, so it does not
+             * sway.
              */
-            back: 'M100 32 C56 32 30 62 28 108 C32 78 58 56 100 56 '
-                + 'C142 56 168 78 172 108 C170 62 144 32 100 32 Z',
-            /** A high hairline, peaked right of centre. */
-            front: 'M36 92 C38 54 64 38 102 38 C136 38 158 48 170 70 '
-                + 'C158 60 146 58 138 62 C126 58 118 60 110 62 '
-                + 'C84 65 54 74 36 92 Z',
+            front: 'M29 101.4 C25.9 99.3 26.5 93.4 29.9 92 C27.1 89.5 28.4 83.7 32 82.8 '
+                + 'C29.4 80 31.4 74.4 35.1 73.9 C33 70.8 35.6 65.5 39.4 65.5 '
+                + 'C37.6 62.2 40.9 57.3 44.6 57.8 C43.2 54.2 47.1 49.8 50.7 50.8 '
+                + 'C49.8 47.1 54.2 43.2 57.6 44.6 C57.2 40.9 62 37.7 65.2 39.5 '
+                + 'C65.3 35.7 70.4 33.1 73.4 35.4 C74 31.7 79.4 29.8 82 32.4 '
+                + 'C83 28.8 88.6 27.7 90.9 30.6 C92.4 27.2 98.1 26.8 100 30 '
+                + 'C101.9 26.8 107.6 27.2 109.1 30.6 C111.4 27.7 117 28.8 118 32.4 '
+                + 'C120.6 29.8 126 31.7 126.6 35.4 C129.6 33.1 134.7 35.7 134.8 39.5 '
+                + 'C138 37.7 142.8 40.9 142.4 44.6 C145.8 43.2 150.2 47.1 149.3 50.8 '
+                + 'C152.9 49.8 156.8 54.2 155.4 57.8 C159.1 57.3 162.4 62.2 160.6 65.5 '
+                + 'C164.4 65.5 167 70.8 164.9 73.9 C168.6 74.4 170.6 80 168 82.8 '
+                + 'C171.6 83.7 172.9 89.5 170.1 92 C173.5 93.4 174.1 99.3 171 101.4 L161 101 L151.5 72 '
+                + 'Q149 61.5 140 59.5 C126 56 74 56 60 59.5 Q51 61.5 48.5 72 L39 101 Z',
+            coils: [
+                'M50.4 58.7 A1.9 1.9 0 0 1 53.6 57.5',
+                'M59.3 50.3 A1.9 1.9 0 0 1 62.5 49.1',
+                'M69.5 43.7 A1.9 1.9 0 0 1 72.7 42.5',
+                'M80.6 39.2 A1.9 1.9 0 0 1 83.8 38',
+                'M92.4 36.9 A1.9 1.9 0 0 1 95.6 35.7',
+                'M104.4 36.9 A1.9 1.9 0 0 1 107.6 35.7',
+                'M116.2 39.2 A1.9 1.9 0 0 1 119.4 38',
+                'M127.3 43.7 A1.9 1.9 0 0 1 130.5 42.5',
+                'M137.5 50.3 A1.9 1.9 0 0 1 140.7 49.1',
+                'M146.4 58.7 A1.9 1.9 0 0 1 149.6 57.5',
+                'M72.4 48.9 A1.9 1.9 0 0 1 75.6 47.7',
+                'M82.4 44.9 A1.9 1.9 0 0 1 85.6 43.7',
+                'M93 42.9 A1.9 1.9 0 0 1 96.2 41.7',
+                'M103.8 42.9 A1.9 1.9 0 0 1 107 41.7',
+                'M114.4 44.9 A1.9 1.9 0 0 1 117.6 43.7',
+                'M124.4 48.9 A1.9 1.9 0 0 1 127.6 47.7',
+                'M82 51.3 A1.9 1.9 0 0 1 85.2 50.1',
+                'M92.9 48.9 A1.9 1.9 0 0 1 96.1 47.7',
+                'M103.9 48.9 A1.9 1.9 0 0 1 107.1 47.7',
+                'M114.8 51.3 A1.9 1.9 0 0 1 118 50.1',
+            ],
+            sheen: { d: ['M56 54 C66 43 80 37 96 35'], w: 6, opacity: 0.2 },
+            sway: { back: 0, front: 0.08 },
             px: 100,
             py: 56,
         },
@@ -405,9 +464,9 @@ export const ASARO_LOOKS: Record<AsaroLook, {
         face: '#dd8f6f',
         shade: '#c67a5f',
         shadeOpacity: 0.34,
-        // The crest is unused here — `hair` replaces it — but a look must
-        // carry the colour in case the shape is ever dropped back.
         crest: '#c4658c',
+        hairDark: '#a44c6c',
+        hairLight: '#e393b2',
         rim: '#6f3f2f',
         brow: '#44271d',
         eyeWhite: '#ffffff',
@@ -435,19 +494,45 @@ export const ASARO_LOOKS: Record<AsaroLook, {
             /*
              * Tight at the crown, full at the ends. Width carried all the way
              * up reads as a hood rather than hair; the volume belongs where it
-             * falls. Ends scalloped, since a smooth arc reads as a hem.
+             * falls. Ends hang as rounded locks with notches between them.
              */
-            back: 'M100 26 C56 26 28 60 26 104 C24 130 14 156 6 182 '
-                + 'C16 176 26 180 32 190 C42 178 56 178 64 190 C74 178 90 178 100 190 '
-                + 'C110 178 126 178 136 190 C144 178 158 178 168 190 C174 180 184 176 194 182 '
-                + 'C186 156 176 130 174 104 C172 60 144 26 100 26 Z',
+            back: 'M100 26 C56 26 28 60 26 104 C24 130 14 156 6 182 C8 194 24 197 31 185 '
+                + 'C38 197 58 198 65 185 C72 198 92 198 100 185 C108 198 128 198 135 185 '
+                + 'C142 198 162 198 169 185 C176 197 192 194 194 182 C186 156 176 130 174 104 '
+                + 'C172 60 144 26 100 26 Z',
+            under: 'M44 120 C42 150 38 170 36 184 C44 190 58 190 65 185 C72 191 92 191 100 185 '
+                + 'C108 191 128 191 135 185 C142 190 156 190 164 184 C162 170 158 150 156 120 Z',
+            backStrands: [
+                'M27 112 C24 138 18 160 12 180',
+                'M38 146 C36 162 32 174 30 184',
+                'M173 112 C176 138 182 160 188 180',
+                'M162 146 C164 162 168 174 170 184',
+                'M100 178 L100 188',
+                'M66 176 C66 181 65 184 64 187',
+                'M134 176 C134 181 135 184 136 187',
+            ],
             /*
              * Corners tucked inside the mass at both ends — a fringe that
              * meets it edge to edge lets the page through as a pale wedge.
-             * Swept lower on the left, so the hairline is not a plain arc.
+             * Parted right of centre and swept lower on the left.
              */
-            front: 'M30 96 C34 58 62 36 100 36 C138 36 166 58 170 96 '
-                + 'C160 74 140 62 114 64 C86 66 56 76 30 96 Z',
+            front: 'M31 104 C28 60 60 33 100 33 C140 33 172 60 169 100 C164 80 150 66 128 61 '
+                + 'Q123 60 121 57.5 Q117 62 102 63 C84 65 64 69 50 80 C44 86 41 93 40 98 '
+                + 'C38 101 34 103 31 104 Z',
+            strands: [
+                'M121 44 C104 48 80 57 62 72',
+                'M110 38 C90 42 66 53 50 70',
+                'M127 45 C142 49 156 60 163 78',
+            ],
+            sheen: {
+                d: [
+                    'M64 46 C76 38 90 35 104 35',
+                    'M136 40 C146 44 154 50 159 57',
+                ],
+                w: 4,
+                opacity: 0.45,
+            },
+            sway: { back: 0.6, front: 0.2 },
             px: 100,
             py: 60,
         },
