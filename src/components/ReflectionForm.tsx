@@ -10,7 +10,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { ChevronLeft, X } from 'lucide-react-native';
+import { X } from 'lucide-react-native';
 
 import { useTheme } from '../theme/ThemeContext';
 import { useAlert } from '../context/AlertContext';
@@ -164,15 +164,6 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
     <View style={styles.container}>
       {/* ── .co-top: what you're reflecting on, and the way out ────────── */}
       <View style={[styles.topBar, { paddingHorizontal: gutter }]}>
-        <ScalePressable
-          onPress={goBack}
-          accessibilityRole="button"
-          accessibilityLabel={page === 0 ? 'Change passage' : 'Previous question'}
-          hitSlop={Spacing.md}
-          style={styles.backArrow}
-        >
-          <ChevronLeft size={20} color={colors.textTertiary} strokeWidth={2} />
-        </ScalePressable>
         <UIText variant="tab" numberOfLines={1} style={styles.mark}>{reference}</UIText>
         <ScalePressable
           onPress={onExit}
@@ -292,19 +283,27 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
       {!disabled && (
         <View style={[styles.footer, { paddingHorizontal: gutter }]}>
           <View style={styles.footerButtons}>
-            {!isNotes && (
+            <ThemedButton
+              variant="secondary"
+              label="Back"
+              onPress={goBack}
+              accessibilityHint={page === 0 ? 'Change the passage' : 'Previous question'}
+            />
+            {isNotes ? (
+              <ThemedButton
+                label={saveButtonText}
+                onPress={handleSave}
+                disabled={!hasPrimaryContent}
+                style={styles.grow}
+              />
+            ) : (
               <ThemedButton
                 variant="secondary"
                 label={answeredHere ? 'Next' : 'Skip'}
                 onPress={goForward}
+                style={styles.grow}
               />
             )}
-            <ThemedButton
-              label={saveButtonText}
-              onPress={handleSave}
-              disabled={!hasPrimaryContent}
-              style={styles.record}
-            />
           </View>
           {onDiscard && (
             <ScalePressable onPress={onDiscard} style={styles.discard}>
@@ -367,7 +366,6 @@ const styles = StyleSheet.create({
   },
   // The mockup hangs the arrow into the gutter, so the glyph lines up with
   // the text below it rather than its own box.
-  backArrow: { marginLeft: -6 },
   mark: { flex: 1 },
 
   body: {
@@ -390,7 +388,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
   },
-  record: { flex: 1 },
+  grow: { flex: 1 },
   discard: { alignItems: 'center', paddingVertical: Spacing.xs },
 
   reminderContainer: {
