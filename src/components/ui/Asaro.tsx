@@ -17,7 +17,9 @@ import Animated, {
     Easing, cancelAnimation, useAnimatedProps, useSharedValue, withRepeat,
     withSequence, withTiming,
 } from 'react-native-reanimated';
-import Svg, { Circle, ClipPath, Defs, Ellipse, G, Path } from 'react-native-svg';
+import Svg, {
+    Circle, ClipPath, Defs, Ellipse, G, LinearGradient, Path, Stop,
+} from 'react-native-svg';
 
 import {
     ASARO_ACTIONS, ASARO_LOOKS, ASARO_REST, ASARO_RIG,
@@ -218,6 +220,7 @@ function AsaroBase(
     const faceClip = `face${uid}`;
     const eyeLClip = `eyeL${uid}`;
     const eyeRClip = `eyeR${uid}`;
+    const fadeFill = `fade${uid}`;
 
     const [reduceMotion, setReduceMotion] = useState(false);
 
@@ -558,6 +561,16 @@ function AsaroBase(
                 <ClipPath id={eyeRClip}>
                     <Ellipse cx={E.rx2} cy={E.cy} rx={E.rx} ry={E.ry} />
                 </ClipPath>
+                {hair.fade && (
+                    <LinearGradient id={fadeFill} x1="0" y1="0" x2="0" y2="1">
+                        {hair.fade.stops.map(([offset, opacity]) => (
+                            <Stop
+                                key={offset} offset={offset}
+                                stopColor={C.crest} stopOpacity={opacity}
+                            />
+                        ))}
+                    </LinearGradient>
+                )}
             </Defs>
 
             <AG animatedProps={headProps} originX={R.pivotX} originY={R.pivotY}>
@@ -673,22 +686,29 @@ function AsaroBase(
                   */}
                 {!cropped && hair.front && (
                     <AG animatedProps={hairFrontProps} originX={hair.px} originY={hair.py}>
+                        {hair.fade?.d.map((d) => <Path key={d} d={d} fill={`url(#${fadeFill})`} />)}
                         <Path
-                            d={hair.front} fill={C.crest} stroke={C.rim}
+                            d={hair.front} fill={C.crest}
+                            stroke={hair.outline ? undefined : C.rim}
                             strokeWidth={H.rimW} strokeLinejoin="round"
                         />
+                        {hair.soft && (
+                            <Path
+                                d={hair.soft} fill="none" stroke={C.crest}
+                                strokeWidth={H.softW} strokeLinecap="round" opacity={H.softOpacity}
+                            />
+                        )}
+                        {hair.outline?.map((d) => (
+                            <Path
+                                key={d} d={d} fill="none" stroke={C.rim}
+                                strokeWidth={H.rimW} strokeLinecap="round" strokeLinejoin="round"
+                            />
+                        ))}
                         {hair.strands?.map((d) => (
                             <Path
                                 key={d} d={d} fill="none" stroke={C.hairDark}
                                 strokeWidth={H.strandW} strokeLinecap="round"
                                 opacity={H.strandOpacity}
-                            />
-                        ))}
-                        {hair.coils?.map((d) => (
-                            <Path
-                                key={d} d={d} fill="none" stroke={C.hairLight}
-                                strokeWidth={H.coilW} strokeLinecap="round"
-                                opacity={H.coilOpacity}
                             />
                         ))}
                         {hair.sheen?.d.map((d) => (

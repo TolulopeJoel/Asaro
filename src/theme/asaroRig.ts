@@ -148,7 +148,7 @@ export const ASARO_RIG = {
     hair: {
         rimW: 2.5,
         strandW: 2, strandOpacity: 0.7,
-        coilW: 1.4, coilOpacity: 0.6,
+        softW: 2.4, softOpacity: 0.5,
         underOpacity: 0.4,
     },
 
@@ -309,10 +309,14 @@ export interface HairShape {
     /** Strokes over `back`, in `hairDark`. */
     backStrands?: string[];
     front?: string;
+    /** Edges of `front` to stroke. Omitted, the whole outline is; a fade must not have a hard edge. */
+    outline?: string[];
+    /** A soft edge along the hairline, in `crest`, where an outline would read as a cap. */
+    soft?: string;
+    /** Under `front`: `crest` fading top to bottom by `stops` ([offset, opacity]). */
+    fade?: { d: string[]; stops: [number, number][] };
     /** Strokes over `front`, in `hairDark`. */
     strands?: string[];
-    /** Short curls over `front`, in `hairLight`: texture for coily hair. */
-    coils?: string[];
     /** Highlight strokes over `front`, in `hairLight`. */
     sheen?: { d: string[]; w: number; opacity: number };
     /** Fraction of the crest channel each layer turns by. */
@@ -393,47 +397,35 @@ export const ASARO_LOOKS: Record<AsaroLook, {
         marks: false,
         hair: {
             /*
-             * Short coily hair with a line-up: a bumpy outline around the
-             * crown, a crisp hairline with squared temples, and sideburns to
-             * the top of the ear. All of it sits on the scalp, so it does not
-             * sway.
+             * Smooth taper fade: one clean shape grown from the face edge —
+             * flush at the temples, full at the crown — so it reads as his
+             * hair, not a cap. Soft line-up edge, and sides that fade to skin
+             * by the ear along the face edge.
              */
-            front: 'M29 101.4 C25.9 99.3 26.5 93.4 29.9 92 C27.1 89.5 28.4 83.7 32 82.8 '
-                + 'C29.4 80 31.4 74.4 35.1 73.9 C33 70.8 35.6 65.5 39.4 65.5 '
-                + 'C37.6 62.2 40.9 57.3 44.6 57.8 C43.2 54.2 47.1 49.8 50.7 50.8 '
-                + 'C49.8 47.1 54.2 43.2 57.6 44.6 C57.2 40.9 62 37.7 65.2 39.5 '
-                + 'C65.3 35.7 70.4 33.1 73.4 35.4 C74 31.7 79.4 29.8 82 32.4 '
-                + 'C83 28.8 88.6 27.7 90.9 30.6 C92.4 27.2 98.1 26.8 100 30 '
-                + 'C101.9 26.8 107.6 27.2 109.1 30.6 C111.4 27.7 117 28.8 118 32.4 '
-                + 'C120.6 29.8 126 31.7 126.6 35.4 C129.6 33.1 134.7 35.7 134.8 39.5 '
-                + 'C138 37.7 142.8 40.9 142.4 44.6 C145.8 43.2 150.2 47.1 149.3 50.8 '
-                + 'C152.9 49.8 156.8 54.2 155.4 57.8 C159.1 57.3 162.4 62.2 160.6 65.5 '
-                + 'C164.4 65.5 167 70.8 164.9 73.9 C168.6 74.4 170.6 80 168 82.8 '
-                + 'C171.6 83.7 172.9 89.5 170.1 92 C173.5 93.4 174.1 99.3 171 101.4 L161 101 L151.5 72 '
-                + 'Q149 61.5 140 59.5 C126 56 74 56 60 59.5 Q51 61.5 48.5 72 L39 101 Z',
-            coils: [
-                'M50.4 58.7 A1.9 1.9 0 0 1 53.6 57.5',
-                'M59.3 50.3 A1.9 1.9 0 0 1 62.5 49.1',
-                'M69.5 43.7 A1.9 1.9 0 0 1 72.7 42.5',
-                'M80.6 39.2 A1.9 1.9 0 0 1 83.8 38',
-                'M92.4 36.9 A1.9 1.9 0 0 1 95.6 35.7',
-                'M104.4 36.9 A1.9 1.9 0 0 1 107.6 35.7',
-                'M116.2 39.2 A1.9 1.9 0 0 1 119.4 38',
-                'M127.3 43.7 A1.9 1.9 0 0 1 130.5 42.5',
-                'M137.5 50.3 A1.9 1.9 0 0 1 140.7 49.1',
-                'M146.4 58.7 A1.9 1.9 0 0 1 149.6 57.5',
-                'M72.4 48.9 A1.9 1.9 0 0 1 75.6 47.7',
-                'M82.4 44.9 A1.9 1.9 0 0 1 85.6 43.7',
-                'M93 42.9 A1.9 1.9 0 0 1 96.2 41.7',
-                'M103.8 42.9 A1.9 1.9 0 0 1 107 41.7',
-                'M114.4 44.9 A1.9 1.9 0 0 1 117.6 43.7',
-                'M124.4 48.9 A1.9 1.9 0 0 1 127.6 47.7',
-                'M82 51.3 A1.9 1.9 0 0 1 85.2 50.1',
-                'M92.9 48.9 A1.9 1.9 0 0 1 96.1 47.7',
-                'M103.9 48.9 A1.9 1.9 0 0 1 107.1 47.7',
-                'M114.8 51.3 A1.9 1.9 0 0 1 118 50.1',
+            front: 'M47.5 70 C46.5 66.7 48.5 60.5 49.6 58.6 C50.7 56.8 54.8 51.7 56.4 50.1 '
+                + 'C58 48.6 63.3 44.5 65.2 43.3 C67.2 42.1 73.5 39.1 75.7 38.2 '
+                + 'C77.9 37.4 84.9 35.5 87.4 35.1 C89.8 34.7 97.4 34 100 34 '
+                + 'C102.6 34 110.2 34.7 112.6 35.1 C115.1 35.5 122.1 37.4 124.3 38.2 '
+                + 'C126.5 39.1 132.8 42.1 134.8 43.3 C136.7 44.5 142 48.6 143.6 50.1 '
+                + 'C145.2 51.7 149.3 56.8 150.4 58.6 C151.5 60.5 153.5 66.7 152.5 70 L150 66 '
+                + 'Q148 60 140 58.5 C126 55.5 74 55.5 60 58.5 Q52 60 50 66 Z',
+            outline: [
+                'M47.5 70 C46.5 66.7 48.5 60.5 49.6 58.6 C50.7 56.8 54.8 51.7 56.4 50.1 '
+                    + 'C58 48.6 63.3 44.5 65.2 43.3 C67.2 42.1 73.5 39.1 75.7 38.2 '
+                    + 'C77.9 37.4 84.9 35.5 87.4 35.1 C89.8 34.7 97.4 34 100 34 '
+                    + 'C102.6 34 110.2 34.7 112.6 35.1 C115.1 35.5 122.1 37.4 124.3 38.2 '
+                    + 'C126.5 39.1 132.8 42.1 134.8 43.3 C136.7 44.5 142 48.6 143.6 50.1 '
+                    + 'C145.2 51.7 149.3 56.8 150.4 58.6 C151.5 60.5 153.5 66.7 152.5 70',
             ],
-            sheen: { d: ['M56 54 C66 43 80 37 96 35'], w: 6, opacity: 0.2 },
+            soft: 'M50 66 Q52 60 60 58.5 C74 55.5 126 55.5 140 58.5 Q148 60 150 66',
+            fade: {
+                d: [
+                    'M47.5 70 C40.8 78.6 36.4 89.1 34.8 100.9 L42.8 100.9 C43.8 90 47 78 51 64 Z',
+                    'M152.5 70 C159.2 78.6 163.6 89.1 165.2 100.9 L157.2 100.9 C156.2 90 153 78 149 64 Z',
+                ],
+                stops: [[0, 1], [0.4, 0.72], [1, 0]],
+            },
+            sheen: { d: ['M55.3 56.2 C65.7 48.2 78.2 42.6 92.4 39.8'], w: 5, opacity: 0.3 },
             sway: { back: 0, front: 0.08 },
             px: 100,
             py: 56,
