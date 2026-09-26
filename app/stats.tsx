@@ -1,11 +1,11 @@
 import { MonthGrid } from '@/src/components/stats/MonthGrid';
 import { StatTile } from '@/src/components/stats/StatTile';
-import { PracticeHistory } from '@/src/components/journal/PracticeHistory';
+import { Grove } from '@/src/components/grove/Grove';
 import { actionKindOf, isCadence } from '@/src/data/actionKind';
-import { PracticeProgress, practiceProgress } from '@/src/data/practiceRepository';
+import { GroveTree, loadGrove } from '@/src/grove/loadGrove';
 import { LoadingView } from '@/src/components/LoadingView';
 import {
-    EnhancedActionItem, getAllActionItems, getChapterCoverage, getDailyEntryCounts,
+    getAllActionItems, getChapterCoverage, getDailyEntryCounts,
     getFirstEntryDate,
 } from '@/src/data/database';
 import { ALL_BIBLE_BOOKS } from '@/src/data/bibleBooks';
@@ -104,9 +104,7 @@ export default function StatsScreen() {
     // Practices live here rather than on their Library cards: the Library is
     // where the reader manages what they carry, and "how has this gone" is a
     // different question that belongs beside the other records.
-    const [practices, setPractices] = useState<
-        { item: EnhancedActionItem; progress: PracticeProgress }[]
-    >([]);
+    const [grove, setGrove] = useState<GroveTree[]>([]);
 
     useFocusEffect(
         useCallback(() => {
@@ -117,18 +115,11 @@ export default function StatsScreen() {
                     const live = all.filter(
                         item => !item.archived_at && actionKindOf(item) === 'practice' && isCadence(item.cadence),
                     );
-                    const withProgress = await Promise.all(
-                        live.map(async item => ({
-                            item,
-                            progress: await practiceProgress(item.id!, item.cadence),
-                        })),
-                    );
-                    // Kept longest first: the established ones are the record.
-                    withProgress.sort((a, b) => b.progress.streak - a.progress.streak);
-                    if (alive) setPractices(withProgress);
+                    const trees = await loadGrove(live);
+                    if (alive) setGrove(trees);
                 } catch {
                     // Stats never breaks for this.
-                    if (alive) setPractices([]);
+                    if (alive) setGrove([]);
                 }
             })();
             return () => {
@@ -272,19 +263,10 @@ export default function StatsScreen() {
                         <UIText variant="bodySmall" tone="secondary" style={styles.monthCaption}>{monthCaption}</UIText>
                     </View>
 
-                    {practices.length > 0 && (
+                    {grove.length > 0 && (
                         <View>
                             <UIText variant="label" style={styles.sectionLabel}>Practices</UIText>
-                            <View style={styles.practices}>
-                                {practices.map(({ item, progress }) => isCadence(item.cadence) && (
-                                    <PracticeHistory
-                                        key={item.id}
-                                        title={item.action}
-                                        completions={progress.completions}
-                                        cadence={item.cadence}
-                                    />
-                                ))}
-                            </View>
+                            <Grove trees={grove} />
                         </View>
                     )}
                 </ScrollView>
@@ -317,5 +299,4 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.sm + 2,
     },
     monthCaption: { textAlign: 'center', marginTop: -Spacing.md },
-    practices: { gap: 10 },
 });

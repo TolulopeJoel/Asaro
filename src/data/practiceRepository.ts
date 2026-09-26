@@ -82,3 +82,16 @@ export async function practiceProgress(
         completions,
     };
 }
+
+/** Every day a practice was kept, oldest first. Unbounded: a tree grows on all of them. */
+export async function practiceHistory(actionItemId: number): Promise<CompletedOn[]> {
+    const rows = await withDatabase(database =>
+        database.getAllAsync<{ completed_on: string }>(
+            `SELECT completed_on FROM action_item_completions
+             WHERE action_item_id = ?
+             ORDER BY completed_on ASC`,
+            [actionItemId],
+        ),
+    );
+    return rows.map(row => row.completed_on);
+}

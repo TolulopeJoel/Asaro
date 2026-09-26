@@ -9,4 +9,6 @@ export const STORAGE_KEYS = {
     THEME_STYLE: 'theme_style',
     /** Which look of Àṣàrò the reader chose. */
     ASARO_LOOK: 'asaro_look',
+    /** Which tree each practice grows, by action item id. Kept so a tree never changes. */
+    GROVE_SPECIES: 'grove_species',
 } as const;
