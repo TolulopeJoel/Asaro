@@ -136,14 +136,14 @@ function trimQuote(text: string, limit = 180): string {
 function renderMilestone(claim: Record<string, unknown>): RenderedObservation {
     if (claim.kind === 'plan') {
         const mark = Number(claim.mark) || 0;
-        // Each face performs its own line: 👀 is sideEye, 😅 is sheepish.
+        // The face performs the line, so the line carries no emoji.
         const lines: Record<number, { kind: string; claim: string; face: AsaroAction }> = {
             25: { kind: 'A quarter of the plan', claim: 'Ehen. Look at you.', face: 'thumbsUp' },
             50: { kind: 'Half the plan', claim: "Halfway o. I'm invested now.", face: 'nod' },
-            75: { kind: 'Three quarters', claim: "Don't do anything stupid. \u{1F440}", face: 'sideEye' },
+            75: { kind: 'Three quarters', claim: "Don't do anything stupid.", face: 'sideEye' },
             100: {
                 kind: 'The whole plan. Finished',
-                claim: 'Àṣàrò has nothing to say. That has never happened. \u{1F605}',
+                claim: 'Àṣàrò has nothing to say. That has never happened.',
                 face: 'sheepish',
             },
         };

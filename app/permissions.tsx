@@ -71,7 +71,7 @@ export default function PermissionsScreen() {
         <Screen edges={[]}>
             <Hero ownsTopInset topPadding={64}>
                 <Text variant="label" tone="onHero" style={styles.heroStep}>Step 3 of 3</Text>
-                <Text variant="display" tone="onBand">Can I Check{'\n'}Up On You? 😏</Text>
+                <Text variant="display" tone="onBand">Can I Check{'\n'}Up On You?</Text>
             </Hero>
 
             <View style={styles.clothBody}>

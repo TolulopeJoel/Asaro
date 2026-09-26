@@ -155,7 +155,7 @@ const AsaroLookRow = ({ colors }: { colors: any }) => {
     const confirmSwitch = () => showAlert({
         face: { look, action: 'sideEye' },
         title: `Wait o. You're a ${next === 'female' ? 'woman' : 'man'}?`,
-        message: `Then ${next === 'female' ? 'she' : 'he'} should be the one disturbing you, not me 😅`,
+        message: `Then ${next === 'female' ? 'she' : 'he'} should be the one disturbing you, not me.`,
         buttons: [
             {
                 text: 'Yes, I am',

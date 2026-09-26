@@ -86,7 +86,7 @@ export default function NameScreen() {
                                 I want to help you stay consistent with your reading.
                                 But I can&apos;t be friends with a stranger, can I?
                                 {'\n\n'}
-                                <Text style={{ fontStyle: 'italic', opacity: 0.6 }}>Let&apos;s make this official 😏</Text>
+                                <Text style={{ fontStyle: 'italic', opacity: 0.6 }}>Let&apos;s make this official.</Text>
                             </Text>
                         </View>
 
