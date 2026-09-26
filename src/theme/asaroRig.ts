@@ -63,6 +63,8 @@ export interface ActionTable {
     mouthC: number[];
     /** Lip press: 1 normal, 0 a hairline. Optional; omitted means 1. */
     press?: number[];
+    /** How far the right corner rises past the rest: 1 the standing smirk. Optional; omitted means 1. */
+    smirk?: number[];
     /** 0 shut … 1 wide. */
     mouthO: number[];
 
@@ -190,8 +192,12 @@ export const ASARO_RIG = {
         lip: 4.6,
         /** Tongue height, as a fraction of the open drop. */
         tongue: 0.75,
-        /** Standing smirk: right corner `rise` higher, bow shifted `shift` toward it. */
-        smirk: { rise: 3, shift: 1.5 },
+        /**
+         * Standing smirk: right corner `rise` higher, bow shifted `shift` toward
+         * it. The `smirk` channel scales the raised side only, which also pulls
+         * out by `pull` per unit past rest, so it grows lopsided, not tilted.
+         */
+        smirk: { rise: 3, shift: 1.5, pull: 2 },
         /** Crease at the raised corner; fades as the mouth opens or he turns sincere. */
         crease: { w: 2, opacity: 0.55 },
     },
@@ -486,10 +492,12 @@ export const ASARO_ACTIONS: Record<AsaroAction, ActionTable> = {
         lidL: /*   */[0.15, 0.3, 0.48, 0.48, 0.24, 0.15],
         lidR: /*   */[0.15, 0.3, 0.48, 0.48, 0.24, 0.15],
         squint: /* */[0, 0.2, 0.32, 0.32, 0.15, 0],
-        mouthC: /* */[0.3, 0.42, 0.55, 0.55, 0.42, 0.3],
+        // Barely more smile: the smirk is one corner, not both.
+        mouthC: /* */[0.3, 0.32, 0.34, 0.34, 0.32, 0.3],
         mouthO: /* */[0, 0, 0, 0, 0, 0],
         // Held closed.
         press: /*  */[1, 0.85, 0.7, 0.7, 0.85, 1],
+        smirk: /*  */[1, 1.8, 2.6, 2.6, 1.6, 1],
         crest: /*  */[0, 5, 8, 8, 4, 0],
         gx: /*     */[0, 0.1, 0.16, 0.16, 0.08, 0],
         // Down while the chin goes up.
@@ -525,34 +533,36 @@ export const ASARO_ACTIONS: Record<AsaroAction, ActionTable> = {
         ms: 1400,
         // The pause belongs on the smirk, not mid-snicker.
         beat: 0.8,
-        t: /*     */[0, 0.12, 0.22, 0.32, 0.42, 0.52, 0.62, 0.8, 1],
+        t: /*      */[0, 0.12, 0.22, 0.32, 0.42, 0.52, 0.62, 0.8, 1],
         // A cocky tilt, held.
-        tip: /*   */[0, 4, 5, 4, 5, 4, 5, 4, 0],
+        tip: /*    */[0, 4, 5, 4, 5, 4, 5, 4, 0],
         // Chin up, with a small kick on each snicker.
-        bob: /*   */[0, -4, -6, -4, -6, -4, -5, -3, 0],
-        sq: /*    */[1, 1.02, 0.98, 1.02, 0.98, 1.02, 0.99, 1.01, 1],
+        bob: /*    */[0, -4, -6, -4, -6, -4, -5, -3, 0],
+        sq: /*     */[1, 1.02, 0.98, 1.02, 0.98, 1.02, 0.99, 1.01, 1],
         // Toward the reader: he is laughing at you, not near you.
-        lean: /*  */[0, 3, 4, 3, 4, 3, 4, 2, 0],
+        lean: /*   */[0, 3, 4, 3, 4, 3, 4, 2, 0],
         // One brow pressed, one up. Both up is delight; this is mischief.
-        browL: /* */[0, 2, 3, 2, 3, 2, 3, 2, 0],
-        browR: /* */[-4, -8, -10, -9, -10, -9, -10, -9, -4],
-        tiltL: /* */[0, 2, 3, 2, 3, 2, 3, 2, 0],
-        tiltR: /* */[-3, -5, -6, -5, -6, -5, -6, -5, -3],
+        browL: /*  */[0, 2, 3, 2, 3, 2, 3, 2, 0],
+        browR: /*  */[-4, -8, -10, -9, -10, -9, -10, -9, -4],
+        tiltL: /*  */[0, 2, 3, 2, 3, 2, 3, 2, 0],
+        tiltR: /*  */[-3, -5, -6, -5, -6, -5, -6, -5, -3],
         // Narrowed, not crescents; the pressed side narrower.
-        lidL: /*  */[0.15, 0.4, 0.45, 0.4, 0.45, 0.4, 0.45, 0.42, 0.15],
-        lidR: /*  */[0.15, 0.3, 0.35, 0.3, 0.35, 0.3, 0.35, 0.32, 0.15],
-        squint: /**/[0, 0.3, 0.38, 0.32, 0.38, 0.32, 0.38, 0.3, 0],
-        mouthC: /**/[0.3, 0.8, 0.9, 0.85, 0.9, 0.85, 0.9, 0.75, 0.3],
+        lidL: /*   */[0.15, 0.4, 0.45, 0.4, 0.45, 0.4, 0.45, 0.42, 0.15],
+        lidR: /*   */[0.15, 0.3, 0.35, 0.3, 0.35, 0.3, 0.35, 0.32, 0.15],
+        squint: /* */[0, 0.3, 0.38, 0.32, 0.38, 0.32, 0.38, 0.3, 0],
+        mouthC: /* */[0.3, 0.7, 0.75, 0.72, 0.75, 0.72, 0.75, 0.4, 0.3],
         // Short bursts with a tight grin between them.
-        mouthO: /**/[0, 0.12, 0.45, 0.12, 0.45, 0.12, 0.38, 0, 0],
+        mouthO: /* */[0, 0.12, 0.45, 0.12, 0.45, 0.12, 0.38, 0, 0],
         // The smirk closes the mouth.
-        press: /* */[1, 1, 1, 1, 1, 1, 1, 0.8, 1],
-        crest: /* */[0, 4, 7, 5, 7, 5, 6, 4, 0],
-        gx: /*    */[0, 0, 0, 0, 0, 0, 0, 0, 0],
+        press: /*  */[1, 1, 1, 1, 1, 1, 1, 0.8, 1],
+        // Lopsided throughout; strongest once the mouth shuts.
+        smirk: /*  */[1, 1.8, 2, 2, 2, 2, 2, 3, 1],
+        crest: /*  */[0, 4, 7, 5, 7, 5, 6, 4, 0],
+        gx: /*     */[0, 0, 0, 0, 0, 0, 0, 0, 0],
         // Down the nose, while the chin is up.
-        gy: /*    */[0, 0.12, 0.16, 0.14, 0.16, 0.14, 0.16, 0.14, 0],
+        gy: /*     */[0, 0.12, 0.16, 0.14, 0.16, 0.14, 0.16, 0.14, 0],
         // Locked on the reader.
-        gw: /*    */[0, 0.9, 1, 1, 1, 1, 1, 0.9, 0],
+        gw: /*     */[0, 0.9, 1, 1, 1, 1, 1, 0.9, 0],
     },
 
     /** Hello. The head rocks, the eyes crease, the crest whips across. */
@@ -642,8 +652,10 @@ export const ASARO_ACTIONS: Record<AsaroAction, ActionTable> = {
         lidL: /*   */[0.15, 0.9, 1, 0.85, 0.2, 0.15],
         lidR: /*   */[0.15, 0, 0, 0, 0, 0.15],
         squint: /* */[0, 0.15, 0.2, 0.18, 0.08, 0],
-        mouthC: /* */[0.3, 0.85, 1, 0.95, 0.6, 0.3],
+        // A touch less smile than before, so the lopsidedness reads.
+        mouthC: /* */[0.3, 0.75, 0.88, 0.82, 0.55, 0.3],
         mouthO: /* */[0, 0.08, 0.14, 0.1, 0.03, 0],
+        smirk: /*  */[1, 1.6, 2.2, 2, 1.3, 1],
         crest: /*  */[0, -12, -14, -9, -4, 0],
         gx: /*     */[0, 0, 0, 0, 0, 0],
         gy: /*     */[0, 0, 0, 0, 0, 0],

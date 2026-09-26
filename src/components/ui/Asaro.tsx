@@ -83,6 +83,9 @@ const C_MOUTHO = ACTION_NAMES.map((n) => ASARO_ACTIONS[n].mouthO);
 const C_PRESS = ACTION_NAMES.map(
     (n) => ASARO_ACTIONS[n].press ?? ASARO_ACTIONS[n].t.map(() => 1),
 );
+const C_SMIRK = ACTION_NAMES.map(
+    (n) => ASARO_ACTIONS[n].smirk ?? ASARO_ACTIONS[n].t.map(() => 1),
+);
 const C_CREST = ACTION_NAMES.map((n) => ASARO_ACTIONS[n].crest);
 const C_GX = ACTION_NAMES.map((n) => ASARO_ACTIONS[n].gx);
 const C_GY = ACTION_NAMES.map((n) => ASARO_ACTIONS[n].gy);
@@ -211,7 +214,8 @@ function lens(i: number, p: number) {
     const o = ch(i, p, C_MOUTHO, REST.mouthO);
     const bow = M.cy + c * M.bow;
     const lip = M.lip * ch(i, p, C_PRESS, 1);
-    return { o, w: M.w + o * M.wOpen, lo: bow + o * M.drop + lip, up: bow - lip };
+    const m = ch(i, p, C_SMIRK, 1);
+    return { o, m, w: M.w + o * M.wOpen, lo: bow + o * M.drop + lip, up: bow - lip };
 }
 
 /** Mirrors an absolute M/L/Q/C path about x = `about`; every number pair is x, y. */
@@ -599,29 +603,31 @@ function AsaroBase(
 
     // One filled lens; shut, it is a line. The smirk tilts it, and sincerity removes the smirk.
     const mouthProps = useAnimatedProps(() => {
-        const { w, lo, up } = lens(act.value, prog.value);
+        const { w, m, lo, up } = lens(act.value, prog.value);
         const k = 1 - sincerity.value;
-        const qx = M.cx + M.smirk.shift * k;
+        // Only the raised side grows: the left corner stays at the standing smirk.
+        const qx = M.cx + M.smirk.shift * k * m;
         const yl = M.cy + M.smirk.rise * k;
-        const yr = M.cy - M.smirk.rise * k;
+        const yr = M.cy - M.smirk.rise * k * m;
+        const xr = M.cx + w + M.smirk.pull * k * (m - 1);
         return {
-            d: `M${r1(M.cx - w)} ${yl} Q${qx} ${r1(lo)} ${r1(M.cx + w)} ${yr} `
-                + `Q${qx} ${r1(up)} ${r1(M.cx - w)} ${yl} Z`,
+            d: `M${r1(M.cx - w)} ${r1(yl)} Q${r1(qx)} ${r1(lo)} ${r1(xr)} ${r1(yr)} `
+                + `Q${r1(qx)} ${r1(up)} ${r1(M.cx - w)} ${r1(yl)} Z`,
         };
     });
 
     // Tongue: the middle half (t 0.25…0.75) of the lower edge, humped up as the mouth opens.
     const tongueProps = useAnimatedProps(() => {
-        const { o, w, lo } = lens(act.value, prog.value);
+        const { o, m, w, lo } = lens(act.value, prog.value);
         const d = lo - M.cy;
         const y0 = M.cy + 0.375 * d;
         const yc = M.cy + 0.625 * d;
         const top = yc - 2 * o * M.drop * M.tongue;
         const k = 1 - sincerity.value;
-        const x0 = M.cx + 0.375 * M.smirk.shift * k;
-        const qx = M.cx + 0.625 * M.smirk.shift * k;
+        const x0 = M.cx + 0.375 * M.smirk.shift * k * m;
+        const qx = M.cx + 0.625 * M.smirk.shift * k * m;
         const yl = r1(y0 + (M.smirk.rise * k) / 2);
-        const yr = r1(y0 - (M.smirk.rise * k) / 2);
+        const yr = r1(y0 - (M.smirk.rise * k * m) / 2);
         return {
             d: `M${r1(x0 - w / 2)} ${yl} Q${qx} ${r1(yc)} ${r1(x0 + w / 2)} ${yr} `
                 + `Q${qx} ${r1(top)} ${r1(x0 - w / 2)} ${yl} Z`,
@@ -630,14 +636,16 @@ function AsaroBase(
     });
 
     const creaseProps = useAnimatedProps(() => {
-        const { o, w } = lens(act.value, prog.value);
+        const { o, m, w } = lens(act.value, prog.value);
         const k = 1 - sincerity.value;
-        const xr = M.cx + w;
-        const yr = M.cy - M.smirk.rise * k;
+        const xr = M.cx + w + M.smirk.pull * k * (m - 1);
+        const yr = M.cy - M.smirk.rise * k * m;
         const open = 1 - o * 4;
+        // Deepens as the smirk grows.
+        const deep = m < 1.8 ? m : 1.8;
         return {
             d: `M${r1(xr + 0.5)} ${r1(yr + 2)} Q${r1(xr + 3.8)} ${r1(yr + 0.2)} ${r1(xr + 3.4)} ${r1(yr - 4.2)}`,
-            opacity: M.crease.opacity * k * (open > 0 ? open : 0),
+            opacity: M.crease.opacity * k * deep * (open > 0 ? open : 0),
         };
     });
 

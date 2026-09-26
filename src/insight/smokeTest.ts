@@ -62,10 +62,12 @@ const REARM_DETECTOR: DetectorName | null = null;
  * offered once ever, so previewing under a real key burns it and the genuine
  * card is silently skipped as already seen.
  *
- * Set back to null when done. The row stays behind harmlessly, but keeps
- * reappearing in the pending queue until dismissed like any other card.
+ * Every run re-arms the preview, so it shows again even after being seen.
+ * Set back to null when done; the row then stays behind harmlessly.
  */
-const PREVIEW_MILESTONE: 'shortBook' | 'longBook' | 'planHalf' | 'planDone' | null = null;
+const PREVIEW_MILESTONE:
+    | 'shortBook' | 'longBook' | 'planQuarter' | 'planHalf' | 'planThreeQuarters' | 'planDone' | null
+    = 'longBook';
 
 export async function runPhase0SmokeTest(): Promise<string> {
     const out: string[] = [];
@@ -285,26 +287,45 @@ export async function runPhase0SmokeTest(): Promise<string> {
         );
         const milestoneIds = await detectMilestones(0);
         ok('milestones recorded', `${milestoneIds.length}`);
+    });
 
-        if (PREVIEW_MILESTONE) {
-            const previews = {
-                shortBook: { kind: 'book', book: 'Ruth', chapters: 4 },
-                longBook: { kind: 'book', book: 'Genesis', chapters: 50 },
-                planHalf: { kind: 'plan', mark: 50 },
-                planDone: { kind: 'plan', mark: 100 },
-            } as const;
-            await recordObservation({
-                detector: 'milestone',
-                dedupeKey: `preview:${PREVIEW_MILESTONE}`,
-                claim: previews[PREVIEW_MILESTONE],
-                confidence: 0.99,
-                evidence: [],
-            });
-            ok(
-                'preview milestone armed',
-                `${PREVIEW_MILESTONE} — save an entry to see it; set PREVIEW_MILESTONE = null when done`,
-            );
+    // Its own stage, so a detector failure cannot keep the preview from arming.
+    await stage('milestone preview', async () => {
+        if (!PREVIEW_MILESTONE) return;
+        const previews = {
+            shortBook: { kind: 'book', book: 'Ruth', chapters: 4 },
+            longBook: { kind: 'book', book: 'Genesis', chapters: 50 },
+            planQuarter: { kind: 'plan', mark: 25 },
+            planHalf: { kind: 'plan', mark: 50 },
+            planThreeQuarters: { kind: 'plan', mark: 75 },
+            planDone: { kind: 'plan', mark: 100 },
+        } as const;
+        // recordObservation refuses a finding with no evidence.
+        const latest = await withDatabase(db => db.getFirstAsync<{ id: number }>(
+            'SELECT id FROM journal_entries ORDER BY datetime(created_at) DESC LIMIT 1',
+        ));
+        if (!latest) {
+            bad('preview milestone', 'needs at least one entry to stand on');
+            return;
         }
+        const previewId = await recordObservation({
+            detector: 'milestone',
+            dedupeKey: `preview:${PREVIEW_MILESTONE}`,
+            claim: previews[PREVIEW_MILESTONE],
+            confidence: 0.99,
+            evidence: [{ kind: 'entry', entryId: latest.id }],
+        });
+        // A milestone shows once; an existing preview row keeps its shown
+        // and dismissed marks unless they are cleared here.
+        await withDatabase(db => db.runAsync(
+            `UPDATE observations SET shown_at = NULL, dismissed_at = NULL, feedback = NULL
+              WHERE id = ? AND dedupe_key LIKE 'preview:%'`,
+            [previewId],
+        ));
+        ok(
+            'preview milestone armed',
+            `${PREVIEW_MILESTONE} — save an entry to see it; set PREVIEW_MILESTONE = null when done`,
+        );
     });
 
         // Reports topics held as well as topics offered — they diverge by

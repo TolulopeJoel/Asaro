@@ -84,7 +84,7 @@ async function handleNextReadingPress(
 }
 
 /** Dev only: pretend the last entry was this many days ago (3, 7, 14, 30). */
-const SIMULATE_DAYS_AWAY: number | null = 30;
+const SIMULATE_DAYS_AWAY: number | null = 7;
 
 export default function Index() {
     const [stats, setStats] = useState({ totalEntries: 0 });
