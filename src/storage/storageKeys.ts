@@ -7,4 +7,6 @@ export const STORAGE_KEYS = {
     PENDING_ACTIVITIES: 'pending_firestore_activities',
     /** Which style is active. */
     THEME_STYLE: 'theme_style',
+    /** Which look of Àṣàrò the reader chose. */
+    ASARO_LOOK: 'asaro_look',
 } as const;

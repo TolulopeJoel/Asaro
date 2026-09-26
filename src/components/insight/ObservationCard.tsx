@@ -29,7 +29,7 @@ import { X } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { Spacing } from '../../theme/spacing';
 import { ScalePressable } from '../ScalePressable';
-import { Text } from '../ui';
+import { Asaro, Text } from '../ui';
 import { RenderedObservation } from '../../insight/render';
 
 interface Props {
@@ -94,7 +94,14 @@ export function ObservationCard({ observation, onSeen, onOpen, onDismiss }: Prop
               * reader has already met.
               */}
             {subjectFirst && (
-                <View style={[styles.topic, { borderBottomColor: colors.border }]}>
+                <View style={[
+                    styles.topic,
+                    observation.face && styles.topicWithFace,
+                    { borderBottomColor: colors.border },
+                ]}>
+                    {observation.face && (
+                        <Asaro size={56} action={observation.face} label="Àṣàrò" />
+                    )}
                     {subjectLine}
                 </View>
             )}
@@ -195,5 +202,10 @@ const styles = StyleSheet.create({
         marginTop: Spacing.md,
         paddingBottom: Spacing.md,
         borderBottomWidth: 1,
+    },
+    topicWithFace: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.md,
     },
 });

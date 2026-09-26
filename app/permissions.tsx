@@ -5,7 +5,7 @@ import { AppState, View, StyleSheet } from 'react-native';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { useAlert } from '@/src/context/AlertContext';
-import { Hero, Screen, Text, ThemedButton } from '@/src/components/ui';
+import { Asaro, Hero, Screen, Text, ThemedButton } from '@/src/components/ui';
 
 export default function PermissionsScreen() {
     const router = useRouter();
@@ -75,9 +75,13 @@ export default function PermissionsScreen() {
             </Hero>
 
             <View style={styles.clothBody}>
-                <Text variant="sub">
-                    One nudge a day, at a time you choose, and nothing after your sleep hour.
-                </Text>
+                {/* On ecru, not the band: the rim is tuned for this ground. */}
+                <View style={styles.intro}>
+                    <Asaro size={74} action="smug" label="Àṣàrò" />
+                    <Text variant="sub" style={styles.introText}>
+                        One nudge a day, at a time you choose, and nothing after your sleep hour.
+                    </Text>
+                </View>
 
                 <View style={[styles.clothPanel, { backgroundColor: colors.backgroundSubtle }]}>
                     <Text variant="label" style={styles.clothPanelLabel}>What you&apos;ll get</Text>
@@ -109,6 +113,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: Spacing.layout.screenPadding,
         gap: Spacing.layout.cardPadding,
     },
+    intro: { flexDirection: 'row', alignItems: 'center', gap: Spacing.lg },
+    introText: { flex: 1 },
     clothPanel: { padding: Spacing.layout.cardPadding },
     clothPanelLabel: { marginBottom: 7 },
     /** `.cl-hr{margin:9px 0}` between the promises. */

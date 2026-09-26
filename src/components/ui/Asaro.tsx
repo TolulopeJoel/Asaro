@@ -21,6 +21,7 @@ import {
     ASARO_ACTIONS, ASARO_LOOKS, ASARO_REST, ASARO_RIG, ASARO_SINCERE_REST,
     type AsaroAction, type AsaroLook, type AsaroMood, type HairShape,
 } from '../../theme/asaroRig';
+import { useAsaroLook } from '../../storage/asaroLook';
 
 const AG = Animated.createAnimatedComponent(G);
 const APath = Animated.createAnimatedComponent(Path);
@@ -35,7 +36,7 @@ export interface AsaroHandle {
 
 export interface AsaroProps {
     size?: number;
-    /** Which look to show. Defaults to `male`. */
+    /** Which look to show. Defaults to the reader's choice. */
     look?: AsaroLook;
     /** Play on mount, and again whenever this changes. */
     action?: AsaroAction;
@@ -212,7 +213,8 @@ function AsaroBase(
     { size = 96, look, action, lookAt, mood = 'knowing', bust, label }: AsaroProps,
     ref: React.Ref<AsaroHandle>,
 ) {
-    const resolved: AsaroLook = look ?? 'male';
+    const chosen = useAsaroLook();
+    const resolved: AsaroLook = look ?? chosen;
     const C = ASARO_LOOKS[resolved] ?? ASARO_LOOKS.male;
     // The look's hair, or the fallback crest.
     const hair: HairShape = C.hair ?? {

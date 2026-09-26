@@ -14,6 +14,7 @@ import { VerseId, formatVerseId } from '../bible/ref';
 import { unwrapReferences } from '../utils/reference';
 import { spanLabel } from '../ml/themeQuality';
 import { StoredObservation } from './observation';
+import type { AsaroAction } from '../theme/asaroRig';
 
 export interface RenderedObservation {
     /** What kind of noticing this is. Sits where Flashback puts "ONE MONTH AGO". */
@@ -43,6 +44,8 @@ export interface RenderedObservation {
      * "Read it" button pointing nowhere.
      */
     subjectVerseId?: VerseId;
+    /** What Àṣàrò performs beside the card. Only milestones carry one. */
+    face?: AsaroAction;
 }
 
 /** Sentence-case a span: `spanLabel` speaks in fragments ("across 8 months"). */
@@ -131,22 +134,25 @@ function trimQuote(text: string, limit = 180): string {
 function renderMilestone(claim: Record<string, unknown>): RenderedObservation {
     if (claim.kind === 'plan') {
         const mark = Number(claim.mark) || 0;
-        const lines: Record<number, { kind: string; claim: string }> = {
-            25: { kind: 'A quarter of the plan', claim: 'Ehen. Look at you.' },
-            50: { kind: 'Half the plan', claim: "Halfway o. I'm invested now." },
-            75: { kind: 'Three quarters', claim: "Don't do anything stupid. \u{1F440}" },
+        // Each face performs its own line: 👀 is sideEye, 😅 is sheepish.
+        const lines: Record<number, { kind: string; claim: string; face: AsaroAction }> = {
+            25: { kind: 'A quarter of the plan', claim: 'Ehen. Look at you.', face: 'thumbsUp' },
+            50: { kind: 'Half the plan', claim: "Halfway o. I'm invested now.", face: 'nod' },
+            75: { kind: 'Three quarters', claim: "Don't do anything stupid. \u{1F440}", face: 'sideEye' },
             100: {
                 kind: 'The whole plan. Finished',
                 claim: 'Àṣàrò has nothing to say. That has never happened. \u{1F605}',
+                face: 'sheepish',
             },
         };
-        const line = lines[mark] ?? { kind: 'The plan', claim: `${mark}% done.` };
+        const line = lines[mark] ?? { kind: 'The plan', claim: `${mark}% done.`, face: 'nod' };
         return {
             kind: line.kind,
             evidence: [],
             claim: line.claim,
             subject: `${mark}%`,
             subjectFirst: true,
+            face: line.face,
         };
     }
 
@@ -165,6 +171,7 @@ function renderMilestone(claim: Record<string, unknown>): RenderedObservation {
             : `All ${chapters} chapters of it. I was counting, obviously.`,
         subject: book,
         subjectFirst: true,
+        face: long ? 'celebrate' : 'smug',
     };
 }
 

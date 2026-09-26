@@ -12,6 +12,7 @@ import { getAllScheduledNotifications, setupDailyNotifications, sendTestNotifica
 import { oemAutoStartLabel, openAutoStartSettings } from '@/src/utils/oemRestrictions';
 import { exportJournalEntriesToJson, importJournalEntriesFromJson, getFirstEntryDate } from '@/src/data/database';
 import { STORAGE_KEYS } from '@/src/storage/storageKeys';
+import { setAsaroLook, useAsaroLook } from '@/src/storage/asaroLook';
 import Constants from 'expo-constants';
 import * as DocumentPicker from 'expo-document-picker';
 import { documentDirectory, writeAsStringAsync, readAsStringAsync } from 'expo-file-system/legacy';
@@ -145,6 +146,7 @@ export default function Settings() {
     const { colors } = useTheme();
     const router = useRouter();
     const { showAlert } = useAlert();
+    const asaroLook = useAsaroLook();
 
     const [scheduledNotifications, setScheduledNotifications] = useState<any[]>([]);
     const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
@@ -588,6 +590,13 @@ export default function Settings() {
                         value={notificationsOn === null ? '—' : notificationsOn ? 'On' : 'Off'}
                         icon={Bell}
                         onPress={openNotificationSettings}
+                        colors={colors}
+                    />
+                    <SettingsItem
+                        label="Àṣàrò"
+                        value={asaroLook === 'female' ? 'Her' : 'Him'}
+                        icon={Bell}
+                        onPress={() => setAsaroLook(asaroLook === 'female' ? 'male' : 'female')}
                         colors={colors}
                     />
 

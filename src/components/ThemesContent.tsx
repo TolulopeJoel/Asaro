@@ -29,7 +29,7 @@ import { AnimatedModal } from './AnimatedModal';
 import { ThemeDetail } from './ThemeDetail';
 import { JournalEntryDetail } from './JournalEntryDetail';
 import { getEntryById, JournalEntry } from '../data/database';
-import { Text as UIText, ThemedButton, textStyle } from './ui';
+import { Asaro, Text as UIText, ThemedButton, textStyle } from './ui';
 
 const FIELD_LABELS: Record<string, string> = {
     ...Object.fromEntries(EMBEDDABLE_FIELDS.map(f => [f.column, f.label])),
@@ -241,7 +241,9 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
                   : 'Give me a minute. I am reading everything.';
         return (
             <View style={styles.center}>
-                <ActivityIndicator color={colors.accent} />
+                {phase === 'working'
+                    ? <Asaro size={74} action="think" label="Àṣàrò" />
+                    : <ActivityIndicator color={colors.accent} />}
                 <UIText variant="body" tone="secondary" style={styles.centred}>{label}</UIText>
             </View>
         );
