@@ -105,10 +105,12 @@ export interface BackfillProgress {
 /**
  * Embed anything new or edited. Safe on every app open — work is proportional
  * to what changed, since a stored `text_hash` means an untouched entry is never
- * re-embedded and an edited one is caught automatically.
+ * re-embedded and an edited one is caught automatically. Stops before the next
+ * chunk once `isCancelled` says so, returning how many were written.
  */
 export async function backfillEmbeddings(
     onProgress?: (progress: BackfillProgress) => void,
+    isCancelled?: () => boolean,
 ): Promise<number> {
     const texts = await collectTexts();
 
@@ -126,6 +128,7 @@ export async function backfillEmbeddings(
 
     const CHUNK = 16;
     for (let i = 0; i < stale.length; i += CHUNK) {
+        if (isCancelled?.()) return i;
         const chunk = stale.slice(i, i + CHUNK);
         const vectors = await embed(chunk.map(c => c.text));
 
@@ -268,7 +271,13 @@ export async function getNamedThemes(): Promise<NamedTheme[]> {
             theme_id: number;
             entry_id: number;
             field: string;
-        }>(`SELECT theme_id, entry_id, field FROM theme_members`);
+        }>(
+            // Joined because foreign keys are off: members of deleted entries
+            // linger and would dilute matchThemeName's overlap.
+            `SELECT m.theme_id, m.entry_id, m.field
+             FROM theme_members m
+             JOIN journal_entries j ON j.id = m.entry_id`,
+        );
 
         return themes.map(theme => ({
             id: theme.id,
@@ -346,6 +355,8 @@ export async function renameTheme(id: number, name: string): Promise<void> {
 
 export async function deleteTheme(id: number): Promise<void> {
     await withDatabase(async database => {
+        // By hand: foreign keys are off, so ON DELETE CASCADE never runs.
+        await database.runAsync(`DELETE FROM theme_members WHERE theme_id = ?`, [id]);
         await database.runAsync(`DELETE FROM themes WHERE id = ?`, [id]);
     });
 }

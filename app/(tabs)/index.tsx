@@ -19,10 +19,12 @@ import { LoadingView } from '@/src/components/LoadingView';
 import { Share } from 'react-native';
 import { useAlert } from '@/src/context/AlertContext';
 import { deleteJournalEntry } from '@/src/data/database';
+import { cancelStudyReminder } from '@/src/utils/notifications';
 import { fetchWeeklyStreakData, DayStatus } from '@/src/components/WeeklyStreak';
 import { fetchFlashbackData } from '@/src/components/Flashback';
 import { useObservation } from '@/src/insight/useObservation';
 import { useToday } from '@/src/hooks/useToday';
+import { useLocalDay } from '@/src/hooks/useLocalDay';
 import { TodayStrip } from '@/src/components/home/TodayStrip';
 import { ObservationCard } from '@/src/components/insight/ObservationCard';
 import { ObservationReceipts } from '@/src/components/insight/ObservationReceipts';
@@ -83,8 +85,11 @@ async function handleNextReadingPress(
     }
 }
 
+const formatHomeDate = () =>
+    new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+
 /** Dev only: pretend the last entry was this many days ago (3, 7, 14, 30). */
-const SIMULATE_DAYS_AWAY: number | null = 365;
+const SIMULATE_DAYS_AWAY: number | null = null;
 
 export default function Index() {
     const [stats, setStats] = useState({ totalEntries: 0 });
@@ -96,9 +101,10 @@ export default function Index() {
     const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
     const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [hasEntries, setHasEntries] = useState(false);
     // Gated on the journal being loaded so detection never races the DB, and
     // on there being entries at all — the graph has nothing to converge on.
-    const echo = useObservation(!isLoading && stats.totalEntries > 0);
+    const echo = useObservation(!isLoading && hasEntries);
     const [receiptsOpen, setReceiptsOpen] = useState(false);
 
     const observationCard =
@@ -126,6 +132,7 @@ export default function Index() {
                 items={today.items}
                 onKeep={entry => today.keep(entry.item)}
                 onUndo={entry => today.undo(entry.item)}
+                watered={today.watered}
                 // The strip is a prompt, not a place — tapping through goes
                 // to where these actually live.
                 onOpen={() => router.push({ pathname: '/(tabs)/library', params: { view: 'actions' } })}
@@ -135,18 +142,6 @@ export default function Index() {
     // Progress through the plan rather than an entry count: a count only goes
     // up and nothing follows from it, where "34 of 364" is a goal with an end.
     const [planProgress, setPlanProgress] = useState<{ completed: number; total: number; percent: number } | null>(null);
-    useEffect(() => {
-        (async () => {
-            try {
-                const done = await getReadingProgress();
-                const total = READING_PLAN_DATA.length;
-                const completed = done.length;
-                setPlanProgress({ completed, total, percent: Math.round((completed / total) * 100) });
-            } catch {
-                setPlanProgress(null);
-            }
-        })();
-    }, [isLoading]);
 
     // An element, NOT a component: declaring a component inside render gives
     // it a new identity each pass, remounting the modal subtree and dropping
@@ -187,8 +182,11 @@ export default function Index() {
         // month boundary it asked for the wrong month (e.g. 00:30 on Nov 1 in Lagos
         // returned October's count while dayOfMonth rendered 1).
         const currentMonth = formatDateToLocalString(new Date()).slice(0, 7);
-        const totalEntries = await getTotalEntryCount(currentMonth);
-        return { totalEntries };
+        const [totalEntries, allTime] = await Promise.all([
+            getTotalEntryCount(currentMonth),
+            getTotalEntryCount(),
+        ]);
+        return { totalEntries, allTime };
     }, []);
 
     const loadNextReading = useCallback(async () => {
@@ -210,7 +208,7 @@ export default function Index() {
             nextItem = READING_PLAN_DATA.find(item => !completedSet.has(item.id));
         }
 
-        return nextItem || null;
+        return { next: nextItem || null, completed: completedSet.size };
     }, []);
 
     const loadHomeData = useCallback(async () => {
@@ -229,8 +227,16 @@ export default function Index() {
                 getDaysSinceLastEntry(),
             ]);
 
-            setStats(newStats);
-            setNextReading(newNextReading);
+            setStats({ totalEntries: newStats.totalEntries });
+            setHasEntries(newStats.allTime > 0);
+            setNextReading(newNextReading.next);
+            const total = READING_PLAN_DATA.length;
+            setPlanProgress({
+                completed: newNextReading.completed,
+                total,
+                percent: Math.round((newNextReading.completed / total) * 100),
+            });
+            setHomeDateLine(formatHomeDate());
             setWeekDays(newWeekDays);
             setFlashbackEntry(newFlashback);
             setDaysAway(__DEV__ && SIMULATE_DAYS_AWAY !== null ? SIMULATE_DAYS_AWAY : newDaysAway);
@@ -275,6 +281,16 @@ export default function Index() {
         }, [loadHomeData, checkDraft, isLoading])
     );
 
+    // Home stays mounted, so a new day or a return from the background reloads it too.
+    const day = useLocalDay();
+    const shownDay = useRef(day);
+    useEffect(() => {
+        if (shownDay.current === day) return;
+        shownDay.current = day;
+        loadHomeData();
+        checkDraft();
+    }, [day, loadHomeData, checkDraft]);
+
     const handleShare = async (entry: JournalEntry) => {
         setIsSharing(true);
         try {
@@ -307,10 +323,12 @@ export default function Index() {
                         setIsDeleting(true);
                         try {
                             await deleteJournalEntry(entry.id!);
+                            void cancelStudyReminder(entry.id!).catch(() => {});
                             setIsDetailModalVisible(false);
                             loadHomeData(); // Refresh data
                         } catch (error) {
                             console.error("Error deleting entry:", error);
+                            showAlert({ title: 'Error', message: "Couldn't delete this entry. Please try again." });
                         } finally {
                             setIsDeleting(false);
                         }
@@ -332,10 +350,7 @@ export default function Index() {
 
     /** "Sunday, 21 September" — the date under Cloth's hero title. The band
      * says what day it is because Home is the one screen that greets you. */
-    const homeDateLine = useMemo(
-        () => new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }),
-        []
-    );
+    const [homeDateLine, setHomeDateLine] = useState(formatHomeDate);
 
     /**
      * The flashback, flattened to the three strings the home screen shows.
@@ -357,9 +372,7 @@ export default function Index() {
     }, [flashbackEntry]);
 
     /** The entry detail sheet, shared by both compositions. */
-    const HomeDetailModal = () => (
-        <>
-        {/* Detail Modal */}
+    const homeDetailModal = (
         <AnimatedModal
             visible={isDetailModalVisible}
             onRequestClose={() => setIsDetailModalVisible(false)}
@@ -382,7 +395,6 @@ export default function Index() {
                 />
             )}
         </AnimatedModal>
-        </>
     );
 
     return (
@@ -437,7 +449,7 @@ export default function Index() {
                 )}
             </ScrollView>
 
-            <HomeDetailModal />
+            {homeDetailModal}
             {echoReceipts}
 
         </Screen>

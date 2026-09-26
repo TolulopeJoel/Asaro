@@ -31,11 +31,12 @@ import {
     MoreHorizontal,
     CloudOff,
 } from 'lucide-react-native';
-import { getFirestore, collection, doc, onSnapshot, updateDoc, query, where, orderBy, limit } from '@react-native-firebase/firestore';
+import { getFirestore, collection, doc, onSnapshot, updateDoc, query, where, orderBy, limit, Timestamp } from '@react-native-firebase/firestore';
 import { useAuth } from '@/src/context/AuthContext';
-import { checkInactiveMembers, getISOWeekString, evaluateGroupAdminRoles } from '@/src/utils/syncActivities';
-import { getTodayDateString } from '@/src/utils/dateUtils';
+import { checkInactiveMembers, evaluateGroupAdminRoles } from '@/src/utils/syncActivities';
+import { getTodayDateString, parseLocalDateString, formatDateToLocalString } from '@/src/utils/dateUtils';
 import { ALL_BADGES } from '@/src/utils/badges';
+import { useLocalDay } from '@/src/hooks/useLocalDay';
 import { useEffect, useRef, useState } from 'react';
 import Animated, {
     useSharedValue, useAnimatedStyle, withSpring, withTiming,
@@ -54,11 +55,15 @@ import { Hero, Screen, Segments, Text } from '@/src/components/ui';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-import { reviewWindow, windowLabel } from '@/src/groups/week';
+import { reviewWindow, windowLabel, reviewRange, weekDots } from '@/src/groups/week';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+/** Monday first, matching `weekdayIndex` in week.ts. */
+const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+/** Enough for a busy week; the query is bounded by the review range, not by this. */
+const FEED_LIMIT = 500;
 
 // ─── Pure Helpers ─────────────────────────────────────────────────────────────
 
@@ -90,8 +95,8 @@ const formatLastRead = (dateStr: string | undefined, today: string): string => {
     if (!dateStr) return 'Never read';
     if (dateStr === today) return 'Read today 😌';
     try {
-        const d = new Date(dateStr);
-        const now = new Date(today);
+        const d = parseLocalDateString(dateStr);
+        const now = parseLocalDateString(today);
         const diff = Math.round((now.getTime() - d.getTime()) / 86400000);
         if (diff === 1) return 'Read yesterday';
         if (diff < 14) return `${diff} days ago`;
@@ -139,10 +144,9 @@ const getActivityDateStr = (activity: any): string | null => {
 const formatDateLabel = (dateStr: string | null, today: string): string => {
     if (!dateStr) return '';
     if (dateStr === today) return 'Today';
-    const yesterday = new Date(today);
+    const yesterday = parseLocalDateString(today);
     yesterday.setDate(yesterday.getDate() - 1);
-    const yStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
-    if (dateStr === yStr) return 'Yesterday';
+    if (dateStr === formatDateToLocalString(yesterday)) return 'Yesterday';
     try {
         return new Date(dateStr + 'T12:00:00').toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
     } catch { return dateStr; }
@@ -300,13 +304,15 @@ const GroupEditModal = ({
     const { showAlert } = useAlert();
     const db = getFirestore();
 
+    // Reset on open only: the group doc is rewritten by every member's sync.
     useEffect(() => {
         if (visible) {
             setName(groupData?.name || '');
             setDescription(groupData?.description || '');
             setPhotoURL(groupData?.photoURL || '');
         }
-    }, [visible, groupData]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [visible]);
 
     const handleSave = async () => {
         if (!name.trim()) {
@@ -472,7 +478,7 @@ const MemberProfileSheet = ({
                 setLoadingReads(false);
             },
             (error) => {
-                console.error('[MemberProfileSheet] Error fetching past reads:', error);
+                console.error('[MemberProfileSheet] Past reads query failed (needs the activities userId/type/timestamp index in firestore.indexes.json):', error);
                 setLoadingReads(false);
             }
         );
@@ -491,7 +497,7 @@ const MemberProfileSheet = ({
                 setSharedReflections(snapshot.docs.map((docSnap: any) => ({ id: docSnap.id, ...docSnap.data() })));
             },
             (error) => {
-                console.error('[MemberProfileSheet] Error fetching reflections:', error);
+                console.error('[MemberProfileSheet] Reflections query failed (needs the activities userId/type/timestamp index in firestore.indexes.json):', error);
             }
         );
 
@@ -506,11 +512,7 @@ const MemberProfileSheet = ({
     const memberId = member.userId || member.id;
 
     // ── Heatmap ─────────────────────────────────────────────────────────────
-    const currentWeek = getISOWeekString(new Date());
-    const isCurrentWeek = member.weeklyActivityWeek === currentWeek;
-    const dots: boolean[] = (isCurrentWeek && Array.isArray(member.weeklyActivity) && member.weeklyActivity.length === 7)
-        ? member.weeklyActivity
-        : [false, false, false, false, false, false, false];
+    const dots = weekDots(member.weeklyActivity, member.weeklyActivityWeek, parseLocalDateString(today));
 
     const readToday = member.lastReadDate === today;
     const totalReflections = member.totalReflections || 0;
@@ -734,11 +736,6 @@ const MemberProfileSheet = ({
                                                     {formatRelativeTime(read.timestamp)}
                                                 </Text>
                                             </View>
-                                            {read.preview && (
-                                                <Text style={[sheetStyles.readCardPreview, { color: colors.textSecondary, borderLeftColor: colors.accentSecondaryLight }]} numberOfLines={2}>
-                                                    "{read.preview}"
-                                                </Text>
-                                            )}
                                         </View>
                                     ))}
                                 </View>
@@ -768,7 +765,7 @@ const MemberProfileSheet = ({
                                                     {formatRelativeTime(item.timestamp)}
                                                 </Text>
                                             </View>
-                                            <HyperlinkedText style={[sheetStyles.reflectionText, { color: colors.textPrimary }]} text={item.sharedReflectionText || item.preview} />
+                                            <HyperlinkedText style={[sheetStyles.reflectionText, { color: colors.textPrimary }]} text={item.sharedReflectionText || ''} />
                                         </View>
                                     ))}
                                 </View>
@@ -841,10 +838,6 @@ const sheetStyles = StyleSheet.create({
     readCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     readCardTitle: { fontSize: Typography.size.sm, fontWeight: Typography.weight.semibold },
     readCardTime: { fontSize: Typography.size.xs },
-    readCardPreview: {
-        fontSize: Typography.size.sm, lineHeight: 20,
-        fontStyle: 'italic', paddingLeft: Spacing.sm, borderLeftWidth: 2,
-    },
     // Reflections
     reflectionCard: { borderRadius: Spacing.borderRadius.md, borderWidth: 1, padding: Spacing.md, gap: Spacing.sm },
     reflectionCardHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm },
@@ -884,7 +877,8 @@ export default function GroupDetailScreen() {
         return () => subscription.remove();
     }, []);
 
-    const today = useMemo(() => getTodayDateString(), []);
+    // Moves at midnight and on resume, so an open screen never keeps yesterday.
+    const today = useLocalDay();
 
     const styles = useMemo(() => getStyles(colors), [colors]);
 
@@ -893,6 +887,9 @@ export default function GroupDetailScreen() {
         pendingCount.current -= 1;
         if (pendingCount.current === 0) setLoading(false);
     }, []);
+
+    // The group-wide checks run once per mount per day, not on every group-doc update.
+    const checkedOn = useRef<string | null>(null);
 
     React.useEffect(() => {
         if (!groupId) return;
@@ -904,7 +901,9 @@ export default function GroupDetailScreen() {
                 setIsOffline(false);
                 setGroupData(docSnap.data() || null);
                 markResolved();
-                if (docSnap.exists()) {
+                const day = getTodayDateString();
+                if (docSnap.exists() && checkedOn.current !== day) {
+                    checkedOn.current = day;
                     checkInactiveMembers(groupId);
                     evaluateGroupAdminRoles(groupId);
                 }
@@ -912,24 +911,6 @@ export default function GroupDetailScreen() {
             (error: any) => {
                 console.error('[GroupDetail] group snapshot error:', error);
                 setIsOffline(true);
-                markResolved();
-            }
-        );
-
-        const qActivities = query(
-            collection(db, 'groups', groupId, 'activities'),
-            orderBy('timestamp', 'desc'),
-            limit(30)
-        );
-        const unsubscribeActivities = onSnapshot(
-            qActivities,
-            (querySnapshot: any) => {
-                const feed = querySnapshot.docs.map((docSnap: any) => ({ id: docSnap.id, ...docSnap.data() }));
-                setActivities(feed);
-                markResolved();
-            },
-            (error: any) => {
-                console.error('[GroupDetail] activities snapshot error:', error);
                 markResolved();
             }
         );
@@ -948,20 +929,41 @@ export default function GroupDetailScreen() {
 
         return () => {
             unsubscribeGroup();
-            unsubscribeActivities();
             unsubscribeMembers();
         };
     }, [groupId]);
 
+    // The whole review week, resubscribed when the day changes.
+    React.useEffect(() => {
+        if (!groupId) return;
+
+        const { from } = reviewRange(parseLocalDateString(today));
+        const qActivities = query(
+            collection(getFirestore(), 'groups', groupId, 'activities'),
+            where('timestamp', '>=', Timestamp.fromDate(from)),
+            orderBy('timestamp', 'desc'),
+            limit(FEED_LIMIT)
+        );
+        return onSnapshot(
+            qActivities,
+            (querySnapshot: any) => {
+                const feed = querySnapshot.docs.map((docSnap: any) => ({ id: docSnap.id, ...docSnap.data() }));
+                setActivities(feed);
+                markResolved();
+            },
+            (error: any) => {
+                console.error('[GroupDetail] activities snapshot error:', error);
+                markResolved();
+            }
+        );
+    }, [groupId, today]);
+
     const accountabilityData = useMemo(() => {
-        const currentWeek = getISOWeekString(new Date());
+        const todayDate = parseLocalDateString(today);
         const currentMonth = today.substring(0, 7);
 
         const processed = members.map(m => {
-            const isCurrentWeek = m.weeklyActivityWeek === currentWeek;
-            const dots = (isCurrentWeek && Array.isArray(m.weeklyActivity) && m.weeklyActivity.length === 7)
-                ? m.weeklyActivity
-                : [false, false, false, false, false, false, false];
+            const dots = weekDots(m.weeklyActivity, m.weeklyActivityWeek, todayDate);
 
             const isCurrentMonth = m.monthlyActivityMonth === currentMonth;
             const monthlyStreak = isCurrentMonth ? (m.monthlyStreak || 0) : 0;
@@ -1006,7 +1008,7 @@ export default function GroupDetailScreen() {
      * Gated at the DATA, never per-view: a screen this size has too many render
      * paths for that to stay applied, and one missed branch shows it all week.
      */
-    const groupWeek = reviewWindow(new Date());
+    const groupWeek = reviewWindow(parseLocalDateString(today));
     const { pinnedMilestone, feedItems } = groupWeek.open
         ? buildProcessedFeed(activities, today)
         : { pinnedMilestone: null, feedItems: [] as FeedItem[] };
@@ -1261,13 +1263,6 @@ export default function GroupDetailScreen() {
                                                     <Text variant="bodySmall" tone="secondary">
                                                         read {activity.bookName} {activity.chapters}
                                                     </Text>
-                                                    {activity.preview && (
-                                                        <HyperlinkedText
-                                                            style={[styles.reflectionPreview, { color: colors.textTertiary, borderLeftColor: colors.accentSecondaryLight }]}
-                                                            numberOfLines={2}
-                                                            text={`"${activity.preview}"`}
-                                                        />
-                                                    )}
                                                 </>
                                             )}
                                             {isSharedReflection && (
@@ -1283,7 +1278,7 @@ export default function GroupDetailScreen() {
                                                         )}
                                                         <HyperlinkedText
                                                             style={{ fontSize: Typography.size.sm, color: colors.textPrimary, lineHeight: 20 }}
-                                                            text={activity.sharedReflectionText || activity.preview}
+                                                            text={activity.sharedReflectionText || ''}
                                                         />
                                                     </View>
                                                 </>
@@ -1464,7 +1459,6 @@ const getStyles = (colors: any) => StyleSheet.create({
     activityContent: { flex: 1, gap: 4 },
     activityHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
     timestamp: { opacity: 0.8 },
-    reflectionPreview: { fontSize: Typography.size.sm, lineHeight: 20, fontStyle: 'italic', marginTop: Spacing.xs, paddingLeft: Spacing.sm, borderLeftWidth: 2 },
     activityIcon: { marginLeft: Spacing.xs, paddingTop: 4, flexShrink: 0 },
     milestoneRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.xs, marginTop: 2, flexWrap: 'wrap' },
     emptyFeed: { paddingVertical: Spacing.xxl * 2, alignItems: 'center', gap: Spacing.md },

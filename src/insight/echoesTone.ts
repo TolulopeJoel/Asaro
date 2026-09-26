@@ -30,13 +30,22 @@ export interface OpenSection {
 }
 
 /**
+ * A stored SQLite timestamp as an instant. `CURRENT_TIMESTAMP` is UTC with no
+ * zone marker, which `new Date` would read as local time.
+ */
+export function parseUtc(raw: string): number {
+    const iso = raw.replace(' ', 'T');
+    const zoned = /(z|[+-]\d\d:?\d\d)$/i.test(iso) || !iso.includes('T');
+    return new Date(zoned ? iso : `${iso}Z`).getTime();
+}
+
+/**
  * Days since a finding was first put in front of the reader. `shownAt` falls
  * back to `createdAt` so a never-surfaced observation cannot accuse someone of
  * ignoring something they were never shown.
  */
 export function daysWaiting(shownAt: string | null, createdAt: string, now: number): number | null {
-    const raw = shownAt ?? createdAt;
-    const at = new Date(raw).getTime();
+    const at = parseUtc(shownAt ?? createdAt);
     if (!Number.isFinite(at)) return null;
     return Math.max(0, Math.floor((now - at) / DAY_MS));
 }

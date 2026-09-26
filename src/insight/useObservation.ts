@@ -55,6 +55,18 @@ async function millisSince(key: string): Promise<number> {
 
 const stamp = (key: string) => AsyncStorage.setItem(key, String(Date.now())).catch(() => {});
 
+/** The cheap detectors, all SQL over the journal: the save screen's own. */
+async function detectAfterSave(): Promise<void> {
+    // Milestones are the only detector needing something from outside the
+    // journal — the plan's own progress.
+    const done = await getReadingProgress();
+    const planPercent = READING_PLAN_DATA.length ? (done.length / READING_PLAN_DATA.length) * 100 : 0;
+    await detectMilestones(planPercent);
+    await detectCommitments();
+    await detectStudy();
+    await detectAbsence();
+}
+
 export interface ObservationSlot {
     observation: StoredObservation | null;
     rendered: RenderedObservation | null;
@@ -100,18 +112,13 @@ export function useObservation(enabled: boolean, surface: Surface = 'home'): Obs
                     // Sequential, not parallel: they share one SQLite
                     // connection and the whole pass is a few hundred ms.
                     await detectConvergence();
-                    // Milestones are the only detector needing something from
-                    // outside the journal — the plan's own progress.
-                    const done = await getReadingProgress();
-                    const planPercent = READING_PLAN_DATA.length
-                        ? (done.length / READING_PLAN_DATA.length) * 100
-                        : 0;
-                    await detectMilestones(planPercent);
-                    await detectCommitments();
-                    await detectStudy();
-                    await detectAbsence();
+                    await detectAfterSave();
                     await stamp(LAST_RUN_KEY);
                 }
+
+                // The save screen's findings are about the entry just written,
+                // so they are detected now rather than on tomorrow's Home pass.
+                if (surface === 'afterSave') await detectAfterSave();
 
                 // The quiet period is Home's alone. A card after saving is
                 // already rate-limited by the act of writing an entry.

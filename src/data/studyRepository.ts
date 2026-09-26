@@ -1,4 +1,5 @@
 import { withDatabase } from './db';
+import { retractKeys } from '../insight/observation';
 import { JournalEntry } from './types';
 
 /**
@@ -89,6 +90,7 @@ export const toggleStudyTopicCompletion = async (entryId: number, completed: boo
             `UPDATE journal_entries SET study_completed = ? WHERE id = ?`,
             [completed ? 1 : 0, entryId]
         );
+        if (completed) await retractKeys(database, 'study', [`entry:${entryId}`]);
     });
 };
 

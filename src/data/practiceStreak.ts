@@ -8,10 +8,9 @@
  *   **Today is not yet owed.** A daily practice done yesterday but not yet
  *   today is still live — the day is not over.
  *
- *   **A period lapses only after two.** A weekly practice needs the reader not
- *   to let a fortnight pass, not one completion per calendar week. Anchored
- *   windows would break a streak for doing it late one week and early the next,
- *   enforcing a schedule nobody set. The same rule gives daily its grace day.
+ *   **Periods count back from today**, in the same windows `recentPeriods`
+ *   draws, so the number and the cells never disagree. Window 0 is the current
+ *   period and may still be empty; the streak then counts from window 1.
  */
 
 import { Cadence } from './actionKind';
@@ -44,39 +43,19 @@ export function streakOf(
     if (completions.length === 0) return 0;
 
     const todayMs = localDate(today);
-
-    // Newest first, deduped — the log's primary key should prevent duplicates,
-    // but a streak is not the place to discover that it did not.
-    const days = [...new Set(completions)]
-        .map(localDate)
-        .filter(ms => ms <= todayMs)
-        .sort((a, b) => b - a);
-
+    const days = completions.map(localDate).filter(ms => ms <= todayMs);
     if (days.length === 0) return 0;
 
     const period = cadence === 'daily' ? 1 : 7;
+    const windows = new Set(days.map(ms => Math.floor(daysBetween(todayMs, ms) / period)));
 
-    /*
-     * Where the count starts. If the current period has no completion yet, the
-     * streak is measured from the previous one rather than broken — the reader
-     * still has today, or this week, in front of them.
-     */
-    const sinceLatest = daysBetween(todayMs, days[0]);
-    if (sinceLatest >= period * 2) return 0;
-
-    let streak = 1;
-    for (let i = 1; i < days.length; i++) {
-        const gap = daysBetween(days[i - 1], days[i]);
-        if (gap === 0) continue;
-        /*
-         * Any gap inside one period is the same period — two completions on
-         * consecutive days of a weekly practice are one week kept, not two.
-         */
-        if (gap < period) continue;
-        if (gap <= period * 2 - 1) streak++;
-        else break;
+    // The current period is not yet owed, so an empty one starts the count a period back.
+    let back = windows.has(0) ? 0 : 1;
+    let streak = 0;
+    while (windows.has(back)) {
+        streak++;
+        back++;
     }
-
     return streak;
 }
 

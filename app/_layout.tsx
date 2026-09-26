@@ -169,11 +169,21 @@ export default function RootLayout() {
     // Still waiting for the initial load to complete.
     if (userName === undefined || sleepTime === undefined || hasPermissions === null || isBatteryOk === null) return;
 
+    // A newer run of this effect owns navigation; a stale one stops at its next step.
+    let cancelled = false;
+
     const checkRequirements = async () => {
       const currentSegment = segments[0] as string;
 
+      // The onboarding screens write straight to storage, so re-read what's missing.
+      const name = userName || await AsyncStorage.getItem(STORAGE_KEYS.USER_NAME);
+      const sleep = sleepTime || await AsyncStorage.getItem(STORAGE_KEYS.SLEEP_TIME);
+      if (cancelled) return;
+      if (name && name !== userName) setUserName(name);
+      if (sleep && sleep !== sleepTime) setSleepTime(sleep);
+
       // 1. Name
-      if (!userName) {
+      if (!name) {
         if (currentSegment !== 'onboarding' || segments[1] !== 'name') {
           router.replace('/onboarding/name');
         }
@@ -181,7 +191,7 @@ export default function RootLayout() {
       }
 
       // 2. Sleep time
-      if (!sleepTime) {
+      if (!sleep) {
         if (currentSegment !== 'onboarding' || segments[1] !== 'sleep-time') {
           router.replace('/onboarding/sleep-time');
         }
@@ -194,6 +204,7 @@ export default function RootLayout() {
       if (!perms) {
         // Re-query in case the user just granted permission from system settings.
         perms = await hasNotificationPermissions();
+        if (cancelled) return;
         setHasPermissions(perms);
       }
       if (!perms) {
@@ -206,24 +217,29 @@ export default function RootLayout() {
       let batteryOk = isBatteryOk;
       if (!batteryOk) {
         batteryOk = await isBatteryOptimizationDisabled();
+        if (cancelled) return;
         setIsBatteryOk(batteryOk);
       }
-      if (!batteryOk) {
-        router.replace('/battery-optimization');
+      // "Continue anyway" on the battery screen counts as met.
+      if (!batteryOk && !await AsyncStorage.getItem(STORAGE_KEYS.BATTERY_GATE_SKIPPED)) {
+        if (!cancelled) router.replace('/battery-optimization');
         return;
       }
+      if (cancelled) return;
 
       // All requirements met — mark ready and schedule notifications once.
       setIsReady(true);
-      await ensureNotificationsArmed();
-
       const isOnboarding = ['onboarding', 'permissions', 'battery-optimization'].includes(currentSegment);
       if (isOnboarding) {
         router.replace('/');
       }
+      ensureNotificationsArmed().catch(error =>
+        console.error('Failed to arm notifications:', error)
+      );
     };
 
     checkRequirements();
+    return () => { cancelled = true; };
   }, [dbInitialized, isReady, userName, sleepTime, hasPermissions, isBatteryOk, segments]);
 
   if (dbError) {

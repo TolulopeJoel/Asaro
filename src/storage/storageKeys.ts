@@ -11,4 +11,8 @@ export const STORAGE_KEYS = {
     ASARO_LOOK: 'asaro_look',
     /** Which tree each practice grows, by action item id. Kept so a tree never changes. */
     GROVE_SPECIES: 'grove_species',
+    /** Anniversaries already marked, as `practiceId:m6` or `practiceId:y1`, so each is said once. */
+    GROVE_MOMENTS: 'grove_moments',
+    /** Set when the user chose to go on without lifting battery optimisation. */
+    BATTERY_GATE_SKIPPED: 'battery_gate_skipped',
 } as const;

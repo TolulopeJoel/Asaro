@@ -1,6 +1,7 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { TextInput } from 'react-native';
 import { useRefPicker } from '../context/RefPickerContext';
+import { couldBeBookName, findAtTrigger, pickerQuery, resolveTypedReference, typedSince } from '../utils/bibleUtils';
 
 /**
  * Encapsulates all `@` trigger detection, live preview, reference selection,
@@ -43,6 +44,13 @@ export function useBibleRefPicker({
     setValueRef.current = setValue;
     const getInputRefRef = useRef(getInputRef);
     getInputRefRef.current = getInputRef;
+    // Owner token from the root picker, so this field only ever closes its own.
+    const pickerToken = useRef<number | undefined>(undefined);
+
+    // A picker left open would write into this field after it has gone.
+    useEffect(() => () => {
+        if (mode === 'context' && pickerToken.current !== undefined) hidePicker(pickerToken.current);
+    }, [mode, hidePicker]);
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -61,7 +69,7 @@ export function useBibleRefPicker({
                 return;
             }
 
-            showPicker({
+            pickerToken.current = showPicker({
                 query,
                 onPreview: (partial) => {
                     const si = refStartIndexRef.current;
@@ -85,7 +93,7 @@ export function useBibleRefPicker({
                     getInputRefRef.current()?.focus();
                 },
                 onInteraction: () => getInputRefRef.current()?.focus(),
-            });
+            }, pickerToken.current);
         },
         [mode, showPicker]
     );
@@ -97,7 +105,7 @@ export function useBibleRefPicker({
         if (mode === 'local') {
             setPickerVisible(false);
         } else {
-            hidePicker();
+            hidePicker(pickerToken.current);
         }
     }, [mode, hidePicker]);
 
@@ -122,30 +130,34 @@ export function useBibleRefPicker({
                 if (text.length <= si) {
                     // User deleted back past the @
                     closePicker();
-                } else if (text.endsWith(' ')) {
-                    // Treat trailing space as a finalize signal
-                    const partialRef = text.slice(si).trim();
-                    handleSelect(partialRef);
-                } else {
-                    // Update the query live so the picker can filter books
-                    const newQuery = text.slice(si + 1); // skip the '@'
-                    setRefQuery(newQuery);
-                    if (mode === 'context') {
-                        updateQuery(newQuery);
+                    return;
+                }
+                const typed = typedSince(text, si);
+                if (text.endsWith(' ')) {
+                    // A space finishes a real book; "@1 " may still become "1 John"; anything else is just an @.
+                    const ref = resolveTypedReference(typed);
+                    if (ref) {
+                        handleSelect(ref);
+                        return;
+                    }
+                    if (!couldBeBookName(typed)) {
+                        closePicker();
+                        return;
                     }
                 }
+                const newQuery = pickerQuery(typed);
+                setRefQuery(newQuery);
+                if (mode === 'context') updateQuery(newQuery, pickerToken.current);
                 return;
             }
 
-            // Detect a fresh @ trigger
-            const match = text.match(/@(\w[\w\s]*)$/);
-            if (match) {
-                const startIdx = text.length - match[0].length;
-                openPicker(match[1], startIdx);
+            const trigger = findAtTrigger(text);
+            if (trigger) {
+                openPicker(pickerQuery(trigger.query), trigger.startIndex);
+            } else if (mode === 'context') {
+                if (pickerToken.current !== undefined) hidePicker(pickerToken.current);
             } else {
-                // No trigger present — ensure picker is dismissed
-                if (mode === 'context') hidePicker();
-                else setPickerVisible(false);
+                setPickerVisible(false);
             }
         },
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -168,9 +180,10 @@ export function useBibleRefPicker({
         refStartIndexRef.current = -1;
         setRefStartIndex(-1);
         setRefQuery('');
-        setPickerVisible(false);
+        if (mode === 'context') hidePicker(pickerToken.current);
+        else setPickerVisible(false);
         setTimeout(() => getInputRefRef.current()?.focus(), 50);
-    }, []);
+    }, [mode, hidePicker]);
 
     /** Dismiss handler — call `onDismiss` from `<BibleReferencePicker>` in 'local' mode. */
     const handleDismiss = useCallback(() => {

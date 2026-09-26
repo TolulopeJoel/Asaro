@@ -16,6 +16,7 @@ import { KeyboardAvoidingView, ScrollView, StyleSheet, TextInput, View } from 'r
 import { Archive, ArchiveRestore, X } from 'lucide-react-native';
 
 import { useTheme } from '../../theme/ThemeContext';
+import { useAlert } from '../../context/AlertContext';
 import { Spacing } from '../../theme/spacing';
 import { ScalePressable } from '../ScalePressable';
 import { Screen, Text, ThemedButton, textStyle } from '../ui';
@@ -47,11 +48,13 @@ const KIND_NOTE: Record<ActionKind, string> = {
 
 export function ActionEditor({ item, onClose, onSave, onArchive }: Props) {
     const { colors, style: themeStyle } = useTheme();
+    const { showAlert } = useAlert();
 
     const [action, setAction] = useState(item.action ?? '');
     const [motivation, setMotivation] = useState(item.motivation ?? '');
     const [kind, setKind] = useState({ cadence: item.cadence ?? null, due_at: item.due_at ?? null });
     const [saving, setSaving] = useState(false);
+    const [archiving, setArchiving] = useState(false);
     // Nothing is flagged until the reader asks to save. An empty reason on a
     // freshly opened form is a field you were on your way to filling in, not a
     // mistake — the flag belongs to the attempt.
@@ -82,8 +85,28 @@ export function ActionEditor({ item, onClose, onSave, onArchive }: Props) {
         setSaving(true);
         try {
             await onSave({ action, motivation, ...kind });
+        } catch (error) {
+            console.error('Failed to save action:', error);
+            showAlert({ title: 'Not saved', message: 'That change could not be saved. Please try again.' });
         } finally {
             setSaving(false);
+        }
+    };
+
+    // A failed write keeps the editor open, with the reader's text still in it.
+    const toggleArchive = async () => {
+        if (saving || archiving) return;
+        setArchiving(true);
+        try {
+            await onArchive(!archived);
+        } catch (error) {
+            console.error('Failed to archive action:', error);
+            showAlert({
+                title: archived ? 'Not restored' : 'Not archived',
+                message: 'That change could not be saved. Please try again.',
+            });
+        } finally {
+            setArchiving(false);
         }
     };
 
@@ -182,7 +205,7 @@ export function ActionEditor({ item, onClose, onSave, onArchive }: Props) {
                           * and a practice keeps its completions. Nothing here
                           * rewrites the journal, so it needs no confirmation. */}
                         <ScalePressable
-                            onPress={() => onArchive(!archived)}
+                            onPress={toggleArchive}
                             accessibilityRole="button"
                             style={styles.archive}
                         >

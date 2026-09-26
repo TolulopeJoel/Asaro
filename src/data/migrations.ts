@@ -1,6 +1,6 @@
 import { withDatabase, getDbVersion, setDbVersion } from './db';
 
-const CURRENT_DB_VERSION = 14;
+const CURRENT_DB_VERSION = 15;
 
 /**
  * The migration run, shared by everyone who asks for it.
@@ -26,7 +26,20 @@ const runMigrations = async (): Promise<boolean> => {
         return await withDatabase(async (database) => {
             const currentVersion = await getDbVersion(database);
 
-            if (currentVersion < 1) {
+            // Each step commits with its version, so a later failure never re-runs it.
+            const step = async (version: number, run: () => Promise<void>) => {
+                await database.execAsync('BEGIN');
+                try {
+                    await run();
+                    await setDbVersion(database, version);
+                    await database.execAsync('COMMIT');
+                } catch (error) {
+                    await database.execAsync('ROLLBACK').catch(() => { });
+                    throw error;
+                }
+            };
+
+            if (currentVersion < 1) await step(1, async () => {
                 // v1: first-time setup
                 await database.execAsync(`
                     CREATE TABLE IF NOT EXISTS journal_entries (
@@ -47,14 +60,13 @@ const runMigrations = async (): Promise<boolean> => {
                     CREATE INDEX IF NOT EXISTS idx_book_name ON journal_entries(book_name);
                     CREATE INDEX IF NOT EXISTS idx_created_at ON journal_entries(created_at);
                 `);
-            }
+            });
 
-            if (currentVersion < 2) {
+            if (currentVersion < 2) await step(2, async () => {
                 // v2: drop the legacy date_created column
                 const tableInfo = await database.getAllAsync(`PRAGMA table_info(journal_entries)`) as any[];
                 if (tableInfo.some((col: any) => col.name === 'date_created')) {
                     await database.execAsync(`
-                        BEGIN TRANSACTION;
                         CREATE TABLE journal_entries_new (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
                             book_name TEXT NOT NULL,
@@ -83,12 +95,11 @@ const runMigrations = async (): Promise<boolean> => {
                         ALTER TABLE journal_entries_new RENAME TO journal_entries;
                         CREATE INDEX IF NOT EXISTS idx_book_name ON journal_entries(book_name);
                         CREATE INDEX IF NOT EXISTS idx_created_at ON journal_entries(created_at);
-                        COMMIT;
                     `);
                 }
-            }
+            });
 
-            if (currentVersion < 3) {
+            if (currentVersion < 3) await step(3, async () => {
                 // v3: action_items, seeded from reflection_3
                 await database.execAsync(`
                     CREATE TABLE IF NOT EXISTS action_items (
@@ -111,9 +122,9 @@ const runMigrations = async (): Promise<boolean> => {
                         [entry.id, entry.reflection_3]
                     );
                 }
-            }
+            });
 
-            if (currentVersion < 4) {
+            if (currentVersion < 4) await step(4, async () => {
                 // v4: reading_progress, action pin/complete flags, study columns
                 await database.execAsync(`
                     CREATE TABLE IF NOT EXISTS reading_progress (
@@ -132,9 +143,9 @@ const runMigrations = async (): Promise<boolean> => {
                 await addCol('action_items', 'is_completed BOOLEAN DEFAULT 0');
                 await addCol('action_items', 'is_pinned BOOLEAN DEFAULT 0');
                 await addCol('action_items', 'pinned_at DATETIME DEFAULT NULL');
-            }
+            });
 
-            if (currentVersion < 5) {
+            if (currentVersion < 5) await step(5, async () => {
                 // v5: FTS5 search and performance indexes
                 await database.execAsync(`
                     CREATE VIRTUAL TABLE IF NOT EXISTS journal_entries_fts USING fts5(
@@ -190,9 +201,9 @@ const runMigrations = async (): Promise<boolean> => {
                     CREATE INDEX IF NOT EXISTS idx_action_items_pinned ON action_items(is_pinned, pinned_at);
                     CREATE INDEX IF NOT EXISTS idx_journal_entries_study ON journal_entries(study_completed);
                 `);
-            }
+            });
 
-            if (currentVersion < 7) {
+            if (currentVersion < 7) await step(7, async () => {
                 // v7: standalone study topics (dropped again in v8)
                 await database.execAsync(`
                     CREATE TABLE IF NOT EXISTS study_topics (
@@ -213,9 +224,9 @@ const runMigrations = async (): Promise<boolean> => {
                         FOREIGN KEY (topic_id) REFERENCES study_topics(id) ON DELETE CASCADE
                     );
                 `);
-            }
+            });
 
-            if (currentVersion < 8) {
+            if (currentVersion < 8) await step(8, async () => {
                 // v8: drop standalone study topics. Study is one concept — the
                 // study_further field on an entry, born out of the reflection
                 // flow. The topics table was a parallel model under one name.
@@ -223,9 +234,9 @@ const runMigrations = async (): Promise<boolean> => {
                     DROP TABLE IF EXISTS study_topic_references;
                     DROP TABLE IF EXISTS study_topics;
                 `);
-            }
+            });
 
-            if (currentVersion < 9) {
+            if (currentVersion < 9) await step(9, async () => {
                 // v9: embeddings for Themes.
                 //
                 // One row per (entry, field), not per entry: answers to one
@@ -265,9 +276,9 @@ const runMigrations = async (): Promise<boolean> => {
                         FOREIGN KEY (entry_id) REFERENCES journal_entries(id) ON DELETE CASCADE
                     );
                 `);
-            }
+            });
 
-            if (currentVersion < 10) {
+            if (currentVersion < 10) await step(10, async () => {
                 /*
                  * v10: observations — the unit the reader is shown. Every
                  * detector writes the same record, so ranking, pacing and the
@@ -313,9 +324,9 @@ const runMigrations = async (): Promise<boolean> => {
                     CREATE INDEX IF NOT EXISTS idx_obs_pending ON observations(shown_at, confidence);
                     CREATE INDEX IF NOT EXISTS idx_obs_evidence ON observation_evidence(observation_id);
                 `);
-            }
+            });
 
-            if (currentVersion < 11) {
+            if (currentVersion < 11) await step(11, async () => {
                 /*
                  * v11: what kind of thing an action item is. Three kinds live
                  * in this column, told apart by what the writer supplied rather
@@ -338,9 +349,9 @@ const runMigrations = async (): Promise<boolean> => {
                         /* already present */
                     }
                 }
-            }
+            });
 
-            if (currentVersion < 12) {
+            if (currentVersion < 12) await step(12, async () => {
                 /*
                  * v12: practice completions. A practice completes per
                  * occurrence, so a single `is_completed` boolean cannot
@@ -364,9 +375,9 @@ const runMigrations = async (): Promise<boolean> => {
                     CREATE INDEX IF NOT EXISTS idx_completions_item
                         ON action_item_completions(action_item_id, completed_on DESC);
                 `);
-            }
+            });
 
-            if (currentVersion < 13) {
+            if (currentVersion < 13) await step(13, async () => {
                 /*
                  * v13: archiving, which replaces deleting. An action item is
                  * part of what someone wrote on a given day, so deleting one
@@ -381,9 +392,9 @@ const runMigrations = async (): Promise<boolean> => {
                 } catch {
                     /* already present */
                 }
-            }
+            });
 
-            if (currentVersion < 14) {
+            if (currentVersion < 14) await step(14, async () => {
                 /*
                  * v14: findings that come round again, and knowing when one was
                  * acted on. `shown_at` becomes "last shown" rather than a
@@ -405,7 +416,17 @@ const runMigrations = async (): Promise<boolean> => {
                 await database.runAsync(
                     `UPDATE observations SET shown_count = 1 WHERE shown_at IS NOT NULL`,
                 );
-            }
+            });
+
+            if (currentVersion < 15) await step(15, async () => {
+                // v15: a finding that stopped being true is marked, not deleted,
+                // so its verdict and dedupe key survive.
+                try {
+                    await database.execAsync(`ALTER TABLE observations ADD COLUMN retracted_at DATETIME`);
+                } catch {
+                    /* already present */
+                }
+            });
 
             await setDbVersion(database, CURRENT_DB_VERSION);
 
@@ -413,7 +434,7 @@ const runMigrations = async (): Promise<boolean> => {
         });
     } catch (error) {
         // Logged with the cause: a bare "failed to initialize" says only that
-        // something went wrong somewhere in fourteen migrations.
+        // something went wrong somewhere in the migrations.
         console.error('Database init error:', error);
         return false;
     }

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
+    Animated,
     KeyboardAvoidingView,
     Modal,
     StatusBar,
@@ -20,25 +21,31 @@ import { Screen, textStyle } from './ui';
 import Svg, { Defs, Line, Pattern, Rect } from 'react-native-svg';
 import { KEYBOARD_BEHAVIOR } from '../utils/keyboard';
 
+const RULE_STEP = 28;
+
 /**
  * Cloth's ruled paper — a hairline every 28px, matching the mockup's
  * `repeating-linear-gradient(0deg, transparent 0 27px, #d8cab2 27px 28px)`.
  * The 28px step is the answer text's own line height, so the writing sits on
- * the rules rather than across them.
+ * the rules rather than across them. `shift` moves the rules with the text as
+ * the input scrolls, so the writing stays on them.
  */
-function RuledPaper({ color }: { color: string }) {
+function RuledPaper({ color, shift }: { color: string; shift: Animated.Value }) {
     const id = 'ruled-paper';
     return (
-        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <Animated.View
+            style={[textAreaStyles.rules, { transform: [{ translateY: shift }] }]}
+            pointerEvents="none"
+        >
             <Svg width="100%" height="100%">
                 <Defs>
-                    <Pattern id={id} width={28} height={28} patternUnits="userSpaceOnUse">
-                        <Line x1={0} y1={27.5} x2={28} y2={27.5} stroke={color} strokeWidth={1} />
+                    <Pattern id={id} width={RULE_STEP} height={RULE_STEP} patternUnits="userSpaceOnUse">
+                        <Line x1={0} y1={RULE_STEP - 0.5} x2={RULE_STEP} y2={RULE_STEP - 0.5} stroke={color} strokeWidth={1} />
                     </Pattern>
                 </Defs>
                 <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${id})`} />
             </Svg>
-        </View>
+        </Animated.View>
     );
 }
 
@@ -75,6 +82,7 @@ const TextArea: React.FC<{
         const [contentHeightModal, setContentHeightModal] = useState(0);
         const regularTextInputRef = useRef<TextInput>(null);
         const expandedTextInputRef = useRef<TextInput>(null);
+        const ruleShift = useRef(new Animated.Value(0)).current;
 
         // Inline (non-expanded) picker — uses the root RefPickerContext.
         const inlinePicker = useBibleRefPicker({
@@ -139,14 +147,14 @@ const TextArea: React.FC<{
                         isAnswered && { borderColor: colors.border, backgroundColor: colors.background },
                         disabled && { backgroundColor: colors.background },
                     ]}>
-                        {bare && <RuledPaper color={colors.border} />}
+                        {bare && <RuledPaper color={colors.border} shift={ruleShift} />}
                         <TextInput
                             ref={regularTextInputRef}
                             inputAccessoryViewID="bible-picker"
                             style={[
                                 bare ? textAreaStyles.inputBare : textAreaStyles.input,
                                 textStyle(themeStyle, 'body'),
-                                { color: colors.text, minHeight: bare ? 230 : 250 },
+                                bare ? { color: colors.text } : { color: colors.text, minHeight: 250 },
                                 disabled && { color: colors.textSecondary },
                             ]}
                             placeholder={placeholder}
@@ -157,7 +165,11 @@ const TextArea: React.FC<{
                             numberOfLines={5}
                             textAlignVertical="top"
                             editable={!disabled}
-                            scrollEnabled={false}
+                            // Bare fills its band and scrolls itself, so the cursor stays above the keyboard.
+                            scrollEnabled={bare}
+                            onScroll={bare
+                                ? e => ruleShift.setValue(-(e.nativeEvent.contentOffset.y % RULE_STEP))
+                                : undefined}
                         >
                             {getBibleStyledParts(value).map((part, index) => (
                                 <Text key={index} style={part.isReference ? { color: colors.accent, fontWeight: '600' } : {}}>
@@ -192,6 +204,7 @@ const TextArea: React.FC<{
                     animationType="slide"
                     presentationStyle="fullScreen"
                     statusBarTranslucent={true}
+                    onRequestClose={handleCancel}
                 >
                     <StatusBar hidden={true} />
                     <Screen edges={['top', 'bottom', 'left', 'right']} style={fullScreenStyles.container}>
@@ -289,7 +302,16 @@ const textAreaStyles = StyleSheet.create({
         overflow: 'hidden',
     },
     inputBare: {
+        flex: 1,
         padding: Spacing.lg,
+    },
+    // One rule taller than the band, so shifting up by less than a step never shows a gap.
+    rules: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: -RULE_STEP,
     },
     inputContainer: {
         borderRadius: Spacing.borderRadius.lg,

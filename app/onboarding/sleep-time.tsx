@@ -6,15 +6,18 @@ import {
     Keyboard,
     TouchableWithoutFeedback,
     KeyboardAvoidingView,
-    TouchableOpacity,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { Hero, Screen, Text, ThemedButton, textStyle } from '@/src/components/ui';
 import { KEYBOARD_BEHAVIOR } from '@/src/utils/keyboard';
+import { saveSleepTime, setupDailyNotifications } from '@/src/utils/notifications';
+
+// The same window Settings offers: 8 PM to midnight.
+const EARLIEST_HOUR = 8;
+const LATEST_HOUR = 11;
 
 export default function SleepTimeScreen() {
     const router = useRouter();
@@ -22,7 +25,6 @@ export default function SleepTimeScreen() {
 
     const [hour, setHour] = useState('');
     const [minute, setMinute] = useState('');
-    const [period, setPeriod] = useState<'AM' | 'PM'>('PM');
     const [error, setError] = useState<string | null>(null);
 
     const minuteInputRef = useRef<TextInput>(null);
@@ -106,18 +108,14 @@ export default function SleepTimeScreen() {
         }
     };
 
-    const togglePeriod = () => {
-        setPeriod(p => p === 'AM' ? 'PM' : 'AM');
-    };
-
     const handleContinue = async () => {
         if (!hour || !minute) return;
 
         const h = parseInt(hour, 10);
         const m = parseInt(minute, 10);
 
-        if (isNaN(h) || h < 1 || h > 12) {
-            setError('Hour must be between 1 and 12');
+        if (isNaN(h) || h < EARLIEST_HOUR || h > LATEST_HOUR) {
+            setError('Pick a time between 8:00 and 11:59 PM');
             return;
         }
 
@@ -126,20 +124,12 @@ export default function SleepTimeScreen() {
             return;
         }
 
-        // Convert to Date object
-        const now = new Date();
-        const date = new Date(now);
-        date.setSeconds(0);
-        date.setMilliseconds(0);
-
-        let hours24 = h;
-        if (period === 'PM' && h < 12) hours24 += 12;
-        if (period === 'AM' && h === 12) hours24 = 0;
-
-        date.setHours(hours24, m);
-
         try {
-            await AsyncStorage.setItem('sleep_time', date.toISOString());
+            await saveSleepTime({ hour: h + 12, minute: m });
+            // Slot times come from the sleep time; a no-op until notifications are allowed.
+            setupDailyNotifications(false, { force: true }).catch(error =>
+                console.error('Failed to reschedule after sleep time:', error)
+            );
             router.replace('/permissions');
         } catch (error) {
             console.error('Error saving sleep time:', error);
@@ -207,9 +197,7 @@ export default function SleepTimeScreen() {
                                 maxLength={2}
                                 accessibilityLabel="Minute"
                             />
-                            <TouchableOpacity onPress={togglePeriod} activeOpacity={0.6} accessibilityRole="button">
-                                <Text variant="tab" tone="secondary">{period}</Text>
-                            </TouchableOpacity>
+                            <Text variant="tab" tone="secondary">PM</Text>
                         </View>
 
                         {error && <Text variant="bodySmall" tone="danger">{error}</Text>}

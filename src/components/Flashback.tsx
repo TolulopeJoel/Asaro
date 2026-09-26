@@ -1,4 +1,6 @@
-import { getFlashbackEntry, JournalEntry } from '@/src/data/database';
+import { getEntryById, getFlashbackEntry, JournalEntry } from '@/src/data/database';
+import { formatDateToLocalString } from '@/src/utils/dateUtils';
+import { unwrapReferences } from '@/src/utils/reference';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { FolderOpen } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -11,22 +13,25 @@ import { Text } from './ui';
 
 interface FlashbackProps {
     onEntryPress: (entry: JournalEntry) => void;
-    flashbackData?: { entry: JournalEntry, type: 'year' | 'month' | 'random' } | null;
+    flashbackData?: FlashbackData | null;
 }
 
-export const fetchFlashbackData = async (): Promise<{ entry: JournalEntry, type: 'year' | 'month' | 'random' } | null> => {
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    const cacheKey = `flashback_${today}`;
+type FlashbackData = { entry: JournalEntry, type: 'year' | 'month' | 'random' };
+
+export const fetchFlashbackData = async (): Promise<FlashbackData | null> => {
+    const cacheKey = `flashback_${formatDateToLocalString(new Date())}`;
     const historyKey = 'flashback_history';
     const MAX_HISTORY = 30;
 
-    // Try to get cached flashback for today
+    // The cache holds only the pick; the entry is re-read so edits and deletes show.
     const cached = await AsyncStorage.getItem(cacheKey);
     if (cached) {
         try {
-            return JSON.parse(cached);
+            const { id, type } = JSON.parse(cached) as { id: number, type: FlashbackData['type'] };
+            const entry = await getEntryById(id);
+            if (entry) return { entry, type };
         } catch {
-            // If parsing fails, continue to fetch new
+            // Unreadable pick: choose again below.
         }
     }
 
@@ -53,8 +58,10 @@ export const fetchFlashbackData = async (): Promise<{ entry: JournalEntry, type:
         }
 
         await AsyncStorage.setItem(historyKey, JSON.stringify(history));
-        // Cache it for today
-        await AsyncStorage.setItem(cacheKey, JSON.stringify(data));
+        const stale = (await AsyncStorage.getAllKeys())
+            .filter(k => k.startsWith('flashback_') && k !== historyKey && k !== cacheKey);
+        if (stale.length) await AsyncStorage.multiRemove(stale);
+        await AsyncStorage.setItem(cacheKey, JSON.stringify({ id: data.entry.id, type: data.type }));
     }
     return data;
 };
@@ -104,6 +111,7 @@ export const Flashback: React.FC<FlashbackProps> = React.memo(({ onEntryPress, f
             text = entry.notes || "No content";
         }
 
+        text = unwrapReferences(text);
         return text.length > 100 ? text.substring(0, 100) + '...' : text;
     };
 

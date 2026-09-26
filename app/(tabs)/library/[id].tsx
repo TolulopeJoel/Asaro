@@ -1,12 +1,26 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { JournalEntryDetail } from '@/src/components/JournalEntryDetail';
 import { JournalEntry, getEntryById, deleteJournalEntry } from '@/src/data/database';
+import { cancelStudyReminder } from '@/src/utils/notifications';
 import { LoadingView } from '@/src/components/LoadingView';
 import { Share } from 'react-native';
 import { useAlert } from '@/src/context/AlertContext';
+
+/** "John 3:16–21", "Genesis 12–15", "Genesis 12:4–13:2" — the passage as the entry records it. */
+function entryReference(entry: JournalEntry): string {
+    const { book_name, chapter_start: c1, verse_start: v1, verse_end: v2 } = entry;
+    const c2 = entry.chapter_end && entry.chapter_end !== c1 ? entry.chapter_end : undefined;
+    if (c2) {
+        return v1 || v2
+            ? `${book_name} ${c1}${v1 ? `:${v1}` : ''}–${c2}${v2 ? `:${v2}` : ''}`
+            : `${book_name} ${c1}–${c2}`;
+    }
+    if (!v1) return `${book_name} ${c1}`;
+    return `${book_name} ${c1}:${v1}${v2 && v2 !== v1 ? `–${v2}` : ''}`;
+}
 
 export default function JournalEntryDetailScreen() {
     const { id } = useLocalSearchParams();
@@ -18,20 +32,23 @@ export default function JournalEntryDetailScreen() {
     const [isDeleting, setIsDeleting] = useState(false);
     const { showAlert } = useAlert();
 
-    useEffect(() => {
+    // Reloaded on every focus, so returning from an edit shows the saved text. The spinner is first-load only.
+    useFocusEffect(useCallback(() => {
+        let alive = true;
         const loadEntry = async () => {
             if (!id) return;
             try {
                 const data = await getEntryById(Number(id));
-                setEntry(data);
+                if (alive) setEntry(data);
             } catch (error) {
                 console.error('Failed to load entry:', error);
             } finally {
-                setIsLoading(false);
+                if (alive) setIsLoading(false);
             }
         };
         loadEntry();
-    }, [id]);
+        return () => { alive = false; };
+    }, [id]));
 
     const handleEdit = (entry: JournalEntry) => {
         router.push({
@@ -53,9 +70,11 @@ export default function JournalEntryDetailScreen() {
                         setIsDeleting(true);
                         try {
                             await deleteJournalEntry(entry.id!);
+                            void cancelStudyReminder(entry.id!).catch(() => {});
                             router.replace('/library');
                         } catch (error) {
                             console.error("Error deleting entry:", error);
+                            showAlert({ title: 'Not deleted', message: 'This entry could not be deleted. Please try again.' });
                         } finally {
                             setIsDeleting(false);
                         }
@@ -72,8 +91,7 @@ export default function JournalEntryDetailScreen() {
     const handleShare = async (entry: JournalEntry) => {
         setIsSharing(true);
         try {
-            // Simplified share logic for now, or we could import the helper if refactored
-            const reference = `${entry.book_name} ${entry.chapter_start}${entry.verse_start ? ':' + entry.verse_start : ''}`;
+            const reference = entryReference(entry);
             let content = `Reflection on ${reference}\n\n`;
             if (entry.reflection_1) content += `${entry.reflection_1}\n\n`;
             content += `🫶 Created with Àṣàrò`;

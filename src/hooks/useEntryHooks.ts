@@ -107,68 +107,67 @@ export function useAutoSave(
     verseRange: any,
     currentStep: Step,
     isEditMode: boolean,
-    readingItemId?: number
+    readingItemId?: number,
+    suspended?: { current: boolean },
 ) {
     const lastSaveTime = useRef<number>(0);
     const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const isMountedRef = useRef(true);
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-    /*
-     * What the next save should write.
-     *
-     * The 20s interval is created once and never re-created, so anything it
-     * closed over would be frozen at the moment the reflection step opened —
-     * and every tick would write that stale draft back over the fresh one.
-     */
+    // The interval is created once, so saves read the latest values from here, never a closure.
     const latest = useRef({ reflectionAnswers, selectedBook, selectedChapters, verseRange, readingItemId });
     latest.current = { reflectionAnswers, selectedBook, selectedChapters, verseRange, readingItemId };
 
-    useEffect(() => {
-        isMountedRef.current = true;
-        return () => {
-            isMountedRef.current = false;
-            if (debounceTimer.current) clearTimeout(debounceTimer.current);
-            if (intervalRef.current) clearInterval(intervalRef.current);
-        };
+    // Once saved or discarded, nothing may write the draft back.
+    const saveDraft = useRef(async () => {
+        if (suspended?.current) return;
+        try {
+            const draftData: DraftData = { ...latest.current };
+            await AsyncStorage.setItem(STORAGE_KEYS.REFLECTION_DRAFT, JSON.stringify(draftData));
+            lastSaveTime.current = Date.now();
+        } catch (e) {
+            console.error('Failed to save draft:', e);
+        }
+    }).current;
+
+    // A pending save is written now rather than dropped when the writer leaves.
+    const flushPending = useRef(() => {
+        if (debounceTimer.current) {
+            clearTimeout(debounceTimer.current);
+            debounceTimer.current = null;
+            saveDraft();
+        }
+    }).current;
+
+    useEffect(() => () => {
+        flushPending();
+        if (intervalRef.current) clearInterval(intervalRef.current);
     }, []);
 
+    // The chapter step keeps saving once answers exist, so going back to check the passage loses nothing.
+    const writing = currentStep === 'reflection' || (currentStep === 'chapter' && !!reflectionAnswers);
+
     useEffect(() => {
-        if (isEditMode || currentStep !== 'reflection') {
-            if (debounceTimer.current) { clearTimeout(debounceTimer.current); debounceTimer.current = null; }
+        if (isEditMode || !writing) {
+            flushPending();
             if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
             return;
         }
 
-        const saveDraft = async () => {
-            if (!isMountedRef.current) return;
-            try {
-                const draftData: DraftData = { ...latest.current };
-                await AsyncStorage.setItem(STORAGE_KEYS.REFLECTION_DRAFT, JSON.stringify(draftData));
-                lastSaveTime.current = Date.now();
-            } catch (e) {
-                console.error('Failed to save draft:', e);
-            }
-        };
-
         if (!selectedBook && !reflectionAnswers) return;
 
         if (!intervalRef.current) {
-            intervalRef.current = setInterval(() => {
-                if (isMountedRef.current) saveDraft();
-            }, 20000);
+            intervalRef.current = setInterval(saveDraft, 20000);
         }
 
-        const now = Date.now();
-        if (now - lastSaveTime.current >= 20000) { saveDraft(); return; }
+        if (Date.now() - lastSaveTime.current >= 20000) { saveDraft(); return; }
 
         if (debounceTimer.current) clearTimeout(debounceTimer.current);
         debounceTimer.current = setTimeout(() => {
-            if (isMountedRef.current) saveDraft();
+            debounceTimer.current = null;
+            saveDraft();
         }, 800);
-
-        return () => { if (debounceTimer.current) clearTimeout(debounceTimer.current); };
-    }, [reflectionAnswers, selectedBook, selectedChapters, verseRange, currentStep, isEditMode, readingItemId]);
+    }, [reflectionAnswers, selectedBook, selectedChapters, verseRange, writing, isEditMode, readingItemId]);
 }
 
 export function useStepFade(currentStep: Step) {

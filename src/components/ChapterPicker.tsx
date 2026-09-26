@@ -10,7 +10,7 @@
  * whichever cell you tapped: the old layout reflowed the grid as you typed,
  * which moved the cell you were aiming at.
  */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
@@ -36,6 +36,8 @@ interface ChapterPickerProps {
     selectedChapters?: ChapterRange;
     onChapterSelect: (chapters: ChapterRange) => void;
     allowRange?: boolean;
+    /** The verses already chosen, e.g. when coming back to this step. */
+    verseRange?: VerseRange | null;
     onVerseRangeChange?: (verses: VerseRange | null) => void;
 }
 
@@ -48,6 +50,7 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = React.memo(({
     selectedChapters,
     onChapterSelect,
     allowRange = true,
+    verseRange,
     onVerseRangeChange,
 }) => {
     const { colors, style: themeStyle } = useTheme();
@@ -57,18 +60,28 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = React.memo(({
      * plus five gaps overflow the row and wrap to five-and-a-bit.
      */
     const [gridWidth, setGridWidth] = useState(0);
-    const [readVerses, setReadVerses] = useState(false);
-    const [startVerse, setStartVerse] = useState('1');
-    const [endVerse, setEndVerse] = useState('');
+    const [readVerses, setReadVerses] = useState(!!(verseRange?.start || verseRange?.end));
+    const [startVerse, setStartVerse] = useState(verseRange?.start || '1');
+    const [endVerse, setEndVerse] = useState(verseRange?.end || '');
 
+    // Reset the verses only when the chapters really change, not on mount.
+    const chapterKey = `${selectedChapters?.start ?? 0}-${selectedChapters?.end ?? ''}`;
+    const lastChapterKey = useRef(chapterKey);
     useEffect(() => {
-        // Reset verse state when chapters change
+        if (lastChapterKey.current === chapterKey) return;
+        lastChapterKey.current = chapterKey;
         setStartVerse('1');
         setEndVerse('');
-    }, [selectedChapters]);
+    }, [chapterKey]);
 
+    // Skips the first run: the state above already mirrors `verseRange`, and reporting it would only null it.
+    const reported = useRef(false);
     useEffect(() => {
         if (!onVerseRangeChange) return;
+        if (!reported.current) {
+            reported.current = true;
+            return;
+        }
         onVerseRangeChange(readVerses ? { start: startVerse, end: endVerse } : null);
     }, [readVerses, startVerse, endVerse, onVerseRangeChange]);
 

@@ -29,7 +29,7 @@ import {
     recordFeedback,
 } from '../../insight/observation';
 import { RenderedObservation, renderObservation } from '../../insight/render';
-import { daysWaiting, openSection } from '../../insight/echoesTone';
+import { daysWaiting, openSection, parseUtc } from '../../insight/echoesTone';
 import { ObservationReceipts } from './ObservationReceipts';
 
 interface Row {
@@ -90,7 +90,7 @@ type ListRow = { kind: 'header'; title: string; id: string } | { kind: 'row'; ro
 
 function formatDate(raw: string | null): string {
     if (!raw) return '';
-    const date = new Date(raw);
+    const date = new Date(parseUtc(raw));
     if (Number.isNaN(date.getTime())) return '';
     const now = new Date();
     return date.toLocaleDateString('en-US', {

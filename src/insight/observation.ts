@@ -15,6 +15,7 @@
  * Pacing, surfaces and the archive rule: design/DETECTORS.md#pacing-and-surfaces
  */
 
+import type { SQLiteDatabase } from 'expo-sqlite';
 import { withDatabase } from '../data/db';
 import { VerseId } from '../bible/ref';
 
@@ -145,6 +146,8 @@ export interface StoredObservation {
     shownCount: number;
     /** When the reader tapped through to the passage, if they did. */
     followedAt: string | null;
+    /** When it stopped being true, or null while it holds. */
+    retractedAt: string | null;
     evidence: EvidenceItem[];
 }
 
@@ -153,7 +156,7 @@ export interface StoredObservation {
  *
  * Returns the row id either way. An existing row keeps its `shown_at`,
  * `feedback` and `created_at` — the reader's history with a finding outlives
- * any particular recomputation of it.
+ * any particular recomputation of it. Rediscovery clears a retraction.
  */
 export async function recordObservation(input: ObservationInput): Promise<number> {
     if (input.evidence.length === 0) {
@@ -168,7 +171,7 @@ export async function recordObservation(input: ObservationInput): Promise<number
 
         if (existing) {
             await database.runAsync(
-                `UPDATE observations SET payload = ?, confidence = ? WHERE id = ?`,
+                `UPDATE observations SET payload = ?, confidence = ?, retracted_at = NULL WHERE id = ?`,
                 [JSON.stringify(input.claim), input.confidence, existing.id],
             );
             await writeEvidence(database, existing.id, input.evidence);
@@ -233,6 +236,7 @@ function hydrate(
         feedback: row.feedback,
         shownCount: row.shown_count ?? 0,
         followedAt: row.followed_at ?? null,
+        retractedAt: row.retracted_at ?? null,
         evidence,
     };
 }
@@ -315,6 +319,7 @@ export async function getPendingObservations(
         const rows = await database.getAllAsync<any>(
             `SELECT * FROM observations
              WHERE (feedback IS NULL OR feedback = 1)
+               AND retracted_at IS NULL
                AND (${clauses.join(' OR ')})
              ORDER BY shown_at ASC, confidence DESC, created_at DESC
              LIMIT ?`,
@@ -331,6 +336,9 @@ export async function getPendingObservations(
  * what the reader has seen, dismissed or rejected: a card that vanishes for
  * good on dismissal teaches people not to dismiss it. Rejected findings are
  * never re-offered on Home, only kept legible here.
+ *
+ * A retracted finding stays only if the reader answered it; unanswered, its
+ * claim is simply no longer true.
  */
 export async function getRecentObservations(limit = 30): Promise<StoredObservation[]> {
     return withDatabase(async database => {
@@ -341,6 +349,7 @@ export async function getRecentObservations(limit = 30): Promise<StoredObservati
         const rows = await database.getAllAsync<any>(
             `SELECT * FROM observations
              WHERE (shown_at IS NOT NULL OR feedback IS NOT NULL OR dismissed_at IS NOT NULL)
+               AND (retracted_at IS NULL OR followed_at IS NOT NULL OR feedback IS NOT NULL)
                AND detector IN (${archived.map(() => '?').join(',')})
              ORDER BY COALESCE(shown_at, created_at) DESC
              LIMIT ?`,
@@ -352,11 +361,11 @@ export async function getRecentObservations(limit = 30): Promise<StoredObservati
 }
 
 /**
- * Withdraw findings that have stopped being true — a queued claim the journal
- * has moved underneath, such as a passage the reader has since written about.
+ * Withdraw findings that have stopped being true — a claim the journal has
+ * moved underneath, such as a passage the reader has since written about.
  *
- * Only PENDING rows go. Anything shown, dismissed or judged is history, and the
- * verdict is the only ground truth the app collects.
+ * Marked, never deleted, whether shown or not: the row keeps its verdict and
+ * its dedupe key, and stops being offered until rediscovered.
  *
  * `validKeys` is every finding that still holds, not just what this run
  * recorded: a detector keeping its best three would otherwise retract the
@@ -367,20 +376,61 @@ export async function retractObservations(
     validKeys: string[],
 ): Promise<number> {
     return withDatabase(async database => {
-        const pending = await database.getAllAsync<{ id: number; dedupe_key: string }>(
-            `SELECT id, dedupe_key FROM observations
-             WHERE detector = ?
-               AND shown_at IS NULL AND dismissed_at IS NULL AND feedback IS NULL`,
+        const standing = await database.getAllAsync<{ dedupe_key: string }>(
+            `SELECT dedupe_key FROM observations WHERE detector = ? AND retracted_at IS NULL`,
             [detector],
         );
 
         const keep = new Set(validKeys);
-        const stale = pending.filter(row => !keep.has(row.dedupe_key));
-        for (const row of stale) {
-            await database.runAsync(`DELETE FROM observations WHERE id = ?`, [row.id]);
-        }
+        const stale = standing.map(row => row.dedupe_key).filter(key => !keep.has(key));
+        await retractKeys(database, detector, stale);
         return stale.length;
     });
+}
+
+/** Withdraw these findings now. Takes the caller's handle so it can join a transaction. */
+export async function retractKeys(
+    database: SQLiteDatabase,
+    detector: DetectorName,
+    keys: string[],
+): Promise<void> {
+    if (keys.length === 0) return;
+    await database.runAsync(
+        `UPDATE observations SET retracted_at = CURRENT_TIMESTAMP
+         WHERE detector = ? AND retracted_at IS NULL
+           AND dedupe_key IN (${keys.map(() => '?').join(',')})`,
+        [detector, ...keys],
+    );
+}
+
+/** Withdraw one finding, on its own connection turn. */
+export async function retractFinding(detector: DetectorName, key: string): Promise<void> {
+    await withDatabase(database => retractKeys(database, detector, [key]));
+}
+
+/**
+ * Withdraw every finding whose receipts cite these entries or action items,
+ * then drop those receipts: they point at rows about to be deleted.
+ */
+export async function retractCiting(
+    database: SQLiteDatabase,
+    cited: { entryIds?: number[]; actionItemIds?: number[] },
+): Promise<void> {
+    const entryIds = cited.entryIds ?? [];
+    const actionItemIds = cited.actionItemIds ?? [];
+    if (entryIds.length === 0 && actionItemIds.length === 0) return;
+
+    const marks = (ids: number[]) => (ids.length ? ids.map(() => '?').join(',') : 'NULL');
+    const citing = `entry_id IN (${marks(entryIds)}) OR action_item_id IN (${marks(actionItemIds)})`;
+    const params = [...entryIds, ...actionItemIds];
+
+    await database.runAsync(
+        `UPDATE observations SET retracted_at = CURRENT_TIMESTAMP
+         WHERE retracted_at IS NULL
+           AND id IN (SELECT observation_id FROM observation_evidence WHERE ${citing})`,
+        params,
+    );
+    await database.runAsync(`DELETE FROM observation_evidence WHERE ${citing}`, params);
 }
 
 export async function getObservation(id: number): Promise<StoredObservation | null> {

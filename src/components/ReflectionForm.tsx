@@ -7,8 +7,8 @@
  * The step is named in a `.cl-label` rather than enlarged, so the question
  * itself carries the page.
  */
-import React, { useEffect, useRef, useState } from 'react';
-import { Platform, ScrollView, StyleSheet, View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { BackHandler, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { X } from 'lucide-react-native';
 
@@ -85,6 +85,12 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
   const [androidPickerMode, setAndroidPickerMode] = useState<'date' | 'time'>('date');
 
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Answers not yet handed to the parent, for the flush below.
+  const pending = useRef(false);
+  const latestAnswers = useRef(answers);
+  latestAnswers.current = answers;
+  const onAnswersChangeRef = useRef(onAnswersChange);
+  onAnswersChangeRef.current = onAnswersChange;
 
   useEffect(() => {
     if (onAnswersChange) {
@@ -92,7 +98,9 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
       if (debounceTimer.current) {
         clearTimeout(debounceTimer.current);
       }
+      pending.current = true;
       debounceTimer.current = setTimeout(() => {
+        pending.current = false;
         onAnswersChange(answers);
       }, 150);
 
@@ -103,6 +111,16 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
       };
     }
   }, [answers, onAnswersChange]);
+
+  const flushAnswers = useCallback(() => {
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    if (!pending.current) return;
+    pending.current = false;
+    onAnswersChangeRef.current?.(latestAnswers.current);
+  }, []);
+
+  // Typing still inside the debounce reaches the parent when the form closes.
+  useEffect(() => flushAnswers, [flushAnswers]);
 
   const updateAnswer = (questionId: keyof ReflectionAnswers, value: string) => {
     setAnswers(prev => ({
@@ -155,12 +173,34 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
       return;
     }
 
+    // Delivered first, like every way out below.
+    flushAnswers();
     if (onSave) {
       onSave(answers);
     }
   };
 
-  const goBack = () => (page === 0 ? onChangePassage() : setPage(p => p - 1));
+  // Every way out delivers the answers first, so the unmount flush never re-sends them after a save or discard.
+  const leaveTo = (next?: () => void) => () => {
+    flushAnswers();
+    next?.();
+  };
+  const changePassage = leaveTo(onChangePassage);
+  const goBack = () => (page === 0 ? changePassage() : setPage(p => p - 1));
+
+  // The hardware back button means what the on-screen Back means.
+  const pageRef = useRef(page);
+  pageRef.current = page;
+  const changePassageRef = useRef(changePassage);
+  changePassageRef.current = changePassage;
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (pageRef.current > 0) setPage(p => p - 1);
+      else changePassageRef.current();
+      return true;
+    });
+    return () => sub.remove();
+  }, []);
   const goForward = () => setPage(p => Math.min(p + 1, REFLECTION_QUESTIONS.length));
 
   const gutter = Spacing.layout.screenPadding;
@@ -171,7 +211,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
       <View style={[styles.topBar, { paddingHorizontal: gutter }]}>
         <UIText variant="tab" numberOfLines={1} style={styles.mark}>{reference}</UIText>
         <ScalePressable
-          onPress={onExit}
+          onPress={leaveTo(onExit)}
           accessibilityRole="button"
           accessibilityLabel="Close"
           hitSlop={Spacing.md}
@@ -325,7 +365,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
             )}
           </View>
           {onDiscard && (
-            <ScalePressable onPress={onDiscard} style={styles.discard}>
+            <ScalePressable onPress={leaveTo(onDiscard)} style={styles.discard}>
               <UIText variant="meta" tone="tertiary">Discard draft</UIText>
             </ScalePressable>
           )}

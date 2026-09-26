@@ -25,7 +25,7 @@ import { Spacing } from '../../theme/spacing';
 import { ScalePressable } from '../ScalePressable';
 import { Text } from '../ui';
 import { Tree } from '../grove/Tree';
-import { TodayItem } from '../../hooks/useToday';
+import { TodayItem, Watered } from '../../hooks/useToday';
 
 interface Props {
     items: TodayItem[];
@@ -33,9 +33,11 @@ interface Props {
     /** Untick one kept a moment ago. Without this the tick is a trap. */
     onUndo: (item: TodayItem) => void;
     onOpen?: (item: TodayItem) => void;
+    /** Every practice kept for today, on the keep that finished them. */
+    watered?: Watered | null;
 }
 
-export function TodayStrip({ items, onKeep, onUndo, onOpen }: Props) {
+export function TodayStrip({ items, onKeep, onUndo, onOpen, watered }: Props) {
     const { colors } = useTheme();
 
     // Absent, not empty. A block with nothing in it is still clutter.
@@ -133,6 +135,18 @@ export function TodayStrip({ items, onKeep, onUndo, onOpen }: Props) {
                     );
                 })}
             </View>
+
+            {/* The garden watered: today's trees side by side, and one line. */}
+            {watered && (
+                <View style={[styles.watered, { backgroundColor: colors.backgroundSubtle }]} accessibilityLiveRegion="polite">
+                    <View style={styles.wateredTrees}>
+                        {watered.trees.map(tree => (
+                            <Tree key={tree.id} stage={tree.stage} species={tree.species} size={30} fit />
+                        ))}
+                    </View>
+                    <Text variant="bodySmall" tone="secondary" style={styles.wateredLine}>{watered.line}</Text>
+                </View>
+            )}
         </View>
     );
 }
@@ -155,6 +169,14 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.md,
     },
     momentText: { flex: 1, minWidth: 0, gap: 2 },
+    watered: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.md,
+        padding: Spacing.sm + 2,
+    },
+    wateredTrees: { flexDirection: 'row', alignItems: 'flex-end', gap: 2 },
+    wateredLine: { flex: 1, minWidth: 0 },
     main: { flex: 1, minWidth: 0 },
     box: {
         width: 18,

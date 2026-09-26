@@ -163,11 +163,12 @@ async function evidenceEntries(book: string | undefined, limit = 6): Promise<num
 
 /**
  * Every milestone key already offered. A grouped row lists its parts; a row
- * from before grouping is its own dedupe key.
+ * from before grouping is its own dedupe key. A retracted row (its entry was
+ * deleted) no longer counts, so writing it again can earn the card again.
  */
 async function offeredKeys(): Promise<Set<string>> {
     const rows = await withDatabase(database => database.getAllAsync<{ dedupe_key: string; payload: string }>(
-        `SELECT dedupe_key, payload FROM observations WHERE detector = 'milestone'`,
+        `SELECT dedupe_key, payload FROM observations WHERE detector = 'milestone' AND retracted_at IS NULL`,
     ));
     const keys = new Set<string>();
     for (const row of rows) {

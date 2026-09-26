@@ -16,7 +16,8 @@
  * move. The row asks nothing, which is what the rule was protecting.
  */
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 
 import { EnhancedActionItem, getAllActionItems } from '../data/database';
@@ -27,7 +28,10 @@ import {
     practiceProgress,
     unmarkPracticeDone,
 } from '../data/practiceRepository';
-import { KeepMoment, forgetMoment, momentOnKeep } from '../grove/loadGrove';
+import { KeepMoment, forgetMoment, loadGrove, momentOnKeep } from '../grove/loadGrove';
+import { wateredNote } from '../data/wateredNotes';
+import { getTodayDateString } from '../utils/dateUtils';
+import { useLocalDay } from './useLocalDay';
 
 const DAY_MS = 86_400_000;
 
@@ -47,8 +51,16 @@ export interface TodayItem {
     moment?: KeepMoment;
 }
 
+/** Every practice kept for today, marked on the keep that finished them. */
+export interface Watered {
+    line: string;
+    trees: { id: number; stage: number; species: number }[];
+}
+
 export interface Today {
     items: TodayItem[];
+    /** Set on the visit whose keep finished today's practices, when there are two or more. */
+    watered: Watered | null;
     /** Tick a practice for today. Actions are completed from the Library. */
     keep: (item: EnhancedActionItem) => Promise<void>;
     /** Take today back. A ticked box that cannot be unticked is a lie. */
@@ -65,11 +77,11 @@ function dueWithin(dueAt: string | null | undefined, days: number): boolean {
 
 export function useToday(enabled: boolean): Today {
     const [items, setItems] = useState<TodayItem[]>([]);
+    const [watered, setWatered] = useState<Watered | null>(null);
 
     // Practices kept during this visit. A ref rather than state: it decides
-    // what the next load keeps and must not itself cause one. Not persisted, so
-    // leaving Home clears it — by then the tap is no longer the thing just
-    // done.
+    // what the next load keeps and must not itself cause one. Cleared on blur
+    // and at a new day — by then the tap is no longer the thing just done.
     const keptHere = useRef<Set<number>>(new Set());
     // What each keep here did to its tree. Kept alongside `keptHere`, and for the same visit.
     const momentsHere = useRef<Map<number, KeepMoment>>(new Map());
@@ -79,6 +91,10 @@ export function useToday(enabled: boolean): Today {
         try {
             const all = await getAllActionItems(200);
             const live: TodayItem[] = [];
+            // Every live practice and whether its period is kept, not only the
+            // rows still showing: ones kept earlier today have left the strip.
+            const practices: EnhancedActionItem[] = [];
+            let keptNow = 0;
 
             for (const item of all) {
                 // Archived has served its purpose — it asks nothing of today.
@@ -87,6 +103,8 @@ export function useToday(enabled: boolean): Today {
 
                 if (kind === 'practice') {
                     const progress: PracticeProgress = await practiceProgress(item.id!, item.cadence);
+                    practices.push(item);
+                    if (progress.doneNow) keptNow++;
                     // Already kept today — nothing is being asked, so say
                     // nothing, unless it was kept here and is still being shown.
                     if (progress.doneNow && !keptHere.current.has(item.id!)) continue;
@@ -124,17 +142,50 @@ export function useToday(enabled: boolean): Today {
             });
 
             setItems(live);
+
+            // Only on the visit that finished them, and only when "all" is more than one.
+            const finishedHere = practices.length >= 2 && keptNow === practices.length && keptHere.current.size > 0;
+            if (finishedHere) {
+                const trees = await loadGrove(practices);
+                setWatered({
+                    line: wateredNote(getTodayDateString()),
+                    trees: trees.map(t => ({ id: t.item.id!, stage: t.growth.stage, species: t.species })),
+                });
+            } else {
+                setWatered(null);
+            }
         } catch {
             // Home never breaks for this.
             setItems([]);
+            setWatered(null);
         }
     }, [enabled]);
 
+    // Reloads on focus and on return to the foreground; leaving ends the visit.
     useFocusEffect(
         useCallback(() => {
             load();
+            const subscription = AppState.addEventListener('change', state => {
+                if (state === 'active') load();
+            });
+            return () => {
+                subscription.remove();
+                keptHere.current.clear();
+                momentsHere.current.clear();
+            };
         }, [load]),
     );
+
+    // A new date is a new visit too, even with Home left open across midnight.
+    const day = useLocalDay();
+    const loadedDay = useRef(day);
+    useEffect(() => {
+        if (loadedDay.current === day) return;
+        loadedDay.current = day;
+        keptHere.current.clear();
+        momentsHere.current.clear();
+        load();
+    }, [day, load]);
 
     const keep = useCallback(
         async (item: EnhancedActionItem) => {
@@ -168,5 +219,5 @@ export function useToday(enabled: boolean): Today {
         [load],
     );
 
-    return { items, keep, undo, reload: load };
+    return { items, watered, keep, undo, reload: load };
 }

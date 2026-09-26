@@ -10,7 +10,7 @@ import {
 import { useAlert } from '@/src/context/AlertContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
-import { getAllScheduledNotifications, setupDailyNotifications, sendTestNotification, hasNotificationPermissions, openNotificationSettings, getNotificationDiagnostics } from '@/src/utils/notifications';
+import { getAllScheduledNotifications, setupDailyNotifications, sendTestNotification, hasNotificationPermissions, openNotificationSettings, getNotificationDiagnostics, readSleepTime, saveSleepTime, formatSleepTimeValue, parseSleepTime } from '@/src/utils/notifications';
 import { oemAutoStartLabel, openAutoStartSettings } from '@/src/utils/oemRestrictions';
 import { exportJournalEntriesToJson, importJournalEntriesFromJson, getFirstEntryDate } from '@/src/data/database';
 import { STORAGE_KEYS } from '@/src/storage/storageKeys';
@@ -247,7 +247,7 @@ export default function Settings() {
             if (date) setReadingSince(date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }));
         }).catch(() => { });
         hasNotificationPermissions().then(setNotificationsOn).catch(() => setNotificationsOn(null));
-        AsyncStorage.getItem(STORAGE_KEYS.SLEEP_TIME).then(val => setSleepTime(val));
+        readSleepTime().then(time => setSleepTime(time ? formatSleepTimeValue(time) : null)).catch(() => { });
         AsyncStorage.getItem(STORAGE_KEYS.LAST_SLEEP_CHANGE_AT).then(val => setLastSleepChangeAt(val));
 
         if (user?.uid) {
@@ -259,6 +259,9 @@ export default function Settings() {
             );
             const unsubscribe = onSnapshot(q, snapshot => {
                 setIsAdmin(!snapshot.empty);
+            }, error => {
+                // Usually a missing collection-group index on members (userId, role).
+                console.error('[Settings] Admin check query failed; photo editor stays hidden:', error);
             });
 
             // Fetch current user's photoURL
@@ -451,25 +454,24 @@ export default function Settings() {
         };
 
         const finalizeSleepTimeChange = async (h24: number, min: number) => {
-            const now = new Date();
-            const sleepDate = new Date(now);
-            sleepDate.setHours(h24, min, 0, 0);
+            const time = { hour: h24, minute: min };
+            const nowIso = new Date().toISOString();
 
             try {
                 setIsUpdatingSleep(true);
-                const iso = sleepDate.toISOString();
-                const nowIso = now.toISOString();
 
-                await AsyncStorage.setItem(STORAGE_KEYS.SLEEP_TIME, iso);
+                await saveSleepTime(time);
                 await AsyncStorage.setItem(STORAGE_KEYS.LAST_SLEEP_CHANGE_AT, nowIso);
 
-                setSleepTime(iso);
+                setSleepTime(formatSleepTimeValue(time));
                 setLastSleepChangeAt(nowIso);
 
-                showAlert({ title: 'Success! ✅', message: 'Your sleep time has been locked in for the next month. I\'ve adjusted your notification schedule. Don\'t sleep too much o!' });
                 // The slot times are derived from sleep time, so the existing
                 // schedule is now wrong and has to be rebuilt outright.
-                await setupDailyNotifications(false, { force: true });
+                const adjusted = await setupDailyNotifications(false, { force: true });
+                showAlert(adjusted
+                    ? { title: 'Success! ✅', message: 'Your sleep time has been locked in for the next month. I\'ve adjusted your notification schedule. Don\'t sleep too much o!' }
+                    : { title: 'Saved', message: 'Your sleep time has been locked in for the next month, but I couldn\'t adjust your reminders. Check notifications are allowed, then tap Reschedule notifications.' });
             } catch (error) {
                 console.error('Failed to save sleep time:', error);
                 showAlert({ title: 'Error', message: 'Failed to save your new schedule. Please try again.' });
@@ -493,18 +495,13 @@ export default function Settings() {
         });
     };
 
-    const formatSleepTime = (iso: string | null) => {
-        if (!iso) return 'Not set';
-        try {
-            const date = new Date(iso);
-            let h = date.getHours();
-            const m = date.getMinutes().toString().padStart(2, '0');
-            const p = h >= 12 ? 'PM' : 'AM';
-            h = h % 12 || 12;
-            return `${h}:${m} ${p}`;
-        } catch {
-            return 'Invalid';
-        }
+    const formatSleepTime = (value: string | null) => {
+        if (!value) return 'Not set';
+        const time = parseSleepTime(value);
+        if (!time) return 'Invalid';
+        const m = time.minute.toString().padStart(2, '0');
+        const p = time.hour >= 12 ? 'PM' : 'AM';
+        return `${time.hour % 12 || 12}:${m} ${p}`;
     };
 
     const handleImport = async () => {

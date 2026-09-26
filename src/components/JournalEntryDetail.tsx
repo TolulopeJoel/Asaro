@@ -237,7 +237,10 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                             ]}
                         >
                             {item.action.trim() ? (
-                                <Text variant="subtitle">{item.action.trim()}</Text>
+                                <HyperlinkedText
+                                    style={[textStyle(themeStyle, 'subtitle'), { color: colors.textPrimary }]}
+                                    text={item.action.trim()}
+                                />
                             ) : null}
                             {item.motivation.trim() ? (
                                 <HyperlinkedText

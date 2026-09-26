@@ -56,6 +56,8 @@ export interface JournalEntryInput {
     studyFurther?: string;
     studyFurtherReminder?: string;
     actionItems?: {
+        /** The row being edited; absent for a new item. */
+        id?: number;
         action: string;
         motivation: string;
         cadence?: string | null;

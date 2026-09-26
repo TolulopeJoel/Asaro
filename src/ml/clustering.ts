@@ -39,9 +39,23 @@ export interface Cluster<T extends Embedded = Embedded> {
 
 // ─── vector helpers ───────────────────────────────────────────────────────────
 
+/** Unrolled for Hermes, which has no JIT; still summed strictly left to right. */
 function dot(a: Float32Array, b: Float32Array): number {
+    const length = a.length;
+    const whole = length - (length % 8);
     let sum = 0;
-    for (let i = 0; i < a.length; i++) sum += a[i] * b[i];
+    let i = 0;
+    for (; i < whole; i += 8) {
+        sum += a[i] * b[i];
+        sum += a[i + 1] * b[i + 1];
+        sum += a[i + 2] * b[i + 2];
+        sum += a[i + 3] * b[i + 3];
+        sum += a[i + 4] * b[i + 4];
+        sum += a[i + 5] * b[i + 5];
+        sum += a[i + 6] * b[i + 6];
+        sum += a[i + 7] * b[i + 7];
+    }
+    for (; i < length; i++) sum += a[i] * b[i];
     return sum;
 }
 
@@ -104,12 +118,13 @@ function similarityMatrix(items: Embedded[]): Float64Array {
 
 /** Value below which `grain` percent of pairs fall. Drives the merge cutoff. */
 function percentileOfPairs(sims: Float64Array, n: number, grain: number): number {
-    const values: number[] = [];
+    const values = new Float64Array((n * (n - 1)) / 2);
+    let k = 0;
     for (let i = 0; i < n; i++) {
-        for (let j = i + 1; j < n; j++) values.push(sims[i * n + j]);
+        for (let j = i + 1; j < n; j++) values[k++] = sims[i * n + j];
     }
     if (values.length === 0) return 1;
-    values.sort((a, b) => a - b);
+    values.sort();
     const idx = Math.min(values.length - 1, Math.max(0, Math.floor((grain / 100) * values.length)));
     return values[idx];
 }
@@ -129,9 +144,10 @@ export interface ClusterOptions {
 }
 
 /**
- * Average-linkage agglomerative clustering. Written out rather than pulled from
- * a library: a heavy journal is a few thousand answers, which the naive merge
- * loop handles in well under a second, and it keeps the dependency list empty.
+ * Average-linkage (UPGMA) agglomerative clustering, roughly O(n²): group
+ * similarities are updated by the Lance–Williams rule and each row caches its
+ * best neighbour. For 1,400 answers it takes ~1 s on V8 and ~20 s on Hermes,
+ * almost all of it the n²·384 similarity matrix; the merge loop is under 1 s.
  */
 export function clusterThemes<T extends Embedded>(
     items: T[],
@@ -144,38 +160,76 @@ export function clusterThemes<T extends Embedded>(
     const sims = similarityMatrix(items);
     const threshold = percentileOfPairs(sims, n, grain);
 
-    let groups: number[][] = items.map((_, i) => [i]);
+    // Upper triangle holds group-to-group similarity as merges happen; the
+    // lower triangle keeps the raw pairs for cohesion.
+    const upper = (i: number, j: number) => (i < j ? i * n + j : j * n + i);
 
-    const averageBetween = (a: number[], b: number[]): number => {
-        let total = 0;
-        for (const i of a) for (const j of b) total += sims[i * n + j];
-        return total / (a.length * b.length);
+    // A group lives on the row of its lowest index, so rows in order are groups
+    // in the order the pairwise scan saw them, and ties break the same way.
+    const groups: number[][] = items.map((_, i) => [i]);
+    const alive: number[] = items.map((_, i) => i);
+    const bestJ = new Int32Array(n).fill(-1);
+    const bestS = new Float64Array(n).fill(-Infinity);
+
+    const rescan = (pos: number) => {
+        const i = alive[pos];
+        let score = -Infinity;
+        let j = -1;
+        for (let q = pos + 1; q < alive.length; q++) {
+            const k = alive[q];
+            const value = sims[i * n + k];
+            if (value > score) {
+                score = value;
+                j = k;
+            }
+        }
+        bestS[i] = score;
+        bestJ[i] = j;
     };
+    for (let p = 0; p < n; p++) rescan(p);
 
-    while (groups.length > 1) {
+    while (alive.length > 1) {
         let best = -Infinity;
-        let bestA = -1;
-        let bestB = -1;
-
-        for (let a = 0; a < groups.length; a++) {
-            for (let b = a + 1; b < groups.length; b++) {
-                const score = averageBetween(groups[a], groups[b]);
-                if (score > best) {
-                    best = score;
-                    bestA = a;
-                    bestB = b;
-                }
+        let a = -1;
+        for (const i of alive) {
+            if (bestS[i] > best) {
+                best = bestS[i];
+                a = i;
             }
         }
 
         if (best < threshold) break;
-        groups[bestA] = groups[bestA].concat(groups[bestB]);
-        groups.splice(bestB, 1);
+        const b = bestJ[a];
+
+        const sizeA = groups[a].length;
+        const sizeB = groups[b].length;
+        for (const c of alive) {
+            if (c === a || c === b) continue;
+            sims[upper(a, c)] =
+                (sizeA * sims[upper(a, c)] + sizeB * sims[upper(b, c)]) / (sizeA + sizeB);
+        }
+        groups[a] = groups[a].concat(groups[b]);
+        alive.splice(alive.indexOf(b), 1);
+
+        // Only rows that could see a or b need their best neighbour revisited.
+        for (let p = 0; p < alive.length && alive[p] < b; p++) {
+            const i = alive[p];
+            if (i === a || bestJ[i] === b || bestJ[i] === a) {
+                rescan(p);
+            } else if (i < a) {
+                const value = sims[i * n + a];
+                if (value > bestS[i] || (value === bestS[i] && a < bestJ[i])) {
+                    bestS[i] = value;
+                    bestJ[i] = a;
+                }
+            }
+        }
     }
 
     const clusters: Cluster<T>[] = [];
 
-    for (const group of groups) {
+    for (const root of alive) {
+        const group = groups[root];
         const members = group.map(i => items[i]);
         const entryCount = new Set(members.map(m => m.entryId)).size;
 
@@ -188,7 +242,9 @@ export function clusterThemes<T extends Embedded>(
         let pairs = 0;
         for (let i = 0; i < group.length; i++) {
             for (let j = i + 1; j < group.length; j++) {
-                total += sims[group[i] * n + group[j]];
+                const x = group[i];
+                const y = group[j];
+                total += x > y ? sims[x * n + y] : sims[y * n + x];
                 pairs += 1;
             }
         }

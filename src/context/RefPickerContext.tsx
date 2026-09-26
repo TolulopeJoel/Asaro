@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback, useRef } from 'react';
 import { Platform, StyleSheet, KeyboardAvoidingView } from 'react-native';
 import { BibleReferencePicker } from '../components/BibleReferencePicker';
 
@@ -11,14 +11,16 @@ interface RefPickerConfig {
 }
 
 interface RefPickerContextType {
-    showPicker: (config: RefPickerConfig) => void;
-    hidePicker: () => void;
-    updateQuery: (query: string) => void;
+    /** Opens the picker for a field and returns its owner token. Pass the token back to keep ownership. */
+    showPicker: (config: RefPickerConfig, owner?: number) => number;
+    /** With a token, hides only if that field still owns the picker. */
+    hidePicker: (owner?: number) => void;
+    updateQuery: (query: string, owner?: number) => void;
     isVisible: boolean;
 }
 
 const RefPickerContext = createContext<RefPickerContextType>({
-    showPicker: () => { },
+    showPicker: () => 0,
     hidePicker: () => { },
     updateQuery: () => { },
     isVisible: false,
@@ -30,16 +32,23 @@ export const RefPickerProvider: React.FC<{ children: ReactNode }> = ({ children 
     const [config, setConfig] = useState<RefPickerConfig | null>(null);
     const [visible, setVisible] = useState(false);
 
-    const showPicker = useCallback((newConfig: RefPickerConfig) => {
+    const owner = useRef(0);
+    const lastToken = useRef(0);
+
+    const showPicker = useCallback((newConfig: RefPickerConfig, token?: number) => {
+        owner.current = token || ++lastToken.current;
         setConfig(newConfig);
         setVisible(true);
+        return owner.current;
     }, []);
 
-    const hidePicker = useCallback(() => {
+    const hidePicker = useCallback((token?: number) => {
+        if (token !== undefined && token !== owner.current) return;
         setVisible(false);
     }, []);
 
-    const updateQuery = useCallback((query: string) => {
+    const updateQuery = useCallback((query: string, token?: number) => {
+        if (token !== undefined && token !== owner.current) return;
         setConfig(prev => prev ? { ...prev, query } : null);
     }, []);
 

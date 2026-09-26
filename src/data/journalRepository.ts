@@ -1,9 +1,12 @@
 import * as SQLite from 'expo-sqlite';
-import { withDatabase } from './db';
+import { withDatabase, withTransaction } from './db';
 import { ActionItem, JournalEntry, JournalEntryInput, EnhancedActionItem } from './types';
-import { formatDateToLocalString, getTodayDateString } from '../utils/dateUtils';
+import { formatDateToLocalString, getTodayDateString, parseLocalDateString } from '../utils/dateUtils';
 import { READING_PLAN_DATA } from './readingPlanData';
 import { CoverageRow } from '../land/cloth';
+import { retractCiting, retractKeys } from '../insight/observation';
+
+type ActionItemInput = NonNullable<JournalEntryInput['actionItems']>[number];
 
 /**
  * The chapters a plan item covers, ignoring verse suffixes.
@@ -190,10 +193,86 @@ export const retractUncoveredReadings = async (): Promise<number[]> => {
     });
 };
 
+/**
+ * Tick every plan reading the journal now covers. A reading picked from the
+ * plan ticks once all its chapters are written about, or on any entry in its
+ * book if it lists no chapters.
+ */
+async function tickCoveredReadings(database: SQLite.SQLiteDatabase, data: JournalEntryInput): Promise<void> {
+    const ids = new Set(await findMatchingReadingPlanItems(database, data.bookName, data.chapterStart, data.chapterEnd));
+
+    const chosen = data.readingItemId ? READING_PLAN_DATA.find(item => item.id === data.readingItemId) : undefined;
+    if (chosen && planItemCoversBook(chosen.book, data.bookName)) {
+        const range = planItemChapters(chosen.chapters);
+        if (!chosen.chapters) {
+            ids.add(chosen.id);
+        } else if (range && await checkRangeCovered(database, data.bookName, range.start, range.end)) {
+            ids.add(chosen.id);
+        }
+    }
+
+    for (const id of ids) {
+        await database.runAsync(`INSERT OR IGNORE INTO reading_progress (item_id) VALUES (?)`, [id]);
+    }
+}
+
+const isBlankItem = (item: ActionItemInput) => !item.action.trim() && !item.motivation.trim();
+
+async function insertActionItem(database: SQLite.SQLiteDatabase, entryId: number, item: ActionItemInput, sortOrder: number) {
+    await database.runAsync(
+        `INSERT INTO action_items (entry_id, action, motivation, sort_order, cadence, due_at, archived_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [entryId, item.action, item.motivation, sortOrder, item.cadence ?? null, item.due_at ?? null, item.archived_at ?? null]
+    );
+}
+
+/** Delete action items with their completions and the findings that cite them. */
+async function deleteActionItems(database: SQLite.SQLiteDatabase, ids: number[]) {
+    if (ids.length === 0) return;
+    const marks = ids.map(() => '?').join(',');
+    await retractCiting(database, { actionItemIds: ids });
+    await database.runAsync(`DELETE FROM action_item_completions WHERE action_item_id IN (${marks})`, ids);
+    await database.runAsync(`DELETE FROM action_items WHERE id IN (${marks})`, ids);
+}
+
+/**
+ * Bring an entry's action items in line with an edit. Rows are matched by id so
+ * completions, pins and completion state stay with the item; rows the edit
+ * dropped are deleted with their history.
+ */
+async function saveActionItems(database: SQLite.SQLiteDatabase, entryId: number, items: ActionItemInput[]) {
+    const existing = await database.getAllAsync<{ id: number; archived_at: string | null }>(
+        `SELECT id, archived_at FROM action_items WHERE entry_id = ?`, [entryId]
+    );
+    const archivedBefore = new Map(existing.map(row => [row.id, row.archived_at]));
+    const kept = new Set<number>();
+    const newlyArchived: string[] = [];
+
+    for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (isBlankItem(item)) continue;
+
+        if (item.id != null && archivedBefore.has(item.id) && !kept.has(item.id)) {
+            kept.add(item.id);
+            await database.runAsync(
+                `UPDATE action_items SET action = ?, motivation = ?, sort_order = ?, cadence = ?, due_at = ?, archived_at = ?
+                 WHERE id = ?`,
+                [item.action, item.motivation, i, item.cadence ?? null, item.due_at ?? null, item.archived_at ?? null, item.id]
+            );
+            if (item.archived_at && !archivedBefore.get(item.id)) newlyArchived.push(`action:${item.id}`);
+        } else {
+            await insertActionItem(database, entryId, item, i);
+        }
+    }
+
+    await retractKeys(database, 'commitment', newlyArchived);
+    await deleteActionItems(database, existing.map(row => row.id).filter(id => !kept.has(id)));
+}
+
 export const createJournalEntry = async (data: JournalEntryInput) => {
     const reflections = [...data.reflections, '', '', '', ''].slice(0, 4);
 
-    return await withDatabase(async (database) => {
+    return await withTransaction(async (database) => {
         const result = await database.runAsync(
             `INSERT INTO journal_entries (book_name, chapter_start, chapter_end, verse_start, verse_end, reflection_1, reflection_2, reflection_3, reflection_4, notes, study_further, study_further_reminder)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -202,62 +281,12 @@ export const createJournalEntry = async (data: JournalEntryInput) => {
 
         const entryId = result.lastInsertRowId;
 
-        // Insert action items
-        if (data.actionItems && data.actionItems.length > 0) {
-            for (let i = 0; i < data.actionItems.length; i++) {
-                const item = data.actionItems[i];
-                if (item.action.trim() || item.motivation.trim()) {
-                    await database.runAsync(
-                        `INSERT INTO action_items (entry_id, action, motivation, sort_order, cadence, due_at, archived_at)
-                         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                        [entryId, item.action, item.motivation, i, item.cadence ?? null, item.due_at ?? null, item.archived_at ?? null]
-                    );
-                }
-            }
+        const items = data.actionItems ?? [];
+        for (let i = 0; i < items.length; i++) {
+            if (!isBlankItem(items[i])) await insertActionItem(database, entryId, items[i], i);
         }
 
-        // Mark reading plan items as completed.
-        let planItemIds: number[] = [];
-        if (data.readingItemId) {
-            const planItem = READING_PLAN_DATA.find(i => i.id === data.readingItemId);
-            if (planItem) {
-                const bookMatches = planItem.book.toLowerCase() === data.bookName.toLowerCase() ||
-                    planItem.book.toLowerCase().split('/').includes(data.bookName.toLowerCase());
-
-                if (bookMatches) {
-                    if (!planItem.chapters) {
-                        planItemIds = [data.readingItemId];
-                    } else {
-                        const parts = planItem.chapters.split('-');
-                        const planStart = parseInt(parts[0].split(':')[0], 10);
-                        let planEnd = planStart;
-                        if (parts.length > 1) {
-                            planEnd = parseInt(parts[parts.length - 1].split(':')[0], 10);
-                        }
-
-                        const entryEnd = data.chapterEnd ?? data.chapterStart;
-                        const overlaps = data.chapterStart !== undefined &&
-                            data.chapterStart <= planEnd && entryEnd! >= planStart;
-
-                        if (overlaps) {
-                            planItemIds = [data.readingItemId];
-                        }
-                    }
-                }
-            }
-        }
-
-        if (planItemIds.length === 0) {
-            planItemIds = await findMatchingReadingPlanItems(database, data.bookName, data.chapterStart, data.chapterEnd);
-        }
-
-        for (const planItemId of planItemIds) {
-            await database.runAsync(
-                `INSERT OR IGNORE INTO reading_progress (item_id) VALUES (?)`,
-                [planItemId]
-            );
-        }
-
+        await tickCoveredReadings(database, data);
         return entryId;
     });
 };
@@ -265,7 +294,7 @@ export const createJournalEntry = async (data: JournalEntryInput) => {
 export const updateJournalEntry = async (id: number, data: JournalEntryInput) => {
     const reflections = [...data.reflections, '', '', '', ''].slice(0, 4);
 
-    await withDatabase(async (database) => {
+    await withTransaction(async (database) => {
         await database.runAsync(
             `UPDATE journal_entries SET book_name = ?, chapter_start = ?, chapter_end = ?, verse_start = ?, verse_end = ?, 
              reflection_1 = ?, reflection_2 = ?, reflection_3 = ?, reflection_4 = ?, notes = ?, study_further = ?, study_further_reminder = ?, updated_at = CURRENT_TIMESTAMP
@@ -273,25 +302,15 @@ export const updateJournalEntry = async (id: number, data: JournalEntryInput) =>
             [data.bookName, data.chapterStart ?? null, data.chapterEnd ?? null, data.verseStart ?? null, data.verseEnd ?? null, ...reflections, data.notes ?? null, data.studyFurther ?? null, data.studyFurtherReminder ?? null, id]
         );
 
-        // Replace action items: delete old, insert new
-        await database.runAsync(`DELETE FROM action_items WHERE entry_id = ?`, [id]);
-        if (data.actionItems && data.actionItems.length > 0) {
-            for (let i = 0; i < data.actionItems.length; i++) {
-                const item = data.actionItems[i];
-                if (item.action.trim() || item.motivation.trim()) {
-                    await database.runAsync(
-                        `INSERT INTO action_items (entry_id, action, motivation, sort_order, cadence, due_at, archived_at)
-                         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                        [id, item.action, item.motivation, i, item.cadence ?? null, item.due_at ?? null, item.archived_at ?? null]
-                    );
-                }
-            }
-        }
+        await saveActionItems(database, id, data.actionItems ?? []);
+
+        // An emptied topic is a deleted one.
+        if (!data.studyFurther?.trim()) await retractKeys(database, 'study', [`entry:${id}`]);
+
+        await tickCoveredReadings(database, data);
     });
 
-    // An edit can SHRINK a range (Genesis 12-15 corrected to 12-13) and the
-    // save path only ever adds, so without this an edit ticks new items while
-    // leaving the old ones standing.
+    // An edit can widen a range (ticked above) or shrink it (unticked here).
     await retractUncoveredReadings();
 };
 
@@ -319,12 +338,26 @@ export const getEntriesByBook = async (bookName: string): Promise<JournalEntry[]
     });
 };
 
+/**
+ * Search text as an FTS5 query: every word a quoted token, so punctuation and
+ * operators are literal, and the last word also a prefix. Null for blank input.
+ */
+export function ftsQuery(term: string): string | null {
+    const words = term.split(/\s+/).filter(Boolean);
+    if (words.length === 0) return null;
+    return words
+        .map((word, i) => `"${word.replace(/"/g, '""')}"${i === words.length - 1 ? '*' : ''}`)
+        .join(' ');
+}
+
 export const searchEntries = async (term: string): Promise<JournalEntry[]> => {
     if (!term.trim()) {
         return [];
     }
 
-    const sanitizedTerm = term.replace(/"/g, '""');
+    const match = ftsQuery(term);
+    if (!match) return [];
+    const bookLike = `%${term.trim().replace(/[\\%_]/g, c => `\\${c}`)}%`;
 
     return await withDatabase(async (database) => {
         const query = `
@@ -336,11 +369,12 @@ export const searchEntries = async (term: string): Promise<JournalEntry[]> => {
                     SELECT rowid FROM action_items_fts WHERE action_items_fts MATCH ?
                 )
             )
+            OR je.book_name LIKE ? ESCAPE '\\'
             ORDER BY je.created_at DESC 
             LIMIT 100
         `;
 
-        const entries = await database.getAllAsync<JournalEntry>(query, [sanitizedTerm, sanitizedTerm]);
+        const entries = await database.getAllAsync<JournalEntry>(query, [match, match, bookLike]);
         return await attachActionItems(database, entries);
     });
 };
@@ -359,9 +393,14 @@ export const getEntryById = async (id: number): Promise<JournalEntry | null> => 
     });
 };
 
+/** Foreign keys are off, so everything that hangs off an entry is deleted by hand. */
 export const deleteJournalEntry = async (id: number) => {
-    await withDatabase(async (database) => {
-        await database.runAsync(`DELETE FROM action_items WHERE entry_id = ?`, [id]);
+    await withTransaction(async (database) => {
+        const items = await database.getAllAsync<{ id: number }>(`SELECT id FROM action_items WHERE entry_id = ?`, [id]);
+        await retractCiting(database, { entryIds: [id] });
+        await deleteActionItems(database, items.map(item => item.id));
+        await database.runAsync(`DELETE FROM theme_members WHERE entry_id = ?`, [id]);
+        await database.runAsync(`DELETE FROM entry_embeddings WHERE entry_id = ?`, [id]);
         await database.runAsync(`DELETE FROM journal_entries WHERE id = ?`, [id]);
     });
     // Runs after the delete commits, never inside it: the coverage check
@@ -501,12 +540,13 @@ export const getMissedDaysCount = async (month?: string): Promise<number> => {
     });
 };
 
+/** Entries per local day, between two local `YYYY-MM-DD` dates inclusive. */
 export const getDailyEntryCounts = async (startDate: string, endDate: string): Promise<Record<string, number>> => {
     return await withDatabase(async (database) => {
         const result = await database.getAllAsync<{ day: string; count: number }>(
             `SELECT DATE(created_at, 'localtime') as day, COUNT(*) as count 
              FROM journal_entries 
-             WHERE DATE(created_at, 'localtime') BETWEEN DATE(?, 'localtime') AND DATE(?, 'localtime') 
+             WHERE DATE(created_at, 'localtime') BETWEEN ? AND ? 
              GROUP BY day`,
             [startDate, endDate]
         );
@@ -523,11 +563,11 @@ export const getDailyEntryCounts = async (startDate: string, endDate: string): P
 export const getFirstEntryDate = async (): Promise<Date | null> => {
     return await withDatabase(async (database) => {
         const result = await database.getFirstAsync<{ created_at: string }>(`
-            SELECT MIN(created_at) as created_at FROM journal_entries
+            SELECT datetime(MIN(created_at), 'localtime') as created_at FROM journal_entries
         `);
 
         if (!result?.created_at) return null;
-        return new Date(result.created_at);
+        return new Date(result.created_at.replace(' ', 'T'));
     });
 };
 
@@ -538,18 +578,15 @@ export const getFirstEntryDate = async (): Promise<Date | null> => {
  */
 export const getDaysSinceLastEntry = async (): Promise<number | null> => {
     return await withDatabase(async (database) => {
-        const result = await database.getFirstAsync<{ created_at: string }>(`
-            SELECT MAX(created_at) as created_at FROM journal_entries
+        const result = await database.getFirstAsync<{ day: string }>(`
+            SELECT DATE(MAX(created_at), 'localtime') as day FROM journal_entries
         `);
 
-        if (!result?.created_at) return null;
+        if (!result?.day) return null;
 
-        // Compare calendar days, not elapsed hours: an entry written last night
-        // and one written this morning are "yesterday" and "today", not 0.4.
-        const last = new Date(result.created_at);
-        const startOfDay = (d: Date) =>
-            new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-        const diff = startOfDay(new Date()) - startOfDay(last);
+        // Compare local calendar days, not elapsed hours: an entry written last
+        // night and one written this morning are "yesterday" and "today", not 0.4.
+        const diff = parseLocalDateString(getTodayDateString()).getTime() - parseLocalDateString(result.day).getTime();
         return Math.max(0, Math.round(diff / 86400000));
     });
 };
@@ -641,6 +678,7 @@ export const getPinnedActionItems = async (): Promise<EnhancedActionItem[]> => {
             FROM action_items ai
             JOIN journal_entries je ON ai.entry_id = je.id
             WHERE ai.is_pinned = 1
+              AND ai.archived_at IS NULL
               AND (ai.action != '' OR ai.motivation != '')
             ORDER BY ai.pinned_at DESC, ai.id DESC
             LIMIT 3
@@ -652,9 +690,12 @@ export const getPinnedActionItems = async (): Promise<EnhancedActionItem[]> => {
 export const toggleActionItemPin = async (id: number, pinned: boolean): Promise<void> => {
     await withDatabase(async (database) => {
         if (pinned) {
+            // Oldest pin first; a pin with no time counts as oldest.
             const pinnedRows = await database.getAllAsync<{ id: number }>(`
-                SELECT id FROM action_items WHERE is_pinned = 1 ORDER BY id ASC
-            `);
+                SELECT id FROM action_items
+                WHERE is_pinned = 1 AND archived_at IS NULL AND id != ?
+                ORDER BY pinned_at IS NOT NULL, pinned_at ASC, id ASC
+            `, [id]);
             if (pinnedRows.length >= 3) {
                 const itemsToUnpin = pinnedRows.slice(0, pinnedRows.length - 2);
                 for (const row of itemsToUnpin) {
@@ -766,5 +807,7 @@ export const setActionItemArchived = async (id: number, archived: boolean): Prom
             `UPDATE action_items SET archived_at = ${archived ? 'CURRENT_TIMESTAMP' : 'NULL'} WHERE id = ?`,
             [id],
         );
+        // Finished with, so no longer something to hand back.
+        if (archived) await retractKeys(database, 'commitment', [`action:${id}`]);
     });
 };

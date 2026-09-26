@@ -23,8 +23,6 @@
 /** Sunday. `Date.getDay()` numbering, where 0 is Sunday. */
 export const REVIEW_DAY = 0;
 
-const DAY_MS = 86_400_000;
-
 export interface ReviewWindow {
     /** Whether the group's activity is visible right now. */
     open: boolean;
@@ -77,6 +75,56 @@ export function windowLabel(window: ReviewWindow): string {
  */
 export function reviewRange(now: Date): { from: Date; to: Date } {
     const to = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const from = new Date(to.getTime() - 6 * DAY_MS);
+    const from = new Date(to.getFullYear(), to.getMonth(), to.getDate() - 6);
     return { from, to };
+}
+
+// ─── The reading week ─────────────────────────────────────────────────────────
+
+/** Monday-first, so the week ends on the review day and Sunday sees it whole. */
+export function weekdayIndex(date: Date): number {
+    return (date.getDay() + 6) % 7;
+}
+
+/** The Monday that starts `date`'s week, at local midnight. */
+export function weekStart(date: Date): Date {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate() - weekdayIndex(date));
+}
+
+const pad = (n: number) => String(n).padStart(2, '0');
+
+/** A week's key: its Monday as a local "YYYY-MM-DD". Keys sort in date order. */
+export function weekKey(date: Date): string {
+    const d = weekStart(date);
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** Only current-format keys count; older "2026-W39" keys read as no week at all. */
+export function isWeekKey(key: unknown): key is string {
+    return typeof key === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(key);
+}
+
+const EMPTY_WEEK = () => [false, false, false, false, false, false, false];
+
+/** The stored dots for the week containing `now`, or an empty week. */
+export function weekDots(stored: unknown, storedWeek: unknown, now: Date): boolean[] {
+    return storedWeek === weekKey(now) && Array.isArray(stored) && stored.length === 7
+        ? stored.map(Boolean)
+        : EMPTY_WEEK();
+}
+
+/**
+ * The dots after reading on `date`, or null when a later week is already
+ * stored — an older activity must not wipe the current week.
+ */
+export function markWeekDay(
+    stored: unknown,
+    storedWeek: unknown,
+    date: Date,
+): { weeklyActivity: boolean[]; weeklyActivityWeek: string } | null {
+    const key = weekKey(date);
+    if (isWeekKey(storedWeek) && storedWeek > key) return null;
+    const weeklyActivity = weekDots(stored, storedWeek, date);
+    weeklyActivity[weekdayIndex(date)] = true;
+    return { weeklyActivity, weeklyActivityWeek: key };
 }

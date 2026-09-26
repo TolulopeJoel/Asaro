@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     View,
     StyleSheet,
@@ -51,75 +51,29 @@ export default function GroupsScreen() {
         return () => subscription.remove();
     }, []);
 
+    /** The user's group ids, comma-joined so the listener below resubscribes only on a real change. */
+    const [groupIdsKey, setGroupIdsKey] = useState('');
+
+    const uid = user?.uid;
     useEffect(() => {
-        if (!user) {
+        setGroupIdsKey('');
+        if (!uid) {
+            setJoinedGroups([]);
             setCheckingGroups(false);
             return;
         }
+        setCheckingGroups(true);
 
-        // Listen for user's group IDs
-        const unsubscribeUser = onSnapshot(
-            doc(db, 'users', user.uid),
-            { includeMetadataChanges: false },
-            async (docSnap: any) => {
+        return onSnapshot(
+            doc(db, 'users', uid),
+            (docSnap: any) => {
                 setIsOffline(false);
-                const userData = docSnap.data();
-                const groupIds: string[] = userData?.groupIds || [];
-
-                if (groupIds.length > 0) {
-                    try {
-                        // Batch fetch groups using 'in' query (max 30 per query)
-                        const chunks: string[][] = [];
-                        for (let i = 0; i < groupIds.length; i += 30) {
-                            chunks.push(groupIds.slice(i, i + 30));
-                        }
-                        const snapshots = await Promise.all(
-                            chunks.map(chunk =>
-                                getDocs(
-                                    query(collection(db, 'groups'), where(documentId(), 'in', chunk))
-                                )
-                            )
-                        );
-                        const groupsData = snapshots.flatMap((snap: any) =>
-                            snap.docs.map((docSnap: any) => ({ id: docSnap.id, ...docSnap.data() }))
-                        );
-                        setJoinedGroups(groupsData);
-
-                        /* Only the blank ones, and only ever one doc each. */
-                        const blank = groupsData.filter((g: any) => !g.description);
-                        if (blank.length > 0) {
-                            const checked = await Promise.all(
-                                blank.map(async (g: any) => {
-                                    try {
-                                        const admins = await getDocs(
-                                            query(
-                                                collection(db, 'groups', g.id, 'members'),
-                                                where('role', '==', 'admin'),
-                                                limit(1),
-                                            ),
-                                        );
-                                        return admins.empty ? g.id : null;
-                                    } catch {
-                                        /* Offline, or rules say no. Fall back to
-                                         * the neutral line rather than accusing
-                                         * a group of something unverified. */
-                                        return null;
-                                    }
-                                }),
-                            );
-                            setAdminless(new Set(checked.filter(Boolean) as string[]));
-                        } else {
-                            setAdminless(new Set());
-                        }
-                    } catch (error) {
-                        console.error('Error fetching group metadata:', error);
-                        // Don't clear existing groups — keep showing whatever we have
-                        setIsOffline(true);
-                    }
-                } else {
+                const ids: string[] = docSnap.data()?.groupIds || [];
+                setGroupIdsKey(ids.join(','));
+                if (ids.length === 0) {
                     setJoinedGroups([]);
+                    setCheckingGroups(false);
                 }
-                setCheckingGroups(false);
             },
             (error: any) => {
                 console.error('Error fetching user groups:', error);
@@ -127,11 +81,81 @@ export default function GroupsScreen() {
                 setCheckingGroups(false);
             }
         );
+    }, [uid]);
 
-        return unsubscribeUser;
-    }, [user]);
+    // Live group docs, so names, streaks and read-today counts stay current.
+    useEffect(() => {
+        const ids = groupIdsKey ? groupIdsKey.split(',') : [];
+        if (ids.length === 0) return;
 
-    if (!user) {
+        // 'in' takes at most 30 values.
+        const chunks: string[][] = [];
+        for (let i = 0; i < ids.length; i += 30) chunks.push(ids.slice(i, i + 30));
+
+        const byChunk: (any[] | undefined)[] = chunks.map(() => undefined);
+        const publish = () => {
+            if (byChunk.some(c => c === undefined)) return;
+            const byId = new Map(byChunk.flat().map((g: any) => [g.id, g]));
+            setJoinedGroups(ids.map(id => byId.get(id)).filter(Boolean));
+            setCheckingGroups(false);
+        };
+
+        const unsubscribes = chunks.map((chunk, i) =>
+            onSnapshot(
+                query(collection(db, 'groups'), where(documentId(), 'in', chunk)),
+                (snap: any) => {
+                    setIsOffline(false);
+                    byChunk[i] = snap.docs.map((docSnap: any) => ({ id: docSnap.id, ...docSnap.data() }));
+                    publish();
+                },
+                (error: any) => {
+                    // Keep whatever is already showing.
+                    console.error('Error fetching group metadata:', error);
+                    setIsOffline(true);
+                    setCheckingGroups(false);
+                }
+            )
+        );
+        return () => unsubscribes.forEach(unsubscribe => unsubscribe());
+    }, [groupIdsKey]);
+
+    /* Only the blank ones, and only ever one doc each; rechecked when that set changes. */
+    const blankKey = useMemo(
+        () => joinedGroups.filter((g: any) => !g.description).map((g: any) => g.id).join(','),
+        [joinedGroups]
+    );
+    useEffect(() => {
+        if (!blankKey) {
+            setAdminless(new Set());
+            return;
+        }
+        let cancelled = false;
+        Promise.all(
+            blankKey.split(',').map(async id => {
+                try {
+                    const admins = await getDocs(
+                        query(
+                            collection(db, 'groups', id, 'members'),
+                            where('role', '==', 'admin'),
+                            limit(1),
+                        ),
+                    );
+                    return admins.empty ? id : null;
+                } catch {
+                    /* Offline, or rules say no. Fall back to
+                     * the neutral line rather than accusing
+                     * a group of something unverified. */
+                    return null;
+                }
+            }),
+        ).then(checked => {
+            if (!cancelled) setAdminless(new Set(checked.filter(Boolean) as string[]));
+        });
+        return () => { cancelled = true; };
+    }, [blankKey]);
+
+    // While auth is still loading, the skeleton below shows rather than the sign-in card.
+    if (!user && !loading) {
         /* design/all-screens.html #groups, for a reader who has not signed in. */
         return (
             <Screen edges={[]}>
@@ -170,7 +194,7 @@ export default function GroupsScreen() {
         );
     }
 
-    const isLoading = loading || checkingGroups;
+    const isLoading = loading || !user || checkingGroups;
 
     return (
         <Screen edges={[]}>

@@ -5,9 +5,31 @@ import * as IntentLauncher from 'expo-intent-launcher';
 import * as Battery from 'expo-battery';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BRAND_ACCENT } from '../theme/colors';
+import { withDatabase } from '../data/db';
+import { STORAGE_KEYS } from '../storage/storageKeys';
 import { detectOemFamily, needsOemAutoStartStep } from './oemRestrictions';
 
-let isScheduling = false;
+export const REMINDER_CHANNEL_ID = 'asaro-reminders';
+
+/** Days with every slot; after them, one Evening reminder a day until DATE_HORIZON_DAYS. */
+const FULL_DAYS = 7;
+const DATE_HORIZON_DAYS = 28;
+
+const DAILY_ID_PREFIX = 'daily-';
+const STUDY_ID_PREFIX = 'study-';
+const STUDY_TITLE = '📖 Study Reminder';
+
+const studyReminderId = (entryId: number) => `${STUDY_ID_PREFIX}${entryId}`;
+const studyReminderBody = (topic?: string | null) => `Time to study further: ${topic || 'your topic'}`;
+
+// Every schedule change runs through this chain, one at a time, so none is dropped or interleaved.
+let scheduleQueue: Promise<unknown> = Promise.resolve();
+
+function enqueue<T>(task: () => Promise<T>): Promise<T> {
+  const run = scheduleQueue.then(task);
+  scheduleQueue = run.catch(() => undefined);
+  return run;
+}
 
 /*
  * Why the schedule is re-armed on every launch.
@@ -20,7 +42,7 @@ let isScheduling = false;
  * leaves the records untouched.
  *
  * So never trust a full-looking schedule as proof the alarms exist: after one
- * force-stop the count still reads twelve with nothing behind it, and the
+ * force-stop the schedule still reads full with nothing behind it, and the
  * reminders stop for good.
  *
  * A force-stop always means the next run is a cold start, so re-arming once
@@ -29,20 +51,58 @@ let isScheduling = false;
  */
 let hasArmedThisLaunch = false;
 
+const DAY_MS = 24 * 60 * 60 * 1000;
 const ARM_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 
 /** When the alarms behind the schedule were last actually registered. */
 const NOTIF_LAST_ARMED_AT = 'notif_last_armed_at';
 
 /**
- * The local date whose reminders were deliberately dropped because the user had
- * already journalled. Re-arming must preserve it, or a repair puts today's
- * nagging back after they earned the silence.
+ * The reminder day whose reminders were deliberately dropped because the user had
+ * already journalled. Every rebuild honours it unless told `includeToday`.
  */
 const NOTIF_SKIP_DAY = 'notif_skip_day';
 
-function localDayKey(date: Date = new Date()): string {
+function localDayKey(date: Date): string {
   return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+}
+
+// ─── Sleep time ──────────────────────────────────────────────────────────────
+
+export interface SleepTime { hour: number; minute: number }
+
+const SLEEP_TIME_PATTERN = /^(\d{1,2}):(\d{2})$/;
+const DEFAULT_SLEEP_TIME: SleepTime = { hour: 22, minute: 0 };
+
+/** Reads "HH:MM", and the full ISO date older versions stored. */
+export function parseSleepTime(raw: string | null | undefined): SleepTime | null {
+  if (!raw) return null;
+  const hhmm = raw.match(SLEEP_TIME_PATTERN);
+  if (hhmm) {
+    const hour = Number(hhmm[1]);
+    const minute = Number(hhmm[2]);
+    return hour < 24 && minute < 60 ? { hour, minute } : null;
+  }
+  const legacy = new Date(raw);
+  return Number.isNaN(legacy.getTime()) ? null : { hour: legacy.getHours(), minute: legacy.getMinutes() };
+}
+
+export function formatSleepTimeValue({ hour, minute }: SleepTime): string {
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+export async function saveSleepTime(time: SleepTime): Promise<void> {
+  await AsyncStorage.setItem(STORAGE_KEYS.SLEEP_TIME, formatSleepTimeValue(time));
+}
+
+/** The stored sleep time, rewriting an old ISO value as "HH:MM" on the way. */
+export async function readSleepTime(): Promise<SleepTime | null> {
+  const raw = await AsyncStorage.getItem(STORAGE_KEYS.SLEEP_TIME);
+  const time = parseSleepTime(raw);
+  if (time && raw && !SLEEP_TIME_PATTERN.test(raw)) {
+    await saveSleepTime(time).catch(error => console.error('Failed to migrate sleep time:', error));
+  }
+  return time;
 }
 
 // Configure how notifications should be handled when app is in foreground
@@ -72,7 +132,7 @@ function createNotificationContent(title: string, body: string) {
 export async function initializeNotificationChannel(): Promise<void> {
   if (Platform.OS === 'android') {
     try {
-      await Notifications.setNotificationChannelAsync('asaro-reminders', {
+      await Notifications.setNotificationChannelAsync(REMINDER_CHANNEL_ID, {
         name: 'Àṣàrò Reminders',
         importance: Notifications.AndroidImportance.HIGH,
         vibrationPattern: [0, 250, 250, 250],
@@ -117,9 +177,8 @@ export async function isBatteryOptimizationDisabled(): Promise<boolean> {
     // We want it to be disabled (false) so our app can run unrestricted
     return !batteryOptimizationEnabled;
   } catch {
-
-    // If we can't check, assume it's not configured properly
-    return false;
+    // An unreadable state must not hold the app behind the battery gate.
+    return true;
   }
 }
 
@@ -171,24 +230,47 @@ export async function openNotificationSettings() {
 
 
 
-export async function scheduleReminderNotification(
-  time: Date,
-  title: string = '📖 Time to Reflect',
-  body: string = 'Take a moment to journal your thoughts.'
-): Promise<string | null> {
-  // Check permissions without requesting
-  if (!await hasNotificationPermissions()) {
-
-    return null;
-  }
-
-  return await Notifications.scheduleNotificationAsync({
-    content: createNotificationContent(title, body),
+function scheduleStudyReminder(entryId: number, time: Date, title: string, body: string): Promise<string> {
+  return Notifications.scheduleNotificationAsync({
+    identifier: studyReminderId(entryId),
+    content: {
+      ...createNotificationContent(title, body),
+      data: { timestamp: Date.now(), kind: 'study', entryId },
+    },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DATE,
       date: time,
-      channelId: Platform.OS === 'android' ? 'asaro-reminders' : undefined,
+      channelId: Platform.OS === 'android' ? REMINDER_CHANNEL_ID : undefined,
     },
+  });
+}
+
+/** An entry's study-further reminder. One per entry: this replaces any earlier one, and a past time cancels it. */
+export function scheduleReminderNotification(
+  entryId: number,
+  time: Date,
+  title: string = STUDY_TITLE,
+  body: string = studyReminderBody()
+): Promise<string | null> {
+  return enqueue(async () => {
+    if (time.getTime() <= Date.now()) {
+      await Notifications.cancelScheduledNotificationAsync(studyReminderId(entryId));
+      return null;
+    }
+    if (!await hasNotificationPermissions()) {
+      return null;
+    }
+    return await scheduleStudyReminder(entryId, time, title, body);
+  });
+}
+
+export function cancelStudyReminder(entryId: number): Promise<void> {
+  return enqueue(async () => {
+    try {
+      await Notifications.cancelScheduledNotificationAsync(studyReminderId(entryId));
+    } catch (error) {
+      console.error('Failed to cancel study reminder:', error);
+    }
   });
 }
 
@@ -245,250 +327,212 @@ function getRandomReminder(reminders: { title: string, body: string }[]) {
   return reminders[Math.floor(Math.random() * reminders.length)];
 }
 
-// Helper function to get the start of a day
-function getStartOfDay(date: Date): Date {
-  const newDate = new Date(date);
-  newDate.setHours(0, 0, 0, 0);
-  return newDate;
+interface Slot {
+  /** Minutes after the reminder day's midnight; past 1440 for a slot after midnight. */
+  totalMin: number;
+  reminders: { title: string, body: string }[];
+  name: string;
 }
 
-// Helper function to check if a date is today
-function isToday(date: Date): boolean {
-  const today = getStartOfDay(new Date());
-  const checkDate = getStartOfDay(date);
-  return today.getTime() === checkDate.getTime();
+// The single slot of the safety-net days: a fixed time, and copy that doesn't claim to be the last of several.
+const SAFETY_NET_SLOT: Slot = { totalMin: 17 * 60 + 30, reminders: eveningReminders, name: 'Evening' };
+
+/**
+ * Slot times from the user's sleep time. An AM sleep time is after midnight, so
+ * its day runs until then (`dayStartMin`) and the slots before it stay on that day.
+ */
+async function getDynamicNotificationTimes(): Promise<{ slots: Slot[]; dayStartMin: number }> {
+  let sleep = DEFAULT_SLEEP_TIME;
+  try {
+    sleep = (await readSleepTime()) ?? DEFAULT_SLEEP_TIME;
+  } catch (e) {
+    console.error('[getDynamicNotificationTimes] Error reading sleep time:', e);
+  }
+
+  const afterMidnight = sleep.hour < 12;
+  const sleepMin = sleep.hour * 60 + sleep.minute + (afterMidnight ? 24 * 60 : 0);
+
+  const rawSlots: Slot[] = [
+    { totalMin: 11 * 60 + 59, reminders: middayReminders, name: 'Midday' },
+    { totalMin: 17 * 60 + 30, reminders: eveningReminders, name: 'Evening' },
+    { totalMin: sleepMin - 3 * 60, reminders: lateReminders, name: 'Late' },
+    { totalMin: sleepMin - 60, reminders: finalReminders, name: 'Final' },
+  ];
+
+  // Keep slots at least 60 minutes apart, preferring later ones (Final > Late > Evening > Midday).
+  const slots: Slot[] = [];
+  for (const slot of rawSlots.sort((a, b) => b.totalMin - a.totalMin)) {
+    if (!slots.some(s => Math.abs(s.totalMin - slot.totalMin) < 60)) slots.push(slot);
+  }
+
+  return {
+    slots: slots.sort((a, b) => a.totalMin - b.totalMin),
+    dayStartMin: afterMidnight ? sleep.hour * 60 + sleep.minute : 0,
+  };
+}
+
+function triggerTime(request: Notifications.NotificationRequest): Date | null {
+  const trigger = request.trigger as any;
+  const value = trigger && typeof trigger === 'object' ? (trigger.date || trigger.value) : null;
+  return value ? new Date(value) : null;
+}
+
+/** A daily nag, including ones scheduled before daily reminders had their own identifiers. */
+function isDailyRequest(request: Notifications.NotificationRequest): boolean {
+  if (request.identifier.startsWith(DAILY_ID_PREFIX)) return true;
+  if (request.identifier.startsWith(STUDY_ID_PREFIX)) return false;
+  const data = (request.content.data ?? {}) as Record<string, unknown>;
+  return request.content.categoryIdentifier === 'reminder' || data.timeSlot !== undefined;
+}
+
+/** A study reminder, including ones scheduled under a random identifier before they were keyed by entry. */
+function isStudyRequest(request: Notifications.NotificationRequest): boolean {
+  if (request.identifier.startsWith(STUDY_ID_PREFIX)) return true;
+  return !isDailyRequest(request) && request.content.title === STUDY_TITLE;
+}
+
+/** Future study reminders the journal still asks for, or null if it can't be read. */
+async function dueStudyReminders(now: Date): Promise<{ entryId: number; at: Date; topic: string | null }[] | null> {
+  try {
+    const rows = await withDatabase(database => database.getAllAsync<{
+      id: number; study_further: string | null; study_further_reminder: string;
+    }>(
+      `SELECT id, study_further, study_further_reminder FROM journal_entries
+       WHERE study_further_reminder IS NOT NULL AND study_further_reminder != ''
+       AND COALESCE(study_completed, 0) = 0`
+    ));
+    return rows
+      .map(row => ({ entryId: row.id, at: new Date(row.study_further_reminder), topic: row.study_further }))
+      .filter(row => row.at.getTime() > now.getTime());
+  } catch (error) {
+    console.error('Failed to read study reminders:', error);
+    return null;
+  }
+}
+
+/** Whether an entry was written since `since`. False if the journal can't be read. */
+async function journalledSince(since: Date): Promise<boolean> {
+  try {
+    const row = await withDatabase(database => database.getFirstAsync(
+      `SELECT 1 FROM journal_entries WHERE datetime(created_at) >= datetime(?) LIMIT 1`,
+      [since.toISOString()]
+    ));
+    return !!row;
+  } catch (error) {
+    console.error('Failed to check today\'s entries:', error);
+    return false;
+  }
+}
+
+export interface SetupNotificationsOptions {
+  /** Rebuild even when the schedule looks full. */
+  force?: boolean;
+  /** Schedule the rest of today even though the user already journalled today. */
+  includeToday?: boolean;
 }
 
 /**
- * Dynamically calculates notification times based on the user's sleep schedule.
- * Ensuring slots are spaced out and logic is simple.
+ * Rebuild the daily reminders: every slot for FULL_DAYS days, then the Evening
+ * slot alone to DATE_HORIZON_DAYS, so a lapsed reader still hears from Àṣàrò.
+ * Study reminders are kept, and re-armed from the journal. Serialised with every
+ * other schedule change. `startFromTomorrow` marks today as done.
  */
-async function getDynamicNotificationTimes() {
-  const sleepTimeStr = await AsyncStorage.getItem('sleep_time');
-  let sleepHour = 22;
-  let sleepMin = 0;
-
-  if (sleepTimeStr) {
-    try {
-      const sleepDate = new Date(sleepTimeStr);
-      sleepHour = sleepDate.getHours();
-      sleepMin = sleepDate.getMinutes();
-    } catch (e) {
-      console.error('[getDynamicNotificationTimes] Error parsing sleep time:', e);
-    }
-  }
-
-  const middayMin = 11 * 60 + 59; // 11:59 AM
-  const eveningMin = 17 * 60 + 30; // 05:30 PM (Earliest evening start)
-
-  // Final is 1 hour before sleep
-  const finalMin = ((sleepHour - 1 + 24) % 24) * 60 + sleepMin;
-
-  // Late is 3 hours before sleep
-  const lateMin = ((sleepHour - 3 + 24) % 24) * 60 + sleepMin;
-
-  const rawSlots = [
-    { totalMin: middayMin, reminders: middayReminders, name: 'Midday' },
-    { totalMin: eveningMin, reminders: eveningReminders, name: 'Evening' },
-    { totalMin: lateMin, reminders: lateReminders, name: 'Late' },
-    { totalMin: finalMin, reminders: finalReminders, name: 'Final' },
-  ];
-
-  // Logic: Only keep slots that are at least 60 mins apart, 
-  // prioritizing later slots (Final > Late > Evening > Midday)
-  const sortedRaw = rawSlots.sort((a, b) => b.totalMin - a.totalMin);
-  const finalSlots: any[] = [];
-
-  for (const slot of sortedRaw) {
-    const isTooClose = finalSlots.some(s => Math.abs(s.totalMin - slot.totalMin) < 60);
-    if (!isTooClose) {
-      finalSlots.push(slot);
-    }
-  }
-
-  return finalSlots.map(s => ({
-    hour: Math.floor(s.totalMin / 60),
-    minute: s.totalMin % 60,
-    reminders: s.reminders,
-    name: s.name
-  })).sort((a, b) => (a.hour * 60 + a.minute) - (b.hour * 60 + b.minute));
-}
-// Cancel all scheduled notifications for the remainder of today
-export async function cancelRemainingNotificationsForToday(): Promise<void> {
-  if (!await hasNotificationPermissions()) {
-
-    return;
-  }
-
-  const now = new Date();
-  const existingNotifications = await getAllScheduledNotifications();
-
-
-  for (const notification of existingNotifications) {
-    const trigger = notification.trigger as any;
-    if (trigger && typeof trigger === 'object') {
-      const triggerValue = trigger.date || trigger.value;
-      if (triggerValue) {
-        const triggerDate = new Date(triggerValue);
-
-        // Cancel if it's scheduled for today and hasn't fired yet
-        if (isToday(triggerDate) && triggerDate > now) {
-          await Notifications.cancelScheduledNotificationAsync(notification.identifier);
-        }
-      }
-    }
-  }
-
-
-}
-
-// Add notifications for a new day (7 days from now) to maintain the 7-day schedule
-export async function addNotificationsForNewDay(): Promise<void> {
-  if (!await hasNotificationPermissions()) {
-
-    return;
-  }
-
-  try {
-    // Find the furthest scheduled notification date
-    const existingNotifications = await getAllScheduledNotifications();
-    let furthestDate = new Date();
-
-    for (const notification of existingNotifications) {
-      const trigger = notification.trigger as any;
-      if (trigger && typeof trigger === 'object') {
-        const triggerValue = trigger.date || trigger.value;
-        if (triggerValue) {
-          const triggerDate = new Date(triggerValue);
-          if (triggerDate > furthestDate) {
-            furthestDate = triggerDate;
-          }
-        }
-      }
-    }
-
-    // Add one day to the furthest date
-    const newDay = new Date(furthestDate);
-    newDay.setDate(newDay.getDate() + 1);
-    newDay.setHours(0, 0, 0, 0);
-
-    const notificationTimes = await getDynamicNotificationTimes();
-
-    for (const notif of notificationTimes) {
-      const scheduledTime = new Date(newDay);
-      scheduledTime.setHours(notif.hour, notif.minute, 0, 0);
-
-      const reminder = getRandomReminder(notif.reminders);
-
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          ...createNotificationContent(reminder.title, reminder.body),
-          categoryIdentifier: 'reminder',
-          data: {
-            timestamp: Date.now(),
-            scheduledFor: scheduledTime.toISOString(),
-            timeSlot: notif.hour,
-          },
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DATE,
-          date: scheduledTime,
-          channelId: Platform.OS === 'android' ? 'asaro-reminders' : undefined,
-        },
-      });
-    }
-
-
-  } catch (error) {
-    console.error('Error adding notifications for new day:', error);
-  }
-}
-
-export async function setupDailyNotifications(
+export function setupDailyNotifications(
   startFromTomorrow: boolean = false,
-  options: { force?: boolean } = {}
+  options: SetupNotificationsOptions = {}
 ): Promise<boolean> {
-  // Check permissions without requesting
+  return enqueue(() => rebuildSchedule(startFromTomorrow, options));
+}
+
+async function rebuildSchedule(startFromTomorrow: boolean, options: SetupNotificationsOptions): Promise<boolean> {
   if (!await hasNotificationPermissions()) {
     return false;
   }
 
-  if (isScheduling) {
-    return false;
-  }
-  isScheduling = true;
-
   try {
-    const existingNotifications = await getAllScheduledNotifications();
-
     const now = new Date();
-    const futureDateNotifications = existingNotifications.filter(n => {
-      const trigger = n.trigger as any;
-      if (trigger && typeof trigger === 'object') {
-        const triggerValue = trigger.date || trigger.value;
-        if (triggerValue) {
-          const triggerDate = new Date(triggerValue);
-          return triggerDate > now;
-        }
-      }
-      return false;
-    });
+    const scheduled = await getAllScheduledNotifications();
+    const daily = scheduled.filter(isDailyRequest);
 
     // A full-looking schedule is trustworthy only if this process armed it —
     // see the note at the top. Everything else rebuilds, which is the only way
     // to find out whether the alarms are still there.
     const mustArm = options.force || !hasArmedThisLaunch || startFromTomorrow;
+    const furthest = Math.max(0, ...daily.map(r => triggerTime(r)?.getTime() ?? 0));
+    const looksFull = furthest >= now.getTime() + (DATE_HORIZON_DAYS - FULL_DAYS) * DAY_MS;
 
-    if (!mustArm && futureDateNotifications.length >= 12) {
+    if (!mustArm && looksFull) {
       return true;
     }
 
-    await cancelAllScheduledNotifications();
-    const notificationTimes = await getDynamicNotificationTimes();
+    const { slots, dayStartMin } = await getDynamicNotificationTimes();
 
-    const startDate = new Date();
-    startDate.setHours(0, 0, 0, 0);
+    // The reminder day `now` falls in, which starts at dayStartMin past midnight.
+    const dayOf = new Date(now.getTime() - dayStartMin * 60_000);
+    const today = new Date(dayOf.getFullYear(), dayOf.getMonth(), dayOf.getDate());
+    const todayKey = localDayKey(today);
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, dayStartMin);
 
-    // Schedule notifications for the next 7 days
-    const startOffset = startFromTomorrow ? 1 : 0;
-    for (let dayOffset = startOffset; dayOffset < 7 + startOffset; dayOffset++) {
-      const targetDate = new Date(startDate);
-      targetDate.setDate(startDate.getDate() + dayOffset);
+    const skipToday = startFromTomorrow || (!options.includeToday && (
+      await AsyncStorage.getItem(NOTIF_SKIP_DAY) === todayKey || await journalledSince(todayStart)
+    ));
 
-      for (const notif of notificationTimes) {
-        const scheduledTime = new Date(targetDate);
-        scheduledTime.setHours(notif.hour, notif.minute, 0, 0);
+    for (const request of daily) {
+      await Notifications.cancelScheduledNotificationAsync(request.identifier);
+    }
 
+    const startOffset = skipToday ? 1 : 0;
+    for (let dayOffset = startOffset; dayOffset < DATE_HORIZON_DAYS; dayOffset++) {
+      const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + dayOffset);
+      const daySlots = dayOffset < startOffset + FULL_DAYS ? slots : [SAFETY_NET_SLOT];
+
+      for (const slot of daySlots) {
+        const scheduledTime = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, slot.totalMin);
         if (scheduledTime <= now) {
           continue;
         }
 
-        const reminder = getRandomReminder(notif.reminders);
+        const reminder = getRandomReminder(slot.reminders);
 
         await Notifications.scheduleNotificationAsync({
+          identifier: `${DAILY_ID_PREFIX}${localDayKey(date)}-${slot.name}`,
           content: {
-            ...createNotificationContent(`${reminder.title}`, reminder.body),
+            ...createNotificationContent(reminder.title, reminder.body),
             categoryIdentifier: 'reminder',
             data: {
               timestamp: Date.now(),
-              type: 'date-based',
+              kind: 'daily',
               scheduledFor: scheduledTime.toISOString(),
-              timeSlot: notif.hour,
+              timeSlot: slot.name,
             },
           },
           trigger: {
             type: Notifications.SchedulableTriggerInputTypes.DATE,
             date: scheduledTime,
-            channelId: Platform.OS === 'android' ? 'asaro-reminders' : undefined,
+            channelId: Platform.OS === 'android' ? REMINDER_CHANNEL_ID : undefined,
           },
         });
       }
     }
 
+    // A force-stop takes study alarms too. Only touched once the journal is read, so a failed read loses nothing.
+    const due = await dueStudyReminders(now);
+    if (due) {
+      const wanted = new Set(due.map(r => studyReminderId(r.entryId)));
+      for (const request of scheduled) {
+        if (isStudyRequest(request) && !wanted.has(request.identifier)) {
+          await Notifications.cancelScheduledNotificationAsync(request.identifier);
+        }
+      }
+      for (const reminder of due) {
+        await scheduleStudyReminder(reminder.entryId, reminder.at, STUDY_TITLE, studyReminderBody(reminder.topic));
+      }
+    }
+
     hasArmedThisLaunch = true;
     await AsyncStorage.setItem(NOTIF_LAST_ARMED_AT, String(Date.now()));
-    if (startFromTomorrow) {
-      await AsyncStorage.setItem(NOTIF_SKIP_DAY, localDayKey());
+    if (skipToday) {
+      await AsyncStorage.setItem(NOTIF_SKIP_DAY, todayKey);
     } else {
       await AsyncStorage.removeItem(NOTIF_SKIP_DAY);
     }
@@ -497,8 +541,6 @@ export async function setupDailyNotifications(
   } catch (error) {
     console.error('Error scheduling notifications:', error);
     return false;
-  } finally {
-    isScheduling = false;
   }
 }
 
@@ -516,15 +558,10 @@ export async function ensureNotificationsArmed(): Promise<void> {
   }
 
   try {
-    const [skipDay, lastArmedRaw] = await Promise.all([
-      AsyncStorage.getItem(NOTIF_SKIP_DAY),
-      AsyncStorage.getItem(NOTIF_LAST_ARMED_AT),
-    ]);
-
-    const lastArmedAt = Number(lastArmedRaw) || 0;
+    const lastArmedAt = Number(await AsyncStorage.getItem(NOTIF_LAST_ARMED_AT)) || 0;
     const isStale = Date.now() - lastArmedAt > ARM_MAX_AGE_MS;
 
-    await setupDailyNotifications(skipDay === localDayKey(), { force: isStale });
+    await setupDailyNotifications(false, { force: isStale });
   } catch (error) {
     console.error('Error re-arming notifications:', error);
   }
@@ -558,7 +595,7 @@ export async function getNotificationDiagnostics(): Promise<{
   let channelBlocked = false;
   if (Platform.OS === 'android') {
     try {
-      const channel = await Notifications.getNotificationChannelAsync('asaro-reminders');
+      const channel = await Notifications.getNotificationChannelAsync(REMINDER_CHANNEL_ID);
       channelBlocked = !channel || channel.importance === Notifications.AndroidImportance.NONE;
     } catch {
       channelBlocked = false;
@@ -591,12 +628,6 @@ export async function cancelScheduledNotification(notificationId: string): Promi
   await Notifications.cancelScheduledNotificationAsync(notificationId);
 }
 
-export async function cancelAllScheduledNotifications(): Promise<void> {
-  await Notifications.cancelAllScheduledNotificationsAsync();
-  // Also dismiss any delivered notifications to clear the tray
-  await Notifications.dismissAllNotificationsAsync();
-}
-
 export async function getAllScheduledNotifications(): Promise<Notifications.NotificationRequest[]> {
   return await Notifications.getAllScheduledNotificationsAsync();
 }
@@ -612,6 +643,7 @@ export async function sendTestNotification(): Promise<void> {
       '🔔 Test Notification',
       'If you can see this, notifications are working perfectly! 🎉'
     ),
-    trigger: null,
+    // The reminders' own channel, so a blocked channel fails the test too.
+    trigger: { channelId: REMINDER_CHANNEL_ID },
   });
 }

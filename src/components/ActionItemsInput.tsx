@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Modal, ScrollView, StatusBar, StyleSheet, TextInput, View } from 'react-native';
 import { Button } from './Button';
 import { ScalePressable } from './ScalePressable';
@@ -7,7 +7,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
 import { BibleReferencePicker } from './BibleReferencePicker';
-import { getBibleStyledParts } from '../utils/bibleUtils';
+import { couldBeBookName, findAtTrigger, getBibleStyledParts, pickerQuery, resolveTypedReference, typedSince } from '../utils/bibleUtils';
 import { useRefPicker } from '../context/RefPickerContext';
 import { Screen, Text } from './ui';
 import { KindChips } from './journal/KindChips';
@@ -15,6 +15,8 @@ import { hasReason, isBlank } from '../data/actionValidation';
 import { KEYBOARD_BEHAVIOR } from '../utils/keyboard';
 
 export interface ActionItemPair {
+    /** The saved row this edits, so an entry edit keeps its history. */
+    id?: number;
     action: string;
     motivation: string;
     /** Set makes this a practice. See `actionKindOf`. */
@@ -64,7 +66,13 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
     const [refQuery, setRefQuery] = useState('');
     // Single target ref — tracks which (index, field, isModal, startIndex) opened the picker.
     const refPickerTarget = useRef<RefPickerTarget | null>(null);
-
+    // Owner token from the root picker, so this list only ever closes its own.
+    const pickerToken = useRef<number | undefined>(undefined);
+    const hideOwnPicker = useCallback(() => {
+        if (pickerToken.current !== undefined) hidePicker(pickerToken.current);
+    }, [hidePicker]);
+    // A picker left open would write into these fields after they have gone.
+    useEffect(() => hideOwnPicker, [hideOwnPicker]);
 
     // Track dynamic heights for growth
     const [, setActionHeights] = useState<{ [key: number]: number }>({});
@@ -94,45 +102,52 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                 refPickerTarget.current = null;
                 setRefPickerMode(null);
                 setRefQuery('');
-                if (!isModal) hidePicker();
-            } else if (text.endsWith(' ')) {
-                const partialRef = text.slice(currentStartIndex).trim();
-                handleReferenceSelect(partialRef);
-            } else {
-                // Update the query live
-                const newQuery = text.slice(currentStartIndex + 1);
-                setRefQuery(newQuery);
-                if (!isModal) {
-                    showPicker({
-                        query: newQuery,
-                        onPreview: handlePreview,
-                        onSelect: handleReferenceSelect,
-                        onDismiss: handleReferenceDismiss,
-                        onInteraction: handlePickerInteraction,
-                    });
+                if (!isModal) hideOwnPicker();
+                return;
+            }
+            const typed = typedSince(text, currentStartIndex);
+            if (text.endsWith(' ')) {
+                // A space finishes a real book; "@1 " may still become "1 John"; anything else is just an @.
+                const ref = resolveTypedReference(typed);
+                if (ref) {
+                    handleReferenceSelect(ref);
+                    return;
                 }
+                if (!couldBeBookName(typed)) {
+                    handleReferenceDismiss();
+                    return;
+                }
+            }
+            const newQuery = pickerQuery(typed);
+            setRefQuery(newQuery);
+            if (!isModal) {
+                pickerToken.current = showPicker({
+                    query: newQuery,
+                    onPreview: handlePreview,
+                    onSelect: handleReferenceSelect,
+                    onDismiss: handleReferenceDismiss,
+                    onInteraction: handlePickerInteraction,
+                }, pickerToken.current);
             }
             return;
         }
 
-        // Detect a fresh @ trigger at end of text
-        const match = text.match(/@(\w[\w\s]*)$/);
-        if (match) {
-            const startIndex = text.length - match[0].length;
-            refPickerTarget.current = { index, field, isModal, startIndex };
-            const query = match[1];
+        const trigger = findAtTrigger(text);
+        if (trigger) {
+            refPickerTarget.current = { index, field, isModal, startIndex: trigger.startIndex };
+            const query = pickerQuery(trigger.query);
             setRefQuery(query);
             if (isModal) {
                 setRefPickerMode('local');
             } else {
                 setRefPickerMode('inline');
-                showPicker({
+                pickerToken.current = showPicker({
                     query,
                     onPreview: handlePreview,
                     onSelect: handleReferenceSelect,
                     onDismiss: handleReferenceDismiss,
                     onInteraction: handlePickerInteraction,
-                });
+                }, pickerToken.current);
             }
         } else {
             // No trigger — only clear if this field's mode is currently active
@@ -140,10 +155,10 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                 refPickerTarget.current = null;
                 setRefPickerMode(null);
                 setRefQuery('');
-                if (!isModal) hidePicker();
+                if (!isModal) hideOwnPicker();
             }
         }
-    }, [showPicker, hidePicker]);
+    }, [showPicker, hideOwnPicker]);
 
     // ─── Preview (live, keeps picker open) ───────────────────────────────────
 
@@ -182,19 +197,19 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
         updated[index] = { ...updated[index], [field]: currentText.slice(0, insertAt >= 0 ? insertAt : 0) + taggedRef };
 
         if (isModal) setTempItems(updated);
-        else { onChange(updated); hidePicker(); }
+        else { onChange(updated); hideOwnPicker(); }
 
         handlePickerInteraction();
-    }, [onChange, hidePicker]);
+    }, [onChange, hideOwnPicker]);
 
     const handleReferenceDismiss = useCallback(() => {
         const isModal = refPickerTarget.current?.isModal ?? false;
         refPickerTarget.current = null;
         setRefPickerMode(null);
         setRefQuery('');
-        if (!isModal) hidePicker();
+        if (!isModal) hideOwnPicker();
         handlePickerInteraction();
-    }, [hidePicker]);
+    }, [hideOwnPicker]);
 
     const handlePickerInteraction = useCallback(() => {
         const target = refPickerTarget.current;
@@ -455,6 +470,7 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                 animationType="none"
                 presentationStyle="fullScreen"
                 statusBarTranslucent={true}
+                onRequestClose={handleCancelExpansion}
             >
                 <StatusBar hidden={true} />
                 <Screen edges={['top', 'bottom', 'left', 'right']} style={fullScreenStyles.container}>

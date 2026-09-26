@@ -8,13 +8,14 @@ import { Spacing } from '../theme/spacing';
 import { ScalePressable } from './ScalePressable';
 import { Button } from './Button';
 import { HyperlinkedText } from './HyperlinkedText';
-import { centerWithinFields, clusterThemes, representatives } from '../ml/clustering';
+import { Cluster, centerWithinFields, clusterThemes, representatives } from '../ml/clustering';
 import { suggestNames } from '../ml/themeNames';
 import { RankedTheme, rankThemes, spanLabel } from '../ml/themeQuality';
 import {
     EMBEDDABLE_FIELDS,
     ACTION_FIELD,
     StoredEmbedding,
+    BackfillProgress,
     backfillEmbeddings,
     loadEmbeddings,
     NamedTheme,
@@ -24,7 +25,7 @@ import {
     pruneEmbeddings,
     renameTheme,
 } from '../data/embeddingRepository';
-import { downloadModel, isModelDownloaded, unload } from '../ml/embedder';
+import { downloadModel, isModelDownloaded, isUnloadedError, unload } from '../ml/embedder';
 import { AnimatedModal } from './AnimatedModal';
 import { ThemeDetail } from './ThemeDetail';
 import { JournalEntryDetail } from './JournalEntryDetail';
@@ -59,6 +60,90 @@ function reference(item: StoredEmbedding): string {
             ? `${item.chapterStart}-${item.chapterEnd}`
             : `${item.chapterStart}`;
     return `${item.bookName} ${range}`;
+}
+
+interface ThemesResult {
+    entryCount: number;
+    ranked: RankedTheme[];
+}
+
+/** Hash of everything clustering reads or a card renders, so any edit misses the cache. */
+function fingerprint(items: StoredEmbedding[]): string {
+    let a = 5381;
+    let b = 0x811c9dc5;
+    const mix = (value: number) => {
+        a = ((a << 5) + a + value) | 0;
+        b = Math.imul(b ^ value, 0x01000193);
+    };
+    for (const item of items) {
+        const meta = `${item.entryId}|${item.field}|${item.bookName}|${item.chapterStart}|${item.chapterEnd}|${item.createdAt}|${item.text}`;
+        for (let i = 0; i < meta.length; i++) mix(meta.charCodeAt(i));
+        const bits = new Int32Array(item.vector.buffer, item.vector.byteOffset, item.vector.length);
+        for (let i = 0; i < bits.length; i++) mix(bits[i]);
+    }
+    return `${items.length}:${a >>> 0}:${b >>> 0}`;
+}
+
+/** The last clustering, so reopening Themes with nothing changed skips the slow part. */
+let clustered: {
+    key: string;
+    centered: StoredEmbedding[];
+    found: Cluster<StoredEmbedding>[];
+} | null = null;
+
+/** The one compute running, shared so a second caller never embeds the same texts again. */
+let inFlight: Promise<ThemesResult | null> | null = null;
+
+/** Null when its caller left or `unload` cut it short. */
+async function runThemes(
+    isCancelled: () => boolean,
+    onProgress: (progress: BackfillProgress) => void,
+): Promise<ThemesResult | null> {
+    try {
+        await pruneEmbeddings();
+        await backfillEmbeddings(onProgress, isCancelled);
+        if (isCancelled()) return null;
+
+        const items = await loadEmbeddings();
+        if (isCancelled()) return null;
+
+        const entryCount = new Set(items.map(i => i.entryId)).size;
+        if (entryCount < MIN_ENTRIES) return { entryCount, ranked: [] };
+
+        // Clustering says what groups together; `rankThemes` says which
+        // groups are worth showing, and reruns each time so recency stays
+        // current. The centered vectors go with it because the cohesion floor
+        // is measured against this corpus.
+        const key = fingerprint(items);
+        if (clustered?.key !== key) {
+            const centered = centerWithinFields(items);
+            clustered = { key, centered, found: clusterThemes(centered, { grain: 85, minEntries: 3 }) };
+        }
+        return { entryCount, ranked: rankThemes(clustered.found, clustered.centered) };
+    } catch (error) {
+        if (isCancelled() || isUnloadedError(error)) return null;
+        throw error;
+    }
+}
+
+/** Joins the compute in flight, or starts one; a run whose caller left is waited out, then redone. */
+async function computeThemes(
+    isCancelled: () => boolean,
+    onProgress: (progress: BackfillProgress) => void,
+): Promise<ThemesResult | null> {
+    while (!isCancelled()) {
+        let run = inFlight;
+        if (!run) {
+            const started: Promise<ThemesResult | null> = runThemes(isCancelled, onProgress).finally(() => {
+                if (inFlight === started) inFlight = null;
+            });
+            inFlight = started;
+            run = started;
+        }
+        const result = await run;
+        if (result) return result;
+    }
+    return null;
 }
 
 export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?: (count: number | null) => void } = {}) {
@@ -96,32 +181,24 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
     const compute = useCallback(async () => {
         try {
             setPhase('working');
-            await pruneEmbeddings();
-            await backfillEmbeddings(({ done, total }) => {
-                if (mounted.current) setProgress(total ? done / total : 1);
-            });
+            const result = await computeThemes(
+                () => !mounted.current,
+                ({ done, total }) => {
+                    if (mounted.current) setProgress(total ? done / total : 1);
+                },
+            );
+            if (!result || !mounted.current) return;
 
-            const items = await loadEmbeddings();
-            if (!mounted.current) return;
+            setEntryCount(result.entryCount);
 
-            const entries = new Set(items.map(i => i.entryId));
-            setEntryCount(entries.size);
-
-            if (entries.size < MIN_ENTRIES) {
+            if (result.entryCount < MIN_ENTRIES) {
                 onPatternCountChange?.(null);
                 setPhase('tooEarly');
                 return;
             }
 
-            // Clustering says what groups together; `rankThemes` says which
-            // groups are worth showing. The centered vectors go with it
-            // because the cohesion floor is measured against this corpus.
-            const centered = centerWithinFields(items);
-            const found = clusterThemes(centered, { grain: 85, minEntries: 3 });
-            const ranked = rankThemes(found, centered);
-
-            setRanked(ranked);
-            onPatternCountChange?.(ranked.length);
+            setRanked(result.ranked);
+            onPatternCountChange?.(result.ranked.length);
             setNamed(await getNamedThemes());
             setPhase('ready');
         } catch (error: any) {

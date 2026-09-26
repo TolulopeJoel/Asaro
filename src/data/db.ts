@@ -51,6 +51,30 @@ export const withDatabase = async <T>(operation: (database: SQLite.SQLiteDatabas
     }
 };
 
+let transactions: Promise<unknown> = Promise.resolve();
+
+/**
+ * Runs `operation` between BEGIN and COMMIT on the shared connection, one
+ * transaction at a time, so a lost-connection retry starts from a rolled-back
+ * state. Never call it from inside another `withTransaction`: it would wait on itself.
+ */
+export const withTransaction = <T>(operation: (database: SQLite.SQLiteDatabase) => Promise<T>): Promise<T> => {
+    const run = transactions.then(() => withDatabase(async database => {
+        await database.execAsync('BEGIN');
+        try {
+            const result = await operation(database);
+            await database.execAsync('COMMIT');
+            return result;
+        } catch (error) {
+            // A lost connection has already dropped the transaction.
+            await database.execAsync('ROLLBACK').catch(() => { });
+            throw error;
+        }
+    }));
+    transactions = run.catch(() => { });
+    return run;
+};
+
 export const getDbVersion = async (database: SQLite.SQLiteDatabase): Promise<number> => {
     try {
         const result = await database.getFirstAsync(`PRAGMA user_version`) as any;

@@ -3,13 +3,13 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '@/src/storage/storageKeys';
 import { getAuth } from '@react-native-firebase/auth';
-import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter, Stack } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, KeyboardAvoidingView, Share, StyleSheet, View } from 'react-native';
+import { Animated, BackHandler, KeyboardAvoidingView, Share, StyleSheet, View } from 'react-native';
 import { ReflectionAnswers } from '../src/components/ReflectionForm';
 import { LoadingView } from '../src/components/LoadingView';
 import { BibleBook, getBookByName } from '../src/data/bibleBooks';
-import { setupDailyNotifications, scheduleReminderNotification } from '../src/utils/notifications';
+import { cancelStudyReminder, setupDailyNotifications, scheduleReminderNotification } from '../src/utils/notifications';
 import { queueActivity, syncPendingActivities } from '../src/utils/syncActivities';
 import { useAlert } from '@/src/context/AlertContext';
 import { firstWithoutReason, isBlank } from '@/src/data/actionValidation';
@@ -17,8 +17,8 @@ import { useObservation } from '@/src/insight/useObservation';
 import { ObservationCard } from '@/src/components/insight/ObservationCard';
 import { ObservationReceipts } from '@/src/components/insight/ObservationReceipts';
 import { AnimatedModal } from '@/src/components/AnimatedModal';
-import { setActionItemArchived } from '@/src/data/journalRepository';
-import { useAutoSave, useStepFade, Step, DraftData, ChapterRange, VerseRange } from '../src/hooks/useEntryHooks';
+import { planItemChapters, setActionItemArchived } from '@/src/data/journalRepository';
+import { useAutoSave, useStepFade, Step, DraftData, ChapterRange, VerseRange, summariseDraft } from '../src/hooks/useEntryHooks';
 import { BookStep, ChapterStep, ReflectionStep, SummaryStep } from '../src/components/entry/EntrySteps';
 import { Screen } from '@/src/components/ui';
 import { KEYBOARD_BEHAVIOR } from '../src/utils/keyboard';
@@ -66,10 +66,61 @@ export default function MeditationSessionScreen() {
     const [isLoading, setIsLoading] = useState(needsAsyncLoad);
     const [savedEntryId, setSavedEntryId] = useState<number | undefined>();
     const isSaving = useRef(false);
+    // Set once the entry is saved or the draft discarded, so autosave can't resurrect it.
+    const draftClosed = useRef(false);
+    // What each action said when an edit opened, so only new or changed actions must give a reason.
+    const loadedActions = useRef(new Map<number, string>());
 
-    const readingItemId = params.readingItemId ? Number(params.readingItemId) : undefined;
+    const [readingItemId, setReadingItemId] = useState<number | undefined>(
+        params.readingItemId ? Number(params.readingItemId) : undefined
+    );
 
     const { opacity } = useStepFade(currentStep);
+    const navigation = useNavigation();
+
+    // Hardware back steps back through the wizard; the reflection step handles its own pages.
+    useEffect(() => {
+        if (currentStep !== 'chapter') return;
+        const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+            setCurrentStep('book');
+            return true;
+        });
+        return () => sub.remove();
+    }, [currentStep]);
+
+    // An edit isn't autosaved, so leaving with changes asks first.
+    const loadedEdit = useRef<string | null>(null);
+    const editSnapshot = JSON.stringify([reflectionAnswers, selectedChapters, verseRange, selectedBook?.name]);
+    const editDirty = useRef(false);
+    editDirty.current = isEditMode && loadedEdit.current !== null && loadedEdit.current !== editSnapshot;
+    useEffect(() => {
+        if (isEditMode && !isLoading && loadedEdit.current === null) loadedEdit.current = editSnapshot;
+    }, [isEditMode, isLoading, editSnapshot]);
+    useEffect(() => navigation.addListener('beforeRemove', e => {
+        if (!editDirty.current || draftClosed.current) return;
+        e.preventDefault();
+        showAlert({
+            title: 'Discard changes?',
+            message: 'Your changes to this entry have not been saved.',
+            buttons: [
+                { text: 'Keep editing', style: 'cancel' },
+                { text: 'Discard', style: 'destructive', onPress: () => navigation.dispatch(e.data.action) },
+            ],
+        });
+    }), [navigation, showAlert]);
+
+    // Resolves true to replace the unfinished draft, false to go back to it.
+    const confirmReplaceDraft = (passage: string) => new Promise<boolean>(resolve => {
+        showAlert({
+            title: 'You have a draft',
+            message: `Your reflection on ${passage} isn't finished. Starting this reading will discard it.`,
+            cancelable: false,
+            buttons: [
+                { text: 'Resume draft', style: 'cancel', onPress: () => resolve(false) },
+                { text: 'Discard it', style: 'destructive', onPress: () => resolve(true) },
+            ],
+        });
+    });
 
     // Load data
     useEffect(() => {
@@ -91,6 +142,9 @@ export default function MeditationSessionScreen() {
                             end: entry.verse_end?.toString() || '',
                         });
                     }
+                    loadedActions.current = new Map(
+                        (entry.action_items ?? []).map(item => [item.id!, `${item.action}\u0000${item.motivation}`])
+                    );
                     setReflectionAnswers({
                         reflection1: entry.reflection_1 || '',
                         reflection2: entry.reflection_2 || '',
@@ -102,6 +156,7 @@ export default function MeditationSessionScreen() {
                              * someone opened an old entry to fix a typo.
                              */
                             ? entry.action_items.map(item => ({
+                                id: item.id,
                                 action: item.action,
                                 motivation: item.motivation,
                                 cadence: item.cadence ?? null,
@@ -118,22 +173,29 @@ export default function MeditationSessionScreen() {
                 } else if (params.readingItemId) {
                     // CASE 2: Reading Plan Item explicitly selected
                     const rId = Number(params.readingItemId);
-                    const book = getBookByName(params.bookName as string);
-                    setSelectedBook(book);
-                    const chaptersStr = params.chapters as string;
-                    if (chaptersStr) {
-                        const [start, end] = chaptersStr.split('-').map(Number);
-                        setSelectedChapters({ start, end: end || start });
-                    }
                     const draftJson = await AsyncStorage.getItem(STORAGE_KEYS.REFLECTION_DRAFT);
-                    if (draftJson) {
-                        const draft: DraftData = JSON.parse(draftJson);
-                        if (draft.readingItemId === rId) {
-                            if (draft.verseRange) setVerseRange(draft.verseRange);
-                            if (draft.reflectionAnswers) setReflectionAnswers(draft.reflectionAnswers);
-                        }
+                    const draft: DraftData | null = draftJson ? JSON.parse(draftJson) : null;
+                    const otherDraft = draft && draft.readingItemId !== rId ? summariseDraft(draftJson) : null;
+                    if (otherDraft && !(await confirmReplaceDraft(otherDraft.passage))) {
+                        router.replace({ pathname: '/addEntry', params: { resuming: 'true' } });
+                        return;
                     }
-                    setCurrentStep('reflection');
+                    if (otherDraft) await AsyncStorage.removeItem(STORAGE_KEYS.REFLECTION_DRAFT);
+
+                    // Paired readings ("Obadiah/Jonah") name no single book: pick it on the book step.
+                    const book = getBookByName(params.bookName as string);
+                    if (!book) {
+                        setCurrentStep('book');
+                        return;
+                    }
+                    setSelectedBook(book);
+                    const chapters = planItemChapters(params.chapters as string);
+                    if (chapters) setSelectedChapters(chapters);
+                    if (draft && draft.readingItemId === rId) {
+                        if (draft.verseRange) setVerseRange(draft.verseRange);
+                        if (draft.reflectionAnswers) setReflectionAnswers(draft.reflectionAnswers);
+                    }
+                    setCurrentStep(chapters ? 'reflection' : 'chapter');
                 } else if (isResuming) {
                     // CASE 3: Resuming generic draft
                     const draftJson = await AsyncStorage.getItem(STORAGE_KEYS.REFLECTION_DRAFT);
@@ -143,6 +205,7 @@ export default function MeditationSessionScreen() {
                         if (draft.selectedChapters) setSelectedChapters(draft.selectedChapters);
                         if (draft.verseRange) setVerseRange(draft.verseRange);
                         if (draft.reflectionAnswers) setReflectionAnswers(draft.reflectionAnswers);
+                        if (draft.readingItemId) setReadingItemId(draft.readingItemId);
                         setCurrentStep('reflection');
                     }
                 }
@@ -156,10 +219,11 @@ export default function MeditationSessionScreen() {
         loadData();
     }, [isEditMode, entryId, params.readingItemId, params.bookName, params.chapters]);
 
-    useAutoSave(reflectionAnswers, selectedBook, selectedChapters, verseRange, currentStep, isEditMode, readingItemId);
+    useAutoSave(reflectionAnswers, selectedBook, selectedChapters, verseRange, currentStep, isEditMode, readingItemId, draftClosed);
 
     // Clears all entry state and removes the draft from storage.
     const clearEntryState = useCallback(async () => {
+        draftClosed.current = true;
         await AsyncStorage.removeItem(STORAGE_KEYS.REFLECTION_DRAFT);
         setSelectedBook(undefined);
         setSelectedChapters(undefined);
@@ -168,19 +232,27 @@ export default function MeditationSessionScreen() {
         setSavedEntryId(undefined);
     }, []);
 
-    // Fires daily notification setup and an optional study-further reminder.
+    // Rebuilds the daily reminders and replaces this entry's study-further reminder.
     const runPostSaveNotifications = useCallback(async (
+        savedId: number,
         isNewEntry: boolean,
         studyFurtherReminder?: string,
         studyFurther?: string,
     ) => {
-        await setupDailyNotifications(isNewEntry);
-        if (studyFurtherReminder && new Date(studyFurtherReminder) > new Date()) {
-            await scheduleReminderNotification(
-                new Date(studyFurtherReminder),
-                '📖 Study Reminder',
-                `Time to study further: ${studyFurther || 'your topic'}`,
-            );
+        try {
+            await setupDailyNotifications(isNewEntry);
+            if (studyFurtherReminder && new Date(studyFurtherReminder) > new Date()) {
+                await scheduleReminderNotification(
+                    savedId,
+                    new Date(studyFurtherReminder),
+                    '📖 Study Reminder',
+                    `Time to study further: ${studyFurther || 'your topic'}`,
+                );
+            } else {
+                await cancelStudyReminder(savedId);
+            }
+        } catch (error) {
+            console.error('Failed to schedule notifications after save:', error);
         }
     }, []);
 
@@ -218,7 +290,11 @@ export default function MeditationSessionScreen() {
          * saying "something is missing" — that way it asks a question the
          * writer can answer instead of sending them hunting.
          */
-        const unreasoned = firstWithoutReason(answers.actionItems ?? []);
+        const needReason = (answers.actionItems ?? []).filter(item =>
+            !item.archived_at &&
+            (!item.id || loadedActions.current.get(item.id) !== `${item.action}\u0000${item.motivation}`)
+        );
+        const unreasoned = firstWithoutReason(needReason);
         if (unreasoned) {
             showAlert({
                 title: 'Why does this matter?',
@@ -229,6 +305,8 @@ export default function MeditationSessionScreen() {
 
         if (isSaving.current) return;
         isSaving.current = true;
+        const wasClosed = draftClosed.current;
+        draftClosed.current = true;
 
         try {
             const entryData: JournalEntryInput = {
@@ -242,7 +320,7 @@ export default function MeditationSessionScreen() {
                 studyFurther: answers.studyFurther,
                 studyFurtherReminder: answers.studyFurtherReminder,
                 actionItems: answers.actionItems.filter(item => !isBlank(item)),
-                readingItemId: params.readingItemId ? Number(params.readingItemId) : undefined,
+                readingItemId,
             };
 
             // Resolve the target id: an existing edit or a previously auto-saved entry.
@@ -250,21 +328,21 @@ export default function MeditationSessionScreen() {
 
             if (targetId) {
                 await updateJournalEntry(targetId, entryData);
-                await runPostSaveNotifications(false, answers.studyFurtherReminder, answers.studyFurther);
                 if (isEditMode) {
+                    void runPostSaveNotifications(targetId, false, answers.studyFurtherReminder, answers.studyFurther);
                     showAlert({ title: 'Updated', message: 'Your entry is saved.' });
                     router.back();
                 } else {
                     await AsyncStorage.removeItem(STORAGE_KEYS.REFLECTION_DRAFT);
-                    await runPostSaveNotifications(true, answers.studyFurtherReminder, answers.studyFurther);
                     setReflectionAnswers(answers);
                     setCurrentStep('summary');
+                    void runPostSaveNotifications(targetId, true, answers.studyFurtherReminder, answers.studyFurther);
                 }
             } else {
                 const newId = await createJournalEntry(entryData);
                 setSavedEntryId(newId);
 
-                // Push sharing/group activity to Firestore (layer violation fix)
+                // Push the reading to the user's groups. Reflection text never leaves the phone unasked.
                 void (async () => {
                     try {
                         const user = getAuth().currentUser;
@@ -273,15 +351,6 @@ export default function MeditationSessionScreen() {
                         const chapters = entryData.chapterEnd && entryData.chapterEnd !== entryData.chapterStart
                             ? `${entryData.chapterStart}-${entryData.chapterEnd}`
                             : `${entryData.chapterStart}`;
-
-                        const previewText = (
-                            entryData.reflections?.find(r => r?.trim().length > 0)?.trim() ||
-                            entryData.notes?.trim() ||
-                            entryData.actionItems?.find(a => a?.action?.trim().length > 0)?.action?.trim()
-                        );
-                        const reflectionPreview = previewText
-                            ? previewText.slice(0, 45) + (previewText.length > 45 ? '…' : '')
-                            : undefined;
 
                         const resolvedName = user.displayName || user.email?.split('@')[0] || 'Reader';
                         const totalEntries = await getTotalJournalCount();
@@ -294,7 +363,6 @@ export default function MeditationSessionScreen() {
                             chapters,
                             type: 'journal_entry' as any,
                             queuedAt: new Date().toISOString(),
-                            reflectionPreview,
                             totalEntries,
                         };
 
@@ -306,12 +374,13 @@ export default function MeditationSessionScreen() {
                 })();
 
                 await AsyncStorage.removeItem(STORAGE_KEYS.REFLECTION_DRAFT);
-                await runPostSaveNotifications(true, answers.studyFurtherReminder, answers.studyFurther);
                 setReflectionAnswers(answers);
                 setCurrentStep('summary');
+                void runPostSaveNotifications(newId, true, answers.studyFurtherReminder, answers.studyFurther);
             }
         } catch (error) {
             console.error('Error saving entry:', error);
+            draftClosed.current = wasClosed;
             showAlert({
                 title: 'Error',
                 message: `Failed to ${isEditMode || savedEntryId ? 'update' : 'save'} your entry. Please try again.`,
@@ -319,7 +388,7 @@ export default function MeditationSessionScreen() {
         } finally {
             isSaving.current = false;
         }
-    }, [selectedBook, selectedChapters, verseRange, isEditMode, entryId, savedEntryId, router, params.readingItemId, showAlert, runPostSaveNotifications]);
+    }, [selectedBook, selectedChapters, verseRange, isEditMode, entryId, savedEntryId, router, readingItemId, showAlert, runPostSaveNotifications]);
 
     const handleDone = useCallback(() => {
         router.replace({ pathname: '/(tabs)/library' });
@@ -415,6 +484,7 @@ export default function MeditationSessionScreen() {
                     <ChapterStep
                         selectedBook={selectedBook}
                         selectedChapters={selectedChapters}
+                        verseRange={verseRange}
                         onChapterSelect={handleChapterSelect}
                         onVerseRangeChange={handleVerseRangeChange}
                         onBack={() => setCurrentStep('book')}

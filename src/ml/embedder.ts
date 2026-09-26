@@ -56,7 +56,21 @@ export type DownloadProgress = (fraction: number) => void;
 
 let session: InferenceSession | null = null;
 let tokenizer: WordPieceTokenizer | null = null;
-let loading: Promise<void> | null = null;
+let loading: { promise: Promise<void>; generation: number } | null = null;
+/** Bumped by `unload`; work begun under an older generation stops. */
+let generation = 0;
+
+/** Thrown by work that `unload` cut short. Nothing went wrong; callers stay quiet. */
+export class EmbedderUnloadedError extends Error {
+    constructor() {
+        super('Embedder unloaded');
+        this.name = 'EmbedderUnloadedError';
+    }
+}
+
+export function isUnloadedError(error: unknown): boolean {
+    return error instanceof EmbedderUnloadedError;
+}
 
 export async function isModelDownloaded(): Promise<boolean> {
     const info = await getInfoAsync(MODEL_PATH);
@@ -136,39 +150,53 @@ async function deleteSupersededModels(): Promise<void> {
 /** Load the session and vocabulary. Concurrent callers share one load. */
 export async function ensureReady(onProgress?: DownloadProgress): Promise<void> {
     if (session && tokenizer) return;
-    if (loading) return loading;
+    if (loading && loading.generation === generation) return loading.promise;
 
-    loading = (async () => {
+    const started = generation;
+    const promise = (async () => {
         await downloadModel(onProgress);
 
         // Required lazily: the vocabulary is ~500KB of JSON and there is no
         // reason to parse it during app startup.
         const vocab = require('../../assets/models/vocab.json') as Record<string, number>;
-        tokenizer = new WordPieceTokenizer(vocab);
+        const nextTokenizer = new WordPieceTokenizer(vocab);
 
+        let next: InferenceSession;
         try {
-            session = await InferenceSession.create(MODEL_PATH);
+            next = await InferenceSession.create(MODEL_PATH);
         } catch (error) {
             // On disk, passed for downloaded, and ONNX still cannot read it:
             // it is damaged, and no retry that trusts it gets further than this
             // line. Discarding turns the next attempt into a real download.
-            tokenizer = null;
             await deleteAsync(MODEL_PATH, { idempotent: true });
             throw error;
         }
+
+        // Unloaded while loading: nobody is waiting for this session.
+        if (generation !== started) {
+            next.release().catch(() => {});
+            throw new EmbedderUnloadedError();
+        }
+        session = next;
+        tokenizer = nextTokenizer;
     })();
 
+    const current = { promise, generation: started };
+    loading = current;
     try {
-        await loading;
+        await promise;
     } finally {
-        loading = null;
+        if (loading === current) loading = null;
     }
 }
 
 /** Free the session. Worth calling when Themes closes — it holds real memory. */
 export function unload(): void {
+    const released = session;
     session = null;
     tokenizer = null;
+    generation++;
+    released?.release().catch(() => {});
 }
 
 /**
@@ -183,14 +211,20 @@ export function unload(): void {
  */
 export async function embed(texts: string[]): Promise<Float32Array[]> {
     if (texts.length === 0) return [];
+    const started = generation;
     await ensureReady();
-    if (!session || !tokenizer) throw new Error('Embedder failed to initialise');
+    if (generation !== started) throw new EmbedderUnloadedError();
+
+    // Held locally: `unload` nulls the module copies mid-loop.
+    const activeSession = session;
+    const activeTokenizer = tokenizer;
+    if (!activeSession || !activeTokenizer) throw new Error('Embedder failed to initialise');
 
     const out: Float32Array[] = [];
 
     for (let start = 0; start < texts.length; start += BATCH_SIZE) {
         const batch = texts.slice(start, start + BATCH_SIZE);
-        const encoded = tokenizer.encodeBatch(batch, MAX_TOKENS);
+        const encoded = activeTokenizer.encodeBatch(batch, MAX_TOKENS);
         const rows = encoded.length;
         const width = encoded[0].ids.length;
 
@@ -203,7 +237,7 @@ export async function embed(texts: string[]): Promise<Float32Array[]> {
         };
         // Some exports of this model omit token_type_ids; only send it if the
         // graph declares it, or the run is rejected.
-        if (session.inputNames.includes('token_type_ids')) {
+        if (activeSession.inputNames.includes('token_type_ids')) {
             feeds.token_type_ids = new Tensor(
                 'int64',
                 new BigInt64Array(rows * width),
@@ -211,15 +245,22 @@ export async function embed(texts: string[]): Promise<Float32Array[]> {
             );
         }
 
-        const results = await session.run(feeds);
+        let results: InferenceSession.OnnxValueMapType;
+        try {
+            results = await activeSession.run(feeds);
+        } catch (error) {
+            if (generation !== started) throw new EmbedderUnloadedError();
+            throw error;
+        }
+        if (generation !== started) throw new EmbedderUnloadedError();
 
         // By name, not outputNames[0]: a build that puts `pooler_output`
         // first gives a [batch, 384] tensor, so reading position 0 of a
         // sequence that is not there returns plausible nonsense rather than
         // failing. The dimension check below is the backstop.
-        const outputName = session.outputNames.includes('last_hidden_state')
+        const outputName = activeSession.outputNames.includes('last_hidden_state')
             ? 'last_hidden_state'
-            : session.outputNames[0];
+            : activeSession.outputNames[0];
         const output = results[outputName];
 
         if (output.dims.length !== 3 || output.dims[2] !== EMBEDDING_DIMS) {

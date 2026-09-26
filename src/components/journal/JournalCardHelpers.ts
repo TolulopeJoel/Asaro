@@ -1,4 +1,5 @@
 import { JournalEntry } from '../../data/database';
+import { unwrapReferences } from '../../utils/reference';
 
 export const getChapterText = (entry: JournalEntry): string => {
     if (entry.chapter_end && entry.chapter_end !== entry.chapter_start) {
@@ -28,26 +29,20 @@ export const formatDate = (dateString?: string): string => {
 };
 
 export const getPreviewText = (entry: JournalEntry): string => {
+    // Unwrapped before truncating, so a cut never lands inside `[[...]]`.
+    const clip = (text: string) => {
+        const plain = unwrapReferences(text);
+        return plain.length > 80 ? plain.substring(0, 80) + '...' : plain;
+    };
     const reflections = [entry.reflection_1, entry.reflection_2, entry.reflection_4]
         .filter((r): r is string => !!r && r.trim().length > 0);
     const substantialReflection = reflections.sort((a, b) => (b?.length || 0) - (a?.length || 0))[0];
-    if (substantialReflection) {
-        return substantialReflection.length > 80
-            ? substantialReflection.substring(0, 80) + '...'
-            : substantialReflection;
-    }
+    if (substantialReflection) return clip(substantialReflection);
     if (entry.action_items && entry.action_items.length > 0) {
         const firstAction = entry.action_items.find(i => i.action.trim());
-        if (firstAction) {
-            const text = `→ ${firstAction.action.trim()}`;
-            return text.length > 80 ? text.substring(0, 80) + '...' : text;
-        }
+        if (firstAction) return clip(`→ ${firstAction.action.trim()}`);
     }
-    if (entry.notes?.trim()) {
-        return entry.notes.length > 80
-            ? entry.notes.substring(0, 80) + '...'
-            : entry.notes;
-    }
+    if (entry.notes?.trim()) return clip(entry.notes);
     return 'No reflection recorded';
 };
 

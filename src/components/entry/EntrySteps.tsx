@@ -77,6 +77,8 @@ interface ChapterStepProps {
     selectedBook?: BibleBook;
     selectedChapters?: ChapterRange;
     onChapterSelect: (chapters: ChapterRange) => void;
+    /** The verses already chosen, so coming back to this step keeps them. */
+    verseRange?: VerseRange | null;
     onVerseRangeChange: (verses: VerseRange | null) => void;
     onBack: () => void;
     /** Leave the entry entirely — Cloth's `.cl-top` close button. */
@@ -94,6 +96,7 @@ export const ChapterStep = React.memo(({
     selectedBook,
     selectedChapters,
     onChapterSelect,
+    verseRange,
     onVerseRangeChange,
     onBack,
     onExit,
@@ -166,6 +169,7 @@ export const ChapterStep = React.memo(({
                         selectedBook={selectedBook}
                         selectedChapters={selectedChapters}
                         onChapterSelect={onChapterSelect}
+                        verseRange={verseRange}
                         onVerseRangeChange={onVerseRangeChange}
                         allowRange={true}
                     />
