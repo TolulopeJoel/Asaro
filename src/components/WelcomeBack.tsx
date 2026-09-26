@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Spacing } from '../theme/spacing';
+import { ASARO_ACTIONS } from '../theme/asaroRig';
 import { Asaro, AsaroAction, AsaroMood, Card, Text } from './ui';
 
 /**
@@ -9,6 +10,11 @@ import { Asaro, AsaroAction, AsaroMood, Card, Text } from './ui';
  * scolds: the longer the absence, the gentler he gets. See
  * design/ASARO-CHARACTER.md §4.
  */
+
+/** After his reaction, how long he holds before looking at the reading. */
+const PAUSE_MS = 1000;
+/** Down and a little right: the reading starts under the card and runs past his face. */
+const AT_READING = { x: 0.35, y: 0.95 };
 
 /** Below this, a gap is normal and he says nothing. */
 const QUIET_THRESHOLD = 3;
@@ -59,14 +65,31 @@ export function tierForDays(days: number | null): Tier | null {
     return TIERS.find((t) => days >= t.minDays) ?? null;
 }
 
-export function WelcomeBack({ daysAway }: { daysAway: number | null }) {
+export function WelcomeBack({ daysAway, readingBelow = false }: {
+    daysAway: number | null;
+    /** Whether there is a reading under the card for him to look down at. */
+    readingBelow?: boolean;
+}) {
     const tier = tierForDays(daysAway);
+    const action = tier?.action;
+    const [lookingDown, setLookingDown] = useState(false);
+
+    useEffect(() => {
+        setLookingDown(false);
+        if (!action || !readingBelow) return;
+        const id = setTimeout(() => setLookingDown(true), ASARO_ACTIONS[action].ms + PAUSE_MS);
+        return () => clearTimeout(id);
+    }, [action, readingBelow]);
+
     if (!tier) return null;
 
     return (
         <Card>
             <View style={styles.row}>
-                <Asaro size={74} action={tier.action} mood={tier.mood} label="Àṣàrò" />
+                <Asaro
+                    size={74} action={tier.action} mood={tier.mood} label="Àṣàrò"
+                    lookAt={lookingDown ? AT_READING : undefined}
+                />
 
                 <View style={styles.copy}>
                     <Text variant="subtitle">{tier.heading}</Text>

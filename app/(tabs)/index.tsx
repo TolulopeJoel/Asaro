@@ -5,6 +5,7 @@ import {
     getLastCompletedReadingItemId,
     checkEntryCoversChapters,
     toggleReadingItem,
+    getDaysSinceLastEntry,
 } from "@/src/data/database";
 import { READING_PLAN_DATA, ReadingItem } from "@/src/data/readingPlanData";
 import { Spacing } from "@/src/theme/spacing";
@@ -28,6 +29,7 @@ import { ObservationReceipts } from '@/src/components/insight/ObservationReceipt
 import { AnimatedModal } from '@/src/components/AnimatedModal';
 import { getDailyTitle } from '@/src/data/homeTitles';
 import { ClothHome } from '@/src/components/home/ClothHome';
+import { WelcomeBack } from '@/src/components/WelcomeBack';
 import { formatDateToLocalString } from '@/src/utils/dateUtils';
 import { Screen } from '@/src/components/ui';
 import { DraftSummary, summariseDraft } from '@/src/hooks/useEntryHooks';
@@ -81,11 +83,15 @@ async function handleNextReadingPress(
     }
 }
 
+/** Dev only: pretend the last entry was this many days ago (3, 7, 14, 30). */
+const SIMULATE_DAYS_AWAY: number | null = 30;
+
 export default function Index() {
     const [stats, setStats] = useState({ totalEntries: 0 });
     const [nextReading, setNextReading] = useState<ReadingItem | null>(null);
     const [weekDays, setWeekDays] = useState<DayStatus[]>([]);
     const [flashbackEntry, setFlashbackEntry] = useState<{ entry: JournalEntry, type: 'year' | 'month' | 'random' } | null>(null);
+    const [daysAway, setDaysAway] = useState<number | null>(null);
     const [draft, setDraft] = useState<DraftSummary | null>(null);
     const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
     const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
@@ -214,17 +220,20 @@ export default function Index() {
                 newNextReading,
                 newWeekDays,
                 newFlashback,
+                newDaysAway,
             ] = await Promise.all([
                 loadStats(),
                 loadNextReading(),
                 fetchWeeklyStreakData(),
                 fetchFlashbackData(),
+                getDaysSinceLastEntry(),
             ]);
 
             setStats(newStats);
             setNextReading(newNextReading);
             setWeekDays(newWeekDays);
             setFlashbackEntry(newFlashback);
+            setDaysAway(__DEV__ && SIMULATE_DAYS_AWAY !== null ? SIMULATE_DAYS_AWAY : newDaysAway);
         } catch (error) {
             console.error('Error loading home data:', error);
         }
@@ -395,12 +404,13 @@ export default function Index() {
                     </View>
                 ) : (
                     /*
-                     * design/all-screens.html #home, the `.cl` slot: four blocks
-                     * under the band, in this order. The design lists exactly
-                     * "daily title, next reading, weekly streak, entry count and
-                     * the flashback" — nothing else belongs on Home.
+                     * design/all-screens.html #home, the `.cl` slot, plus
+                     * #welcomeback above the reading after a gap of three days.
                      */
                     <ClothHome
+                        welcomeBack={
+                            <WelcomeBack daysAway={daysAway} readingBelow={!!(draft || nextReading)} />
+                        }
                         greeting={getDailyTitle()}
                         dateLine={homeDateLine}
                         reading={nextReading}

@@ -25,6 +25,8 @@ import { formatRange } from '../../utils/reference';
 import { DraftSummary, draftProgress } from '../../hooks/useEntryHooks';
 
 export interface ClothHomeProps {
+    /** design/all-screens.html #welcomeback: first under the band, after a gap. */
+    welcomeBack?: React.ReactNode;
     /** The rotating line in the hero band. */
     greeting: string;
     /** "Sunday, 21 September" — the date under it. */
@@ -119,6 +121,7 @@ function WeekPanels({ days, onPress }: { days: DayStatus[]; onPress?: () => void
 }
 
 export function ClothHome({
+    welcomeBack,
     greeting,
     dateLine,
     reading,
@@ -178,6 +181,8 @@ export function ClothHome({
             </Hero>
 
             <View style={styles.body}>
+                {welcomeBack}
+
                 {draft ? (
                     <View>
                         <Text variant="label" style={styles.label}>Unfinished</Text>
