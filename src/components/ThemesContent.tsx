@@ -219,7 +219,7 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
                 <Asaro size={74} action="think" label="Àṣàrò" />
                 <UIText variant="title" style={styles.centred}>Find your themes</UIText>
                 <UIText variant="body" tone="secondary" style={styles.centred}>
-                    Àṣàrò can group your entries by what you keep coming back to. It needs a
+                    I can group your entries by what you keep coming back to. It needs a
                     one-time 34MB download, then it works offline.
                 </UIText>
                 <View style={[styles.clothPledge, { borderColor: colors.border }]}>

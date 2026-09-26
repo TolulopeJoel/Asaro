@@ -11,8 +11,11 @@ import { performanceMs } from './ui/Asaro';
  * design/ASARO-CHARACTER.md §4.
  */
 
-/** After his reaction, how long he holds before looking at the reading. */
+/** After his reaction, how long he holds before the first glance at the reading. */
 const PAUSE_MS = 1000;
+/** Each glance down, and the irregular gap before the next: a metronome looks mechanical. */
+const GLANCE_MS = 1500;
+const GAP_MS = { min: 5000, max: 8000 };
 /** Down and a little right: the reading starts under the card and runs past his face. */
 const AT_READING = { x: 0.35, y: 0.95 };
 
@@ -77,7 +80,15 @@ export function WelcomeBack({ daysAway, readingBelow = false }: {
     useEffect(() => {
         setLookingDown(false);
         if (!action || !readingBelow) return;
-        const id = setTimeout(() => setLookingDown(true), performanceMs(action) + PAUSE_MS);
+        let id: ReturnType<typeof setTimeout>;
+        const glance = () => {
+            setLookingDown(true);
+            id = setTimeout(() => {
+                setLookingDown(false);
+                id = setTimeout(glance, GAP_MS.min + Math.random() * (GAP_MS.max - GAP_MS.min));
+            }, GLANCE_MS);
+        };
+        id = setTimeout(glance, performanceMs(action) + PAUSE_MS);
         return () => clearTimeout(id);
     }, [action, readingBelow]);
 

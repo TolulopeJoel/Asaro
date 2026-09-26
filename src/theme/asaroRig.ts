@@ -113,13 +113,6 @@ export const ASARO_RIG = {
         underOpacity: 0.4,
     },
 
-    /** Fallback hair for a look without `hair`: a brushstroke off the crown. */
-    crest: {
-        d: 'M80 56 C84 22 114 4 150 12 C132 24 122 38 116 58 Z',
-        px: 100,
-        py: 54,
-    },
-
     /** Eyes. Large, because they carry most of the expression. */
     eye: {
         cy: 104,
@@ -219,18 +212,6 @@ export const ASARO_RIG = {
         w: 2.4,
     },
 
-    /** Ilà (pélé): strokes on the left cheek, mirrored for the right. */
-    marks: {
-        strokes: [
-            [51, 133, 49, 150],
-            [58, 132, 56, 152],
-            [66, 133, 64, 151],
-        ],
-        mirror: 100,
-        w: 3.2,
-        /** Tonal: at full contrast they read as war paint. */
-        opacity: 0.62,
-    },
 } as const;
 
 /**
@@ -263,7 +244,7 @@ export interface HairShape {
 
 export const ASARO_LOOKS: Record<AsaroLook, {
     face: string; shade: string; shadeOpacity: number;
-    crest: string; rim: string; brow: string; mark: string;
+    crest: string; rim: string; brow: string;
     /** Hair shadow and highlight, either side of `crest`. */
     hairDark: string; hairLight: string;
     eyeWhite: string; eyeRim: string; iris: string; pupil: string;
@@ -280,12 +261,9 @@ export const ASARO_LOOKS: Record<AsaroLook, {
     studs?: string;
     /** Face outline; omitted, `ASARO_RIG.face`. Only the lower half may differ. */
     head?: string;
-    /** Whether this look wears the ilà. */
-    marks: boolean;
     /** Lashes at the outer eye corners — see `ASARO_RIG.lashes`. */
     lashes?: boolean;
-    /** Hair; omitted, the look wears `ASARO_RIG.crest`. */
-    hair?: HairShape;
+    hair: HairShape;
 }> = {
     male: {
         face: '#c97355',
@@ -303,7 +281,6 @@ export const ASARO_LOOKS: Record<AsaroLook, {
         iris: '#5a3426',
         pupil: '#180e0a',
         mouth: '#502e22',
-        mark: '#6f3f2f',
         cheek: '#a44b43',
         cheeks: true,
         contour: '#8f4f39',
@@ -314,7 +291,6 @@ export const ASARO_LOOKS: Record<AsaroLook, {
         // A fuller, squarer jaw than hers.
         head: 'M100 46 C140 46 166 74 166 112 '
             + 'C166.5 159 147 178 100 178 C53 178 33.5 159 34 112 C34 74 60 46 100 46 Z',
-        marks: false,
         hair: {
             // Smooth taper fade, grown from the face edge; sides fade to skin by the ear.
             front: 'M47.5 70 C46.5 66.7 48.5 60.5 49.6 58.6 C50.7 56.8 54.8 51.7 56.4 50.1 '
@@ -364,7 +340,6 @@ export const ASARO_LOOKS: Record<AsaroLook, {
         pupil: '#180e0a',
         // Muted rose, 3.49:1 on her face.
         mouth: '#743834',
-        mark: '#6f3f2f',
         cheek: '#b85d52',
         cheeks: true,
         contour: '#a86049',
@@ -377,7 +352,6 @@ export const ASARO_LOOKS: Record<AsaroLook, {
         // Softer and a touch narrower at the chin than his.
         head: 'M100 46 C140 46 166 74 166 112 '
             + 'C164 149 131 176.5 100 176.5 C69 176.5 36 149 34 112 C34 74 60 46 100 46 Z',
-        marks: false,
         lashes: true,
         hair: {
             // Tight at the crown, full at the ends, which hang as rounded locks.

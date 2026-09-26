@@ -298,10 +298,7 @@ function AsaroBase(
     const chosen = useAsaroLook();
     const resolved: AsaroLook = look ?? chosen;
     const C = ASARO_LOOKS[resolved] ?? ASARO_LOOKS.male;
-    // The look's hair, or the fallback crest.
-    const hair: HairShape = C.hair ?? {
-        back: R.crest.d, sway: { back: 1, front: 1 }, px: R.crest.px, py: R.crest.py,
-    };
+    const hair: HairShape = C.hair;
     const swayBack = hair.sway.back;
     const swayFront = hair.sway.front;
     const brows = BROWS[resolved] ?? BROWS.male;
@@ -408,6 +405,9 @@ function AsaroBase(
             gazeX.value = 0; gazeY.value = 0;
             return;
         }
+        // Back to the reader first, so letting go of a target is a look up, not a stare.
+        gazeX.value = withTiming(0, { duration: 340 });
+        gazeY.value = withTiming(0, { duration: 340 });
         let alive = true;
         let id: ReturnType<typeof setTimeout>;
         // He watches: mostly holds the reader's eye, sometimes darts off and back.
@@ -850,23 +850,6 @@ function AsaroBase(
                             />
                         </>
                     )}
-
-                    {/* Ilà, for a look that wears them. */}
-                    {!cropped && C.marks && R.marks.strokes.map(([x1, y1, x2, y2]) => (
-                        <React.Fragment key={x1}>
-                            <Path
-                                d={`M${x1} ${y1} L${x2} ${y2}`} fill="none"
-                                stroke={C.mark} strokeWidth={R.marks.w}
-                                strokeLinecap="round" opacity={R.marks.opacity}
-                            />
-                            <Path
-                                d={`M${2 * R.marks.mirror - x1} ${y1} `
-                                    + `L${2 * R.marks.mirror - x2} ${y2}`}
-                                fill="none" stroke={C.mark} strokeWidth={R.marks.w}
-                                strokeLinecap="round" opacity={R.marks.opacity}
-                            />
-                        </React.Fragment>
-                    ))}
 
                     {/* Nose, dropped below 48px. */}
                     {!cropped && (
