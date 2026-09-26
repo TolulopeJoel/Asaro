@@ -1,33 +1,27 @@
 import { MonthGrid } from '@/src/components/stats/MonthGrid';
 import { StatTile } from '@/src/components/stats/StatTile';
-import { AchievementRow } from '@/src/components/stats/AchievementRow';
 import { PracticeHistory } from '@/src/components/journal/PracticeHistory';
 import { actionKindOf, isCadence } from '@/src/data/actionKind';
 import { PracticeProgress, practiceProgress } from '@/src/data/practiceRepository';
 import { LoadingView } from '@/src/components/LoadingView';
 import {
     EnhancedActionItem, getAllActionItems, getChapterCoverage, getDailyEntryCounts,
-    getFirstEntryDate, getReadingProgress,
+    getFirstEntryDate,
 } from '@/src/data/database';
 import { ALL_BIBLE_BOOKS } from '@/src/data/bibleBooks';
-import { READING_PLAN_DATA } from '@/src/data/readingPlanData';
 import { weaveCloth } from '@/src/land/cloth';
-import { AchievementKey, achievements } from '@/src/stats/achievements';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { formatDateToLocalString, getLocalMidnight } from '@/src/utils/dateUtils';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import {
-    BookCheck, BookOpen, CalendarCheck, ChevronLeft, ChevronRight, FileText, Flame, LucideIcon, Map, Trophy,
-} from 'lucide-react-native';
+import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { Asaro, Hero, Screen, Text as UIText } from '@/src/components/ui';
 
 /**
- * The record, played like a game: design/all-screens.html #stats. Nothing here
- * counts days missed, and every achievement levels on a figure that only rises.
+ * The record: design/all-screens.html #stats. Nothing here counts days missed.
  */
 
 /** An unbroken run of days with an entry. */
@@ -69,13 +63,6 @@ function runs(data: Record<string, number>): { longest: Run | null; current: Run
 
 interface Month { year: number; month: number }
 
-const ACHIEVEMENT_ICONS: Record<AchievementKey, LucideIcon> = {
-    faithful: Flame,
-    books: BookOpen,
-    chapters: FileText,
-    plan: Map,
-};
-
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 interface StatsState {
@@ -83,7 +70,6 @@ interface StatsState {
     firstEntry: Date | null;
     chapters: number;
     books: number;
-    planDone: number;
 }
 
 export default function StatsScreen() {
@@ -99,10 +85,9 @@ export default function StatsScreen() {
         const start = firstEntry ?? new Date(today.getFullYear(), today.getMonth(), 1);
         const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
-        const [data, coverage, done] = await Promise.all([
+        const [data, coverage] = await Promise.all([
             getDailyEntryCounts(formatDateToLocalString(start), formatDateToLocalString(end)),
             getChapterCoverage(),
-            getReadingProgress(),
         ]);
         const cloth = weaveCloth(coverage, ALL_BIBLE_BOOKS, Date.now());
 
@@ -111,7 +96,6 @@ export default function StatsScreen() {
             firstEntry,
             chapters: cloth.worked,
             books: cloth.books.filter(b => b.total > 0 && b.worked >= b.total).length,
-            planDone: done.length,
         });
     }, []);
 
@@ -182,14 +166,6 @@ export default function StatsScreen() {
         return `${kept} of ${plural(elapsed, 'day', 'days')} so far`;
     }, [shown, state?.data, monthsBack]);
 
-    const list = useMemo(() => achievements({
-        bestRun: longest?.days ?? 0,
-        booksFinished: state?.books ?? 0,
-        chaptersWorked: state?.chapters ?? 0,
-        planDone: state?.planDone ?? 0,
-        planTotal: READING_PLAN_DATA.length,
-    }), [longest, state]);
-
     const since = state?.firstEntry
         ? `Reading since ${state.firstEntry.getDate()} ${state.firstEntry.toLocaleDateString('en-GB', {
             month: 'long',
@@ -198,12 +174,12 @@ export default function StatsScreen() {
         : new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 
     // A run that can be lost gets a tile only while it is running.
-    const tiles: { icon: LucideIcon; value: number; label: string; accent?: boolean }[] = [
-        ...(current ? [{ icon: Flame, value: current.days, label: 'Day run', accent: true }] : []),
-        { icon: Trophy, value: longest?.days ?? 0, label: 'Best run' },
-        { icon: CalendarCheck, value: daysWritten, label: 'Days written' },
-        { icon: BookOpen, value: state?.chapters ?? 0, label: 'Chapters' },
-        ...(current ? [] : [{ icon: BookCheck, value: state?.books ?? 0, label: 'Books' }]),
+    const tiles: { value: number; label: string; accent?: boolean }[] = [
+        ...(current ? [{ value: current.days, label: 'Day run', accent: true }] : []),
+        { value: longest?.days ?? 0, label: 'Best run' },
+        { value: daysWritten, label: 'Days written' },
+        { value: state?.chapters ?? 0, label: 'Chapters' },
+        ...(current ? [] : [{ value: state?.books ?? 0, label: 'Books' }]),
     ];
 
     const older = monthsBack < months.length - 1;
@@ -294,18 +270,6 @@ export default function StatsScreen() {
                             weekdays
                         />
                         <UIText variant="bodySmall" tone="secondary" style={styles.monthCaption}>{monthCaption}</UIText>
-                    </View>
-
-                    <View>
-                        <UIText variant="label">Achievements</UIText>
-                        {list.map((achievement, index) => (
-                            <AchievementRow
-                                key={achievement.key}
-                                achievement={achievement}
-                                icon={ACHIEVEMENT_ICONS[achievement.key]}
-                                last={index === list.length - 1}
-                            />
-                        ))}
                     </View>
 
                     {practices.length > 0 && (
