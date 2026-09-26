@@ -164,6 +164,10 @@ export const ASARO_RIG = {
         ry: 24,
         iris: 12.5,
         pupil: 6.5,
+        /** Warm crescent low in the iris, under the pupil. */
+        irisLight: { dy: 6, rx: 8.5, ry: 5.2, opacity: 0.8 },
+        /** Dark limbal ring just inside the iris edge. */
+        ring: { inset: 0.8, w: 1.6, opacity: 0.55 },
         glint: { dx: -5, dy: -6, r: 4.6 },
         spark: { dx: 4.5, dy: 5, r: 2 },
         /** Pupil travel at full gaze deflection. Stays inside the lid: 12.5 + 7.5 < 22. */
@@ -171,6 +175,14 @@ export const ASARO_RIG = {
         travelY: 6,
         /** Distance the upper lid falls to shut the eye: 2·ry + 3. */
         lidTravel: 51,
+        /**
+         * Upper lid edge: parked `lift` above the eye, bowed down by `bow` so a
+         * half-lid reads as a lid rather than a cut. Its lash line follows the
+         * lid down to `hold` and stops there, so a shut eye keeps a visible line.
+         */
+        lid: { lift: 2, bow: 6, hold: 0.7 },
+        /** Heavier arc over the top of each eye, `deg` short of the corners. */
+        liner: { deg: 12 },
         /** Distance the lower lid rises at squint 1. */
         squintTravel: 30,
     },
@@ -181,6 +193,27 @@ export const ASARO_RIG = {
         lpx: 69, lpy: 71,
         rpx: 131, rpy: 71,
         w: 7.5,
+        /** Half-width multipliers at the inner end and the tail. */
+        taper: { inner: 1.1, tail: 0.35 },
+    },
+
+    /** Broad, soft nose: nostril wings in one line, and a faint bridge highlight. */
+    nose: {
+        d: 'M95 127 C91.5 129.5 92.5 134 96.5 133.4 C98.5 134.6 101.5 134.6 103.5 133.4 '
+            + 'C107.5 134 108.5 129.5 105 127',
+        w: 2.6,
+        opacity: 0.55,
+        bridge: { cx: 100, cy: 120, rx: 2.6, ry: 5, opacity: 0.13 },
+    },
+
+    /** Left ear, behind the face; the right is mirrored about `mirror`. */
+    ear: {
+        d: 'M40 98 C27 93 21 108 25 118 C27 125 33 128 40 125 Z',
+        inner: 'M34 104 C28 107 28 116 33 120',
+        innerW: 2.4,
+        innerOpacity: 0.6,
+        stud: { cx: 29, cy: 127, r: 3.2, w: 1.4 },
+        mirror: 100,
     },
 
     /**
@@ -199,6 +232,11 @@ export const ASARO_RIG = {
         drop: 30,
         /** Half-thickness of the lens when shut, so it reads as a line not a gap. */
         lip: 5.5,
+        /**
+         * Tongue height as a fraction of the open drop. It sits on the middle
+         * half of the lower edge and vanishes when the mouth shuts.
+         */
+        tongue: 0.75,
     },
 
     cheek: { lx: 66, rx: 134, cy: 138, w: 14, h: 8.5 },
@@ -266,6 +304,18 @@ export const ASARO_LOOKS: Record<AsaroLook, {
     crest: string; rim: string; brow: string; mark: string;
     eyeWhite: string; eyeRim: string; iris: string; pupil: string;
     mouth: string; cheek: string; cheeks: boolean;
+    /** Tonal lines drawn in the skin: the nose and the inner ear. */
+    contour: string;
+    tongue: string;
+    irisLight: string;
+    /** Upper-rim arc (`ASARO_RIG.eye.liner`) colour and width. */
+    liner: string; linerW: number;
+    /** Width of the moving lid-edge line, drawn in `brow`. */
+    lidW: number;
+    /** Brow thickness as a fraction of `ASARO_RIG.brow.w`. */
+    browWeight: number;
+    /** Ear studs. Omitted, the ears are bare. */
+    studs?: string;
     /**
      * Whether this look wears the ilà.
      *
@@ -306,6 +356,13 @@ export const ASARO_LOOKS: Record<AsaroLook, {
         mark: '#6f3f2f',
         cheek: '#a44b43',
         cheeks: true,
+        contour: '#8f4f39',
+        tongue: '#a4544c',
+        irisLight: '#8a5a40',
+        liner: '#6f3f2f',
+        linerW: 2,
+        lidW: 2.4,
+        browWeight: 1,
         marks: false,
         hair: {
             /*
@@ -327,8 +384,9 @@ export const ASARO_LOOKS: Record<AsaroLook, {
     /**
      * The same rig under long pink hair.
      *
-     * Only the hair and the colours that sit against it change. The eyes stay
-     * where they are, the lids travel the same distance, and every one of the
+     * Only the hair, colours and static details (lashes, liner, studs)
+     * change. The eyes stay where they are, the lids travel the same
+     * distance, and every one of the
      * twelve actions plays identically — which is the whole reason this is a
      * look rather than a second rig. A reader who picks her gets the same
      * character doing the same performances, not a second character who would
@@ -356,10 +414,20 @@ export const ASARO_LOOKS: Record<AsaroLook, {
         eyeRim: 'rgba(0,0,0,0.18)',
         iris: '#5a3426',
         pupil: '#180e0a',
-        mouth: '#502e22',
+        // Muted rose, 3.49:1 on her face. It is the mouth's inside too, so it stays dark.
+        mouth: '#743834',
         mark: '#6f3f2f',
         cheek: '#b85d52',
         cheeks: true,
+        contour: '#a86049',
+        tongue: '#b0605a',
+        irisLight: '#8a5a40',
+        // Heavier than his and in the brow colour: with the lashes, it reads as liner.
+        liner: '#44271d',
+        linerW: 2.8,
+        lidW: 3,
+        browWeight: 0.78,
+        studs: '#d4a95e',
         // No ilà. See `marks` above — they are his, not a default.
         marks: false,
         lashes: true,

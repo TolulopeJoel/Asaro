@@ -17,7 +17,7 @@ import Animated, {
     Easing, cancelAnimation, useAnimatedProps, useSharedValue, withRepeat,
     withSequence, withTiming,
 } from 'react-native-reanimated';
-import Svg, { Circle, ClipPath, Defs, Ellipse, G, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, ClipPath, Defs, Ellipse, G, Path } from 'react-native-svg';
 
 import {
     ASARO_ACTIONS, ASARO_LOOKS, ASARO_REST, ASARO_RIG,
@@ -129,6 +129,71 @@ function r1(v: number) {
     return Math.round(v * 10) / 10;
 }
 
+/**
+ * The mouth lens for the running frame: corner half-width, and the lower and
+ * upper control heights. Shared by the mouth and the tongue so they cannot part.
+ */
+function lens(i: number, p: number) {
+    'worklet';
+    const c = ch(i, p, C_MOUTHC, REST.mouthC);
+    const o = ch(i, p, C_MOUTHO, REST.mouthO);
+    const bow = M.cy + c * M.bow;
+    const lip = M.lip * ch(i, p, C_PRESS, 1);
+    return { o, w: M.w + o * M.wOpen, lo: bow + o * M.drop + lip, up: bow - lip };
+}
+
+/** Mirrors an absolute M/L/Q/C path about x = `about`; every number pair is x, y. */
+function mirrorX(d: string, about: number) {
+    let k = 0;
+    return d.replace(/-?\d+(\.\d+)?/g, (n) => (k++ % 2 === 0 ? String(2 * about - Number(n)) : n));
+}
+
+/** Fills a quadratic brow stroke as a shape, thick at the inner end, thin at the tail. */
+function taperBrow(d: string, w: number) {
+    const [x0, y0, qx, qy, x1, y1] = (d.match(/-?\d+(\.\d+)?/g) ?? []).map(Number);
+    const innerFirst = Math.abs(x0 - R.pivotX) < Math.abs(x1 - R.pivotX);
+    const { inner, tail } = R.brow.taper;
+    const top: string[] = [];
+    const bottom: string[] = [];
+    const N = 16;
+    for (let k = 0; k <= N; k++) {
+        const t = k / N;
+        const x = (1 - t) ** 2 * x0 + 2 * t * (1 - t) * qx + t * t * x1;
+        const y = (1 - t) ** 2 * y0 + 2 * t * (1 - t) * qy + t * t * y1;
+        const dx = 2 * (1 - t) * (qx - x0) + 2 * t * (x1 - qx);
+        const dy = 2 * (1 - t) * (qy - y0) + 2 * t * (y1 - qy);
+        const s = innerFirst ? 1 - t : t;
+        const hw = ((w / 2) * (tail + (inner - tail) * s)) / Math.hypot(dx, dy);
+        top.push(`${r1(x - dy * hw)} ${r1(y + dx * hw)}`);
+        bottom.unshift(`${r1(x + dy * hw)} ${r1(y - dx * hw)}`);
+    }
+    return `M${top.join(' L')} L${bottom.join(' L')} Z`;
+}
+
+const BROWS = Object.fromEntries(
+    (Object.keys(ASARO_LOOKS) as AsaroLook[]).map((k) => {
+        const w = R.brow.w * ASARO_LOOKS[k].browWeight;
+        return [k, { l: taperBrow(R.brow.l, w), r: taperBrow(R.brow.r, w) }];
+    }),
+) as Record<AsaroLook, { l: string; r: string }>;
+
+const EAR_R = mirrorX(R.ear.d, R.ear.mirror);
+const EAR_INNER_R = mirrorX(R.ear.inner, R.ear.mirror);
+
+/** The liner arc over an eye centred on `cx`. */
+function linerArc(cx: number) {
+    const a = (E.liner.deg * Math.PI) / 180;
+    const dx = r1(E.rx * Math.cos(a));
+    const y = r1(E.cy - E.ry * Math.sin(a));
+    return `M${cx - dx} ${y} A${E.rx} ${E.ry} 0 0 1 ${cx + dx} ${y}`;
+}
+
+/** Upper lid, parked above the eye, with its bowed lower edge. */
+const LID_EDGE = E.cy - E.ry - E.lid.lift;
+const lidPath = (cx: number) => `M${cx - 27} ${E.cy - E.ry - 58} L${cx + 27} ${E.cy - E.ry - 58} `
+    + `L${cx + 27} ${LID_EDGE} Q${cx} ${LID_EDGE + E.lid.bow} ${cx - 27} ${LID_EDGE} Z`;
+const lidLinePath = (cx: number) => `M${cx - 27} ${LID_EDGE} Q${cx} ${LID_EDGE + E.lid.bow} ${cx + 27} ${LID_EDGE}`;
+
 function AsaroBase(
     { size = 96, look, action, lookAt, bust, label }: AsaroProps,
     ref: React.Ref<AsaroHandle>,
@@ -141,6 +206,7 @@ function AsaroBase(
      * have to know which it got.
      */
     const hair = C.hair ?? { back: R.crest.d, px: R.crest.px, py: R.crest.py };
+    const brows = BROWS[resolved] ?? BROWS.cloth;
 
     const cropped = bust ?? size < 48;
     const box = cropped ? R.bustBox : R.viewBox;
@@ -309,6 +375,18 @@ function AsaroBase(
         return { translateY: (a > b ? a : b) * E.lidTravel };
     });
 
+    const lidLineLProps = useAnimatedProps(() => {
+        const a = ch(act.value, prog.value, C_LIDL, REST.lidL);
+        const l = a > blink.value ? a : blink.value;
+        return { translateY: (l < E.lid.hold ? l : E.lid.hold) * E.lidTravel };
+    });
+
+    const lidLineRProps = useAnimatedProps(() => {
+        const a = ch(act.value, prog.value, C_LIDR, REST.lidR);
+        const l = a > blink.value ? a : blink.value;
+        return { translateY: (l < E.lid.hold ? l : E.lid.hold) * E.lidTravel };
+    });
+
     const squintLProps = useAnimatedProps(() => ({
         translateY: -ch(act.value, prog.value, C_SQUINT, REST.squint) * E.squintTravel,
     }));
@@ -340,19 +418,25 @@ function AsaroBase(
     // One filled lens. Shut, its two edges collapse onto each other and it
     // reads as a drawn line, which is what a closed mouth actually is.
     const mouthProps = useAnimatedProps(() => {
-        const i = act.value;
-        const p = prog.value;
-        const c = ch(i, p, C_MOUTHC, REST.mouthC);
-        const o = ch(i, p, C_MOUTHO, REST.mouthO);
-        const w = M.w + o * M.wOpen;
-        const bow = M.cy + c * M.bow;
-        // Half-thickness, thinned when the lips are pressed.
-        const lip = M.lip * ch(i, p, C_PRESS, 1);
-        const lo = bow + o * M.drop + lip;
-        const up = bow - lip;
+        const { w, lo, up } = lens(act.value, prog.value);
         return {
             d: `M${r1(M.cx - w)} ${M.cy} Q${M.cx} ${r1(lo)} ${r1(M.cx + w)} ${M.cy} `
                 + `Q${M.cx} ${r1(up)} ${r1(M.cx - w)} ${M.cy} Z`,
+        };
+    });
+
+    // The middle half (t 0.25…0.75) of the lower edge, humped up by how far
+    // the mouth is open. The hump stays under the upper edge at any opening.
+    const tongueProps = useAnimatedProps(() => {
+        const { o, w, lo } = lens(act.value, prog.value);
+        const d = lo - M.cy;
+        const y0 = M.cy + 0.375 * d;
+        const yc = M.cy + 0.625 * d;
+        const top = yc - 2 * o * M.drop * M.tongue;
+        return {
+            d: `M${r1(M.cx - w / 2)} ${r1(y0)} Q${M.cx} ${r1(yc)} ${r1(M.cx + w / 2)} ${r1(y0)} `
+                + `Q${M.cx} ${r1(top)} ${r1(M.cx - w / 2)} ${r1(y0)} Z`,
+            opacity: o > 0.01 ? 1 : 0,
         };
     });
 
@@ -373,6 +457,7 @@ function AsaroBase(
         clip: string,
         irisP: typeof irisLProps,
         lidP: typeof lidLProps,
+        lidLineP: typeof lidLineLProps,
         squintP: typeof squintLProps,
     ) => (
         <React.Fragment key={clip}>
@@ -381,7 +466,17 @@ function AsaroBase(
 
                 <AG animatedProps={irisP}>
                     <Circle cx={cx} cy={E.cy} r={E.iris} fill={C.iris} />
+                    <Ellipse
+                        cx={cx} cy={E.cy + E.irisLight.dy}
+                        rx={E.irisLight.rx} ry={E.irisLight.ry}
+                        fill={C.irisLight} opacity={E.irisLight.opacity}
+                    />
                     <Circle cx={cx} cy={E.cy} r={E.pupil} fill={C.pupil} />
+                    <Circle
+                        cx={cx} cy={E.cy} r={E.iris - E.ring.inset}
+                        fill="none" stroke={C.pupil} strokeWidth={E.ring.w}
+                        opacity={E.ring.opacity}
+                    />
                     <Circle
                         cx={cx + E.glint.dx} cy={E.cy + E.glint.dy} r={E.glint.r}
                         fill="#ffffff" opacity={0.92}
@@ -404,18 +499,23 @@ function AsaroBase(
                     />
                 </AG>
 
-                {/* Upper lid, parked just above the eye and dropped to shut it. */}
+                {/* Upper lid, parked just above the eye and dropped to shut it.
+                    Its lash line stops at `lid.hold`, so a shut eye still shows one. */}
                 <AG animatedProps={lidP}>
-                    <Rect
-                        x={cx - 27} y={E.cy - E.ry - 58} width={54} height={58}
-                        fill={C.face}
-                    />
+                    <Path d={lidPath(cx)} fill={C.face} />
+                </AG>
+                <AG animatedProps={lidLineP}>
+                    <Path d={lidLinePath(cx)} fill="none" stroke={C.brow} strokeWidth={C.lidW} />
                 </AG>
             </G>
 
             <Ellipse
                 cx={cx} cy={E.cy} rx={E.rx} ry={E.ry}
                 fill="none" stroke={C.eyeRim} strokeWidth={1.5}
+            />
+            <Path
+                d={linerArc(cx)} fill="none" stroke={C.liner}
+                strokeWidth={C.linerW} strokeLinecap="round"
             />
 
             {/* Lashes. Static, like the ilà — the eye beneath them performs,
@@ -466,6 +566,28 @@ function AsaroBase(
                         <Path d={hair.back} fill={C.crest} />
                     </AG>
                 )}
+
+                {/* Ears, between the hair and the face, which covers their inner half. */}
+                {!cropped && [[R.ear.d, R.ear.inner], [EAR_R, EAR_INNER_R]].map(([d, inner], k) => (
+                    <React.Fragment key={d}>
+                        <Path
+                            d={d} fill={C.face} stroke={C.rim}
+                            strokeWidth={R.rimW} strokeLinejoin="round"
+                        />
+                        <Path
+                            d={inner} fill="none" stroke={C.contour}
+                            strokeWidth={R.ear.innerW} strokeLinecap="round"
+                            opacity={R.ear.innerOpacity}
+                        />
+                        {C.studs && (
+                            <Circle
+                                cx={k ? 2 * R.ear.mirror - R.ear.stud.cx : R.ear.stud.cx}
+                                cy={R.ear.stud.cy} r={R.ear.stud.r}
+                                fill={C.studs} stroke={C.rim} strokeWidth={R.ear.stud.w}
+                            />
+                        )}
+                    </React.Fragment>
+                ))}
 
                 <Path d={R.face} fill={C.face} />
 
@@ -520,24 +642,41 @@ function AsaroBase(
                         </React.Fragment>
                     ))}
 
+                    {/* Nose. Dropped below 48px with the ears, where it would only be mud. */}
+                    {!cropped && (
+                        <>
+                            <Ellipse
+                                cx={R.nose.bridge.cx} cy={R.nose.bridge.cy}
+                                rx={R.nose.bridge.rx} ry={R.nose.bridge.ry}
+                                fill="#ffffff" opacity={R.nose.bridge.opacity}
+                            />
+                            <Path
+                                d={R.nose.d} fill="none" stroke={C.contour}
+                                strokeWidth={R.nose.w} strokeLinecap="round"
+                                opacity={R.nose.opacity}
+                            />
+                        </>
+                    )}
+
                     <APath animatedProps={mouthProps} fill={C.mouth} />
+                    <APath animatedProps={tongueProps} fill={C.tongue} />
                 </G>
 
                 <Path d={R.face} fill="none" stroke={C.rim} strokeWidth={R.rimW} />
 
-                {eye(E.lx, eyeLClip, irisLProps, lidLProps, squintLProps)}
-                {eye(E.rx2, eyeRClip, irisRProps, lidRProps, squintRProps)}
+                {eye(E.lx, eyeLClip, irisLProps, lidLProps, lidLineLProps, squintLProps)}
+                {eye(E.rx2, eyeRClip, irisRProps, lidRProps, lidLineRProps, squintRProps)}
 
                 <AG animatedProps={browLProps} originX={R.brow.lpx} originY={R.brow.lpy}>
                     <Path
-                        d={R.brow.l} fill="none" stroke={C.brow}
-                        strokeWidth={R.brow.w} strokeLinecap="round"
+                        d={brows.l} fill={C.brow} stroke={C.brow}
+                        strokeWidth={1.2} strokeLinejoin="round"
                     />
                 </AG>
                 <AG animatedProps={browRProps} originX={R.brow.rpx} originY={R.brow.rpy}>
                     <Path
-                        d={R.brow.r} fill="none" stroke={C.brow}
-                        strokeWidth={R.brow.w} strokeLinecap="round"
+                        d={brows.r} fill={C.brow} stroke={C.brow}
+                        strokeWidth={1.2} strokeLinejoin="round"
                     />
                 </AG>
             </AG>
