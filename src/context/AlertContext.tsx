@@ -17,8 +17,11 @@ export interface AlertOptions {
     icon?: LucideIcon;
     iconBackground?: string;
     iconColor?: string;
-    /** Àṣàrò asks instead of an icon. Takes the icon's place when both are set. */
-    face?: { look: AsaroLook; action?: AsaroAction };
+    /**
+     * Àṣàrò asks instead of an icon. Takes the icon's place when both are set.
+     * `look` defaults to the reader's choice.
+     */
+    face?: { look?: AsaroLook; action?: AsaroAction };
 }
 
 interface AlertContextType {

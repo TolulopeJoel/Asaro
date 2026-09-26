@@ -428,7 +428,8 @@ export default function Settings() {
             if (diffDays < 30) {
                 const daysLeft = Math.ceil(30 - diffDays);
                 showAlert({
-                    title: 'Patience o! ✋',
+                    face: { action: 'laugh' },
+                    title: 'Patience o!',
                     message: `Trying to change your sleep time already? That's suspicious. You still have ${daysLeft} days to suffer your current schedule. Àṣàrò sees everything.`
                 });
                 return;
@@ -478,8 +479,9 @@ export default function Settings() {
         };
 
         showAlert({
+            face: { action: 'smug' },
             title: 'Select Sleep Hour',
-            message: 'I only allow sleep after 8:00 PM. Anything earlier is just laziness! 😌',
+            message: 'I only allow sleep after 8:00 PM. Anything earlier is just laziness!',
             buttons: [
                 { text: '08 PM', onPress: () => pickMinute(20, '08:00 PM') },
                 { text: '09 PM', onPress: () => pickMinute(21, '09:00 PM') },

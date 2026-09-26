@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, FlatList, StyleSheet, TextInput, View } from 'react-native';
-import { Sparkles, Check, X } from 'lucide-react-native';
+import { Check, X } from 'lucide-react-native';
 
 import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
@@ -29,7 +29,7 @@ import { AnimatedModal } from './AnimatedModal';
 import { ThemeDetail } from './ThemeDetail';
 import { JournalEntryDetail } from './JournalEntryDetail';
 import { getEntryById, JournalEntry } from '../data/database';
-import { Text as UIText, ThemedButton, textStyle } from './ui';
+import { Asaro, Text as UIText, ThemedButton, textStyle } from './ui';
 
 const FIELD_LABELS: Record<string, string> = {
     ...Object.fromEntries(EMBEDDABLE_FIELDS.map(f => [f.column, f.label])),
@@ -216,7 +216,7 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
         // — the one sentence here that must not be skimmed past.
         return (
             <View style={styles.clothCentre}>
-                <Sparkles size={34} color={colors.accent} strokeWidth={1.5} />
+                <Asaro size={74} action="think" label="Àṣàrò" />
                 <UIText variant="title" style={styles.centred}>Find your themes</UIText>
                 <UIText variant="body" tone="secondary" style={styles.centred}>
                     Àṣàrò can group your entries by what you keep coming back to. It needs a
@@ -252,7 +252,7 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
         // as a sentence, with a two-part indigo bar under it.
         return (
             <View style={styles.clothCentre}>
-                <Sparkles size={34} color={colors.textMuted} strokeWidth={1.5} />
+                <Asaro size={74} action="think" label="Àṣàrò" />
                 <UIText variant="title" style={styles.centred}>Not yet</UIText>
                 <UIText variant="body" tone="secondary" style={styles.centred}>
                     You have {entryCount} {entryCount === 1 ? 'entry' : 'entries'} with enough
