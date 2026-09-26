@@ -80,6 +80,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
   const isNotes = page === REFLECTION_QUESTIONS.length;
   const current = REFLECTION_QUESTIONS[page];
 
+  const [trackWidth, setTrackWidth] = useState(0);
   const [showAndroidPicker, setShowAndroidPicker] = useState(false);
   const [androidPickerMode, setAndroidPickerMode] = useState<'date' | 'time'>('date');
 
@@ -129,11 +130,15 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
   // dependency-array footgun for nothing.
   const answeredHere = isNotes ? answers.notes.trim().length > 0 : isQuestionAnswered(current);
 
-  // Answered questions, Notes included — what the progress bar tracks. `page`
-  // alone counts a skipped question as progress just for moving past it.
-  const answeredCount =
-    REFLECTION_QUESTIONS.filter(isQuestionAnswered).length +
-    (answers.notes.trim().length > 0 ? 1 : 0);
+  // What the progress bar tracks. `page` alone counts a skipped question as
+  // progress just for moving past it. Notes are excluded on both sides of the
+  // ratio, for the same reason the label says "of five": they are not a sixth
+  // question, and counting them left a finished entry showing 83%.
+  const answeredCount = REFLECTION_QUESTIONS.filter(isQuestionAnswered).length;
+
+  // The question you just left, still blank. Going back to it is as likely as
+  // moving on, so the two buttons share the width instead of ranking.
+  const backLeads = page > 0 && !isQuestionAnswered(REFLECTION_QUESTIONS[page - 1]);
 
   const handleSave = () => {
     if (!hasPrimaryContent) return;
@@ -267,14 +272,22 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
         {/* The woven strip fills as you go — the motif doing a job rather
           * than decorating. Fills by `answeredCount`, not `page`: paging past a
           * skipped question should not read as ground covered. */}
-        <View style={[styles.clothProgress, { backgroundColor: colors.border }]}>
+        <View
+          style={[styles.clothProgress, { backgroundColor: colors.border }]}
+          onLayout={e => setTrackWidth(e.nativeEvent.layout.width)}
+        >
           <View
             style={[
               styles.clothProgressFill,
-              { width: `${(answeredCount / (REFLECTION_QUESTIONS.length + 1)) * 100}%` },
+              { width: trackWidth * (answeredCount / REFLECTION_QUESTIONS.length) },
             ]}
           >
-            <ClothMark />
+            {/* The weave is drawn at full track width and clipped by the fill.
+                Sized to the fill instead, its SVG measures once — at zero, on
+                the first question — and never paints again. */}
+            <View style={{ width: trackWidth, height: 10 }}>
+              <ClothMark />
+            </View>
           </View>
         </View>
       </View>
@@ -283,17 +296,22 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
       {!disabled && (
         <View style={[styles.footer, { paddingHorizontal: gutter }]}>
           <View style={styles.footerButtons}>
+            {/* `block` as well as the flex: the flex sizes ThemedButton's
+                wrapper, `block` is what makes the button inside fill it. */}
             <ThemedButton
               variant="secondary"
               label="Back"
               onPress={goBack}
               accessibilityHint={page === 0 ? 'Change the passage' : 'Previous question'}
+              block={backLeads}
+              style={backLeads ? styles.grow : undefined}
             />
             {isNotes ? (
               <ThemedButton
                 label={saveButtonText}
                 onPress={handleSave}
                 disabled={!hasPrimaryContent}
+                block
                 style={styles.grow}
               />
             ) : (
@@ -301,6 +319,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
                 variant="secondary"
                 label={answeredHere ? 'Next' : 'Skip'}
                 onPress={goForward}
+                block
                 style={styles.grow}
               />
             )}
