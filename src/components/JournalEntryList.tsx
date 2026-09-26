@@ -566,6 +566,8 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
      */
     const renderEmptyState = useCallback(() => {
         let face: AsaroAction = 'point';
+        // Held where the resting smile would contradict the line.
+        let hold = false;
         let title = "It's awful quiet in here...";
         let subtext = "Don't just stare at the screen. Read your Bible and tell me about it!";
 
@@ -575,10 +577,12 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
             subtext = "Read a book of the Bible so we can put something here.";
         } else if (viewMode === 'actions') {
             face = 'deadpan';
+            hold = true;
             title = "No actions recorded";
             subtext = "You didn't learn anything practical today? Write an action step";
         } else if (viewMode === 'topics') {
             face = 'sideEye';
+            hold = true;
             title = "No follow-ups";
             subtext = "Is there really nothing more you want to study? Add one to an entry.";
         } else if (debouncedSearchQuery) {
@@ -593,7 +597,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
 
         return (
             <View style={[styles.emptyState, styles.emptyCloth]}>
-                <Asaro size={74} action={face} label="Àṣàrò" />
+                <Asaro size={74} action={face} hold={hold} label="Àṣàrò" />
                 <Text variant="title" style={styles.centred}>{title}</Text>
                 <Text variant="body" tone="secondary" style={styles.centred}>
                     {subtext}

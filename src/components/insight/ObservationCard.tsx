@@ -100,7 +100,10 @@ export function ObservationCard({ observation, onSeen, onOpen, onDismiss }: Prop
                     { borderBottomColor: colors.border },
                 ]}>
                     {observation.face && (
-                        <Asaro size={56} action={observation.face} label="Àṣàrò" />
+                        <Asaro
+                            size={56} action={observation.face}
+                            hold={observation.holdFace} label="Àṣàrò"
+                        />
                     )}
                     {subjectLine}
                 </View>

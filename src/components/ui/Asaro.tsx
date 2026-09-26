@@ -43,6 +43,8 @@ export interface AsaroProps {
     look?: AsaroLook;
     /** Play on mount, and again whenever this changes. */
     action?: AsaroAction;
+    /** End `action` on its peak and stay there, for a face that is the message. */
+    hold?: boolean;
     /** Where to look, each axis −1…1. Omit for his idle watch. */
     lookAt?: { x: number; y: number };
     /** How he holds his face between actions. Defaults to `knowing`. */
@@ -254,7 +256,7 @@ function lashTurn(l: number) {
 const lidLinePath = (cx: number) => `M${cx - 27} ${LID_EDGE} Q${cx} ${LID_EDGE + E.lid.bow} ${cx + 27} ${LID_EDGE}`;
 
 function AsaroBase(
-    { size = 96, look, action, lookAt, mood = 'knowing', bust, label }: AsaroProps,
+    { size = 96, look, action, hold = false, lookAt, mood = 'knowing', bust, label }: AsaroProps,
     ref: React.Ref<AsaroHandle>,
 ) {
     const chosen = useAsaroLook();
@@ -402,24 +404,27 @@ function AsaroBase(
         };
     }, [aimX, aimY, mood, reduceMotion, gazeX, gazeY]);
 
-    const play = useCallback((name: AsaroAction) => {
+    const play = useCallback((name: AsaroAction, keep: boolean) => {
         const A = ASARO_ACTIONS[name];
         if (!A) return;
         if (actionTimer.current) clearTimeout(actionTimer.current);
         cancelAnimation(prog);
         const i = ACTION_NAMES.indexOf(name);
         act.value = i;
-        // Reduced motion holds the peak still for the action's length.
+        // Reduced motion shows the peak still rather than moving to it.
+        const end = keep ? PEAK_T[i] : 1;
         prog.value = reduceMotion ? PEAK_T[i] : 0;
-        if (!reduceMotion) prog.value = withTiming(1, { duration: A.ms, easing: Easing.linear });
+        if (!reduceMotion) prog.value = withTiming(end, { duration: A.ms * end, easing: Easing.linear });
+        if (keep) return;
         actionTimer.current = setTimeout(() => {
             act.value = -1;
             actionTimer.current = null;
         }, A.ms + 40);
     }, [act, prog, reduceMotion]);
 
-    useImperativeHandle(ref, () => ({ play }), [play]);
-    useEffect(() => { if (action) play(action); }, [action, play]);
+    // A replay is a reaction, never a held state.
+    useImperativeHandle(ref, () => ({ play: (name) => play(name, false) }), [play]);
+    useEffect(() => { if (action) play(action, hold); }, [action, hold, play]);
 
     // ---- animated channels -------------------------------------------------
 

@@ -46,6 +46,8 @@ export interface RenderedObservation {
     subjectVerseId?: VerseId;
     /** What Àṣàrò performs beside the card. Only milestones carry one. */
     face?: AsaroAction;
+    /** Keep `face` on its peak, where the resting smile would contradict the line. */
+    holdFace?: boolean;
 }
 
 /** Sentence-case a span: `spanLabel` speaks in fragments ("across 8 months"). */
@@ -153,6 +155,7 @@ function renderMilestone(claim: Record<string, unknown>): RenderedObservation {
             subject: `${mark}%`,
             subjectFirst: true,
             face: line.face,
+            holdFace: line.face === 'sideEye',
         };
     }
 
