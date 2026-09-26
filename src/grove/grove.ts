@@ -11,14 +11,21 @@ import type { Cadence } from '../data/actionKind';
 
 export const STAGE_NAMES = [
     'seed', 'sprout', 'seedling', 'shoot', 'sapling',
-    'young tree', 'tree', 'full tree', 'mature tree', 'bearing fruit',
+    'young tree', 'first fruit', 'fruiting tree', 'full tree', 'heavy with fruit',
 ] as const;
 
-/** Periods kept to reach each stage. Early stages come fast, the last takes a year. */
+/**
+ * Periods kept to reach each stage. The first fruit comes after about a month
+ * and more follows at every stage, so keeping a practice pays off while it is
+ * still new rather than only after a year.
+ */
 export const THRESHOLDS: Record<Cadence, number[]> = {
-    daily: [0, 1, 3, 7, 14, 30, 60, 100, 180, 365],
-    weekly: [0, 1, 2, 4, 8, 13, 20, 30, 40, 52],
+    daily: [0, 1, 3, 7, 14, 21, 30, 50, 75, 100],
+    weekly: [0, 1, 2, 3, 4, 5, 6, 9, 13, 18],
 };
+
+/** The first stage that bears fruit. */
+export const FIRST_FRUIT_STAGE = 6;
 
 /** From this stage on a tree takes its own species' shape; before it, all seedlings look alike. */
 export const FIRST_TREE_STAGE = 5;

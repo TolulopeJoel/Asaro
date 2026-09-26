@@ -81,6 +81,10 @@ function seedling(s: number, leaf: Leaf): React.ReactNode[] {
 /** A young tree starts taller than the sapling before it; growth never looks like shrinking. */
 const scale = (k: number) => [0.72, 0.8, 0.88, 0.95, 1][k];
 
+/** How much of a species' fruit shows at each tree stage: none on a young tree, then more each time. */
+const FRUIT_SHOWN = [0, 2, 4, 6, 99];
+const ripe = <T,>(fruit: T[], k: number) => fruit.slice(0, FRUIT_SHOWN[k]);
+
 /** Species from the young-tree stage on. `k` runs 0 (young tree) … 4 (bearing fruit). */
 const SHAPES: Record<SpeciesKey, (k: number, leaf: Leaf) => React.ReactNode[]> = {
     olive: (k, leaf) => {
@@ -91,8 +95,8 @@ const SHAPES: Record<SpeciesKey, (k: number, leaf: Leaf) => React.ReactNode[]> =
             .forEach(([dx, dy, rx, ry], i) => out.push(<Ellipse key={`f${i}`} cx={50 + dx * s * 1.2} cy={top + dy * s + 10} rx={rx * s} ry={ry * s} fill={leaf('#8a9a6b')} />));
         [[-16, -2], [14, -6], [2, -12], [-4, 6], [20, 8]]
             .forEach(([dx, dy], i) => out.push(<Ellipse key={`h${i}`} cx={50 + dx * s * 1.2} cy={top + dy * s + 10} rx={6 * s} ry={3 * s} fill={leaf('#aab68b')} />));
-        if (k === 4) [[-18, 8], [8, -2], [20, 6], [-4, 12], [-10, -8], [14, 14]]
-            .forEach(([dx, dy], i) => out.push(<Circle key={`o${i}`} cx={50 + dx} cy={top + dy + 10} r={2.6} fill="#3d3f2a" />));
+        ripe([[-18, 8], [8, -2], [20, 6], [-4, 12], [-10, -8], [14, 14]], k)
+            .forEach(([dx, dy], i) => out.push(<Circle key={`o${i}`} cx={50 + dx * s} cy={top + dy * s + 10} r={2.6} fill="#3d3f2a" />));
         return out;
     },
     fig: (k, leaf) => {
@@ -103,8 +107,8 @@ const SHAPES: Record<SpeciesKey, (k: number, leaf: Leaf) => React.ReactNode[]> =
             const x = 50 + dx * s; const y = top + dy * s + 6;
             out.push(<Circle key={`f${i}`} cx={x} cy={y} r={11 * s} fill={leaf(GREEN)} />, <Circle key={`h${i}`} cx={x - 4 * s} cy={y - 3 * s} r={5 * s} fill={leaf('#77b35c')} />);
         });
-        if (k === 4) [[-24, 18], [22, 20], [-6, 22], [12, 6], [-16, 6]]
-            .forEach(([dx, dy], i) => out.push(<Ellipse key={`o${i}`} cx={50 + dx} cy={top + dy + 6} rx={3.2} ry={3.8} fill="#9c7a3c" />));
+        ripe([[-24, 18], [22, 20], [-6, 22], [12, 6], [-16, 6], [4, 14]], k)
+            .forEach(([dx, dy], i) => out.push(<Ellipse key={`o${i}`} cx={50 + dx * s} cy={top + dy * s + 6} rx={3.2} ry={3.8} fill="#9c7a3c" />));
         return out;
     },
     cedar: (k, leaf) => {
@@ -115,8 +119,8 @@ const SHAPES: Record<SpeciesKey, (k: number, leaf: Leaf) => React.ReactNode[]> =
             const y = 112 - (26 + i * (62 / tiers)) * s; const w = (40 - i * 6) * s;
             out.push(<Ellipse key={`a${i}`} cx={50} cy={y} rx={w} ry={5 * s} fill={leaf('#3f6b3a')} />, <Ellipse key={`b${i}`} cx={50 - w * 0.25} cy={y - 2 * s} rx={w * 0.55} ry={3 * s} fill={leaf('#557f47')} />);
         }
-        if (k === 4) [[-20, -40], [16, -48], [-8, -62], [10, -30]]
-            .forEach(([dx, dy], i) => out.push(<Ellipse key={`c${i}`} cx={50 + dx} cy={112 + dy} rx={2} ry={3.2} fill="#7a5f3c" />));
+        ripe([[-20, -40], [16, -48], [-8, -62], [10, -30], [-14, -54], [20, -36]], k)
+            .forEach(([dx, dy], i) => out.push(<Ellipse key={`c${i}`} cx={50 + dx * s} cy={112 + dy * s} rx={2} ry={3.2} fill="#7a5f3c" />));
         return out;
     },
     palm: (k, leaf) => {
@@ -131,8 +135,9 @@ const SHAPES: Record<SpeciesKey, (k: number, leaf: Leaf) => React.ReactNode[]> =
             const r = 28 * s; const x2 = 52 + r * Math.cos((a * Math.PI) / 180); const y2 = top + 8 + r * Math.sin((a * Math.PI) / 180) + 12 * s;
             out.push(<Path key={`f${i}`} d={`M52 ${top + 8} Q${(52 + x2) / 2} ${top - 10 * s} ${x2} ${y2}`} stroke={leaf('#6f9a4a')} strokeWidth={3.5 * s + 1} fill="none" strokeLinecap="round" />);
         });
-        if (k === 4) [-5, 5].forEach(dx => [0, 1, 2, 3].forEach(j =>
-            out.push(<Circle key={`d${dx}${j}`} cx={52 + dx + (j % 2) * 2} cy={top + 14 + j * 3} r={2.4} fill="#d08a2c" />)));
+        // Dates hang in two clusters under the crown, filling as it fruits.
+        ripe([[-5, 0], [5, 0], [-3, 3], [7, 3], [-5, 6], [5, 6], [-3, 9], [7, 9]], k)
+            .forEach(([dx, dy], i) => out.push(<Circle key={`d${i}`} cx={52 + dx} cy={top + 14 + dy} r={2.4} fill="#d08a2c" />));
         return out;
     },
     pomegranate: (k, leaf) => {
@@ -141,8 +146,8 @@ const SHAPES: Record<SpeciesKey, (k: number, leaf: Leaf) => React.ReactNode[]> =
         [[0, 6, 20], [-16, 12, 13], [16, 12, 13], [-8, -4, 12], [10, -4, 12]].forEach(([dx, dy, r], i) => {
             out.push(<Circle key={`f${i}`} cx={50 + dx * s} cy={top + dy * s + 8} r={r * s} fill={leaf(GREEN_DARK)} />, <Circle key={`h${i}`} cx={50 + dx * s - 3 * s} cy={top + dy * s + 5 * s} r={r * s * 0.4} fill={leaf('#66a24f')} />);
         });
-        if (k >= 3) (k === 4 ? [[-14, 14], [12, 6], [2, -6], [18, 18], [-4, 20]] : [[-10, 4], [12, 10]])
-            .forEach(([dx, dy], i) => out.push(<Circle key={`p${i}`} cx={50 + dx} cy={top + dy + 8} r={k === 4 ? 3.6 : 2.2} fill="#b5483a" />));
+        ripe([[-14, 14], [12, 6], [2, -6], [18, 18], [-4, 20], [-18, 2]], k)
+            .forEach(([dx, dy], i) => out.push(<Circle key={`p${i}`} cx={50 + dx * s} cy={top + dy * s + 8} r={3.4} fill="#b5483a" />));
         return out;
     },
     almond: (k, leaf) => {
@@ -151,13 +156,14 @@ const SHAPES: Record<SpeciesKey, (k: number, leaf: Leaf) => React.ReactNode[]> =
         [[-20, 14], [20, 12], [-8, 24], [10, 26]].forEach(([dx, up], i) => out.push(<Path key={`b${i}`} d={`M50 ${top + 30} L${50 + dx * s} ${top + 30 - up * s}`} stroke="#5a4432" strokeWidth={1.6 + s} />));
         [[-20, 10, 10], [20, 12, 10], [-8, -2, 11], [10, -2, 11], [0, 12, 10], [0, -10, 8]]
             .forEach(([dx, dy, r], i) => out.push(<Circle key={`f${i}`} cx={50 + dx * s} cy={top + dy * s + 8} r={r * s} fill={leaf('#7fa65a')} opacity={0.9} />));
-        if (k >= 3) {
-            const blossoms = [[-22, 8], [-14, 0], [-6, -10], [6, -12], [16, -2], [22, 10], [-2, 4], [10, 14], [-12, 16], [4, -2], [18, 4], [-18, 14]];
-            (k === 4 ? blossoms : blossoms.slice(0, 6)).forEach(([dx, dy], i) => out.push(
-                <Circle key={`p${i}`} cx={50 + dx * s} cy={top + dy * s + 8} r={3} fill="#f1d6d0" />,
-                <Circle key={`q${i}`} cx={50 + dx * s + 0.8} cy={top + dy * s + 7.2} r={1.2} fill="#fbf3ee" />,
-            ));
-        }
+        // Jeremiah 1:11 — the almond wakes first: blossom, then the nuts.
+        const blossoms = [[-22, 8], [-14, 0], [-6, -10], [6, -12], [16, -2], [22, 10], [-2, 4], [10, 14], [-12, 16], [4, -2], [18, 4], [-18, 14]];
+        blossoms.slice(0, [0, 4, 8, 12, 12][k]).forEach(([dx, dy], i) => out.push(
+            <Circle key={`p${i}`} cx={50 + dx * s} cy={top + dy * s + 8} r={3} fill="#f1d6d0" />,
+            <Circle key={`q${i}`} cx={50 + dx * s + 0.8} cy={top + dy * s + 7.2} r={1.2} fill="#fbf3ee" />,
+        ));
+        ripe([[-8, 18], [12, 20], [-18, 22], [20, 12]], Math.max(0, k - 2))
+            .forEach(([dx, dy], i) => out.push(<Ellipse key={`n${i}`} cx={50 + dx * s} cy={top + dy * s + 6} rx={2.2} ry={3} fill="#9aa37a" />));
         return out;
     },
     acacia: (k, leaf) => {
@@ -168,7 +174,7 @@ const SHAPES: Record<SpeciesKey, (k: number, leaf: Leaf) => React.ReactNode[]> =
         out.push(<Ellipse key="a" cx={50} cy={top + 6} rx={38 * s} ry={9 * s} fill={leaf('#7c9a4d')} />);
         out.push(<Ellipse key="b" cx={44} cy={top + 2} rx={26 * s} ry={5 * s} fill={leaf('#93b062')} />);
         out.push(<Ellipse key="c" cx={58} cy={top + 9} rx={22 * s} ry={4 * s} fill={leaf('#65853f')} />);
-        if (k === 4) [-28, -16, -4, 8, 20, 30].forEach((dx, i) => out.push(<Circle key={`y${i}`} cx={50 + dx * s} cy={top + 1} r={2.4} fill="#d9b84a" />));
+        ripe([-16, 8, -28, 20, -4, 30], k).forEach((dx, i) => out.push(<Circle key={`y${i}`} cx={50 + dx * s} cy={top + 1} r={2.4} fill="#d9b84a" />));
         return out;
     },
     mustard: (k, leaf) => {
@@ -177,8 +183,8 @@ const SHAPES: Record<SpeciesKey, (k: number, leaf: Leaf) => React.ReactNode[]> =
         [[0, 8, 18], [-18, 14, 12], [18, 14, 12], [-10, -6, 12], [12, -6, 12], [0, -12, 10]].forEach(([dx, dy, r], i) => {
             out.push(<Circle key={`f${i}`} cx={50 + dx * s} cy={top + dy * s + 6} r={r * s} fill={leaf('#7fb04f')} />, <Circle key={`h${i}`} cx={50 + dx * s - 3 * s} cy={top + dy * s + 3 * s} r={r * s * 0.35} fill={leaf('#9fcc6b')} />);
         });
-        // Matthew 13:32 — birds in its branches once it is full grown.
-        if (k === 4) [[36, top + 2], [62, top + 8], [50, top - 6]].forEach(([x, y], i) => out.push(
+        // Matthew 13:32 — birds come to lodge in its branches as it grows.
+        [[36, top + 2], [62, top + 8], [50, top - 6]].slice(0, [0, 1, 1, 2, 3][k]).forEach(([x, y], i) => out.push(
             <Ellipse key={`w${i}`} cx={x} cy={y} rx={3.4} ry={2.2} fill="#2f3a4a" />,
             <Path key={`k${i}`} d={`M${x + 2} ${y - 1} l3 -1.5`} stroke="#2f3a4a" strokeWidth={1.4} strokeLinecap="round" />,
         ));
