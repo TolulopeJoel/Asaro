@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Spacing } from '../theme/spacing';
-import { ASARO_ACTIONS } from '../theme/asaroRig';
 import { Asaro, AsaroAction, AsaroMood, Card, Text } from './ui';
+import { performanceMs } from './ui/Asaro';
 
 /**
  * The return-after-absence card. It appears only after a real gap and never
@@ -77,7 +77,7 @@ export function WelcomeBack({ daysAway, readingBelow = false }: {
     useEffect(() => {
         setLookingDown(false);
         if (!action || !readingBelow) return;
-        const id = setTimeout(() => setLookingDown(true), ASARO_ACTIONS[action].ms + PAUSE_MS);
+        const id = setTimeout(() => setLookingDown(true), performanceMs(action) + PAUSE_MS);
         return () => clearTimeout(id);
     }, [action, readingBelow]);
 

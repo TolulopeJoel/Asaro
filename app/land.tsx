@@ -11,8 +11,8 @@
  * the loudest thing on the page.
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 
@@ -22,7 +22,7 @@ import { ScalePressable } from '@/src/components/ScalePressable';
 import { Hero, Screen, Text as UIText } from '@/src/components/ui';
 import { GREEK_BOOKS, HEBREW_BOOKS } from '@/src/data/bibleBooks';
 import { getChapterCoverage } from '@/src/data/database';
-import { BookCloth, Cloth, quietBooks, weaveCloth } from '@/src/land/cloth';
+import { BookCloth, ChapterRef, Cloth, nextChapter, quietBooks, weaveCloth } from '@/src/land/cloth';
 import { fallowHeading } from '@/src/land/fallowTone';
 import { landSubtitle, parcelLine } from '@/src/land/landTone';
 import { Spacing } from '@/src/theme/spacing';
@@ -46,7 +46,11 @@ export default function LandScreen() {
     const { colors } = useTheme();
     const router = useRouter();
 
+    const { height } = useWindowDimensions();
+    const scroll = useRef<ScrollView>(null);
+
     const [cloth, setCloth] = useState<Cloth | null>(null);
+    const [next, setNext] = useState<ChapterRef | null>(null);
     const [selected, setSelected] = useState<BookCloth | null>(null);
 
     useFocusEffect(
@@ -54,8 +58,12 @@ export default function LandScreen() {
             let alive = true;
             (async () => {
                 const rows = await getChapterCoverage();
-                const woven = weaveCloth(rows, [...HEBREW_BOOKS, ...GREEK_BOOKS], Date.now());
-                if (alive) setCloth(woven);
+                const books = [...HEBREW_BOOKS, ...GREEK_BOOKS];
+                const woven = weaveCloth(rows, books, Date.now());
+                if (alive) {
+                    setCloth(woven);
+                    setNext(nextChapter(rows, books));
+                }
             })();
             return () => {
                 alive = false;
@@ -103,7 +111,7 @@ export default function LandScreen() {
                     <LoadingView size={48} />
                 </View>
             ) : (
-                <ScrollView contentContainerStyle={styles.content}>
+                <ScrollView ref={scroll} contentContainerStyle={styles.content}>
                     {/* One holding, Genesis to Revelation, with no break at
                       * Matthew. Splitting it draws a boundary the reading does
                       * not have — the point of the land is that it is one place
@@ -112,6 +120,10 @@ export default function LandScreen() {
                         books={cloth.books}
                         selected={selected?.name ?? null}
                         onBookPress={book => setSelected(current => (current?.name === book.name ? null : book))}
+                        marker={next}
+                        // A third of the way down, so the field he is walking
+                        // into shows below him.
+                        onMarkerLayout={y => scroll.current?.scrollTo({ y: Math.max(0, y - height / 3) })}
                     />
 
                     {/* The invitation, and the only place the screen asks for

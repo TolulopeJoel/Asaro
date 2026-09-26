@@ -20,13 +20,13 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import { GestureResponderEvent, LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
+import { GestureResponderEvent, LayoutChangeEvent, PixelRatio, Pressable, StyleSheet, View } from 'react-native';
 import Svg, { ClipPath, Defs, G, Path } from 'react-native-svg';
 
-import { BookCloth, Tier } from '../../land/cloth';
+import { BookCloth, ChapterRef, Tier } from '../../land/cloth';
 import { Cell, layoutCells } from '../../land/plots';
 import { useTheme } from '../../theme/ThemeContext';
-import { Text } from '../ui';
+import { Asaro, Text } from '../ui';
 import { TERRAIN, mudFor } from './terrain';
 import {
     Speck,
@@ -35,7 +35,6 @@ import {
     edgeFringe,
     furrowPath,
     patchPath,
-    rgba,
     speckPaths,
     swardPaths,
     vergePaths,
@@ -150,72 +149,90 @@ const VERGE_DEPTH = 40;
 const FRINGE_BITE = 9;
 const FRINGE_STEP = 11;
 
-interface ChapterProps {
-    cell: Cell;
-    size: number;
-    ground: string;
-    selected: boolean;
-    selectionColor: string;
-}
-
-/*
- * A plain View, deliberately. There are 1,189 of these, and making each
- * pressable buys nothing since every cell of a book does the same thing. The
- * field takes one press handler and resolves the cell by dividing the touch
- * coordinates, which the uniform grid makes trivial.
+/**
+ * Àṣàrò standing where the reader picks up. 48 is the smallest size that keeps
+ * his hair, and without the hair the two looks are the same face.
  */
-const Chapter = React.memo(({ cell, size, ground, selected, selectionColor }: ChapterProps) => {
-    const edge = selected ? HEDGE_SELECTED : HEDGE;
-    const edgeColor = selected ? selectionColor : TERRAIN.hedge;
+const MARKER_SIZE = 48;
 
-    // Right and bottom only, so neighbouring chapters share one line rather
-    // than stacking two and doubling its weight.
-    const inner = selected ? FURROW_SELECTED : 0;
-    const innerColor = rgba(selectionColor, FURROW_SELECTED_ALPHA);
+const rect = (x: number, y: number, w: number, h: number) => `M${x} ${y}h${w}v${h}h${-w}Z`;
 
-    return (
-        <View
-            style={[
-                styles.cell,
-                {
-                    left: cell.column * size,
-                    top: cell.row * size,
-                    width: size,
-                    height: size,
-                    backgroundColor: ground,
-                    // Only sides facing another book carry a hedge, which lets
-                    // a boundary follow a staircase instead of squaring it off.
-                    borderTopWidth: cell.edgeTop ? edge : 0,
-                    borderLeftWidth: cell.edgeLeft ? edge : 0,
-                    borderRightWidth: cell.edgeRight ? edge : inner,
-                    borderBottomWidth: cell.edgeBottom ? edge : inner,
-                    borderTopColor: edgeColor,
-                    borderLeftColor: edgeColor,
-                    borderRightColor: cell.edgeRight ? edgeColor : innerColor,
-                    borderBottomColor: cell.edgeBottom ? edgeColor : innerColor,
-                },
-            ]}
-            pointerEvents="none"
-        >
-            {/* A lit top edge: the difference between a flat field of colour
-              * and ground with rows in it, and what keeps a planted range from
-              * fusing into a slab so a chapter stays countable. */}
-            <View style={[styles.lip, { backgroundColor: TERRAIN.lip }]} pointerEvents="none" />
+/**
+ * The whole field as a handful of paths: one per ground colour, plus lips,
+ * hedges and the selection. One native view per chapter took seconds to mount.
+ * Weathering rounds to whole RGB steps, so the colours number in the low
+ * hundreds, not 1,189.
+ *
+ * Every strip sits inside its cell, as a border would, and corners snap to the
+ * pixel grid so neighbouring cells share an edge with no seam between them.
+ */
+function groundPaths(cells: Cell[], books: BookCloth[], size: number, selected: string | null) {
+    const fills = new Map<string, string[]>();
+    const lips: string[] = [];
+    const hedges: string[] = [];
+    const chosen: string[] = [];
+    const furrows: string[] = [];
+    const snap = PixelRatio.roundToNearestPixel;
 
-        </View>
-    );
-});
-Chapter.displayName = 'Chapter';
+    for (const cell of cells) {
+        const book = books[cell.book];
+        const x0 = snap(cell.column * size);
+        const y0 = snap(cell.row * size);
+        const w = snap((cell.column + 1) * size) - x0;
+        const h = snap((cell.row + 1) * size) - y0;
+
+        const colour = groundOf(book.cells[cell.chapter - 1] ?? 0, mudFor(book.name), cell.row * 8191 + cell.column);
+        let run = fills.get(colour);
+        if (!run) fills.set(colour, (run = []));
+        run.push(rect(x0, y0, w, h));
+
+        // Only sides facing another book carry a hedge, which lets a boundary
+        // follow a staircase instead of squaring it off.
+        const isChosen = book.name === selected;
+        const edge = isChosen ? HEDGE_SELECTED : HEDGE;
+        const outline = isChosen ? chosen : hedges;
+        // Right and bottom only, so neighbouring chapters share one furrow.
+        const inner = isChosen ? FURROW_SELECTED : 0;
+
+        const top = cell.edgeTop ? edge : 0;
+        const left = cell.edgeLeft ? edge : 0;
+        const right = cell.edgeRight ? edge : inner;
+        const bottom = cell.edgeBottom ? edge : inner;
+
+        if (top) outline.push(rect(x0, y0, w, top));
+        if (left) outline.push(rect(x0, y0, left, h));
+        if (right) (cell.edgeRight ? outline : furrows).push(rect(x0 + w - right, y0, right, h));
+        if (bottom) (cell.edgeBottom ? outline : furrows).push(rect(x0, y0 + h - bottom, w, bottom));
+
+        // A lit top edge: what keeps a planted range from fusing into a slab,
+        // so a chapter stays countable.
+        lips.push(rect(x0 + left, y0 + top, w - left - right, 1));
+    }
+
+    return {
+        fills: [...fills].map(([colour, parts]) => [colour, parts.join('')] as const),
+        lips: lips.join(''),
+        hedges: hedges.join(''),
+        chosen: chosen.join(''),
+        furrows: furrows.join(''),
+    };
+}
 
 export function BibleCloth({
     books,
     selected,
     onBookPress,
+    marker,
+    onMarkerLayout,
 }: {
     books: BookCloth[];
     /** Name of the holding currently identified, if any. */
     selected?: string | null;
     onBookPress?: (book: BookCloth) => void;
+    /** The chapter Àṣàrò stands on. */
+    marker?: ChapterRef | null;
+    /** His offset from the top of the land, once placed. */
+    onMarkerLayout?: (y: number) => void;
 }) {
     // Measured, not assumed: the grid divides a real width into whole columns,
     // and a guess leaves a ragged strip down the side of every other phone.
@@ -331,6 +348,17 @@ export function BibleCloth({
         };
     }, [cells, books, columns, rows, size]);
 
+    const ground = useMemo(
+        () => (size > 0 ? groundPaths(cells, books, size, selected ?? null) : null),
+        [cells, books, size, selected],
+    );
+
+    const markerCell = useMemo(() => {
+        if (!marker) return undefined;
+        const book = books.findIndex(b => b.name === marker.bookName);
+        return cells.find(cell => cell.book === book && cell.chapter === marker.chapter);
+    }, [marker, books, cells]);
+
     const onFieldPress = (event: GestureResponderEvent) => {
         if (!onBookPress || size <= 0) return;
         const { locationX, locationY } = event.nativeEvent;
@@ -376,24 +404,22 @@ export function BibleCloth({
                 accessibilityLabel="Your land. Tap a field to name it."
                 style={[styles.field, { height: rows * size }]}
             >
-                {width > 0 &&
-                    cells.map(cell => {
-                        const book = books[cell.book];
-                        return (
-                            <Chapter
-                                key={`${cell.book}:${cell.chapter}`}
-                                cell={cell}
-                                size={size}
-                                ground={groundOf(
-                                    book.cells[cell.chapter - 1] ?? 0,
-                                    mudFor(book.name),
-                                    cell.row * 8191 + cell.column,
-                                )}
-                                selected={selected === book.name}
-                                selectionColor={colors.accent}
-                            />
-                        );
-                    })}
+                {ground && (
+                    <Svg
+                        style={StyleSheet.absoluteFill}
+                        width={columns * size}
+                        height={rows * size}
+                        pointerEvents="none"
+                    >
+                        {ground.fills.map(([colour, d]) => (
+                            <Path key={colour} d={d} fill={colour} />
+                        ))}
+                        <Path d={ground.lips} fill={TERRAIN.lip} />
+                        <Path d={ground.furrows} fill={colors.accent} fillOpacity={FURROW_SELECTED_ALPHA} />
+                        <Path d={ground.hedges} fill={TERRAIN.hedge} />
+                        <Path d={ground.chosen} fill={colors.accent} />
+                    </Svg>
+                )}
 
                 {/* Above the ground, below the names: the weathering reads as
                   * part of the field and a book's name stays legible. */}
@@ -509,6 +535,24 @@ export function BibleCloth({
                     </G>
                 </Svg>
             )}
+
+            {/* Last, so the verge cannot grow over him on an edge chapter. He
+              * stands on the chapter's middle, leaving its lower half showing. */}
+            {markerCell && size > 0 && (
+                <View
+                    pointerEvents="none"
+                    onLayout={event => onMarkerLayout?.(event.nativeEvent.layout.y)}
+                    style={[
+                        styles.marker,
+                        {
+                            left: VERGE_SIDE + (markerCell.column + 0.5) * size - MARKER_SIZE / 2,
+                            top: VERGE_DEPTH + (markerCell.row + 0.5) * size - MARKER_SIZE,
+                        },
+                    ]}
+                >
+                    <Asaro size={MARKER_SIZE} action="point" />
+                </View>
+            )}
         </View>
     );
 }
@@ -516,9 +560,8 @@ export function BibleCloth({
 const styles = StyleSheet.create({
     meadow: { paddingHorizontal: VERGE_SIDE, paddingVertical: VERGE_DEPTH },
     field: { position: 'relative' },
-    cell: { position: 'absolute' },
-    lip: { position: 'absolute', top: 0, left: 0, right: 0, height: 1 },
     nameBox: { position: 'absolute', justifyContent: 'center', alignItems: 'center' },
+    marker: { position: 'absolute' },
     /* Opacity is set per book — see NAME_ON_BARE. */
     name: { letterSpacing: 0.4, fontWeight: '700' },
 });

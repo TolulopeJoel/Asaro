@@ -152,6 +152,52 @@ export function weaveCloth(rows: CoverageRow[], books: BibleBook[], now: number)
     return { books: woven, worked, total };
 }
 
+/** A single chapter on the land. */
+export interface ChapterRef {
+    bookName: string;
+    chapter: number;
+}
+
+/**
+ * Where the reader picks up: the chapter after the one most recently written
+ * about. Past the end of a book is the next book; past Revelation is Genesis
+ * again. A reader with no entries starts at Genesis 1. Null only when the
+ * latest entry names a book the list does not know.
+ */
+export function nextChapter(rows: CoverageRow[], books: BibleBook[]): ChapterRef | null {
+    if (books.length === 0) return null;
+
+    const endOf = (row: CoverageRow) =>
+        Number.isInteger(row.chapterEnd) && (row.chapterEnd as number) >= row.chapterStart
+            ? (row.chapterEnd as number)
+            : row.chapterStart;
+
+    let latest: CoverageRow | null = null;
+    let latestAt = -Infinity;
+    for (const row of rows) {
+        const at = new Date(row.lastRead).getTime();
+        if (!Number.isFinite(at) || !Number.isInteger(row.chapterStart) || row.chapterStart < 1) continue;
+        // Same moment is the same entry split into ranges: the furthest wins.
+        if (at > latestAt || (at === latestAt && latest && endOf(row) > endOf(latest))) {
+            latest = row;
+            latestAt = at;
+        }
+    }
+
+    if (!latest) return { bookName: books[0].name, chapter: 1 };
+
+    const { bookName } = latest;
+    const index = books.findIndex(book => book.name === bookName);
+    if (index < 0) return null;
+
+    const book = books[index];
+    const last = endOf(latest);
+    if (last < book.chapters) return { bookName: book.name, chapter: last + 1 };
+
+    const following = books[(index + 1) % books.length];
+    return { bookName: following.name, chapter: 1 };
+}
+
 /**
  * The books that have gone quiet — worked once, not for a long time. NEVER
  * names a book the reader has never opened: being pointed at sixty-six unread
