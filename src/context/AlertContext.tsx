@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { LucideIcon } from 'lucide-react-native';
+import type { AsaroAction, AsaroLook } from '../components/ui';
 
 export interface AlertButton {
     text: string;
@@ -16,6 +17,8 @@ export interface AlertOptions {
     icon?: LucideIcon;
     iconBackground?: string;
     iconColor?: string;
+    /** Àṣàrò asks instead of an icon. Takes the icon's place when both are set. */
+    face?: { look: AsaroLook; action?: AsaroAction };
 }
 
 interface AlertContextType {

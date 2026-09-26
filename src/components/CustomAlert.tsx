@@ -5,7 +5,7 @@ import { useAlert } from '../context/AlertContext';
 import { ScalePressable } from './ScalePressable';
 import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
-import { Text } from './ui';
+import { Asaro, Text } from './ui';
 
 export const CustomAlert: React.FC = () => {
     const { colors } = useTheme();
@@ -13,7 +13,7 @@ export const CustomAlert: React.FC = () => {
 
     if (!alertOptions || !visible) return null;
 
-    const { title, message, buttons, cancelable = true, icon, iconBackground, iconColor } = alertOptions;
+    const { title, message, buttons, cancelable = true, icon, iconBackground, iconColor, face } = alertOptions;
 
     const handleBackdropPress = () => {
         if (cancelable) hideAlert();
@@ -38,8 +38,9 @@ export const CustomAlert: React.FC = () => {
                         },
                     ]}
                 >
-                    {/* Optional header icon */}
-                    {icon && (
+                    {face ? (
+                        <Asaro size={96} look={face.look} action={face.action} />
+                    ) : icon && (
                         <View style={[styles.iconWrap, { backgroundColor: iconBackground ?? (colors.accent + '15') }]}>
                             {React.createElement(icon, { size: 28, color: iconColor ?? colors.accent })}
                         </View>

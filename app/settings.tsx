@@ -148,15 +148,30 @@ const SettingsItem = ({
 const AsaroLookRow = ({ colors }: { colors: any }) => {
     const look = useAsaroLook();
     const face = useRef<AsaroHandle>(null);
+    const { showAlert } = useAlert();
     const next = look === 'female' ? 'male' : 'female';
+
+    // The current look asks before it hands over.
+    const confirmSwitch = () => showAlert({
+        face: { look, action: 'sideEye' },
+        title: `Wait o. You're a ${next === 'female' ? 'woman' : 'man'}?`,
+        message: `Then ${next === 'female' ? 'she' : 'he'} should be the one disturbing you, not me 😅`,
+        buttons: [
+            {
+                text: 'Yes, I am',
+                onPress: () => {
+                    void setAsaroLook(next);
+                    face.current?.play('wave');
+                },
+            },
+            { text: 'No, stay', style: 'cancel' },
+        ],
+    });
 
     return (
         <ScalePressable
             style={[styles.settingRow, styles.asaroRow, { borderBottomColor: colors.border }]}
-            onPress={() => {
-                void setAsaroLook(next);
-                face.current?.play('wave');
-            }}
+            onPress={confirmSwitch}
             accessibilityRole="button"
             accessibilityLabel={`Àṣàrò, ${look === 'female' ? 'her' : 'him'}. Switch look.`}
         >
