@@ -111,6 +111,8 @@ const PEAK_T = ACTION_NAMES.map((n, i) => {
  * peak, which in a rhythmic gesture comes first and would stall it mid-rock.
  */
 const BEAT_T = ACTION_NAMES.map((n, i) => {
+    const authored = ASARO_ACTIONS[n].beat;
+    if (authored !== undefined) return authored;
     const s = POSE_SCORES[i];
     const strong = 0.85 * Math.max(...s);
     let k = s.length - 1;
