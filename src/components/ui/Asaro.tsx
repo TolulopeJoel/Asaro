@@ -122,10 +122,21 @@ const BEAT_T = ACTION_NAMES.map((n, i) => {
 const START_DELAY_MS = 400;
 /** How long each action holds its last strong pose. */
 const BEAT_MS = 400;
+/** The way back to rest runs this much slower, easing out, so he settles rather than snaps. */
+const RETURN_STRETCH = 1.6;
+/** A floor, for actions whose beat sits so late that the stretch alone leaves a snap. */
+const RETURN_MIN_MS = 500;
+
+/** The way back to rest, from the beat, for action `i`. */
+function returnMs(i: number) {
+    const stretched = ASARO_ACTIONS[ACTION_NAMES[i]].ms * (1 - BEAT_T[i]) * RETURN_STRETCH;
+    return stretched > RETURN_MIN_MS ? stretched : RETURN_MIN_MS;
+}
 
 /** From `action` changing to him being back at rest. */
 export function performanceMs(action: AsaroAction) {
-    return START_DELAY_MS + ASARO_ACTIONS[action].ms + BEAT_MS;
+    const i = ACTION_NAMES.indexOf(action);
+    return START_DELAY_MS + ASARO_ACTIONS[action].ms * BEAT_T[i] + BEAT_MS + returnMs(i);
 }
 
 let reportedReduceMotion = false;
@@ -443,14 +454,14 @@ function AsaroBase(
             prog.value = 0;
             prog.value = withDelay(delay, withSequence(
                 withTiming(b, { duration: A.ms * b, easing: Easing.linear }),
-                withDelay(BEAT_MS, withTiming(1, { duration: A.ms * (1 - b), easing: Easing.linear })),
+                withDelay(BEAT_MS, withTiming(1, { duration: returnMs(i), easing: Easing.out(Easing.cubic) })),
             ));
         }
         if (keep) return;
         actionTimer.current = setTimeout(() => {
             act.value = -1;
             actionTimer.current = null;
-        }, delay + A.ms + BEAT_MS + 40);
+        }, (reduceMotion ? A.ms + BEAT_MS : A.ms * BEAT_T[i] + BEAT_MS + returnMs(i)) + delay + 40);
     }, [act, prog, reduceMotion]);
 
     // A replay is a reaction, never a held state.
