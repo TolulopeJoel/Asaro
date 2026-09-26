@@ -257,7 +257,14 @@ export const ASARO_RIG = {
         smirk: { rise: 3, shift: 3 },
     },
 
-    cheek: { lx: 66, rx: 134, cy: 138, w: 14, h: 8.5 },
+    /**
+     * Blush rises with the smile, `gain` per unit of `mouthC` above rest, and
+     * is all but gone at rest. Resting blush is a baby-face cue he does not want.
+     */
+    cheek: { lx: 66, rx: 134, cy: 138, w: 14, h: 8.5, base: 0.03, gain: 0.42 },
+
+    /** A tonal curve under the mouth: structure in the lower face. */
+    chin: { d: 'M94 163.5 Q100 167 106 163.5', w: 2.2, opacity: 0.45 },
 
     /**
      * Ilà — Yoruba facial marks. Pélé: three near-vertical strokes a cheek. The
@@ -356,6 +363,11 @@ export const ASARO_LOOKS: Record<AsaroLook, {
     /** Ear studs. Omitted, the ears are bare. */
     studs?: string;
     /**
+     * Face outline. Omitted, `ASARO_RIG.face`. Only the lower half may differ:
+     * the hair, the fade and the hairline are drawn against the shared upper half.
+     */
+    head?: string;
+    /**
      * Whether this look wears the ilà.
      *
      * Per-look rather than per-rig because the marks are identity, not
@@ -404,6 +416,9 @@ export const ASARO_LOOKS: Record<AsaroLook, {
         linerW: 2,
         lidW: 2.4,
         browWeight: 1,
+        // A fuller, squarer jaw than hers.
+        head: 'M100 46 C140 46 166 74 166 112 '
+            + 'C167 162 150 179 100 179 C50 179 33 162 34 112 C34 74 60 46 100 46 Z',
         marks: false,
         hair: {
             /*
@@ -489,6 +504,9 @@ export const ASARO_LOOKS: Record<AsaroLook, {
         lidW: 3,
         browWeight: 0.78,
         studs: '#d4a95e',
+        // Softer and a touch narrower at the chin than his.
+        head: 'M100 46 C140 46 166 74 166 112 '
+            + 'C164 149 131 176.5 100 176.5 C69 176.5 36 149 34 112 C34 74 60 46 100 46 Z',
         // No ilà. See `marks` above — they are his, not a default.
         marks: false,
         lashes: true,

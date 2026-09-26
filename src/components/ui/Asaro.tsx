@@ -210,6 +210,7 @@ function AsaroBase(
     const swayBack = hair.sway.back;
     const swayFront = hair.sway.front;
     const brows = BROWS[resolved] ?? BROWS.cloth;
+    const outline = C.head ?? R.face;
 
     const cropped = bust ?? size < 48;
     const box = cropped ? R.bustBox : R.viewBox;
@@ -477,12 +478,14 @@ function AsaroBase(
 
     const cheekLProps = useAnimatedProps(() => {
         const c = ch(act.value, prog.value, C_MOUTHC, REST.mouthC);
-        return { opacity: 0.12 + (c > 0 ? c : 0) * 0.2 };
+        const smile = c - REST.mouthC;
+        return { opacity: R.cheek.base + (smile > 0 ? smile : 0) * R.cheek.gain };
     });
 
     const cheekRProps = useAnimatedProps(() => {
         const c = ch(act.value, prog.value, C_MOUTHC, REST.mouthC);
-        return { opacity: 0.12 + (c > 0 ? c : 0) * 0.2 };
+        const smile = c - REST.mouthC;
+        return { opacity: R.cheek.base + (smile > 0 ? smile : 0) * R.cheek.gain };
     });
 
     // ---- an eye ------------------------------------------------------------
@@ -580,7 +583,7 @@ function AsaroBase(
             accessibilityLabel={label ?? 'Àṣàrò'}
         >
             <Defs>
-                <ClipPath id={faceClip}><Path d={R.face} /></ClipPath>
+                <ClipPath id={faceClip}><Path d={outline} /></ClipPath>
                 <ClipPath id={eyeLClip}>
                     <Ellipse cx={E.lx} cy={E.cy} rx={E.rx} ry={E.ry} />
                 </ClipPath>
@@ -642,7 +645,7 @@ function AsaroBase(
                     </React.Fragment>
                 ))}
 
-                <Path d={R.face} fill={C.face} />
+                <Path d={outline} fill={C.face} />
 
                 {/* Everything soft is clipped to the face, so no extreme of any
                     action can push a cheek or an open mouth past the jaw. */}
@@ -699,11 +702,18 @@ function AsaroBase(
                         </>
                     )}
 
+                    {!cropped && (
+                        <Path
+                            d={R.chin.d} fill="none" stroke={C.contour}
+                            strokeWidth={R.chin.w} strokeLinecap="round" opacity={R.chin.opacity}
+                        />
+                    )}
+
                     <APath animatedProps={mouthProps} fill={C.mouth} />
                     <APath animatedProps={tongueProps} fill={C.tongue} />
                 </G>
 
-                <Path d={R.face} fill="none" stroke={C.rim} strokeWidth={R.rimW} />
+                <Path d={outline} fill="none" stroke={C.rim} strokeWidth={R.rimW} />
 
                 {/*
                   * Hair in FRONT of the face: over its outline, so the rim does
