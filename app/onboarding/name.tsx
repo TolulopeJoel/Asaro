@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import {
     View,
     TextInput,
@@ -12,7 +12,7 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { ScalePressable } from '@/src/components/ScalePressable';
-import { Asaro, Hero, Screen, Text, type AsaroHandle, type AsaroLook } from '@/src/components/ui';
+import { Asaro, Hero, Screen, Text, type AsaroLook } from '@/src/components/ui';
 import { setAsaroLook, useAsaroLook } from '@/src/storage/asaroLook';
 import { KEYBOARD_BEHAVIOR } from '@/src/utils/keyboard';
 
@@ -27,13 +27,6 @@ export default function NameScreen() {
     const [name, setName] = useState('');
     const [isValid, setIsValid] = useState(false);
     const look = useAsaroLook();
-    const face = useRef<AsaroHandle>(null);
-
-    const chooseLook = (next: AsaroLook) => {
-        if (next === look) return;
-        void setAsaroLook(next);
-        face.current?.play('wave');
-    };
 
     const handleContinue = async () => {
         if (name.trim().length > 0) {
@@ -64,31 +57,29 @@ export default function NameScreen() {
                 <View style={styles.content}>
                     <View style={styles.textContainer}>
                         <View style={styles.introBlock}>
-                            <View style={styles.faceRow}>
-                                <Asaro ref={face} size={124} action="wave" />
-                                <View style={styles.looks} accessibilityRole="radiogroup">
-                                    {LOOK_CHOICES.map(({ look: l, label }) => {
-                                        const on = l === look;
-                                        return (
-                                            <ScalePressable
-                                                key={l}
-                                                onPress={() => chooseLook(l)}
-                                                accessibilityRole="radio"
-                                                accessibilityState={{ checked: on }}
-                                                accessibilityLabel={label}
-                                                style={styles.lookChoice}
-                                            >
-                                                <View style={[
-                                                    styles.lookRing,
-                                                    { borderColor: on ? colors.textPrimary : colors.border },
-                                                ]}>
-                                                    <Asaro size={52} look={l} />
-                                                </View>
-                                                <Text variant="meta" tone={on ? 'primary' : 'secondary'}>{label}</Text>
-                                            </ScalePressable>
-                                        );
-                                    })}
-                                </View>
+                            {/* Both looks, full size: the chosen one waves, the other steps back. */}
+                            <View style={styles.looks} accessibilityRole="radiogroup">
+                                {LOOK_CHOICES.map(({ look: l, label }) => {
+                                    const on = l === look;
+                                    return (
+                                        <ScalePressable
+                                            key={l}
+                                            onPress={() => setAsaroLook(l)}
+                                            accessibilityRole="radio"
+                                            accessibilityState={{ checked: on }}
+                                            accessibilityLabel={label}
+                                            style={[styles.lookChoice, { opacity: on ? 1 : 0.45 }]}
+                                        >
+                                            <View style={[
+                                                styles.lookRing,
+                                                { borderColor: on ? colors.textPrimary : 'transparent' },
+                                            ]}>
+                                                <Asaro size={104} look={l} action={on ? 'wave' : undefined} />
+                                            </View>
+                                            <Text variant="meta" tone={on ? 'primary' : 'secondary'}>{label}</Text>
+                                        </ScalePressable>
+                                    );
+                                })}
                             </View>
 
                             <Text variant="body" style={styles.introText}>
@@ -174,13 +165,13 @@ const styles = StyleSheet.create({
     introBlock: {
         marginBottom: Spacing.xxxl,
     },
-    faceRow: {
+    looks: {
         flexDirection: 'row',
-        alignItems: 'flex-end',
-        justifyContent: 'space-between',
+        justifyContent: 'center',
+        gap: Spacing.xl,
+        marginBottom: Spacing.lg,
     },
-    looks: { flexDirection: 'row', gap: Spacing.md },
-    lookChoice: { alignItems: 'center', gap: Spacing.xs },
+    lookChoice: { alignItems: 'center', gap: Spacing.sm },
     lookRing: {
         borderWidth: Spacing.border.strong,
         borderRadius: Spacing.borderRadius.round,

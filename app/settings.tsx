@@ -30,6 +30,7 @@ import {
     ChevronLeft,
     Archive,
     Download,
+    Smile,
 } from 'lucide-react-native';
 import { getFirestore, doc, setDoc, getDoc, writeBatch, query, where, onSnapshot, collectionGroup } from '@react-native-firebase/firestore';
 import { useAuth } from '@/src/context/AuthContext';
@@ -595,7 +596,7 @@ export default function Settings() {
                     <SettingsItem
                         label="Àṣàrò"
                         value={asaroLook === 'female' ? 'Her' : 'Him'}
-                        icon={Bell}
+                        icon={Smile}
                         onPress={() => setAsaroLook(asaroLook === 'female' ? 'male' : 'female')}
                         colors={colors}
                     />
