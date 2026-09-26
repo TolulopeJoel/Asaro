@@ -1,23 +1,13 @@
 /**
- * Àṣàrò — the character.
+ * Àṣàrò — the character. A face with no body and no hands, which is the
+ * constraint the rig is built around: `wave`, `point`, `thumbsUp` and `shrug`
+ * are hand gestures on a normal character and here are performed by brow, lid,
+ * pupil, mouth, cheek, head and crest. Keyframes live in src/theme/asaroRig.ts.
  *
- * A face. There is no body and there are no hands, which is the constraint
- * the whole rig is built around: the app asks for `wave`, `point`,
- * `thumbsUp` and `shrug` by name, and every one of those is a hand gesture
- * on a normal character. Here they are performed by brow, lid, pupil, mouth,
- * cheek, head and the crest on the crown — see src/theme/asaroRig.ts, where
- * the eight performances live as keyframe data.
- *
- * It is clay — a soft, unsaturated terracotta — and it stays clay in both
- * themes. What the theme changes is only what the ground demands. The rim,
- * not the fill, is what holds its edge on the light ground; see
- * src/theme/asaroRig.ts for why that trade buys a better colour.
- *
- * Everything moves in Reanimated worklets on the UI thread. Nothing here
- * runs per-frame in JS, so a busy JS thread — a list re-rendering, a sync
- * landing — cannot make the face stutter. The idle life (breath, blink,
- * gaze drift) is deliberately irregular; a face that blinks on a metronome
- * reads as a machine.
+ * Everything moves in Reanimated worklets on the UI thread — nothing runs
+ * per-frame in JS, so a busy JS thread cannot make the face stutter. The idle
+ * life (breath, blink, gaze drift) is deliberately irregular: a face that
+ * blinks on a metronome reads as a machine.
  */
 import React, {
     forwardRef, useCallback, useEffect, useId, useImperativeHandle, useRef, useState,
@@ -67,11 +57,9 @@ const REST = ASARO_REST;
 const ACTION_NAMES = Object.keys(ASARO_ACTIONS) as AsaroAction[];
 
 /**
- * Channels, transposed.
- *
- * A worklet cannot index an object by a dynamic key without dragging the
- * whole table across the bridge, so each channel becomes one array-of-arrays
- * captured once at module load and sampled by action index.
+ * Channels, transposed. A worklet cannot index an object by a dynamic key
+ * without dragging the whole table across the bridge, so each channel is one
+ * array-of-arrays captured at module load and sampled by action index.
  */
 const T = ACTION_NAMES.map((n) => ASARO_ACTIONS[n].t);
 const C_TIP = ACTION_NAMES.map((n) => ASARO_ACTIONS[n].tip);
@@ -87,6 +75,14 @@ const C_LIDR = ACTION_NAMES.map((n) => ASARO_ACTIONS[n].lidR);
 const C_SQUINT = ACTION_NAMES.map((n) => ASARO_ACTIONS[n].squint);
 const C_MOUTHC = ACTION_NAMES.map((n) => ASARO_ACTIONS[n].mouthC);
 const C_MOUTHO = ACTION_NAMES.map((n) => ASARO_ACTIONS[n].mouthO);
+/*
+ * Optional channel: an action that does not press its lips gets a flat run of
+ * ones, so the eleven tables that predate it need no edit and no default
+ * scattered through the worklet.
+ */
+const C_PRESS = ACTION_NAMES.map(
+    (n) => ASARO_ACTIONS[n].press ?? ASARO_ACTIONS[n].t.map(() => 1),
+);
 const C_CREST = ACTION_NAMES.map((n) => ASARO_ACTIONS[n].crest);
 const C_GX = ACTION_NAMES.map((n) => ASARO_ACTIONS[n].gx);
 const C_GY = ACTION_NAMES.map((n) => ASARO_ACTIONS[n].gy);
@@ -139,6 +135,12 @@ function AsaroBase(
 ) {
     const resolved: AsaroLook = look ?? 'cloth';
     const C = ASARO_LOOKS[resolved] ?? ASARO_LOOKS.cloth;
+    /*
+     * The look's own hair, or the crest the character was designed around.
+     * Both are `{ back, front?, px, py }` so the render path below does not
+     * have to know which it got.
+     */
+    const hair = C.hair ?? { back: R.crest.d, px: R.crest.px, py: R.crest.py };
 
     const cropped = bust ?? size < 48;
     const box = cropped ? R.bustBox : R.viewBox;
@@ -344,8 +346,10 @@ function AsaroBase(
         const o = ch(i, p, C_MOUTHO, REST.mouthO);
         const w = M.w + o * M.wOpen;
         const bow = M.cy + c * M.bow;
-        const lo = bow + o * M.drop + M.lip;
-        const up = bow - M.lip;
+        // Half-thickness, thinned when the lips are pressed.
+        const lip = M.lip * ch(i, p, C_PRESS, 1);
+        const lo = bow + o * M.drop + lip;
+        const up = bow - lip;
         return {
             d: `M${r1(M.cx - w)} ${M.cy} Q${M.cx} ${r1(lo)} ${r1(M.cx + w)} ${M.cy} `
                 + `Q${M.cx} ${r1(up)} ${r1(M.cx - w)} ${M.cy} Z`,
@@ -413,6 +417,22 @@ function AsaroBase(
                 cx={cx} cy={E.cy} rx={E.rx} ry={E.ry}
                 fill="none" stroke={C.eyeRim} strokeWidth={1.5}
             />
+
+            {/* Lashes. Static, like the ilà — the eye beneath them performs,
+                these say whose eye it is. Outer corner only, mirrored by which
+                side of centre this eye sits on. */}
+            {C.lashes && !cropped && R.lashes.strokes.map(([x1, y1, x2, y2]) => {
+                const flip = cx > R.lashes.mirror;
+                const X = (v: number) => (flip ? 2 * R.lashes.mirror - v : v);
+                return (
+                    <Path
+                        key={`${clip}-${x1}`}
+                        d={`M${X(x1)} ${y1} L${X(x2)} ${y2}`}
+                        fill="none" stroke={C.brow} strokeWidth={R.lashes.w}
+                        strokeLinecap="round"
+                    />
+                );
+            })}
         </React.Fragment>
     );
 
@@ -435,13 +455,31 @@ function AsaroBase(
             </Defs>
 
             <AG animatedProps={headProps} originX={R.pivotX} originY={R.pivotY}>
+                {/*
+                  * Hair, behind the head. A look may substitute its own shape
+                  * for the default crest; both sway on the same channel, so a
+                  * `celebrate` throws long hair about exactly as it throws the
+                  * brushstroke.
+                  */}
                 {!cropped && (
-                    <AG animatedProps={crestProps} originX={R.crest.px} originY={R.crest.py}>
-                        <Path d={R.crest.d} fill={C.crest} />
+                    <AG animatedProps={crestProps} originX={hair.px} originY={hair.py}>
+                        <Path d={hair.back} fill={C.crest} />
                     </AG>
                 )}
 
                 <Path d={R.face} fill={C.face} />
+
+                {/*
+                  * A fringe sits in FRONT of the face, which is the only part
+                  * of the head that does. It is drawn before the eyes so it
+                  * can cross the forehead without ever covering them — the
+                  * eyes carry the expression and nothing may sit on them.
+                  */}
+                {!cropped && hair.front && (
+                    <AG animatedProps={crestProps} originX={hair.px} originY={hair.py}>
+                        <Path d={hair.front} fill={C.crest} />
+                    </AG>
+                )}
 
                 {/* Everything soft is clipped to the face, so no extreme of any
                     action can push a cheek or an open mouth past the jaw. */}
@@ -466,7 +504,7 @@ function AsaroBase(
                     {/* Ilà. Static: every other feature performs, these state
                         who the character is. Dropped with the crest below 48px,
                         where three strokes a cheek would only be mud. */}
-                    {!cropped && R.marks.strokes.map(([x1, y1, x2, y2]) => (
+                    {!cropped && C.marks && R.marks.strokes.map(([x1, y1, x2, y2]) => (
                         <React.Fragment key={x1}>
                             <Path
                                 d={`M${x1} ${y1} L${x2} ${y2}`} fill="none"

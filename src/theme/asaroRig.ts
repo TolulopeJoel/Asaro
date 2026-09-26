@@ -1,52 +1,54 @@
 /**
  * Àṣàrò's rig, as data.
  *
- * The character is a face. Not an animal, not a body — a face, with a single
- * tapered crest rising off the crown that gives the silhouette something to
- * own and gives the rig a limb to gesture with. That crest matters more than
- * it looks: the app calls eight actions by name and four of them (`wave`,
- * `point`, `thumbsUp`, `shrug`) are hand gestures on any normal character.
- * With no hands they have to be performed by brow, lid, pupil, mouth, cheek,
- * head and crest alone, and the crest is what keeps them from reading as the
- * same small nod four times over.
+ * The character is a face with a single tapered crest off the crown. The crest
+ * carries more than it looks: four of the named actions (`wave`, `point`,
+ * `thumbsUp`, `shrug`) are hand gestures on a normal character, and with no
+ * hands they must be performed by brow, lid, pupil, mouth, cheek, head and
+ * crest alone. The crest is what stops them reading as the same small nod.
  *
- * Its colour is clay — #c97355 — and it stays clay in both themes. A soft,
- * unsaturated terracotta: warm enough to read as a face rather than an
- * object, quiet enough not to shout on a page about someone's reading.
- * What the look changes is only what the ground demands: a dark rim to hold
- * an edge against ecru, a light one against black, and less ornament in
- * Locked In, which does not do ornament.
- *
- *   fill against Cloth's #efe6d8 ground ......... 2.80:1
- *   rim  against Cloth's #efe6d8 ground ......... 6.99:1
- *   fill against Locked In's #000000 ground ..... 6.07:1
- *
- * The fill alone does not clear 3:1 on ecru, and does not need to. WCAG
- * 1.4.11 asks a graphical object for a 3:1 *boundary*, and the 3px rim is
- * that boundary at 6.99:1. This is the whole reason the rim exists as its
- * own token: reading the rule as "the fill must clear 3:1 on both grounds"
- * confines the character to a narrow mid-dark band — luminance 0.10 to
- * 0.233 — and everything in that band is muddy. Letting the rim carry the
- * edge is what buys a colour worth looking at.
+ * ACCESSIBILITY: the fill (#c97355) is 2.80:1 on Cloth's #efe6d8 ground and
+ * does not need to clear 3:1. WCAG 1.4.11 asks a graphical object for a 3:1
+ * *boundary*, and the 3px rim is that boundary at 6.99:1. This is why the rim
+ * is its own token — requiring the fill itself to clear 3:1 confines the
+ * character to a narrow mid-dark band where everything is muddy.
  *
  * Keyframes are flattened into parallel numeric arrays because the animation
- * runs in Reanimated worklets on the UI thread, and a worklet wants arrays of
- * numbers rather than a tree of objects. Two invariants hold everywhere and
- * the component relies on both:
+ * runs in Reanimated worklets, which want arrays of numbers rather than a tree
+ * of objects. Two invariants the component relies on:
  *
- *   1. every channel array in an action is exactly as long as that action's
- *      `t`, so a channel can be sampled without a bounds check per frame;
+ *   1. every channel array is exactly as long as its action's `t`, so a
+ *      channel can be sampled without a per-frame bounds check;
  *   2. every channel starts and ends at its `ASARO_REST` value, so an action
  *      can be interrupted, replayed or cut short without the face snapping.
  *
- * design/asaro-face.html inlines these same numbers and must be kept in step
- * with this file — it is the prototype the character is judged in.
+ * design/asaro-face.html inlines these same numbers and must be kept in step —
+ * it is the prototype the character is judged in.
  */
 
 export type AsaroAction =
-    | 'wave' | 'nod' | 'point' | 'thumbsUp' | 'celebrate' | 'shrug' | 'sigh' | 'think';
+    | 'wave' | 'nod' | 'point' | 'thumbsUp' | 'celebrate' | 'shrug' | 'sigh' | 'think'
+    /*
+     * Expressions rather than gestures. The eight above are things he DOES; his
+     * personality on the page is carried by how he LOOKS, and the character doc
+     * defines him through five permitted emoji, every one a face. These are
+     * keyframes only — per-eye lids, squint and gaze weight already exist.
+     */
+    | 'deadpan' | 'sideEye' | 'smug' | 'sheepish';
 
-export type AsaroLook = 'cloth';
+/**
+ * Which character is on screen.
+ *
+ * This used to name the THEME a look belonged to, back when there were two
+ * styles; with Colossal gone it had one value and no job. It now names the
+ * character variant the reader has chosen, which is what the reader actually
+ * cares about.
+ *
+ * `pink` is a working name for the visible difference, not a character name —
+ * whether she is Àṣàrò with different hair or somebody with her own name is a
+ * decision about the product, not the rig.
+ */
+export type AsaroLook = 'cloth' | 'pink';
 
 /**
  * One action's keyframes.
@@ -85,6 +87,19 @@ export interface ActionTable {
     // Mouth
     /** −1 full frown … 0 flat … 1 full smile. */
     mouthC: number[];
+    /**
+     * Lip press: 1 the normal lens, below 1 a thinner line, 0 a hairline.
+     *
+     * Optional, because eleven of the twelve actions have no use for it — a
+     * table that omits it presses not at all.
+     *
+     * It exists because "more closed" had nowhere to go. `mouthO` already
+     * bottoms out at 0, so a shut mouth is still a lens of fixed thickness,
+     * and the only remaining lever was `mouthC` — which makes a FROWN rather
+     * than a tighter mouth. Pressed lips are their own expression: somebody
+     * declining to say the thing, which is exactly what a deadpan is.
+     */
+    press?: number[];
     /** 0 shut … 1 wide. */
     mouthO: number[];
 
@@ -99,11 +114,8 @@ export interface ActionTable {
 }
 
 /**
- * The neutral pose.
- *
- * `mouthC` is not zero. At rest the character carries a small smile, because
- * a face sitting at a dead-flat mouth reads as sullen rather than neutral,
- * and this one greets people. Every action begins and ends here.
+ * The neutral pose. Every action begins and ends here. `mouthC` is not zero:
+ * a dead-flat mouth reads as sullen rather than neutral.
  */
 export const ASARO_REST = {
     tip: 0, bob: 0, sq: 1, lean: 0,
@@ -115,11 +127,9 @@ export const ASARO_REST = {
 } as const;
 
 /**
- * Geometry, in a 200×200 viewBox.
- *
- * `bustBox` is the crop used below 48px. It drops the crest and tightens onto
- * the face: a crest sliced off by the viewBox edge reads as a rendering bug,
- * and at 24px the fine end of it would be a single grey pixel anyway.
+ * Geometry, in a 200×200 viewBox. `bustBox` is the crop used below 48px — it
+ * drops the crest and tightens onto the face, since a crest sliced off by the
+ * viewBox edge reads as a rendering bug.
  */
 export const ASARO_RIG = {
     viewBox: '0 0 200 200',
@@ -144,10 +154,8 @@ export const ASARO_RIG = {
         py: 54,
     },
 
-    /**
-     * Eyes. Large on purpose — they carry most of the expression, and they are
-     * the last thing to survive as the character shrinks.
-     */
+    /** Eyes. Large on purpose — they carry most of the expression and are the
+     * last thing to survive as the character shrinks. */
     eye: {
         cy: 104,
         lx: 72,
@@ -176,9 +184,8 @@ export const ASARO_RIG = {
     },
 
     /**
-     * The mouth is generated, not stored — a single filled lens whose two
-     * edges are pulled apart by `mouthO` and bowed by `mouthC`. Shut, the
-     * lens collapses to a drawn line, which is what a closed mouth is.
+     * The mouth is generated, not stored: a filled lens whose edges are pulled
+     * apart by `mouthO` and bowed by `mouthC`. Shut, it collapses to a line.
      */
     mouth: {
         cx: 100,
@@ -197,21 +204,36 @@ export const ASARO_RIG = {
     cheek: { lx: 66, rx: 134, cy: 138, w: 14, h: 8.5 },
 
     /**
-     * Ilà — Yoruba facial marks. Pélé: three near-vertical strokes a cheek.
+     * Ilà — Yoruba facial marks. Pélé: three near-vertical strokes a cheek. The
+     * one thing on the face that is not a performance; every other feature
+     * moves, these say who the character is.
      *
-     * These are the one thing on the face that is not a performance. Every
-     * other feature moves; these say who the character is. The app is called
-     * Àṣàrò and speaks Yoruba-inflected English, and without them the face is
-     * a warm blob that could belong to any app in any country.
+     * Vertical, not horizontal: eyes, brows and mouth all run horizontally, so
+     * abàjà marks blend into them — at 74px the lowest line merges with the
+     * mouth into a smudge. Running against that grain keeps them legible.
      *
-     * Vertical rather than horizontal on purpose. The eyes, brows and mouth
-     * all run horizontally, so horizontal marks (abàjà) blend into them — at
-     * 74px the lowest line merges with the mouth into a smudge. Running
-     * against that grain is what keeps them legible as marks.
-     *
-     * Only the left cheek is stored; the right is this list mirrored about
-     * `mirror`, so the two can never drift apart.
+     * Only the left cheek is stored; the right is mirrored about `mirror`, so
+     * the two can never drift apart.
      */
+    /**
+     * Lashes, on the OUTER corner of the left eye and mirrored for the right.
+     *
+     * The cartoon shorthand for a girl's face, and the reference leans on it
+     * hard. Outer corner only: lashes all the way round read as a doll, and
+     * three short strokes angled up and out is the whole convention.
+     */
+    lashes: {
+        /** Outer corner of the left eye, mirrored for the right. */
+        strokes: [
+            [56, 91, 50, 86],
+            [51, 99, 44, 96],
+            [50, 107, 43, 107],
+        ],
+        mirror: 100,
+        /** Finer than a brow, which it would otherwise compete with. */
+        w: 2,
+    },
+
     marks: {
         strokes: [
             [51, 133, 49, 150],
@@ -220,24 +242,51 @@ export const ASARO_RIG = {
         ],
         mirror: 100,
         w: 3.2,
-        /** Tonal, not graphic. Scarification catches light; drawn at full
-         *  contrast these would read as war paint, which is the wrong register. */
+        /** Tonal, not graphic. Scarification catches light; at full contrast
+         *  these read as war paint, which is the wrong register. */
         opacity: 0.62,
     },
 } as const;
 
-/**
- * Two grounds, one character.
- *
- * `face` is identical in both because that is the point of a signature
- * colour. Everything else is the minimum needed to survive the ground it is
- * standing on.
- */
+/** Per-look palette. Everything but `face` is the minimum needed to survive
+ * the ground the character stands on; `face` is the signature colour. */
+/** Hair geometry a look may substitute for the default crest. */
+export interface HairShape {
+    /** Behind the head, so length can fall past the jaw. */
+    back: string;
+    /** In front of the face. Omit for a silhouette with no fringe. */
+    front?: string;
+    /** Pivot for the sway, in viewBox units. */
+    px: number;
+    py: number;
+}
+
 export const ASARO_LOOKS: Record<AsaroLook, {
     face: string; shade: string; shadeOpacity: number;
     crest: string; rim: string; brow: string; mark: string;
     eyeWhite: string; eyeRim: string; iris: string; pupil: string;
     mouth: string; cheek: string; cheeks: boolean;
+    /**
+     * Whether this look wears the ilà.
+     *
+     * Per-look rather than per-rig because the marks are identity, not
+     * decoration — the render comment calls them the thing that "states who
+     * the character is". A look that does not wear them is a different
+     * person, which is exactly what a second character is.
+     */
+    marks: boolean;
+    /** Lashes at the outer eye corners — see `ASARO_RIG.lashes`. */
+    lashes?: boolean;
+    /**
+     * Alternate hair. Omitted, the look wears `ASARO_RIG.crest` — the single
+     * tapered brushstroke the character was designed around.
+     *
+     * It lives on the LOOK rather than in the rig because it is the thing that
+     * distinguishes one character from another. Everything else in the rig —
+     * where the eyes sit, how far a lid travels, what a nod does — is shared,
+     * which is the point: they are the same performance in two faces.
+     */
+    hair?: HairShape;
 }> = {
     cloth: {
         face: '#c97355',
@@ -257,19 +306,253 @@ export const ASARO_LOOKS: Record<AsaroLook, {
         mark: '#6f3f2f',
         cheek: '#a44b43',
         cheeks: true,
+        marks: false,
+        hair: {
+            /*
+             * Short hair reads from the HAIRLINE, not the outline — the
+             * silhouette barely leaves the skull, so the shape lives in the
+             * front piece and the mass is only a rim above the crown.
+             */
+            back: 'M100 32 C56 32 30 62 28 108 C32 78 58 56 100 56 '
+                + 'C142 56 168 78 172 108 C170 62 144 32 100 32 Z',
+            /** A high hairline, peaked right of centre. */
+            front: 'M36 92 C38 54 64 38 102 38 C136 38 158 48 170 70 '
+                + 'C158 60 146 58 138 62 C126 58 118 60 110 62 '
+                + 'C84 65 54 74 36 92 Z',
+            px: 100,
+            py: 56,
+        },
+    },
+
+    /**
+     * The same rig under long pink hair.
+     *
+     * Only the hair and the colours that sit against it change. The eyes stay
+     * where they are, the lids travel the same distance, and every one of the
+     * twelve actions plays identically — which is the whole reason this is a
+     * look rather than a second rig. A reader who picks her gets the same
+     * character doing the same performances, not a second character who would
+     * need her own twelve tables and her own voice.
+     *
+     * The skin is unchanged. Two faces in the same palette read as two people
+     * rather than as one person and a recolour of them.
+     */
+    pink: {
+        /*
+         * A little lighter than his, and warmer with it. Far enough apart to
+         * read as two people at a glance, close enough that they are plainly
+         * the same clay — a large gap would make them look like a diversity
+         * swatch rather than a pair.
+         */
+        face: '#dd8f6f',
+        shade: '#c67a5f',
+        shadeOpacity: 0.34,
+        // The crest is unused here — `hair` replaces it — but a look must
+        // carry the colour in case the shape is ever dropped back.
+        crest: '#c4658c',
+        rim: '#6f3f2f',
+        brow: '#44271d',
+        eyeWhite: '#ffffff',
+        eyeRim: 'rgba(0,0,0,0.18)',
+        iris: '#5a3426',
+        pupil: '#180e0a',
+        mouth: '#502e22',
+        mark: '#6f3f2f',
+        cheek: '#b85d52',
+        cheeks: true,
+        // No ilà. See `marks` above — they are his, not a default.
+        marks: false,
+        lashes: true,
+        hair: {
+            /*
+             * Tight at the crown, full at the ends. Width carried all the way
+             * up reads as a hood rather than hair; the volume belongs where it
+             * falls. Ends scalloped, since a smooth arc reads as a hem.
+             */
+            back: 'M100 26 C56 26 28 60 26 104 C24 130 14 156 6 182 '
+                + 'C16 176 26 180 32 190 C42 178 56 178 64 190 C74 178 90 178 100 190 '
+                + 'C110 178 126 178 136 190 C144 178 158 178 168 190 C174 180 184 176 194 182 '
+                + 'C186 156 176 130 174 104 C172 60 144 26 100 26 Z',
+            /*
+             * Corners tucked inside the mass at both ends — a fringe that
+             * meets it edge to edge lets the page through as a pale wedge.
+             * Swept lower on the left, so the hairline is not a plain arc.
+             */
+            front: 'M30 96 C34 58 62 36 100 36 C138 36 166 58 170 96 '
+                + 'C160 74 140 62 114 64 C86 66 56 76 30 96 Z',
+            px: 100,
+            py: 60,
+        },
     },
 };
 
 /**
- * The eight performances.
+ * Every performance, gestures and expressions alike.
  *
- * Read the hand gestures carefully — they are the ones that had to be
- * re-invented. `wave` is a rocking head and an eye-smile; `point` is a
- * lean-in with one brow up and the pupils thrown at the target; `thumbsUp`
- * is a wink and a lopsided grin; `shrug` is a held tip with both inner brows
- * up and the gaze sent up and away. None of them share a shape.
+ * The hand gestures are the ones that had to be re-invented without hands:
+ * `wave` is a rocking head and an eye-smile, `point` a lean-in with one brow up
+ * and the pupils thrown at the target, `thumbsUp` a wink and a lopsided grin,
+ * `shrug` a held tip with both inner brows up and the gaze sent up and away.
+ * None of them share a shape.
  */
 export const ASARO_ACTIONS: Record<AsaroAction, ActionTable> = {
+    /**
+     * "Interesting." The stillness IS the performance — every other action
+     * moves the head, this one refuses. The mouth flattens below rest, one brow
+     * holds up, and the only event is a single slow blink. The gaze seizes dead
+     * centre: he is looking at you, waiting.
+     */
+    deadpan: {
+        ms: 1400,
+        /*
+         * Snap in, hold a long time, leave. Most actions ease through their
+         * middle; this one has to ARRIVE and then refuse to move, because the
+         * expression is the absence of reaction and an expression still
+         * travelling reads as one.
+         */
+        t: /*      */[0, 0.07, 0.18, 0.5, 0.62, 0.9, 1],
+        tip: /*    */[0, 0, 0, 0, 0, 0, 0],
+        bob: /*    */[0, 0, 0, 0, 0, 0, 0],
+        sq: /*     */[1, 1, 1, 1, 1, 1, 1],
+        lean: /*   */[0, 0, 0, 0, 0, 0, 0],
+        browL: /*  */[0, 0, 0, 0, 0, 0, 0],
+        browR: /*  */[0, -6, -11, -11, -11, -10, 0],
+        tiltL: /*  */[0, 0, 0, 0, 0, 0, 0],
+        tiltR: /*  */[0, -2, -5, -5, -5, -4, 0],
+        /*
+         * Lowered and held — no scripted blink.
+         *
+         * There was one, mid-hold, and it was wrong twice. A brow held up is
+         * a look being sustained, and blinking under it breaks exactly the
+         * sustain the expression is made of. It was also redundant: the
+         * involuntary blink runs on its own irregular schedule and the eye
+         * takes whichever lid is more closed, so the face blinks here anyway
+         * — at a natural moment rather than a scheduled one, which is the
+         * whole reason that loop is irregular.
+         */
+        lidL: /*   */[0, 0.16, 0.22, 0.22, 0.22, 0.2, 0],
+        lidR: /*   */[0, 0.16, 0.22, 0.22, 0.22, 0.2, 0],
+        squint: /* */[0, 0, 0, 0, 0, 0, 0],
+        /*
+         * BELOW flat, and held there.
+         *
+         * `mouthC` rests at 0.3, which is already a smile — the face is
+         * pleasant by default. A deadpan that only eases to 0.06 is still
+         * curving upward, so he sits there grinning through the one
+         * expression whose entire content is that he is not amused. Flat is
+         * 0; this goes just past it and stays.
+         */
+        mouthC: /* */[0.3, 0.05, -0.08, -0.08, -0.08, -0.06, 0.3],
+        mouthO: /* */[0, 0, 0, 0, 0, 0, 0],
+        // Held thin. The mouth is shut either way; this is it being held shut.
+        press: /*  */[1, 0.8, 0.45, 0.45, 0.45, 0.6, 1],
+        crest: /*  */[0, 2, 3, 3, 3, 2, 0],
+        gx: /*     */[0, 0, 0, 0, 0, 0, 0],
+        gy: /*     */[0, 0, 0, 0, 0, 0, 0],
+        gw: /*     */[0, 0.9, 0.95, 0.95, 0.95, 0.9, 0],
+    },
+
+    /**
+     * 👀 Watching — "I noticed. I always notice." The head leans AWAY while the
+     * eyes go the other way, which is what makes a look sly rather than
+     * curious; `point` leans in with the same channels.
+     */
+    sideEye: {
+        ms: 1500,
+        t: /*      */[0, 0.18, 0.4, 0.72, 0.88, 1],
+        tip: /*    */[0, 1, 2, 2, 1, 0],
+        bob: /*    */[0, 0, 0, 0, 0, 0],
+        sq: /*     */[1, 1, 1, 1, 1, 1],
+        lean: /*   */[0, -2, -3, -3, -1, 0],
+        browL: /*  */[0, -4, -6, -6, -3, 0],
+        browR: /*  */[0, 2, 3, 3, 1, 0],
+        tiltL: /*  */[0, -2, -3, -3, -1, 0],
+        tiltR: /*  */[0, 3, 5, 5, 2, 0],
+        lidL: /*   */[0, 0.32, 0.46, 0.46, 0.24, 0],
+        lidR: /*   */[0, 0.32, 0.46, 0.46, 0.24, 0],
+        squint: /* */[0, 0.08, 0.14, 0.14, 0.07, 0],
+        // Flat, for the same reason as deadpan: 0.3 is a smile, not neutral.
+        mouthC: /* */[0.3, 0.1, -0.04, -0.04, 0.08, 0.3],
+        mouthO: /* */[0, 0, 0, 0, 0, 0],
+        crest: /*  */[0, -5, -7, -7, -3, 0],
+        // Held, not swept. A look that travels is a glance; one that stays is a stare.
+        gx: /*     */[0, 0.65, 0.88, 0.88, 0.5, 0],
+        gy: /*     */[0, 0.05, 0.08, 0.08, 0.04, 0],
+        gw: /*     */[0, 1, 1, 1, 0.6, 0],
+    },
+
+    /**
+     * 😌 Smug. "I'll allow it."
+     *
+     * The first attempt was closed eyes and a broad grin, and it read as
+     * CONTENT — a different feeling entirely. Bliss and self-satisfaction use
+     * the same parts arranged oppositely:
+     *
+     *   **Half-lidded, not shut.** Closed eyes are enjoyment turned inward.
+     *   Smugness is aimed at somebody, so the eyes stay open enough to aim.
+     *
+     *   **Chin up, gaze down.** The head lifts while the eyes drop — looking
+     *   down your nose at a person, the whole posture in two channels, and
+     *   the thing the first version missed entirely.
+     *
+     *   **A small mouth, pressed.** A wide smile is joy. This is a contained
+     *   curve held closed, because he is enjoying something he is not saying.
+     */
+    smug: {
+        ms: 1100,
+        t: /*      */[0, 0.2, 0.45, 0.72, 0.9, 1],
+        tip: /*    */[0, 2, 4, 4, 2, 0],
+        // Negative is up: the chin lifts.
+        bob: /*    */[0, -3, -5, -5, -2, 0],
+        sq: /*     */[1, 1.01, 1.02, 1.01, 1, 1],
+        lean: /*   */[0, 0, 0, 0, 0, 0],
+        // One brow up, the other still. Two raised is surprise; one is a verdict.
+        browL: /*  */[0, -1, -1, -1, 0, 0],
+        browR: /*  */[0, -5, -8, -8, -4, 0],
+        tiltL: /*  */[0, 0, 0, 0, 0, 0],
+        tiltR: /*  */[0, -2, -4, -4, -2, 0],
+        lidL: /*   */[0, 0.3, 0.48, 0.48, 0.24, 0],
+        lidR: /*   */[0, 0.3, 0.48, 0.48, 0.24, 0],
+        squint: /* */[0, 0.2, 0.32, 0.32, 0.15, 0],
+        mouthC: /* */[0.3, 0.42, 0.55, 0.55, 0.42, 0.3],
+        mouthO: /* */[0, 0, 0, 0, 0, 0],
+        // Held closed — he is enjoying something he is not going to say.
+        press: /*  */[1, 0.85, 0.7, 0.7, 0.85, 1],
+        crest: /*  */[0, 5, 8, 8, 4, 0],
+        gx: /*     */[0, 0.1, 0.16, 0.16, 0.08, 0],
+        // Down, while the head goes up. This is the line that makes it smug.
+        gy: /*     */[0, 0.2, 0.3, 0.3, 0.14, 0],
+        gw: /*     */[0, 0.85, 0.95, 0.95, 0.5, 0],
+    },
+
+    /**
+     * 😅 He knows he is being a lot — the softening the character doc says
+     * always arrives last. Both inner brows go up like `shrug`, but the gaze
+     * goes DOWN and away rather than up: the difference between "who knows" and
+     * "yes, alright, I hear myself".
+     */
+    sheepish: {
+        ms: 1300,
+        t: /*      */[0, 0.15, 0.4, 0.66, 0.86, 1],
+        tip: /*    */[0, -4, -6, -5, -2, 0],
+        bob: /*    */[0, 1, 2, 2, 1, 0],
+        sq: /*     */[1, 0.99, 0.98, 0.99, 1, 1],
+        lean: /*   */[0, -2, -3, -3, -1, 0],
+        browL: /*  */[0, -7, -10, -9, -4, 0],
+        browR: /*  */[0, -7, -10, -9, -4, 0],
+        tiltL: /*  */[0, -5, -7, -6, -3, 0],
+        tiltR: /*  */[0, 5, 7, 6, 3, 0],
+        lidL: /*   */[0, 0.2, 0.3, 0.26, 0.12, 0],
+        lidR: /*   */[0, 0.2, 0.3, 0.26, 0.12, 0],
+        squint: /* */[0, 0.26, 0.42, 0.36, 0.18, 0],
+        mouthC: /* */[0.3, 0.55, 0.7, 0.64, 0.45, 0.3],
+        mouthO: /* */[0, 0.08, 0.13, 0.1, 0.04, 0],
+        crest: /*  */[0, -9, -13, -11, -5, 0],
+        gx: /*     */[0, -0.42, -0.62, -0.56, -0.3, 0],
+        gy: /*     */[0, 0.22, 0.32, 0.28, 0.14, 0],
+        gw: /*     */[0, 0.85, 0.95, 0.85, 0.45, 0],
+    },
+
     /** Hello. The head rocks, the eyes crease, the crest whips across. */
     wave: {
         ms: 920,
