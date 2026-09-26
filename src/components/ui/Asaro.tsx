@@ -88,26 +88,45 @@ const C_GX = ACTION_NAMES.map((n) => ASARO_ACTIONS[n].gx);
 const C_GY = ACTION_NAMES.map((n) => ASARO_ACTIONS[n].gy);
 const C_GW = ACTION_NAMES.map((n) => ASARO_ACTIONS[n].gw);
 
-/**
- * Each action's most expressive moment: the keyframe furthest from rest, with
- * every channel scaled by its own range. Held still under reduced motion.
- */
-const PEAK_T = (() => {
+/** How far each keyframe is from rest, with every channel scaled by its own range. */
+const POSE_SCORES = (() => {
     const channels = Object.keys(REST) as (keyof typeof REST)[];
     const scale = Object.fromEntries(channels.map((c) => [c, Math.max(1e-6, ...ACTION_NAMES.flatMap(
         (n) => ASARO_ACTIONS[n][c].map((v) => Math.abs(v - REST[c])),
     ))])) as Record<keyof typeof REST, number>;
     return ACTION_NAMES.map((n) => {
         const A = ASARO_ACTIONS[n];
-        let best = 0;
-        let bestScore = -1;
-        A.t.forEach((_, k) => {
-            const score = channels.reduce((sum, c) => sum + Math.abs(A[c][k] - REST[c]) / scale[c], 0);
-            if (score > bestScore) { bestScore = score; best = k; }
-        });
-        return A.t[best];
+        return A.t.map((_, k) => channels.reduce((sum, c) => sum + Math.abs(A[c][k] - REST[c]) / scale[c], 0));
     });
 })();
+
+/** Each action's fullest pose: where `hold` stops, and what reduced motion shows. */
+const PEAK_T = ACTION_NAMES.map((n, i) => {
+    const s = POSE_SCORES[i];
+    return ASARO_ACTIONS[n].t[s.indexOf(Math.max(...s))];
+});
+
+/**
+ * Where each action pauses: its last strong pose before settling. Not the
+ * peak, which in a rhythmic gesture comes first and would stall it mid-rock.
+ */
+const BEAT_T = ACTION_NAMES.map((n, i) => {
+    const s = POSE_SCORES[i];
+    const strong = 0.85 * Math.max(...s);
+    let k = s.length - 1;
+    while (k > 0 && s[k] < strong) k--;
+    return ASARO_ACTIONS[n].t[k];
+});
+
+/** Wait for the screen to settle, so the first movement is seen. */
+const START_DELAY_MS = 400;
+/** How long each action holds its last strong pose. */
+const BEAT_MS = 400;
+
+/** From `action` changing to him being back at rest. */
+export function performanceMs(action: AsaroAction) {
+    return START_DELAY_MS + ASARO_ACTIONS[action].ms + BEAT_MS;
+}
 
 let reportedReduceMotion = false;
 
@@ -404,27 +423,39 @@ function AsaroBase(
         };
     }, [aimX, aimY, mood, reduceMotion, gazeX, gazeY]);
 
-    const play = useCallback((name: AsaroAction, keep: boolean) => {
+    const play = useCallback((name: AsaroAction, keep: boolean, delay: number) => {
         const A = ASARO_ACTIONS[name];
         if (!A) return;
         if (actionTimer.current) clearTimeout(actionTimer.current);
         cancelAnimation(prog);
         const i = ACTION_NAMES.indexOf(name);
         act.value = i;
-        // Reduced motion shows the peak still rather than moving to it.
-        const end = keep ? PEAK_T[i] : 1;
-        prog.value = reduceMotion ? PEAK_T[i] : 0;
-        if (!reduceMotion) prog.value = withTiming(end, { duration: A.ms * end, easing: Easing.linear });
+        if (reduceMotion) {
+            // The pose, shown still rather than moved to.
+            prog.value = PEAK_T[i];
+        } else if (keep) {
+            prog.value = 0;
+            prog.value = withDelay(delay, withTiming(PEAK_T[i], {
+                duration: A.ms * PEAK_T[i], easing: Easing.linear,
+            }));
+        } else {
+            const b = BEAT_T[i];
+            prog.value = 0;
+            prog.value = withDelay(delay, withSequence(
+                withTiming(b, { duration: A.ms * b, easing: Easing.linear }),
+                withDelay(BEAT_MS, withTiming(1, { duration: A.ms * (1 - b), easing: Easing.linear })),
+            ));
+        }
         if (keep) return;
         actionTimer.current = setTimeout(() => {
             act.value = -1;
             actionTimer.current = null;
-        }, A.ms + 40);
+        }, delay + A.ms + BEAT_MS + 40);
     }, [act, prog, reduceMotion]);
 
     // A replay is a reaction, never a held state.
-    useImperativeHandle(ref, () => ({ play: (name) => play(name, false) }), [play]);
-    useEffect(() => { if (action) play(action, hold); }, [action, hold, play]);
+    useImperativeHandle(ref, () => ({ play: (name) => play(name, false, 0) }), [play]);
+    useEffect(() => { if (action) play(action, hold, START_DELAY_MS); }, [action, hold, play]);
 
     // ---- animated channels -------------------------------------------------
 
