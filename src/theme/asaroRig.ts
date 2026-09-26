@@ -116,11 +116,15 @@ export interface ActionTable {
 /**
  * The neutral pose. Every action begins and ends here. `mouthC` is not zero:
  * a dead-flat mouth reads as sullen rather than neutral.
+ *
+ * It is a KNOWING rest, not a blank one: lids a little lowered and the right
+ * brow a touch higher, so at rest he has already noticed something. Wide-open
+ * eyes and level brows read as an eager helper, which he is not.
  */
 export const ASARO_REST = {
     tip: 0, bob: 0, sq: 1, lean: 0,
-    browL: 0, browR: 0, tiltL: 0, tiltR: 0,
-    lidL: 0, lidR: 0, squint: 0,
+    browL: 0, browR: -4, tiltL: 0, tiltR: -3,
+    lidL: 0.15, lidR: 0.15, squint: 0,
     mouthC: 0.3, mouthO: 0,
     crest: 0,
     gx: 0, gy: 0, gw: 0,
@@ -245,6 +249,12 @@ export const ASARO_RIG = {
          * half of the lower edge and vanishes when the mouth shuts.
          */
         tongue: 0.75,
+        /**
+         * A standing smirk: the right corner sits `rise` higher than the left
+         * and the bow leans `shift` toward it. Constant, so every performance
+         * keeps the same lopsided mouth.
+         */
+        smirk: { rise: 3, shift: 3 },
     },
 
     cheek: { lx: 66, rx: 134, cy: 138, w: 14, h: 8.5 },
@@ -561,9 +571,9 @@ export const ASARO_ACTIONS: Record<AsaroAction, ActionTable> = {
         sq: /*     */[1, 1, 1, 1, 1, 1, 1],
         lean: /*   */[0, 0, 0, 0, 0, 0, 0],
         browL: /*  */[0, 0, 0, 0, 0, 0, 0],
-        browR: /*  */[0, -6, -11, -11, -11, -10, 0],
+        browR: /*  */[-4, -6, -11, -11, -11, -10, -4],
         tiltL: /*  */[0, 0, 0, 0, 0, 0, 0],
-        tiltR: /*  */[0, -2, -5, -5, -5, -4, 0],
+        tiltR: /*  */[-3, -2, -5, -5, -5, -4, -3],
         /*
          * Lowered and held — no scripted blink.
          *
@@ -575,8 +585,8 @@ export const ASARO_ACTIONS: Record<AsaroAction, ActionTable> = {
          * — at a natural moment rather than a scheduled one, which is the
          * whole reason that loop is irregular.
          */
-        lidL: /*   */[0, 0.16, 0.22, 0.22, 0.22, 0.2, 0],
-        lidR: /*   */[0, 0.16, 0.22, 0.22, 0.22, 0.2, 0],
+        lidL: /*   */[0.15, 0.16, 0.22, 0.22, 0.22, 0.2, 0.15],
+        lidR: /*   */[0.15, 0.16, 0.22, 0.22, 0.22, 0.2, 0.15],
         squint: /* */[0, 0, 0, 0, 0, 0, 0],
         /*
          * BELOW flat, and held there.
@@ -610,11 +620,11 @@ export const ASARO_ACTIONS: Record<AsaroAction, ActionTable> = {
         sq: /*     */[1, 1, 1, 1, 1, 1],
         lean: /*   */[0, -2, -3, -3, -1, 0],
         browL: /*  */[0, -4, -6, -6, -3, 0],
-        browR: /*  */[0, 2, 3, 3, 1, 0],
+        browR: /*  */[-4, 2, 3, 3, 1, -4],
         tiltL: /*  */[0, -2, -3, -3, -1, 0],
-        tiltR: /*  */[0, 3, 5, 5, 2, 0],
-        lidL: /*   */[0, 0.32, 0.46, 0.46, 0.24, 0],
-        lidR: /*   */[0, 0.32, 0.46, 0.46, 0.24, 0],
+        tiltR: /*  */[-3, 3, 5, 5, 2, -3],
+        lidL: /*   */[0.15, 0.32, 0.46, 0.46, 0.24, 0.15],
+        lidR: /*   */[0.15, 0.32, 0.46, 0.46, 0.24, 0.15],
         squint: /* */[0, 0.08, 0.14, 0.14, 0.07, 0],
         // Flat, for the same reason as deadpan: 0.3 is a smile, not neutral.
         mouthC: /* */[0.3, 0.1, -0.04, -0.04, 0.08, 0.3],
@@ -653,11 +663,11 @@ export const ASARO_ACTIONS: Record<AsaroAction, ActionTable> = {
         lean: /*   */[0, 0, 0, 0, 0, 0],
         // One brow up, the other still. Two raised is surprise; one is a verdict.
         browL: /*  */[0, -1, -1, -1, 0, 0],
-        browR: /*  */[0, -5, -8, -8, -4, 0],
+        browR: /*  */[-4, -5, -8, -8, -4, -4],
         tiltL: /*  */[0, 0, 0, 0, 0, 0],
-        tiltR: /*  */[0, -2, -4, -4, -2, 0],
-        lidL: /*   */[0, 0.3, 0.48, 0.48, 0.24, 0],
-        lidR: /*   */[0, 0.3, 0.48, 0.48, 0.24, 0],
+        tiltR: /*  */[-3, -2, -4, -4, -2, -3],
+        lidL: /*   */[0.15, 0.3, 0.48, 0.48, 0.24, 0.15],
+        lidR: /*   */[0.15, 0.3, 0.48, 0.48, 0.24, 0.15],
         squint: /* */[0, 0.2, 0.32, 0.32, 0.15, 0],
         mouthC: /* */[0.3, 0.42, 0.55, 0.55, 0.42, 0.3],
         mouthO: /* */[0, 0, 0, 0, 0, 0],
@@ -684,11 +694,11 @@ export const ASARO_ACTIONS: Record<AsaroAction, ActionTable> = {
         sq: /*     */[1, 0.99, 0.98, 0.99, 1, 1],
         lean: /*   */[0, -2, -3, -3, -1, 0],
         browL: /*  */[0, -7, -10, -9, -4, 0],
-        browR: /*  */[0, -7, -10, -9, -4, 0],
+        browR: /*  */[-4, -7, -10, -9, -4, -4],
         tiltL: /*  */[0, -5, -7, -6, -3, 0],
-        tiltR: /*  */[0, 5, 7, 6, 3, 0],
-        lidL: /*   */[0, 0.2, 0.3, 0.26, 0.12, 0],
-        lidR: /*   */[0, 0.2, 0.3, 0.26, 0.12, 0],
+        tiltR: /*  */[-3, 5, 7, 6, 3, -3],
+        lidL: /*   */[0.15, 0.2, 0.3, 0.26, 0.12, 0.15],
+        lidR: /*   */[0.15, 0.2, 0.3, 0.26, 0.12, 0.15],
         squint: /* */[0, 0.26, 0.42, 0.36, 0.18, 0],
         mouthC: /* */[0.3, 0.55, 0.7, 0.64, 0.45, 0.3],
         mouthO: /* */[0, 0.08, 0.13, 0.1, 0.04, 0],
@@ -707,11 +717,11 @@ export const ASARO_ACTIONS: Record<AsaroAction, ActionTable> = {
         sq: /*     */[1, 1.03, 1, 1.03, 1.01, 1],
         lean: /*   */[0, -2, 2, -2, 1, 0],
         browL: /*  */[0, -6, -5, -6, -3, 0],
-        browR: /*  */[0, -6, -5, -6, -3, 0],
+        browR: /*  */[-4, -6, -5, -6, -3, -4],
         tiltL: /*  */[0, -4, -3, -4, -2, 0],
-        tiltR: /*  */[0, 4, 3, 4, 2, 0],
-        lidL: /*   */[0, 0, 0, 0, 0, 0],
-        lidR: /*   */[0, 0, 0, 0, 0, 0],
+        tiltR: /*  */[-3, 4, 3, 4, 2, -3],
+        lidL: /*   */[0.15, 0, 0, 0, 0, 0.15],
+        lidR: /*   */[0.15, 0, 0, 0, 0, 0.15],
         squint: /* */[0, 0.42, 0.5, 0.46, 0.25, 0],
         mouthC: /* */[0.3, 0.9, 1, 0.95, 0.7, 0.3],
         mouthO: /* */[0, 0.22, 0.3, 0.24, 0.1, 0],
@@ -731,11 +741,11 @@ export const ASARO_ACTIONS: Record<AsaroAction, ActionTable> = {
         sq: /*     */[1, 0.965, 1.02, 0.97, 1.01, 1],
         lean: /*   */[0, 0, 0, 0, 0, 0],
         browL: /*  */[0, 2, -3, 2, -2, 0],
-        browR: /*  */[0, 2, -3, 2, -2, 0],
+        browR: /*  */[-4, 2, -3, 2, -2, -4],
         tiltL: /*  */[0, 0, 0, 0, 0, 0],
-        tiltR: /*  */[0, 0, 0, 0, 0, 0],
-        lidL: /*   */[0, 0.35, 0, 0.3, 0, 0],
-        lidR: /*   */[0, 0.35, 0, 0.3, 0, 0],
+        tiltR: /*  */[-3, 0, 0, 0, 0, -3],
+        lidL: /*   */[0.15, 0.35, 0, 0.3, 0, 0.15],
+        lidR: /*   */[0.15, 0.35, 0, 0.3, 0, 0.15],
         squint: /* */[0, 0.1, 0.2, 0.12, 0.08, 0],
         mouthC: /* */[0.3, 0.5, 0.6, 0.55, 0.45, 0.3],
         mouthO: /* */[0, 0, 0.05, 0, 0, 0],
@@ -754,11 +764,11 @@ export const ASARO_ACTIONS: Record<AsaroAction, ActionTable> = {
         sq: /*     */[1, 1.04, 1.05, 1.03, 1.01, 1],
         lean: /*   */[0, 5, 9, 8, 3, 0],
         browL: /*  */[0, -1, -2, -2, -1, 0],
-        browR: /*  */[0, -9, -11, -10, -5, 0],
+        browR: /*  */[-4, -9, -11, -10, -5, -4],
         tiltL: /*  */[0, 2, 3, 3, 1, 0],
-        tiltR: /*  */[0, -7, -9, -8, -4, 0],
-        lidL: /*   */[0, 0, 0, 0, 0, 0],
-        lidR: /*   */[0, 0, 0, 0, 0, 0],
+        tiltR: /*  */[-3, -7, -9, -8, -4, -3],
+        lidL: /*   */[0.15, 0, 0, 0, 0, 0.15],
+        lidR: /*   */[0.15, 0, 0, 0, 0, 0.15],
         squint: /* */[0, 0.05, 0.12, 0.1, 0.05, 0],
         // Opens on the call, then settles into a knowing smile.
         mouthC: /* */[0.3, 0.15, 0.25, 0.75, 0.6, 0.3],
@@ -779,11 +789,11 @@ export const ASARO_ACTIONS: Record<AsaroAction, ActionTable> = {
         lean: /*   */[0, 0, 0, 0, 0, 0],
         // Left brow presses down into the wink while the right one lifts.
         browL: /*  */[0, 3, 4, 3, 1, 0],
-        browR: /*  */[0, -7, -9, -7, -3, 0],
+        browR: /*  */[-4, -7, -9, -7, -3, -4],
         tiltL: /*  */[0, 0, 0, 0, 0, 0],
-        tiltR: /*  */[0, -5, -6, -5, -2, 0],
-        lidL: /*   */[0, 0.9, 1, 0.85, 0.2, 0],
-        lidR: /*   */[0, 0, 0, 0, 0, 0],
+        tiltR: /*  */[-3, -5, -6, -5, -2, -3],
+        lidL: /*   */[0.15, 0.9, 1, 0.85, 0.2, 0.15],
+        lidR: /*   */[0.15, 0, 0, 0, 0, 0.15],
         squint: /* */[0, 0.15, 0.2, 0.18, 0.08, 0],
         mouthC: /* */[0.3, 0.85, 1, 0.95, 0.6, 0.3],
         mouthO: /* */[0, 0.08, 0.14, 0.1, 0.03, 0],
@@ -802,11 +812,11 @@ export const ASARO_ACTIONS: Record<AsaroAction, ActionTable> = {
         sq: /*     */[1, 1.08, 0.94, 1.07, 0.96, 1.02, 1],
         lean: /*   */[0, -3, 3, -3, 2, -1, 0],
         browL: /*  */[0, -11, -9, -11, -8, -4, 0],
-        browR: /*  */[0, -11, -9, -11, -8, -4, 0],
+        browR: /*  */[-4, -11, -9, -11, -8, -4, -4],
         tiltL: /*  */[0, -3, -2, -3, -2, -1, 0],
-        tiltR: /*  */[0, 3, 2, 3, 2, 1, 0],
-        lidL: /*   */[0, 0, 0, 0, 0, 0, 0],
-        lidR: /*   */[0, 0, 0, 0, 0, 0, 0],
+        tiltR: /*  */[-3, 3, 2, 3, 2, 1, -3],
+        lidL: /*   */[0.15, 0, 0, 0, 0, 0, 0.15],
+        lidR: /*   */[0.15, 0, 0, 0, 0, 0, 0.15],
         // Eyes go wide on the launch, then crease shut at the top of each hop.
         squint: /* */[0, 0.1, 0.5, 0.15, 0.55, 0.35, 0],
         mouthC: /* */[0.3, 1, 1, 1, 1, 0.7, 0.3],
@@ -826,13 +836,13 @@ export const ASARO_ACTIONS: Record<AsaroAction, ActionTable> = {
         sq: /*     */[1, 0.97, 0.96, 0.97, 0.99, 1],
         lean: /*   */[0, -3, -4, -4, -2, 0],
         browL: /*  */[0, -7, -9, -8, -4, 0],
-        browR: /*  */[0, -7, -9, -8, -4, 0],
+        browR: /*  */[-4, -7, -9, -8, -4, -4],
         // Inner ends up: the difference between puzzled and annoyed.
         tiltL: /*  */[0, -9, -11, -10, -5, 0],
-        tiltR: /*  */[0, 9, 11, 10, 5, 0],
+        tiltR: /*  */[-3, 9, 11, 10, 5, -3],
         // Half-lidded rather than creased — this is not a smile.
-        lidL: /*   */[0, 0.28, 0.35, 0.32, 0.15, 0],
-        lidR: /*   */[0, 0.28, 0.35, 0.32, 0.15, 0],
+        lidL: /*   */[0.15, 0.28, 0.35, 0.32, 0.15, 0.15],
+        lidR: /*   */[0.15, 0.28, 0.35, 0.32, 0.15, 0.15],
         squint: /* */[0, 0, 0, 0, 0, 0],
         mouthC: /* */[0.3, 0.05, 0, 0.05, 0.15, 0.3],
         mouthO: /* */[0, 0.06, 0.08, 0.07, 0.03, 0],
@@ -852,11 +862,11 @@ export const ASARO_ACTIONS: Record<AsaroAction, ActionTable> = {
         sq: /*     */[1, 1.05, 1.06, 0.94, 0.97, 1],
         lean: /*   */[0, 0, 0, 0, 0, 0],
         browL: /*  */[0, -5, -6, 5, 3, 0],
-        browR: /*  */[0, -5, -6, 5, 3, 0],
+        browR: /*  */[-4, -5, -6, 5, 3, -4],
         tiltL: /*  */[0, -3, -4, -7, -4, 0],
-        tiltR: /*  */[0, 3, 4, 7, 4, 0],
-        lidL: /*   */[0, 0.15, 0.1, 0.7, 0.45, 0],
-        lidR: /*   */[0, 0.15, 0.1, 0.7, 0.45, 0],
+        tiltR: /*  */[-3, 3, 4, 7, 4, -3],
+        lidL: /*   */[0.15, 0.15, 0.1, 0.7, 0.45, 0.15],
+        lidR: /*   */[0.15, 0.15, 0.1, 0.7, 0.45, 0.15],
         squint: /* */[0, 0, 0, 0, 0, 0],
         mouthC: /* */[0.3, 0.2, 0.15, -0.4, -0.2, 0.3],
         mouthO: /* */[0, 0.12, 0.18, 0.3, 0.1, 0],
@@ -876,11 +886,11 @@ export const ASARO_ACTIONS: Record<AsaroAction, ActionTable> = {
         lean: /*   */[0, -2, -3, -3, -1, 2, 0],
         // One brow questioning, the other furrowed — until both shoot up on the aha.
         browL: /*  */[0, -8, -10, -10, -5, -12, 0],
-        browR: /*  */[0, 4, 6, 6, 2, -12, 0],
+        browR: /*  */[-4, 4, 6, 6, 2, -12, -4],
         tiltL: /*  */[0, -5, -7, -7, -3, -3, 0],
-        tiltR: /*  */[0, -3, -5, -5, -2, 4, 0],
-        lidL: /*   */[0, 0.1, 0.15, 0.15, 0.08, 0, 0],
-        lidR: /*   */[0, 0.3, 0.38, 0.38, 0.18, 0, 0],
+        tiltR: /*  */[-3, -3, -5, -5, -2, 4, -3],
+        lidL: /*   */[0.15, 0.1, 0.15, 0.15, 0.08, 0, 0.15],
+        lidR: /*   */[0.15, 0.3, 0.38, 0.38, 0.18, 0, 0.15],
         squint: /* */[0, 0.1, 0.15, 0.15, 0.08, 0.3, 0],
         mouthC: /* */[0.3, -0.1, -0.15, -0.15, 0.1, 0.85, 0.3],
         mouthO: /* */[0, 0.05, 0.08, 0.08, 0.05, 0.3, 0],

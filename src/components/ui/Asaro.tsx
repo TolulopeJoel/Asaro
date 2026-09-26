@@ -6,7 +6,7 @@
  *
  * Everything moves in Reanimated worklets on the UI thread — nothing runs
  * per-frame in JS, so a busy JS thread cannot make the face stutter. The idle
- * life (breath, blink, gaze drift) is deliberately irregular: a face that
+ * life (breath, blink, a watchful gaze) is deliberately irregular: a face that
  * blinks on a metronome reads as a machine.
  */
 import React, {
@@ -15,7 +15,7 @@ import React, {
 import { AccessibilityInfo } from 'react-native';
 import Animated, {
     Easing, cancelAnimation, useAnimatedProps, useSharedValue, withRepeat,
-    withSequence, withTiming,
+    withDelay, withSequence, withTiming,
 } from 'react-native-reanimated';
 import Svg, {
     Circle, ClipPath, Defs, Ellipse, G, LinearGradient, Path, Stop,
@@ -279,9 +279,9 @@ function AsaroBase(
         };
     }, [reduceMotion, blink]);
 
-    // Gaze — follow a target, or drift when none is given. Depending on the
+    // Gaze — follow a target, or watch when none is given. Depending on the
     // coordinates rather than the object keeps a fresh literal each render
-    // from restarting the drift on every parent re-render.
+    // from restarting the loop on every parent re-render.
     const aimX = lookAt?.x;
     const aimY = lookAt?.y;
     useEffect(() => {
@@ -299,13 +299,31 @@ function AsaroBase(
         }
         let alive = true;
         let id: ReturnType<typeof setTimeout>;
-        const drift = () => {
+        /*
+         * He watches: the eyes mostly hold the reader, settling a little each
+         * time, and now and then dart off to clock something and come back.
+         * A wandering gaze reads as dreamy, which he is not.
+         */
+        const watch = () => {
             if (!alive) return;
-            gazeX.value = withTiming((Math.random() - 0.5) * 1.3, { duration: 1600 });
-            gazeY.value = withTiming((Math.random() - 0.5) * 1.0, { duration: 1600 });
-            id = setTimeout(drift, 2800 + Math.random() * 3400);
+            if (Math.random() < 0.3) {
+                const side = Math.random() < 0.5 ? -1 : 1;
+                const hold = 700 + Math.random() * 500;
+                gazeX.value = withSequence(
+                    withTiming(side * (0.65 + Math.random() * 0.25), { duration: 170 }),
+                    withDelay(hold, withTiming((Math.random() - 0.5) * 0.2, { duration: 260 })),
+                );
+                gazeY.value = withSequence(
+                    withTiming((Math.random() - 0.5) * 0.4, { duration: 170 }),
+                    withDelay(hold, withTiming(0, { duration: 260 })),
+                );
+            } else {
+                gazeX.value = withTiming((Math.random() - 0.5) * 0.24, { duration: 900 });
+                gazeY.value = withTiming((Math.random() - 0.5) * 0.2, { duration: 900 });
+            }
+            id = setTimeout(watch, 2200 + Math.random() * 2400);
         };
-        id = setTimeout(drift, 1300);
+        id = setTimeout(watch, 1300);
         return () => {
             alive = false;
             clearTimeout(id);
@@ -426,11 +444,15 @@ function AsaroBase(
 
     // One filled lens. Shut, its two edges collapse onto each other and it
     // reads as a drawn line, which is what a closed mouth actually is.
+    // The smirk tilts the corners and leans both bows toward the raised one.
     const mouthProps = useAnimatedProps(() => {
         const { w, lo, up } = lens(act.value, prog.value);
+        const qx = M.cx + M.smirk.shift;
+        const yl = M.cy + M.smirk.rise;
+        const yr = M.cy - M.smirk.rise;
         return {
-            d: `M${r1(M.cx - w)} ${M.cy} Q${M.cx} ${r1(lo)} ${r1(M.cx + w)} ${M.cy} `
-                + `Q${M.cx} ${r1(up)} ${r1(M.cx - w)} ${M.cy} Z`,
+            d: `M${r1(M.cx - w)} ${yl} Q${qx} ${r1(lo)} ${r1(M.cx + w)} ${yr} `
+                + `Q${qx} ${r1(up)} ${r1(M.cx - w)} ${yl} Z`,
         };
     });
 
@@ -442,9 +464,13 @@ function AsaroBase(
         const y0 = M.cy + 0.375 * d;
         const yc = M.cy + 0.625 * d;
         const top = yc - 2 * o * M.drop * M.tongue;
+        const x0 = M.cx + 0.375 * M.smirk.shift;
+        const qx = M.cx + 0.625 * M.smirk.shift;
+        const yl = r1(y0 + M.smirk.rise / 2);
+        const yr = r1(y0 - M.smirk.rise / 2);
         return {
-            d: `M${r1(M.cx - w / 2)} ${r1(y0)} Q${M.cx} ${r1(yc)} ${r1(M.cx + w / 2)} ${r1(y0)} `
-                + `Q${M.cx} ${r1(top)} ${r1(M.cx - w / 2)} ${r1(y0)} Z`,
+            d: `M${r1(x0 - w / 2)} ${yl} Q${qx} ${r1(yc)} ${r1(x0 + w / 2)} ${yr} `
+                + `Q${qx} ${r1(top)} ${r1(x0 - w / 2)} ${yl} Z`,
             opacity: o > 0.01 ? 1 : 0,
         };
     });
