@@ -5,30 +5,19 @@ import { Spacing } from '../theme/spacing';
 import { Asaro, AsaroAction, AsaroMood, Card, Text } from './ui';
 
 /**
- * The return-after-absence moment.
- *
- * Every notification the app sends promises this — "if I don't see you, I'll
- * check up on you" — and until now Home looked identical whether you had been
- * away one day or two months. This is the app keeping its word.
- *
- * It appears only after a real gap, and it never scolds. The voice throughout
- * the app teases and then softens ("But, I care!"), so the longer the absence
- * the *gentler* this gets: a few days earns a cheeky point, a month earns an
- * open door. Guilt is Duolingo's mechanic; it is not the right one for an app
- * about someone's spiritual life.
+ * The return-after-absence card. It appears only after a real gap and never
+ * scolds: the longer the absence, the gentler he gets. See
+ * design/ASARO-CHARACTER.md §4.
  */
 
-/** Below this, being away is just a normal gap. Saying anything would nag. */
+/** Below this, a gap is normal and he says nothing. */
 const QUIET_THRESHOLD = 3;
 
 interface Tier {
     minDays: number;
-    /** What Àṣàrò does on arrival. Warmer the longer you have been gone. */
+    /** What he does on arrival; warmer the longer the gap. */
     action: AsaroAction;
-    /**
-     * How he holds his face afterwards. The longest absences get `sincere`:
-     * "no lecture" and "genuinely fine" are not said with a smirk.
-     */
+    /** How he holds his face afterwards: `sincere` for the longest gaps. */
     mood: AsaroMood;
     heading: string;
     body: string;

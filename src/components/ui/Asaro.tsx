@@ -1,13 +1,9 @@
 /**
- * Àṣàrò — the character. A face with no body and no hands, which is the
- * constraint the rig is built around: `wave`, `point`, `thumbsUp` and `shrug`
- * are hand gestures on a normal character and here are performed by brow, lid,
- * pupil, mouth, cheek, head and crest. Keyframes live in src/theme/asaroRig.ts.
+ * Àṣàrò — the character: a face with no body. Geometry and keyframes live in
+ * src/theme/asaroRig.ts.
  *
- * Everything moves in Reanimated worklets on the UI thread — nothing runs
- * per-frame in JS, so a busy JS thread cannot make the face stutter. The idle
- * life (breath, blink, a watchful gaze) is deliberately irregular: a face that
- * blinks on a metronome reads as a machine.
+ * Everything animates in Reanimated worklets on the UI thread. The idle life
+ * (breath, blink, gaze) is irregular on purpose, so it never looks mechanical.
  */
 import React, {
     forwardRef, useCallback, useEffect, useId, useImperativeHandle, useRef, useState,
@@ -39,15 +35,15 @@ export interface AsaroHandle {
 
 export interface AsaroProps {
     size?: number;
-    /** Overrides the active theme's look. Rarely wanted outside the picker. */
+    /** Which look to show. Defaults to `male`. */
     look?: AsaroLook;
     /** Play on mount, and again whenever this changes. */
     action?: AsaroAction;
     /** Where to look, each axis −1…1. Omit for his idle watch. */
     lookAt?: { x: number; y: number };
-    /** How he holds his face between performances. Defaults to `knowing`. */
+    /** How he holds his face between actions. Defaults to `knowing`. */
     mood?: AsaroMood;
-    /** Crop to the face and drop the crest. Defaults on below 48px. */
+    /** Crop to the face and drop the hair. Defaults on below 48px. */
     bust?: boolean;
     label?: string;
 }
@@ -62,11 +58,7 @@ const SINCERE = ASARO_SINCERE_REST;
 /** Stable ordering so a worklet can address an action by index. */
 const ACTION_NAMES = Object.keys(ASARO_ACTIONS) as AsaroAction[];
 
-/**
- * Channels, transposed. A worklet cannot index an object by a dynamic key
- * without dragging the whole table across the bridge, so each channel is one
- * array-of-arrays captured at module load and sampled by action index.
- */
+/** Channels, transposed: one array per channel, indexed by action, so worklets can sample them. */
 const T = ACTION_NAMES.map((n) => ASARO_ACTIONS[n].t);
 const C_TIP = ACTION_NAMES.map((n) => ASARO_ACTIONS[n].tip);
 const C_BOB = ACTION_NAMES.map((n) => ASARO_ACTIONS[n].bob);
@@ -81,11 +73,7 @@ const C_LIDR = ACTION_NAMES.map((n) => ASARO_ACTIONS[n].lidR);
 const C_SQUINT = ACTION_NAMES.map((n) => ASARO_ACTIONS[n].squint);
 const C_MOUTHC = ACTION_NAMES.map((n) => ASARO_ACTIONS[n].mouthC);
 const C_MOUTHO = ACTION_NAMES.map((n) => ASARO_ACTIONS[n].mouthO);
-/*
- * Optional channel: an action that does not press its lips gets a flat run of
- * ones, so the eleven tables that predate it need no edit and no default
- * scattered through the worklet.
- */
+// Optional channel: an action without `press` gets a run of ones.
 const C_PRESS = ACTION_NAMES.map(
     (n) => ASARO_ACTIONS[n].press ?? ASARO_ACTIONS[n].t.map(() => 1),
 );
@@ -100,12 +88,7 @@ function ease(t: number) {
     return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
 
-/**
- * Sample one channel with per-segment easing.
- *
- * Reanimated's own `interpolate` is linear between stops, which makes a wave
- * look mechanical. Easing within each segment is what gives motion weight.
- */
+/** Sample one channel, eased within each segment (linear looks mechanical). */
 function seg(p: number, times: number[], vals: number[]) {
     'worklet';
     const n = times.length;
@@ -129,26 +112,20 @@ function ch(i: number, p: number, table: number[][], rest: number) {
     return seg(p, T[i], table[i]);
 }
 
-/**
- * A lid channel moved from the knowing rest toward the sincere one by `s`
- * (0…1). Offset rather than replaced, so an action still plays in full on top.
- */
+/** A lid value shifted toward the sincere rest by `s` (0…1), never below open. */
 function lidAt(a: number, s: number, rest: number, sincere: number) {
     'worklet';
     const v = a + s * (sincere - rest);
     return v > 0 ? v : 0;
 }
 
-/** Keeps generated path strings short — a worklet builds one per frame. */
+/** Rounds to one decimal to keep per-frame path strings short. */
 function r1(v: number) {
     'worklet';
     return Math.round(v * 10) / 10;
 }
 
-/**
- * The mouth lens for the running frame: corner half-width, and the lower and
- * upper control heights. Shared by the mouth and the tongue so they cannot part.
- */
+/** The mouth lens for this frame, shared by the mouth and the tongue. */
 function lens(i: number, p: number) {
     'worklet';
     const c = ch(i, p, C_MOUTHC, REST.mouthC);
@@ -206,22 +183,22 @@ function AsaroBase(
     { size = 96, look, action, lookAt, mood = 'knowing', bust, label }: AsaroProps,
     ref: React.Ref<AsaroHandle>,
 ) {
-    const resolved: AsaroLook = look ?? 'cloth';
-    const C = ASARO_LOOKS[resolved] ?? ASARO_LOOKS.cloth;
-    /* The look's own hair, or the crest the character was designed around. */
+    const resolved: AsaroLook = look ?? 'male';
+    const C = ASARO_LOOKS[resolved] ?? ASARO_LOOKS.male;
+    // The look's hair, or the fallback crest.
     const hair: HairShape = C.hair ?? {
         back: R.crest.d, sway: { back: 1, front: 1 }, px: R.crest.px, py: R.crest.py,
     };
     const swayBack = hair.sway.back;
     const swayFront = hair.sway.front;
-    const brows = BROWS[resolved] ?? BROWS.cloth;
+    const brows = BROWS[resolved] ?? BROWS.male;
     const outline = C.head ?? R.face;
 
     const cropped = bust ?? size < 48;
     const box = cropped ? R.bustBox : R.viewBox;
     const [, , vw, vh] = box.split(' ').map(Number);
 
-    /** Clip ids are document-global, so two Àṣàròs on one screen would collide. */
+    /** Unique clip ids, so two faces on one screen do not collide. */
     const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
     const faceClip = `face${uid}`;
     const eyeLClip = `eyeL${uid}`;
@@ -240,7 +217,7 @@ function AsaroBase(
     const prog = useSharedValue(0);
     /** Index into ACTION_NAMES, or −1 when idle. */
     const act = useSharedValue(-1);
-    /** 0 knowing … 1 sincere; eased, so a change of mood is not a cut. */
+    /** 0 knowing … 1 sincere, eased. */
     const sincerity = useSharedValue(mood === 'sincere' ? 1 : 0);
 
     /** Held separately so a new action can cancel the previous one's reset. */
@@ -272,7 +249,7 @@ function AsaroBase(
         return () => cancelAnimation(breath);
     }, [reduceMotion, breath]);
 
-    // Blink, on an irregular schedule — a metronome blink reads as a machine.
+    // Blink, on an irregular schedule.
     useEffect(() => {
         if (reduceMotion) { cancelAnimation(blink); blink.value = 0; return; }
         let alive = true;
@@ -294,9 +271,8 @@ function AsaroBase(
         };
     }, [reduceMotion, blink]);
 
-    // Gaze — follow a target, or watch when none is given. Depending on the
-    // coordinates rather than the object keeps a fresh literal each render
-    // from restarting the loop on every parent re-render.
+    // Gaze — follow a target, or watch when none is given. Depends on the
+    // coordinates, not the object, so a new literal each render does not restart it.
     const aimX = lookAt?.x;
     const aimY = lookAt?.y;
     useEffect(() => {
@@ -314,14 +290,10 @@ function AsaroBase(
         }
         let alive = true;
         let id: ReturnType<typeof setTimeout>;
-        /*
-         * He watches: the eyes mostly hold the reader, settling a little each
-         * time, and now and then dart off to clock something and come back.
-         * A wandering gaze reads as dreamy, which he is not.
-         */
+        // He watches: mostly holds the reader's eye, sometimes darts off and back.
         const watch = () => {
             if (!alive) return;
-            // Sincere, he holds your eye: no clocking glances.
+            // No side glances when sincere.
             if (mood === 'knowing' && Math.random() < 0.3) {
                 const side = Math.random() < 0.5 ? -1 : 1;
                 const hold = 700 + Math.random() * 500;
@@ -407,8 +379,7 @@ function AsaroBase(
         };
     });
 
-    // The involuntary blink and a deliberate wink share one lid, so the eye
-    // takes whichever is more closed rather than letting them cancel out.
+    // Blink and wink share one lid; the eye takes whichever is more closed.
     const lidLProps = useAnimatedProps(() => {
         const a = lidAt(
             ch(act.value, prog.value, C_LIDL, REST.lidL), sincerity.value, REST.lidL, SINCERE.lidL,
@@ -469,10 +440,7 @@ function AsaroBase(
         };
     });
 
-    // One filled lens. Shut, its two edges collapse onto each other and it
-    // reads as a drawn line, which is what a closed mouth actually is.
-    // The smirk tilts the corners and leans both bows toward the raised one;
-    // sincerity takes it away.
+    // One filled lens; shut, it is a line. The smirk tilts it, and sincerity removes the smirk.
     const mouthProps = useAnimatedProps(() => {
         const { w, lo, up } = lens(act.value, prog.value);
         const k = 1 - sincerity.value;
@@ -485,8 +453,7 @@ function AsaroBase(
         };
     });
 
-    // The middle half (t 0.25…0.75) of the lower edge, humped up by how far
-    // the mouth is open. The hump stays under the upper edge at any opening.
+    // Tongue: the middle half (t 0.25…0.75) of the lower edge, humped up as the mouth opens.
     const tongueProps = useAnimatedProps(() => {
         const { o, w, lo } = lens(act.value, prog.value);
         const d = lo - M.cy;
@@ -557,9 +524,7 @@ function AsaroBase(
                     )}
                 </AG>
 
-                {/* Eye rim, under both lids so a lid covers it with the eye;
-                    over the lids it rings a shut eye like a pair of glasses.
-                    Double width, because the clip keeps only the inner half. */}
+                {/* Eye rim, under the lids. Double width: the clip keeps the inner half. */}
                 <Ellipse
                     cx={cx} cy={E.cy} rx={E.rx} ry={E.ry}
                     fill="none" stroke={C.eyeRim} strokeWidth={3}
@@ -567,8 +532,7 @@ function AsaroBase(
             </G>
 
             <G clipPath={`url(#${lidClip})`}>
-                {/* Lower lid. Its top edge bows upward, so a squint makes the
-                    happy ^^ curve rather than just cutting the eye in half. */}
+                {/* Lower lid; its top edge bows up, so a squint makes a happy curve. */}
                 <AG animatedProps={squintP}>
                     <Path
                         d={`M${cx - 28} ${E.cy + 26} Q${cx} ${E.cy - 2} ${cx + 28} ${E.cy + 26} `
@@ -577,8 +541,7 @@ function AsaroBase(
                     />
                 </AG>
 
-                {/* Upper lid, parked just above the eye and dropped to shut it.
-                    Its lash line stops at `lid.hold`, so a shut eye still shows one. */}
+                {/* Upper lid and its line, which stops at `lid.hold`. */}
                 <AG animatedProps={lidP}>
                     <Path d={lidPath(cx)} fill={C.face} />
                 </AG>
@@ -587,9 +550,7 @@ function AsaroBase(
                 </AG>
             </G>
 
-            {/* Lashes. Static, like the ilà — the eye beneath them performs,
-                these say whose eye it is. Outer corner only, mirrored by which
-                side of centre this eye sits on. */}
+            {/* Lashes at the outer corner, mirrored for the right eye. */}
             {C.lashes && !cropped && R.lashes.strokes.map(([x1, y1, x2, y2]) => {
                 const flip = cx > R.lashes.mirror;
                 const X = (v: number) => (flip ? 2 * R.lashes.mirror - v : v);
@@ -660,7 +621,7 @@ function AsaroBase(
                     </AG>
                 )}
 
-                {/* Ears, between the hair and the face, which covers their inner half. */}
+                {/* Ears, between the hair and the face. */}
                 {!cropped && [[R.ear.d, R.ear.inner], [EAR_R, EAR_INNER_R]].map(([d, inner], k) => (
                     <React.Fragment key={d}>
                         <Path
@@ -684,8 +645,7 @@ function AsaroBase(
 
                 <Path d={outline} fill={C.face} />
 
-                {/* Everything soft is clipped to the face, so no extreme of any
-                    action can push a cheek or an open mouth past the jaw. */}
+                {/* Soft features, clipped to the face so nothing spills past the jaw. */}
                 <G clipPath={`url(#${faceClip})`}>
                     <Path d={R.shade} fill={C.shade} opacity={C.shadeOpacity} />
 
@@ -704,9 +664,7 @@ function AsaroBase(
                         </>
                     )}
 
-                    {/* Ilà. Static: every other feature performs, these state
-                        who the character is. Dropped with the crest below 48px,
-                        where three strokes a cheek would only be mud. */}
+                    {/* Ilà, for a look that wears them. */}
                     {!cropped && C.marks && R.marks.strokes.map(([x1, y1, x2, y2]) => (
                         <React.Fragment key={x1}>
                             <Path
@@ -723,7 +681,7 @@ function AsaroBase(
                         </React.Fragment>
                     ))}
 
-                    {/* Nose. Dropped below 48px with the ears, where it would only be mud. */}
+                    {/* Nose, dropped below 48px. */}
                     {!cropped && (
                         <>
                             <Ellipse
@@ -752,11 +710,7 @@ function AsaroBase(
 
                 <Path d={outline} fill="none" stroke={C.rim} strokeWidth={R.rimW} />
 
-                {/*
-                  * Hair in FRONT of the face: over its outline, so the rim does
-                  * not run through the hair, but under the eyes and brows,
-                  * which carry the expression and must never be covered.
-                  */}
+                {/* Hair in front: over the face outline, under the eyes and brows. */}
                 {!cropped && hair.front && (
                     <AG animatedProps={hairFrontProps} originX={hair.px} originY={hair.py}>
                         {hair.fade?.d.map((d) => <Path key={d} d={d} fill={`url(#${fadeFill})`} />)}
