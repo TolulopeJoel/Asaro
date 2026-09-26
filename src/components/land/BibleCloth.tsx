@@ -27,7 +27,7 @@ import { BookCloth, ChapterRef, Tier } from '../../land/cloth';
 import { Cell, layoutCells } from '../../land/plots';
 import { useTheme } from '../../theme/ThemeContext';
 import { Asaro, Text } from '../ui';
-import { Tree } from '../grove/Tree';
+import { Tree, boxOf } from '../grove/Tree';
 import { TERRAIN, mudFor } from './terrain';
 import {
     Speck,
@@ -157,10 +157,11 @@ const FRINGE_STEP = 11;
 const MARKER_SIZE = 48;
 
 /**
- * A tree's width in chapters, by stage: a sprout sits inside its chapter, a
- * tree bearing fruit spreads over its neighbours as a real one would.
+ * A tree's width in chapters, by stage: a seedling about its own chapter, a
+ * tree bearing fruit spread over its neighbours as a real one would.
+ * Seedlings are measured on their fitted box (see `boxOf`), trees on the whole.
  */
-const TREE_SPAN = [0.9, 1.05, 1.25, 1.5, 1.9, 2.4, 2.9, 3.3, 3.7, 4.1];
+const TREE_SPAN = [1.0, 1.15, 1.3, 1.5, 1.6, 2.6, 3.0, 3.4, 3.8, 4.2];
 
 /** A practice's tree, standing on the chapter it was written from. */
 export interface LandTree {
@@ -574,14 +575,16 @@ export function BibleCloth({
               * middle of a tree answers a tap, so a wide canopy does not steal
               * the books beneath it. */}
             {size > 0 && planted.map(({ tree, cell }) => {
+                const box = boxOf(tree.stage, true);
                 const w = size * TREE_SPAN[tree.stage];
-                const h = w * 1.2;
+                const h = (w * box.h) / box.w;
+                // The ground line, y = 112 in the tree's box, meets the chapter's lower part.
                 const left = VERGE_SIDE + (cell.column + 0.5) * size - w / 2;
-                const top = VERGE_DEPTH + (cell.row + 0.85) * size - h * (112 / 120);
+                const top = VERGE_DEPTH + (cell.row + 0.85) * size - h * ((112 - box.y) / box.h);
                 return (
                     <View key={tree.id} pointerEvents="box-none" style={[styles.tree, { left, top, width: w, height: h }]}>
                         <View pointerEvents="none">
-                            <Tree stage={tree.stage} species={tree.species} thirsty={tree.thirsty} size={w} ground={false} />
+                            <Tree stage={tree.stage} species={tree.species} thirsty={tree.thirsty} size={w} fit />
                         </View>
                         {onTreePress && (
                             <Pressable

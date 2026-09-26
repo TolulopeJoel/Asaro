@@ -14,6 +14,25 @@ const TRUNK = '#4a3b27';
 const GREEN = '#5f9e4a';
 const GREEN_DARK = '#4d8a3a';
 const GREEN_LIGHT = '#9fd071';
+/** Around a seedling's leaves, so they keep their shape small and on green ground. */
+const OUTLINE = '#2f4a24';
+
+/**
+ * The part of the 100×120 box each stage actually occupies, soil included.
+ * Seedlings fill only the foot of the box, so drawn in the whole of it they
+ * are a speck; `fit` crops to this instead. Trees use the whole box.
+ */
+export const STAGE_BOX: { x: number; y: number; w: number; h: number }[] = [
+    { x: 30, y: 100, w: 40, h: 20 },
+    { x: 28, y: 92, w: 44, h: 28 },
+    { x: 26, y: 82, w: 48, h: 38 },
+    { x: 24, y: 70, w: 52, h: 50 },
+    { x: 22, y: 56, w: 56, h: 64 },
+];
+const FULL_BOX = { x: 0, y: 0, w: 100, h: 120 };
+
+export const boxOf = (stage: number, fit: boolean) =>
+    fit && stage < FIRST_TREE_STAGE ? STAGE_BOX[stage] : FULL_BOX;
 
 /** Foliage fades toward dry grass when a tree is thirsty; trunk, soil and fruit do not. */
 function fade(hex: string): string {
@@ -46,20 +65,21 @@ function seedling(s: number, leaf: Leaf): React.ReactNode[] {
         pairs.forEach((f, k) => {
             const y = 112 - h * f;
             out.push(
-                <Ellipse key={`l${k}`} cx={43} cy={y} rx={6 + s} ry={3.2 + s * 0.5} fill={leaf(GREEN)} rotation={-28} origin={`43, ${y}`} />,
-                <Ellipse key={`r${k}`} cx={57} cy={y - 2} rx={6 + s} ry={3.2 + s * 0.5} fill={leaf(k % 2 ? GREEN_LIGHT : GREEN_DARK)} rotation={24} origin={`57, ${y - 2}`} />,
+                <Ellipse key={`l${k}`} cx={43} cy={y} rx={6 + s} ry={3.2 + s * 0.5} fill={leaf(GREEN)} stroke={OUTLINE} strokeWidth={0.9} rotation={-28} origin={`43, ${y}`} />,
+                <Ellipse key={`r${k}`} cx={57} cy={y - 2} rx={6 + s} ry={3.2 + s * 0.5} fill={leaf(k % 2 ? GREEN_LIGHT : GREEN_DARK)} stroke={OUTLINE} strokeWidth={0.9} rotation={24} origin={`57, ${y - 2}`} />,
             );
         });
         return out;
     }
-    // Sapling: a thin trunk and the first clusters.
-    out.push(<Path key="trunk" d="M50 112 L50 70" stroke={TRUNK} strokeWidth={3} />);
-    ([[42, 72, 9, GREEN_DARK], [58, 72, 9, GREEN_DARK], [50, 62, 11, GREEN], [50, 80, 6, GREEN_LIGHT]] as const)
+    // Sapling: a thin trunk and the first clusters, still smaller than any young tree.
+    out.push(<Path key="trunk" d="M50 112 L50 78" stroke={TRUNK} strokeWidth={3} />);
+    ([[43, 79, 7.5, GREEN_DARK], [57, 79, 7.5, GREEN_DARK], [50, 70, 9.5, GREEN], [50, 86, 5, GREEN_LIGHT]] as const)
         .forEach(([x, y, r, c], i) => out.push(<Circle key={`c${i}`} cx={x} cy={y} r={r} fill={leaf(c)} />));
     return out;
 }
 
-const scale = (k: number) => [0.6, 0.72, 0.84, 0.94, 1][k];
+/** A young tree starts taller than the sapling before it; growth never looks like shrinking. */
+const scale = (k: number) => [0.72, 0.8, 0.88, 0.95, 1][k];
 
 /** Species from the young-tree stage on. `k` runs 0 (young tree) … 4 (bearing fruit). */
 const SHAPES: Record<SpeciesKey, (k: number, leaf: Leaf) => React.ReactNode[]> = {
@@ -171,17 +191,21 @@ export interface TreeProps {
     species: number;
     thirsty?: boolean;
     size?: number;
-    /** Draw the soil mound under it. Off when planted on the land. */
+    /** Draw the soil mound under it. */
     ground?: boolean;
+    /** Crop a seedling to what it occupies, so it is drawn at `size` rather than lost in a tree's box. */
+    fit?: boolean;
 }
 
-export const Tree = React.memo(({ stage, species, thirsty = false, size = 80, ground = true }: TreeProps) => {
+export const Tree = React.memo(({ stage, species, thirsty = false, size = 80, ground = true, fit = false }: TreeProps) => {
     const leaf: Leaf = thirsty ? fade : (hex => hex);
     const key = SPECIES[species % SPECIES.length].key;
     const body = stage < FIRST_TREE_STAGE ? seedling(stage, leaf) : SHAPES[key](stage - FIRST_TREE_STAGE, leaf);
 
+    const box = boxOf(stage, fit);
+
     return (
-        <Svg width={size} height={size * 1.2} viewBox="0 0 100 120">
+        <Svg width={size} height={(size * box.h) / box.w} viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`}>
             {ground && <Ellipse cx={50} cy={113} rx={18 + stage * 2.4} ry={5} fill={SOIL} />}
             {/* A thirsty tree leans a little, as if it had given up holding itself straight. */}
             <G rotation={thirsty ? 6 : 0} origin="50, 112">{body}</G>

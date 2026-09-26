@@ -14,6 +14,9 @@ import { ScalePressable } from '../ScalePressable';
 import { Text } from '../ui';
 import { Tree } from './Tree';
 
+/** Every tree on one scale, so each stage is plainly bigger than the last. */
+const TREE_SIZE = 84;
+
 const plural = (n: number, cadence: GroveTree['cadence']) =>
     `${n} ${cadence === 'daily' ? (n === 1 ? 'day' : 'days') : (n === 1 ? 'week' : 'weeks')}`;
 
@@ -45,7 +48,7 @@ export function TreeDetail({ tree, divided = true }: { tree: GroveTree; divided?
     return (
         <View style={divided ? [styles.detail, { borderTopColor: colors.border }] : undefined}>
             <View style={styles.detailHead}>
-                <Tree stage={growth.stage} species={species} thirsty={thirsty} size={76} />
+                <Tree stage={growth.stage} species={species} thirsty={thirsty} size={TREE_SIZE} />
                 <View style={styles.detailText}>
                     <Text variant="body" style={styles.detailName}>{item.action}</Text>
                     <Text variant="bodySmall" tone="secondary">{`${shape} at ${item.book_name} ${item.chapter_start}`}</Text>
@@ -98,7 +101,9 @@ export function Grove({ trees }: { trees: GroveTree[] }) {
                             accessibilityState={{ expanded: on }}
                             accessibilityLabel={`${tree.item.action}, ${tree.thirsty ? 'thirsty' : STAGE_NAMES[tree.growth.stage]}`}
                         >
-                            <Tree stage={tree.growth.stage} species={tree.species} thirsty={tree.thirsty} size={72} />
+                            <View style={styles.treeSlot}>
+                                <Tree stage={tree.growth.stage} species={tree.species} thirsty={tree.thirsty} size={TREE_SIZE} />
+                            </View>
                             <Text variant="bodySmall" style={styles.name} numberOfLines={3}>{tree.item.action}</Text>
                             <Text variant="meta" tone="secondary" style={styles.centred}>
                                 {tree.thirsty ? 'thirsty' : STAGE_NAMES[tree.growth.stage]}
@@ -130,6 +135,8 @@ const styles = StyleSheet.create({
     card: { padding: Spacing.md, borderBottomWidth: 3 },
     grid: { flexDirection: 'row', flexWrap: 'wrap' },
     cell: { width: '33.333%', alignItems: 'center', paddingVertical: Spacing.sm, paddingHorizontal: 2 },
+    /* One height for every tree, standing on its base, so names line up across a row. */
+    treeSlot: { height: TREE_SIZE * 1.2, justifyContent: 'flex-end', alignItems: 'center' },
     name: { textAlign: 'center', fontWeight: '600', marginTop: 2 },
     centred: { textAlign: 'center', marginTop: 2 },
 
