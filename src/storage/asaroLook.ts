@@ -18,7 +18,11 @@ function notify() {
     listeners.forEach((l) => l());
 }
 
-function load() {
+/**
+ * Awaited at startup so the first frame already has the chosen look;
+ * otherwise every face renders the default and then swaps.
+ */
+export function loadAsaroLook(): Promise<void> {
     loading ??= AsyncStorage.getItem(STORAGE_KEYS.ASARO_LOOK)
         .then((v) => {
             if (LOOKS.includes(v as AsaroLook) && v !== current) {
@@ -32,7 +36,7 @@ function load() {
 
 function subscribe(listener: () => void) {
     listeners.add(listener);
-    void load();
+    void loadAsaroLook();
     return () => { listeners.delete(listener); };
 }
 

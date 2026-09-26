@@ -1,6 +1,7 @@
 import { initializeDatabase } from '@/src/data/database';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '@/src/storage/storageKeys';
+import { loadAsaroLook } from '@/src/storage/asaroLook';
 import {
   initializeNotificationChannel,
   hasNotificationPermissions,
@@ -88,7 +89,7 @@ export default function RootLayout() {
   useEffect(() => {
     const init = async () => {
       try {
-        const success = await initializeDatabase();
+        const [success] = await Promise.all([initializeDatabase(), loadAsaroLook()]);
         if (!success) {
           console.error('Failed to initialize database');
           setDbError(true);
