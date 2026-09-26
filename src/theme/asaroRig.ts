@@ -193,8 +193,12 @@ export const ASARO_RIG = {
          * lid down to `hold` and stops there, so a shut eye keeps a visible line.
          */
         lid: { lift: 2, bow: 6, hold: 0.7 },
-        /** Heavier arc over the top of each eye, `deg` short of the corners. */
-        liner: { deg: 12 },
+        /**
+         * The lids clip to an ellipse this much larger than the eye, so they
+         * paint over its anti-aliased edge; clipped to the eye itself they
+         * leave a faint ring round a shut eye.
+         */
+        lidBleed: 1.5,
         /** Distance the lower lid rises at squint 1. */
         squintTravel: 30,
     },
@@ -254,7 +258,7 @@ export const ASARO_RIG = {
          * and the bow leans `shift` toward it. Constant, so every performance
          * keeps the same lopsided mouth.
          */
-        smirk: { rise: 3, shift: 3 },
+        smirk: { rise: 3, shift: 1.5 },
     },
 
     /**
@@ -354,8 +358,6 @@ export const ASARO_LOOKS: Record<AsaroLook, {
     contour: string;
     tongue: string;
     irisLight: string;
-    /** Upper-rim arc (`ASARO_RIG.eye.liner`) colour and width. */
-    liner: string; linerW: number;
     /** Width of the moving lid-edge line, drawn in `brow`. */
     lidW: number;
     /** Brow thickness as a fraction of `ASARO_RIG.brow.w`. */
@@ -412,13 +414,11 @@ export const ASARO_LOOKS: Record<AsaroLook, {
         contour: '#8f4f39',
         tongue: '#a4544c',
         irisLight: '#8a5a40',
-        liner: '#6f3f2f',
-        linerW: 2,
         lidW: 2.4,
         browWeight: 1,
         // A fuller, squarer jaw than hers.
         head: 'M100 46 C140 46 166 74 166 112 '
-            + 'C167 162 150 179 100 179 C50 179 33 162 34 112 C34 74 60 46 100 46 Z',
+            + 'C166.5 159 147 178 100 178 C53 178 33.5 159 34 112 C34 74 60 46 100 46 Z',
         marks: false,
         hair: {
             /*
@@ -460,7 +460,7 @@ export const ASARO_LOOKS: Record<AsaroLook, {
     /**
      * The same rig under long pink hair.
      *
-     * Only the hair, colours and static details (lashes, liner, studs)
+     * Only the hair, colours and static details (lashes, lid weight, studs)
      * change. The eyes stay where they are, the lids travel the same
      * distance, and every one of the
      * twelve actions plays identically — which is the whole reason this is a
@@ -498,9 +498,7 @@ export const ASARO_LOOKS: Record<AsaroLook, {
         contour: '#a86049',
         tongue: '#b0605a',
         irisLight: '#8a5a40',
-        // Heavier than his and in the brow colour: with the lashes, it reads as liner.
-        liner: '#44271d',
-        linerW: 2.8,
+        // Heavier than his: with the lashes, her lid line reads as liner.
         lidW: 3,
         browWeight: 0.78,
         studs: '#d4a95e',

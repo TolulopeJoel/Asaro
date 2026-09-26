@@ -183,14 +183,6 @@ const BROWS = Object.fromEntries(
 const EAR_R = mirrorX(R.ear.d, R.ear.mirror);
 const EAR_INNER_R = mirrorX(R.ear.inner, R.ear.mirror);
 
-/** The liner arc over an eye centred on `cx`. */
-function linerArc(cx: number) {
-    const a = (E.liner.deg * Math.PI) / 180;
-    const dx = r1(E.rx * Math.cos(a));
-    const y = r1(E.cy - E.ry * Math.sin(a));
-    return `M${cx - dx} ${y} A${E.rx} ${E.ry} 0 0 1 ${cx + dx} ${y}`;
-}
-
 /** Upper lid, parked above the eye, with its bowed lower edge. */
 const LID_EDGE = E.cy - E.ry - E.lid.lift;
 const lidPath = (cx: number) => `M${cx - 27} ${E.cy - E.ry - 58} L${cx + 27} ${E.cy - E.ry - 58} `
@@ -221,6 +213,8 @@ function AsaroBase(
     const faceClip = `face${uid}`;
     const eyeLClip = `eyeL${uid}`;
     const eyeRClip = `eyeR${uid}`;
+    const lidLClip = `lidL${uid}`;
+    const lidRClip = `lidR${uid}`;
     const fadeFill = `fade${uid}`;
 
     const [reduceMotion, setReduceMotion] = useState(false);
@@ -493,6 +487,7 @@ function AsaroBase(
     const eye = (
         cx: number,
         clip: string,
+        lidClip: string,
         irisP: typeof irisLProps,
         lidP: typeof lidLProps,
         lidLineP: typeof lidLineLProps,
@@ -527,6 +522,16 @@ function AsaroBase(
                     )}
                 </AG>
 
+                {/* Eye rim, under both lids so a lid covers it with the eye;
+                    over the lids it rings a shut eye like a pair of glasses.
+                    Double width, because the clip keeps only the inner half. */}
+                <Ellipse
+                    cx={cx} cy={E.cy} rx={E.rx} ry={E.ry}
+                    fill="none" stroke={C.eyeRim} strokeWidth={3}
+                />
+            </G>
+
+            <G clipPath={`url(#${lidClip})`}>
                 {/* Lower lid. Its top edge bows upward, so a squint makes the
                     happy ^^ curve rather than just cutting the eye in half. */}
                 <AG animatedProps={squintP}>
@@ -546,15 +551,6 @@ function AsaroBase(
                     <Path d={lidLinePath(cx)} fill="none" stroke={C.brow} strokeWidth={C.lidW} />
                 </AG>
             </G>
-
-            <Ellipse
-                cx={cx} cy={E.cy} rx={E.rx} ry={E.ry}
-                fill="none" stroke={C.eyeRim} strokeWidth={1.5}
-            />
-            <Path
-                d={linerArc(cx)} fill="none" stroke={C.liner}
-                strokeWidth={C.linerW} strokeLinecap="round"
-            />
 
             {/* Lashes. Static, like the ilà — the eye beneath them performs,
                 these say whose eye it is. Outer corner only, mirrored by which
@@ -589,6 +585,12 @@ function AsaroBase(
                 </ClipPath>
                 <ClipPath id={eyeRClip}>
                     <Ellipse cx={E.rx2} cy={E.cy} rx={E.rx} ry={E.ry} />
+                </ClipPath>
+                <ClipPath id={lidLClip}>
+                    <Ellipse cx={E.lx} cy={E.cy} rx={E.rx + E.lidBleed} ry={E.ry + E.lidBleed} />
+                </ClipPath>
+                <ClipPath id={lidRClip}>
+                    <Ellipse cx={E.rx2} cy={E.cy} rx={E.rx + E.lidBleed} ry={E.ry + E.lidBleed} />
                 </ClipPath>
                 {hair.fade && (
                     <LinearGradient id={fadeFill} x1="0" y1="0" x2="0" y2="1">
@@ -757,8 +759,8 @@ function AsaroBase(
                     </AG>
                 )}
 
-                {eye(E.lx, eyeLClip, irisLProps, lidLProps, lidLineLProps, squintLProps)}
-                {eye(E.rx2, eyeRClip, irisRProps, lidRProps, lidLineRProps, squintRProps)}
+                {eye(E.lx, eyeLClip, lidLClip, irisLProps, lidLProps, lidLineLProps, squintLProps)}
+                {eye(E.rx2, eyeRClip, lidRClip, irisRProps, lidRProps, lidLineRProps, squintRProps)}
 
                 <AG animatedProps={browLProps} originX={R.brow.lpx} originY={R.brow.lpy}>
                     <Path
