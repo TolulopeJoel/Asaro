@@ -66,8 +66,9 @@ const REARM_DETECTOR: DetectorName | null = null;
  * Set back to null when done; the row then stays behind harmlessly.
  */
 const PREVIEW_MILESTONE:
-    | 'shortBook' | 'longBook' | 'planQuarter' | 'planHalf' | 'planThreeQuarters' | 'planDone' | null
-    = 'longBook';
+    | 'shortBook' | 'longBook' | 'planQuarter' | 'planHalf' | 'planThreeQuarters' | 'planDone'
+    | 'bookAndMark' | 'threeBooks' | 'bookAndFinish' | null
+    = 'bookAndFinish';
 
 export async function runPhase0SmokeTest(): Promise<string> {
     const out: string[] = [];
@@ -299,6 +300,9 @@ export async function runPhase0SmokeTest(): Promise<string> {
             planHalf: { kind: 'plan', mark: 50 },
             planThreeQuarters: { kind: 'plan', mark: 75 },
             planDone: { kind: 'plan', mark: 100 },
+            bookAndMark: { books: [{ book: 'Daniel', chapters: 12 }], mark: 75 },
+            threeBooks: { books: ['2 John', '3 John', 'Jude'].map(book => ({ book, chapters: 1 })) },
+            bookAndFinish: { books: [{ book: 'Revelation', chapters: 22 }], mark: 100 },
         } as const;
         // recordObservation refuses a finding with no evidence.
         const latest = await withDatabase(db => db.getFirstAsync<{ id: number }>(

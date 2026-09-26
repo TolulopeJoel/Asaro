@@ -128,40 +128,89 @@ function trimQuote(text: string, limit = 180): string {
     return `${cut.slice(0, cut.lastIndexOf(' ')).replace(/[,;:.]$/, '')}…`;
 }
 
+/** "Ruth", "Obadiah and Jonah", "2 John, 3 John and Jude". */
+function listOf(names: string[]): string {
+    if (names.length <= 1) return names[0] ?? '';
+    return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
+
+const COUNT_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+const countWord = (n: number) => COUNT_WORDS[n] ?? String(n);
+const capitalise = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
+/** What one save reached. Rows from before grouping carry a single book or mark. */
+function milestoneParts(claim: Record<string, unknown>): { books: { book: string; chapters: number }[]; mark?: number } {
+    if (Array.isArray(claim.books)) {
+        const books = claim.books.map((b: any) => ({ book: String(b?.book ?? ''), chapters: Number(b?.chapters) || 0 }));
+        return { books, mark: claim.mark == null ? undefined : Number(claim.mark) || 0 };
+    }
+    if (claim.kind === 'plan') return { books: [], mark: Number(claim.mark) || 0 };
+    return { books: [{ book: String(claim.book ?? ''), chapters: Number(claim.chapters) || 0 }] };
+}
+
+/** The four plan marks: alone, or on a card that also finished books. */
+const PLAN_LINES: Record<number, { kind: string; alone: string; phrase: string; tail: string; face: AsaroAction }> = {
+    25: { kind: 'A quarter of the plan', alone: 'Ehen. Look at you.', phrase: 'a quarter of the plan', tail: 'Ehen. Look at you.', face: 'thumbsUp' },
+    50: { kind: 'Half the plan', alone: "Halfway o. I'm invested now.", phrase: 'half the plan', tail: "I'm invested now.", face: 'nod' },
+    75: { kind: 'Three quarters', alone: "Don't do anything stupid.", phrase: 'three quarters of the plan', tail: "Don't do anything stupid.", face: 'sideEye' },
+    100: {
+        kind: 'The whole plan. Finished',
+        alone: 'Àṣàrò has nothing to say. That has never happened.',
+        phrase: 'the whole plan',
+        tail: 'Àṣàrò has nothing to say. That has never happened.',
+        face: 'sheepish',
+    },
+};
+
+/** "Finished", "Both finished", "All three finished" — the heading already names them. */
+function finishedWord(count: number): string {
+    if (count <= 1) return 'Finished';
+    if (count === 2) return 'Both finished';
+    return `All ${countWord(count)} finished`;
+}
+
 /**
- * A book finished, or a quarter of the plan crossed — the only card that exists
- * purely to say well done. Must not congratulate anyone on their standing with
+ * Everything one save reached — books finished, a quarter of the plan crossed
+ * — as one card. The plan mark leads when there is one: four in the whole plan
+ * against sixty-six books. The heading names what was reached, so the line
+ * never repeats it. Must not congratulate anyone on their standing with
  * Jehovah, and must not use the cheer register. See design/ASARO-CHARACTER.md §4①, §5.
  */
 function renderMilestone(claim: Record<string, unknown>): RenderedObservation {
-    if (claim.kind === 'plan') {
-        const mark = Number(claim.mark) || 0;
-        // The face performs the line, so the line carries no emoji.
-        const lines: Record<number, { kind: string; claim: string; face: AsaroAction }> = {
-            25: { kind: 'A quarter of the plan', claim: 'Ehen. Look at you.', face: 'thumbsUp' },
-            50: { kind: 'Half the plan', claim: "Halfway o. I'm invested now.", face: 'nod' },
-            75: { kind: 'Three quarters', claim: "Don't do anything stupid.", face: 'sideEye' },
-            100: {
-                kind: 'The whole plan. Finished',
-                claim: 'Àṣàrò has nothing to say. That has never happened.',
-                face: 'sheepish',
-            },
+    const { books, mark } = milestoneParts(claim);
+    const names = listOf(books.map(b => b.book));
+
+    if (mark !== undefined) {
+        const line = PLAN_LINES[mark] ?? {
+            kind: 'The plan', alone: `${mark}% done.`, phrase: `${mark}% of the plan`, tail: '', face: 'nod' as const,
         };
-        const line = lines[mark] ?? { kind: 'The plan', claim: `${mark}% done.`, face: 'nod' };
         return {
             kind: line.kind,
             evidence: [],
-            claim: line.claim,
-            subject: `${mark}%`,
+            claim: books.length
+                ? `${finishedWord(books.length)}. And ${line.phrase} with it. ${line.tail}`.trim()
+                : line.alone,
+            subject: books.length ? `${names} · ${mark}%` : `${mark}%`,
             subjectFirst: true,
             face: line.face,
             holdFace: line.face === 'sideEye',
         };
     }
 
-    const book = String(claim.book ?? '');
-    const chapters = Number(claim.chapters) || 0;
+    if (books.length > 1) {
+        return {
+            kind: `You finished ${countWord(books.length)} books`,
+            evidence: [],
+            claim: books.length === 2
+                ? 'Both of them, in one sitting.'
+                : `${capitalise(countWord(books.length))} books in one sitting.`,
+            subject: names,
+            subjectFirst: true,
+            face: 'celebrate',
+        };
+    }
 
+    const { book, chapters } = books[0] ?? { book: '', chapters: 0 };
     // Fifty chapters of Genesis is not four of Ruth; one sentence for both
     // would make the praise mean nothing.
     const long = chapters >= 25;

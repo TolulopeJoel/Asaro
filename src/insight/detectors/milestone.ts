@@ -92,6 +92,36 @@ export function findMilestones(
     return found;
 }
 
+/**
+ * Everything one save reached, as one card: the books it finished and at most
+ * one plan mark. Saving an entry is one moment, and a second card would wait
+ * for the next save and arrive stale. See design/DETECTORS.md#milestone.
+ */
+export interface MilestoneGroup {
+    /** The group's own dedupe key: its parts, sorted and joined. */
+    key: string;
+    /** The individual keys it covers, so none is offered again in another group. */
+    parts: string[];
+    books: { book: string; chapters: number }[];
+    mark?: number;
+}
+
+/** Group what was reached, less anything already offered. Null if nothing is new. */
+export function groupMilestones(found: Milestone[], offered: ReadonlySet<string>): MilestoneGroup | null {
+    const fresh = found.filter(m => !offered.has(m.key));
+    if (fresh.length === 0) return null;
+    const parts = fresh.map(m => m.key).sort();
+    const plan = fresh.find(m => m.kind === 'plan');
+    return {
+        key: parts.join('+'),
+        parts,
+        books: fresh
+            .filter(m => m.kind === 'book')
+            .map(m => ({ book: m.book ?? '', chapters: m.chapters ?? 0 })),
+        mark: plan?.mark,
+    };
+}
+
 /** Every book, with how much of it has been written about and how recently. */
 export async function loadBookTallies(now: number = Date.now()): Promise<BookTally[]> {
     const coverage = await getChapterCoverage();
@@ -132,41 +162,58 @@ async function evidenceEntries(book: string | undefined, limit = 6): Promise<num
 }
 
 /**
- * Find what has just been reached, and record it. No retraction, unlike every
- * other detector: Ruth does not become unfinished, so the dedupe key does the
- * only work needed — offered once, ever.
+ * Every milestone key already offered. A grouped row lists its parts; a row
+ * from before grouping is its own dedupe key.
+ */
+async function offeredKeys(): Promise<Set<string>> {
+    const rows = await withDatabase(database => database.getAllAsync<{ dedupe_key: string; payload: string }>(
+        `SELECT dedupe_key, payload FROM observations WHERE detector = 'milestone'`,
+    ));
+    const keys = new Set<string>();
+    for (const row of rows) {
+        let parts: unknown;
+        try { parts = JSON.parse(row.payload)?.parts; } catch { parts = undefined; }
+        if (Array.isArray(parts)) parts.forEach(part => keys.add(String(part)));
+        else keys.add(row.dedupe_key);
+    }
+    return keys;
+}
+
+/**
+ * Find what has just been reached, and record it as one card. No retraction,
+ * unlike every other detector: Ruth does not become unfinished, so the parts
+ * do the only work needed — each offered once, ever.
  */
 export async function detectMilestones(
     planPercent: number,
     options: MilestoneOptions = {},
 ): Promise<number[]> {
     const books = await loadBookTallies();
-    const milestones = findMilestones(books, planPercent, options);
+    const found = findMilestones(books, planPercent, options);
 
-    const ids: number[] = [];
-    for (const milestone of milestones) {
+    // A finished book with no entries behind it is a contradiction; recording
+    // it would report a bug as an achievement.
+    const evidence = new Set<number>();
+    const standing: Milestone[] = [];
+    for (const milestone of found) {
         const entries = await evidenceEntries(milestone.book);
-        // A finished book with no entries behind it is a contradiction;
-        // recording it would report a bug as an achievement.
         if (entries.length === 0) continue;
-
-        ids.push(
-            await recordObservation({
-                detector: 'milestone',
-                dedupeKey: milestone.key,
-                claim: {
-                    kind: milestone.kind,
-                    book: milestone.book,
-                    chapters: milestone.chapters,
-                    mark: milestone.mark,
-                },
-                // Highest in the app: confidence orders the queue, and this is
-                // the only detector that counts rather than infers.
-                confidence: 0.95,
-                evidence: entries.map(entryId => ({ kind: 'entry' as const, entryId })),
-            }),
-        );
+        standing.push(milestone);
+        entries.forEach(id => evidence.add(id));
     }
 
-    return ids;
+    const group = groupMilestones(standing, await offeredKeys());
+    if (!group) return [];
+
+    return [
+        await recordObservation({
+            detector: 'milestone',
+            dedupeKey: group.key,
+            claim: { parts: group.parts, books: group.books, mark: group.mark },
+            // Highest in the app: confidence orders the queue, and this is
+            // the only detector that counts rather than infers.
+            confidence: 0.95,
+            evidence: [...evidence].map(entryId => ({ kind: 'entry' as const, entryId })),
+        }),
+    ];
 }
