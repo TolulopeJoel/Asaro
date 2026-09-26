@@ -10,11 +10,11 @@ import React, {
 } from 'react';
 import { AccessibilityInfo } from 'react-native';
 import Animated, {
-    Easing, cancelAnimation, useAnimatedProps, useSharedValue, withRepeat,
+    Easing, ReduceMotion, cancelAnimation, useAnimatedProps, useSharedValue, withRepeat,
     withDelay, withSequence, withTiming,
 } from 'react-native-reanimated';
 import Svg, {
-    Circle, ClipPath, Defs, Ellipse, G, LinearGradient, Path, Stop,
+    Circle, ClipPath, Defs, Ellipse, G, LinearGradient, Path, Stop, type GProps,
 } from 'react-native-svg';
 
 import {
@@ -23,7 +23,10 @@ import {
 } from '../../theme/asaroRig';
 import { useAsaroLook } from '../../storage/asaroLook';
 
-const AG = Animated.createAnimatedComponent(G);
+/** `matrix` is the native group's transform prop; see `mat`. */
+const AG = Animated.createAnimatedComponent(
+    G as unknown as React.ComponentClass<GProps & { matrix?: number[] }>,
+);
 const APath = Animated.createAnimatedComponent(Path);
 const AEllipse = Animated.createAnimatedComponent(Ellipse);
 
@@ -83,6 +86,29 @@ const C_GX = ACTION_NAMES.map((n) => ASARO_ACTIONS[n].gx);
 const C_GY = ACTION_NAMES.map((n) => ASARO_ACTIONS[n].gy);
 const C_GW = ACTION_NAMES.map((n) => ASARO_ACTIONS[n].gw);
 
+/**
+ * Each action's most expressive moment: the keyframe furthest from rest, with
+ * every channel scaled by its own range. Held still under reduced motion.
+ */
+const PEAK_T = (() => {
+    const channels = Object.keys(REST) as (keyof typeof REST)[];
+    const scale = Object.fromEntries(channels.map((c) => [c, Math.max(1e-6, ...ACTION_NAMES.flatMap(
+        (n) => ASARO_ACTIONS[n][c].map((v) => Math.abs(v - REST[c])),
+    ))])) as Record<keyof typeof REST, number>;
+    return ACTION_NAMES.map((n) => {
+        const A = ASARO_ACTIONS[n];
+        let best = 0;
+        let bestScore = -1;
+        A.t.forEach((_, k) => {
+            const score = channels.reduce((sum, c) => sum + Math.abs(A[c][k] - REST[c]) / scale[c], 0);
+            if (score > bestScore) { bestScore = score; best = k; }
+        });
+        return A.t[best];
+    });
+})();
+
+let reportedReduceMotion = false;
+
 /** Cubic ease-in-out, applied inside each keyframe segment. */
 function ease(t: number) {
     'worklet';
@@ -111,6 +137,24 @@ function ch(i: number, p: number, table: number[][], rest: number) {
     'worklet';
     if (i < 0 || i >= table.length) return rest;
     return seg(p, T[i], table[i]);
+}
+
+/**
+ * A group transform as RNSVG's native `matrix`. Animated props skip the JS
+ * render that turns `translateY`/`rotation`/`origin*` into one, so the native
+ * group would ignore them. Same order as RNSVG: translate(t + o) · rotate ·
+ * scale · translate(−o).
+ */
+function mat(tx: number, ty: number, rot = 0, sx = 1, sy = 1, ox = 0, oy = 0) {
+    'worklet';
+    const r = (rot * Math.PI) / 180;
+    const cos = Math.cos(r);
+    const sin = Math.sin(r);
+    const a = cos * sx;
+    const b = sin * sx;
+    const c = -sin * sy;
+    const d = cos * sy;
+    return { matrix: [a, b, c, d, tx + ox - (ox * a + oy * c), ty + oy - (ox * b + oy * d)] };
 }
 
 /** A lid value shifted toward the sincere rest by `s` (0…1), never below open. */
@@ -257,7 +301,13 @@ function AsaroBase(
 
     useEffect(() => {
         let alive = true;
-        AccessibilityInfo.isReduceMotionEnabled().then((on) => { if (alive) setReduceMotion(on); });
+        AccessibilityInfo.isReduceMotionEnabled().then((on) => {
+            if (__DEV__ && on && !reportedReduceMotion) {
+                reportedReduceMotion = true;
+                console.log('[Asaro] reduce motion is on: blink only, expressions held still');
+            }
+            if (alive) setReduceMotion(on);
+        });
         const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
         return () => { alive = false; sub.remove(); };
     }, []);
@@ -281,16 +331,16 @@ function AsaroBase(
         return () => cancelAnimation(breath);
     }, [reduceMotion, breath]);
 
-    // Blink, on an irregular schedule.
+    // Blink, on an irregular schedule. Kept under reduced motion: it travels
+    // nowhere, and without it he reads as a picture rather than a face.
     useEffect(() => {
-        if (reduceMotion) { cancelAnimation(blink); blink.value = 0; return; }
         let alive = true;
         let id: ReturnType<typeof setTimeout>;
         const loop = () => {
             if (!alive) return;
             blink.value = withSequence(
-                withTiming(1, { duration: 95, easing: Easing.in(Easing.quad) }),
-                withTiming(0, { duration: 130, easing: Easing.out(Easing.quad) }),
+                withTiming(1, { duration: 95, easing: Easing.in(Easing.quad), reduceMotion: ReduceMotion.Never }),
+                withTiming(0, { duration: 130, easing: Easing.out(Easing.quad), reduceMotion: ReduceMotion.Never }),
             );
             id = setTimeout(loop, 2400 + Math.random() * 4600);
         };
@@ -301,7 +351,7 @@ function AsaroBase(
             cancelAnimation(blink);
             blink.value = 0;
         };
-    }, [reduceMotion, blink]);
+    }, [blink]);
 
     // Gaze — follow a target, or watch when none is given. Depends on the
     // coordinates, not the object, so a new literal each render does not restart it.
@@ -357,14 +407,15 @@ function AsaroBase(
         if (!A) return;
         if (actionTimer.current) clearTimeout(actionTimer.current);
         cancelAnimation(prog);
-        act.value = ACTION_NAMES.indexOf(name);
-        prog.value = 0;
-        const ms = reduceMotion ? 1 : A.ms;
-        prog.value = withTiming(1, { duration: ms, easing: Easing.linear });
+        const i = ACTION_NAMES.indexOf(name);
+        act.value = i;
+        // Reduced motion holds the peak still for the action's length.
+        prog.value = reduceMotion ? PEAK_T[i] : 0;
+        if (!reduceMotion) prog.value = withTiming(1, { duration: A.ms, easing: Easing.linear });
         actionTimer.current = setTimeout(() => {
             act.value = -1;
             actionTimer.current = null;
-        }, ms + 40);
+        }, A.ms + 40);
     }, [act, prog, reduceMotion]);
 
     useImperativeHandle(ref, () => ({ play }), [play]);
@@ -378,37 +429,48 @@ function AsaroBase(
         const i = act.value;
         const p = prog.value;
         const sq = (1 + br * 0.016) * ch(i, p, C_SQ, REST.sq);
-        return {
-            translateX: ch(i, p, C_LEAN, REST.lean),
-            translateY: br * 2.2 + ch(i, p, C_BOB, REST.bob),
-            rotation: sway * 1.2 + ch(i, p, C_TIP, REST.tip),
+        return mat(
+            ch(i, p, C_LEAN, REST.lean),
+            br * 2.2 + ch(i, p, C_BOB, REST.bob),
+            sway * 1.2 + ch(i, p, C_TIP, REST.tip),
             // Squash preserves area: as it flattens it also widens.
-            scaleX: 2 - sq,
-            scaleY: sq,
-        };
+            2 - sq,
+            sq,
+            R.pivotX,
+            R.pivotY,
+        );
     });
+
+    const hairPx = hair.px;
+    const hairPy = hair.py;
 
     const hairBackProps = useAnimatedProps(() => {
         const sway = Math.sin(breath.value * Math.PI * 2 * 0.37);
-        return { rotation: (sway * 1.8 + ch(act.value, prog.value, C_CREST, REST.crest)) * swayBack };
-    }, [swayBack]);
+        const rot = (sway * 1.8 + ch(act.value, prog.value, C_CREST, REST.crest)) * swayBack;
+        return mat(0, 0, rot, 1, 1, hairPx, hairPy);
+    }, [swayBack, hairPx, hairPy]);
 
     const hairFrontProps = useAnimatedProps(() => {
         const sway = Math.sin(breath.value * Math.PI * 2 * 0.37);
-        return { rotation: (sway * 1.8 + ch(act.value, prog.value, C_CREST, REST.crest)) * swayFront };
-    }, [swayFront]);
+        const rot = (sway * 1.8 + ch(act.value, prog.value, C_CREST, REST.crest)) * swayFront;
+        return mat(0, 0, rot, 1, 1, hairPx, hairPy);
+    }, [swayFront, hairPx, hairPy]);
 
-    const browLProps = useAnimatedProps(() => ({
-        translateY: ch(act.value, prog.value, C_BROWL, REST.browL),
-        rotation: ch(act.value, prog.value, C_TILTL, REST.tiltL),
-    }));
+    const browLProps = useAnimatedProps(() => mat(
+        0,
+        ch(act.value, prog.value, C_BROWL, REST.browL),
+        ch(act.value, prog.value, C_TILTL, REST.tiltL),
+        1, 1, R.brow.lpx, R.brow.lpy,
+    ));
 
     const browRProps = useAnimatedProps(() => {
         const s = sincerity.value;
-        return {
-            translateY: ch(act.value, prog.value, C_BROWR, REST.browR) + s * (SINCERE.browR - REST.browR),
-            rotation: ch(act.value, prog.value, C_TILTR, REST.tiltR) + s * (SINCERE.tiltR - REST.tiltR),
-        };
+        return mat(
+            0,
+            ch(act.value, prog.value, C_BROWR, REST.browR) + s * (SINCERE.browR - REST.browR),
+            ch(act.value, prog.value, C_TILTR, REST.tiltR) + s * (SINCERE.tiltR - REST.tiltR),
+            1, 1, R.brow.rpx, R.brow.rpy,
+        );
     });
 
     // Blink and wink share one lid; the eye takes whichever is more closed.
@@ -417,7 +479,7 @@ function AsaroBase(
             ch(act.value, prog.value, C_LIDL, REST.lidL), sincerity.value, REST.lidL, SINCERE.lidL,
         );
         const b = blink.value;
-        return { translateY: (a > b ? a : b) * E.lidTravel };
+        return mat(0, (a > b ? a : b) * E.lidTravel);
     });
 
     const lidRProps = useAnimatedProps(() => {
@@ -425,7 +487,7 @@ function AsaroBase(
             ch(act.value, prog.value, C_LIDR, REST.lidR), sincerity.value, REST.lidR, SINCERE.lidR,
         );
         const b = blink.value;
-        return { translateY: (a > b ? a : b) * E.lidTravel };
+        return mat(0, (a > b ? a : b) * E.lidTravel);
     });
 
     const lidLineLProps = useAnimatedProps(() => {
@@ -433,7 +495,7 @@ function AsaroBase(
             ch(act.value, prog.value, C_LIDL, REST.lidL), sincerity.value, REST.lidL, SINCERE.lidL,
         );
         const l = a > blink.value ? a : blink.value;
-        return { translateY: (l < E.lid.hold ? l : E.lid.hold) * E.lidTravel };
+        return mat(0, (l < E.lid.hold ? l : E.lid.hold) * E.lidTravel);
     });
 
     const lidLineRProps = useAnimatedProps(() => {
@@ -441,49 +503,49 @@ function AsaroBase(
             ch(act.value, prog.value, C_LIDR, REST.lidR), sincerity.value, REST.lidR, SINCERE.lidR,
         );
         const l = a > blink.value ? a : blink.value;
-        return { translateY: (l < E.lid.hold ? l : E.lid.hold) * E.lidTravel };
+        return mat(0, (l < E.lid.hold ? l : E.lid.hold) * E.lidTravel);
     });
 
     const lashLProps = useAnimatedProps(() => {
         const a = lidAt(
             ch(act.value, prog.value, C_LIDL, REST.lidL), sincerity.value, REST.lidL, SINCERE.lidL,
         );
-        return { rotation: lashTurn(a > blink.value ? a : blink.value) };
+        return mat(0, 0, lashTurn(a > blink.value ? a : blink.value), 1, 1, E.lx, E.cy);
     });
 
     const lashRProps = useAnimatedProps(() => {
         const a = lidAt(
             ch(act.value, prog.value, C_LIDR, REST.lidR), sincerity.value, REST.lidR, SINCERE.lidR,
         );
-        return { rotation: -lashTurn(a > blink.value ? a : blink.value) };
+        return mat(0, 0, -lashTurn(a > blink.value ? a : blink.value), 1, 1, E.rx2, E.cy);
     });
 
-    const squintLProps = useAnimatedProps(() => ({
-        translateY: -ch(act.value, prog.value, C_SQUINT, REST.squint) * E.squintTravel,
-    }));
+    const squintLProps = useAnimatedProps(() => mat(
+        0, -ch(act.value, prog.value, C_SQUINT, REST.squint) * E.squintTravel,
+    ));
 
-    const squintRProps = useAnimatedProps(() => ({
-        translateY: -ch(act.value, prog.value, C_SQUINT, REST.squint) * E.squintTravel,
-    }));
+    const squintRProps = useAnimatedProps(() => mat(
+        0, -ch(act.value, prog.value, C_SQUINT, REST.squint) * E.squintTravel,
+    ));
 
     const irisLProps = useAnimatedProps(() => {
         const i = act.value;
         const p = prog.value;
         const w = ch(i, p, C_GW, REST.gw);
-        return {
-            translateX: (gazeX.value * (1 - w) + ch(i, p, C_GX, REST.gx) * w) * E.travelX,
-            translateY: (gazeY.value * (1 - w) + ch(i, p, C_GY, REST.gy) * w) * E.travelY,
-        };
+        return mat(
+            (gazeX.value * (1 - w) + ch(i, p, C_GX, REST.gx) * w) * E.travelX,
+            (gazeY.value * (1 - w) + ch(i, p, C_GY, REST.gy) * w) * E.travelY,
+        );
     });
 
     const irisRProps = useAnimatedProps(() => {
         const i = act.value;
         const p = prog.value;
         const w = ch(i, p, C_GW, REST.gw);
-        return {
-            translateX: (gazeX.value * (1 - w) + ch(i, p, C_GX, REST.gx) * w) * E.travelX,
-            translateY: (gazeY.value * (1 - w) + ch(i, p, C_GY, REST.gy) * w) * E.travelY,
-        };
+        return mat(
+            (gazeX.value * (1 - w) + ch(i, p, C_GX, REST.gx) * w) * E.travelX,
+            (gazeY.value * (1 - w) + ch(i, p, C_GY, REST.gy) * w) * E.travelY,
+        );
     });
 
     // One filled lens; shut, it is a line. The smirk tilts it, and sincerity removes the smirk.
@@ -611,7 +673,7 @@ function AsaroBase(
 
             {/* Lashes at the outer corner, mirrored for the right eye; they turn with the lid. */}
             {C.lashes && !cropped && (
-                <AG animatedProps={lashP} originX={cx} originY={E.cy}>
+                <AG animatedProps={lashP}>
                     {R.lashes.strokes.map(([x1, y1, qx, qy, x2, y2]) => {
                         const flip = cx > R.lashes.mirror;
                         const X = (v: number) => (flip ? 2 * R.lashes.mirror - v : v);
@@ -668,10 +730,10 @@ function AsaroBase(
                 )}
             </Defs>
 
-            <AG animatedProps={headProps} originX={R.pivotX} originY={R.pivotY}>
+            <AG animatedProps={headProps}>
                 {/* Hair behind the head, swaying on the crest channel. */}
                 {!cropped && hair.back && (
-                    <AG animatedProps={hairBackProps} originX={hair.px} originY={hair.py}>
+                    <AG animatedProps={hairBackProps}>
                         <Path
                             d={hair.back} fill={C.crest} stroke={C.rim}
                             strokeWidth={H.rimW} strokeLinejoin="round"
@@ -786,7 +848,7 @@ function AsaroBase(
 
                 {/* Hair in front: over the face outline, under the eyes and brows. */}
                 {!cropped && hair.front && (
-                    <AG animatedProps={hairFrontProps} originX={hair.px} originY={hair.py}>
+                    <AG animatedProps={hairFrontProps}>
                         {hair.fade?.d.map((d) => <Path key={d} d={d} fill={`url(#${fadeFill})`} />)}
                         <Path
                             d={hair.front} fill={C.crest}
@@ -825,13 +887,13 @@ function AsaroBase(
                 {eye(E.lx, eyeLClip, lidLClip, irisLProps, lidLProps, lidLineLProps, lashLProps, squintLProps)}
                 {eye(E.rx2, eyeRClip, lidRClip, irisRProps, lidRProps, lidLineRProps, lashRProps, squintRProps)}
 
-                <AG animatedProps={browLProps} originX={R.brow.lpx} originY={R.brow.lpy}>
+                <AG animatedProps={browLProps}>
                     <Path
                         d={brows.l} fill={C.brow} stroke={C.brow}
                         strokeWidth={1.2} strokeLinejoin="round"
                     />
                 </AG>
-                <AG animatedProps={browRProps} originX={R.brow.rpx} originY={R.brow.rpy}>
+                <AG animatedProps={browRProps}>
                     <Path
                         d={brows.r} fill={C.brow} stroke={C.brow}
                         strokeWidth={1.2} strokeLinejoin="round"

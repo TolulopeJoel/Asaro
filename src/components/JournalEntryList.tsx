@@ -3,13 +3,6 @@ import { getLocalMidnight, isSameDay } from '@/src/utils/dateUtils';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
-import {
-    BookCopy,
-    Bookmark,
-    Search,
-    Notebook,
-    Zap
-} from 'lucide-react-native';
 import { ALL_BIBLE_BOOKS, BibleBook } from '../data/bibleBooks';
 import { EntryCard } from './journal/EntryCard';
 import { ActionCard } from './journal/ActionCard';
@@ -44,7 +37,7 @@ import {
 import { LoadingView } from './LoadingView';
 import Animated from 'react-native-reanimated';
 import { Spacing } from '../theme/spacing';
-import { Text } from './ui';
+import { Asaro, Text, type AsaroAction } from './ui';
 
 type ViewMode = 'recent' | 'books' | 'bookDetail' | 'actions' | 'topics';
 
@@ -567,54 +560,47 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
     }, [viewMode, filteredEntries, debouncedSearchQuery, availableBooks, bookEntries, selectedBook, groupEntriesByDate, actionsList, topicsList, lingering]);
 
     /*
-     * Nothing here yet. Eight of these, and for Questions and Commitments they
-     * are often the only thing on screen for weeks, so the copy carries the
-     * voice and the layout gets out of its way.
-     *
-     * The glyph stays bare on the stroke at 34px — no icon well. None of the
-     * eight gets a button: what fills them is already on screen.
+     * Nothing here yet. For Questions and Commitments this is often the only
+     * thing on screen for weeks, so the copy carries the voice and he performs
+     * it. No button: what fills these is already on screen.
      */
     const renderEmptyState = useCallback(() => {
-        let iconName: any = Notebook;
+        let face: AsaroAction = 'point';
         let title = "It's awful quiet in here...";
         let subtext = "Don't just stare at the screen. Read your Bible and tell me about it!";
 
         if (viewMode === 'books') {
-            iconName = BookCopy;
+            face = 'shrug';
             title = "Empty shelves";
             subtext = "Read a book of the Bible so we can put something here.";
         } else if (viewMode === 'actions') {
-            iconName = Zap;
+            face = 'deadpan';
             title = "No actions recorded";
             subtext = "You didn't learn anything practical today? Write an action step";
         } else if (viewMode === 'topics') {
-            iconName = Bookmark;
+            face = 'sideEye';
             title = "No follow-ups";
             subtext = "Is there really nothing more you want to study? Add one to an entry.";
         } else if (debouncedSearchQuery) {
-            iconName = Search;
+            face = 'sheepish';
             title = "Nothing to see here";
             subtext = "I couldn't find what you're looking for. Try another search.";
         } else if (viewMode === 'bookDetail') {
-            iconName = Notebook;
+            face = 'point';
             title = "Empty book";
             subtext = "You haven't read this book yet. Go read it!";
         }
 
         return (
             <View style={[styles.emptyState, styles.emptyCloth]}>
-                {React.createElement(iconName, {
-                    size: 34,
-                    color: colors.textTertiary,
-                    strokeWidth: 1.5,
-                })}
+                <Asaro size={74} action={face} label="Àṣàrò" />
                 <Text variant="title" style={styles.centred}>{title}</Text>
                 <Text variant="body" tone="secondary" style={styles.centred}>
                     {subtext}
                 </Text>
             </View>
         );
-    }, [viewMode, debouncedSearchQuery, colors]);
+    }, [viewMode, debouncedSearchQuery]);
 
     const [completedPlanIds, setCompletedPlanIds] = useState<Set<number>>(new Set());
 
