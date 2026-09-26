@@ -16,6 +16,7 @@ import { Tree } from './Tree';
 
 /** Every tree on one scale, so each stage is plainly bigger than the last. */
 const TREE_SIZE = 84;
+const PER_ROW = 3;
 
 const plural = (n: number, cadence: GroveTree['cadence']) =>
     `${n} ${cadence === 'daily' ? (n === 1 ? 'day' : 'days') : (n === 1 ? 'week' : 'weeks')}`;
@@ -85,35 +86,43 @@ export function Grove({ trees }: { trees: GroveTree[] }) {
         .filter(t => !t.resting)
         .sort((a, b) => b.growth.stage - a.growth.stage || b.kept - a.kept);
     const resting = trees.filter(t => t.resting);
-    const selected = growing.find(t => t.item.id === open) ?? null;
+    // In rows of three, so an opened tree's detail can sit right under its own row.
+    const rows: GroveTree[][] = [];
+    for (let i = 0; i < growing.length; i += PER_ROW) rows.push(growing.slice(i, i + PER_ROW));
 
     return (
         <View style={[styles.card, { backgroundColor: colors.backgroundSubtle, borderBottomColor: colors.border }]}>
-            <View style={styles.grid}>
-                {growing.map(tree => {
-                    const on = tree.item.id === open;
-                    return (
-                        <ScalePressable
-                            key={tree.item.id}
-                            style={[styles.cell, on && { backgroundColor: colors.background }]}
-                            onPress={() => setOpen(on ? null : tree.item.id!)}
-                            accessibilityRole="button"
-                            accessibilityState={{ expanded: on }}
-                            accessibilityLabel={`${tree.item.action}, ${tree.thirsty ? 'thirsty' : STAGE_NAMES[tree.growth.stage]}`}
-                        >
-                            <View style={styles.treeSlot}>
-                                <Tree stage={tree.growth.stage} species={tree.species} thirsty={tree.thirsty} size={TREE_SIZE} />
-                            </View>
-                            <Text variant="bodySmall" style={styles.name} numberOfLines={3}>{tree.item.action}</Text>
-                            <Text variant="meta" tone="secondary" style={styles.centred}>
-                                {tree.thirsty ? 'thirsty' : STAGE_NAMES[tree.growth.stage]}
-                            </Text>
-                        </ScalePressable>
-                    );
-                })}
-            </View>
-
-            {selected && <TreeDetail tree={selected} />}
+            {rows.map(row => {
+                const opened = row.find(t => t.item.id === open);
+                return (
+                    <React.Fragment key={row[0].item.id}>
+                        <View style={styles.row}>
+                            {row.map(tree => {
+                                const on = tree.item.id === open;
+                                return (
+                                    <ScalePressable
+                                        key={tree.item.id}
+                                        style={[styles.cell, on && { backgroundColor: colors.background }]}
+                                        onPress={() => setOpen(on ? null : tree.item.id!)}
+                                        accessibilityRole="button"
+                                        accessibilityState={{ expanded: on }}
+                                        accessibilityLabel={`${tree.item.action}, ${tree.thirsty ? 'thirsty' : STAGE_NAMES[tree.growth.stage]}`}
+                                    >
+                                        <View style={styles.treeSlot}>
+                                            <Tree stage={tree.growth.stage} species={tree.species} thirsty={tree.thirsty} size={TREE_SIZE} />
+                                        </View>
+                                        <Text variant="bodySmall" style={styles.name} numberOfLines={3}>{tree.item.action}</Text>
+                                        <Text variant="meta" tone="secondary" style={styles.centred}>
+                                            {tree.thirsty ? 'thirsty' : STAGE_NAMES[tree.growth.stage]}
+                                        </Text>
+                                    </ScalePressable>
+                                );
+                            })}
+                        </View>
+                        {opened && <TreeDetail tree={opened} />}
+                    </React.Fragment>
+                );
+            })}
 
             {resting.length > 0 && (
                 <View style={[styles.tray, { borderTopColor: colors.border }]}>
@@ -133,14 +142,19 @@ export function Grove({ trees }: { trees: GroveTree[] }) {
 
 const styles = StyleSheet.create({
     card: { padding: Spacing.md, borderBottomWidth: 3 },
-    grid: { flexDirection: 'row', flexWrap: 'wrap' },
+    row: { flexDirection: 'row' },
     cell: { width: '33.333%', alignItems: 'center', paddingVertical: Spacing.sm, paddingHorizontal: 2 },
     /* One height for every tree, standing on its base, so names line up across a row. */
     treeSlot: { height: TREE_SIZE * 1.2, justifyContent: 'flex-end', alignItems: 'center' },
     name: { textAlign: 'center', fontWeight: '600', marginTop: 2 },
     centred: { textAlign: 'center', marginTop: 2 },
 
-    detail: { borderTopWidth: Spacing.border.hairline, marginTop: Spacing.sm, paddingTop: Spacing.md },
+    detail: {
+        borderTopWidth: Spacing.border.hairline,
+        borderBottomWidth: Spacing.border.hairline,
+        marginVertical: Spacing.sm,
+        paddingVertical: Spacing.md,
+    },
     detailHead: { flexDirection: 'row', gap: Spacing.md, alignItems: 'center' },
     detailText: { flex: 1, minWidth: 0 },
     detailName: { fontWeight: '600' },
