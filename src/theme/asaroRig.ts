@@ -34,19 +34,27 @@ export type AsaroAction =
      * defines him through five permitted emoji, every one a face. These are
      * keyframes only — per-eye lids, squint and gaze weight already exist.
      */
-    | 'deadpan' | 'sideEye' | 'smug' | 'sheepish';
+    | 'deadpan' | 'sideEye' | 'smug' | 'sheepish' | 'laugh';
 
 /**
- * Which character is on screen.
+ * How he holds his face between performances.
  *
- * This used to name the THEME a look belonged to, back when there were two
- * styles; with Colossal gone it had one value and no job. It now names the
- * character variant the reader has chosen, which is what the reader actually
- * cares about.
- *
- * `pink` is a working name for the visible difference, not a character name —
- * whether she is Àṣàrò with different hair or somebody with her own name is a
- * decision about the product, not the rig.
+ * `knowing` is his default: the rest below, smirk and all. `sincere` opens the
+ * lids, levels the brows, drops the smirk and stops the side glances, for the
+ * few moments where he means it plainly: the long-absence welcome-backs,
+ * where the softening law makes him gentlest and a smirk would argue with
+ * the words.
+ */
+export type AsaroMood = 'knowing' | 'sincere';
+
+/** The rest channels `sincere` replaces. The smirk scales to nothing with it. */
+export const ASARO_SINCERE_REST = { lidL: 0, lidR: 0, browR: 0, tiltR: 0 } as const;
+
+/**
+ * Which look of Àṣàrò is on screen. `cloth` is him; `pink` is the same
+ * character for female users — same voice, same performances. `pink` names
+ * the visible difference, not a second character. See
+ * design/ASARO-CHARACTER.md §7.
  */
 export type AsaroLook = 'cloth' | 'pink';
 
@@ -722,6 +730,35 @@ export const ASARO_ACTIONS: Record<AsaroAction, ActionTable> = {
         gx: /*     */[0, -0.42, -0.62, -0.56, -0.3, 0],
         gy: /*     */[0, 0.22, 0.32, 0.28, 0.14, 0],
         gw: /*     */[0, 0.85, 0.95, 0.85, 0.45, 0],
+    },
+
+    /**
+     * 😂 The threat was a joke. Head thrown back a touch and bouncing on each
+     * "ha", eyes creased to crescents, mouth wide and pulsing. Distinct from
+     * `celebrate`, which is joy at something; this is him laughing at his own
+     * line, so it stays in place rather than jumping.
+     */
+    laugh: {
+        ms: 1300,
+        t: /*      */[0, 0.1, 0.22, 0.34, 0.46, 0.58, 0.7, 0.85, 1],
+        tip: /*    */[0, -4, 3, -3, 3, -2, 2, 1, 0],
+        bob: /*    */[0, -4, 1, -3, 1, -2, 1, 0, 0],
+        sq: /*     */[1, 1.04, 0.97, 1.03, 0.97, 1.02, 0.98, 1, 1],
+        lean: /*   */[0, -2, -1, -2, -1, -1, 0, 0, 0],
+        browL: /*  */[0, -8, -6, -8, -6, -7, -5, -3, 0],
+        browR: /*  */[-4, -9, -7, -9, -7, -8, -6, -5, -4],
+        tiltL: /*  */[0, -4, -3, -4, -3, -3, -2, -1, 0],
+        tiltR: /*  */[-3, 3, 2, 3, 2, 2, 1, -1, -3],
+        lidL: /*   */[0.15, 0.16, 0.18, 0.16, 0.18, 0.16, 0.15, 0.15, 0.15],
+        lidR: /*   */[0.15, 0.16, 0.18, 0.16, 0.18, 0.16, 0.15, 0.15, 0.15],
+        squint: /* */[0, 0.48, 0.55, 0.5, 0.55, 0.5, 0.44, 0.22, 0],
+        mouthC: /* */[0.3, 1, 1, 1, 1, 0.95, 0.9, 0.6, 0.3],
+        // One pulse per "ha".
+        mouthO: /* */[0, 0.62, 0.42, 0.62, 0.42, 0.55, 0.32, 0.1, 0],
+        crest: /*  */[0, -8, 6, -6, 5, -4, 3, 1, 0],
+        gx: /*     */[0, 0, 0, 0, 0, 0, 0, 0, 0],
+        gy: /*     */[0, 0.2, 0.2, 0.2, 0.2, 0.2, 0.15, 0.05, 0],
+        gw: /*     */[0, 0.6, 0.6, 0.6, 0.6, 0.6, 0.5, 0.3, 0],
     },
 
     /** Hello. The head rocks, the eyes crease, the crest whips across. */

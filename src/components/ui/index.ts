@@ -12,7 +12,7 @@ export { ClothGround, ClothStrip, ClothMark, ClothZigzag } from './Cloth';
 export { SettingsGlyph } from './SettingsGlyph';
 
 export { Asaro } from './Asaro';
-export type { AsaroProps, AsaroHandle, AsaroAction, AsaroLook } from './Asaro';
+export type { AsaroProps, AsaroHandle, AsaroAction, AsaroLook, AsaroMood } from './Asaro';
 
 export { Screen, Hero, Card, Row, Segments } from './Surfaces';
 export type { SegmentsProps, SegmentItem } from './Surfaces';

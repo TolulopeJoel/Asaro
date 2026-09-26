@@ -22,15 +22,15 @@ import Svg, {
 } from 'react-native-svg';
 
 import {
-    ASARO_ACTIONS, ASARO_LOOKS, ASARO_REST, ASARO_RIG,
-    type AsaroAction, type AsaroLook, type HairShape,
+    ASARO_ACTIONS, ASARO_LOOKS, ASARO_REST, ASARO_RIG, ASARO_SINCERE_REST,
+    type AsaroAction, type AsaroLook, type AsaroMood, type HairShape,
 } from '../../theme/asaroRig';
 
 const AG = Animated.createAnimatedComponent(G);
 const APath = Animated.createAnimatedComponent(Path);
 const AEllipse = Animated.createAnimatedComponent(Ellipse);
 
-export type { AsaroAction, AsaroLook };
+export type { AsaroAction, AsaroLook, AsaroMood };
 
 export interface AsaroHandle {
     /** Play a performance once. Interrupts anything already running. */
@@ -43,8 +43,10 @@ export interface AsaroProps {
     look?: AsaroLook;
     /** Play on mount, and again whenever this changes. */
     action?: AsaroAction;
-    /** Where to look, each axis −1…1. Omit for a slow idle drift. */
+    /** Where to look, each axis −1…1. Omit for his idle watch. */
     lookAt?: { x: number; y: number };
+    /** How he holds his face between performances. Defaults to `knowing`. */
+    mood?: AsaroMood;
     /** Crop to the face and drop the crest. Defaults on below 48px. */
     bust?: boolean;
     label?: string;
@@ -55,6 +57,7 @@ const E = R.eye;
 const M = R.mouth;
 const H = R.hair;
 const REST = ASARO_REST;
+const SINCERE = ASARO_SINCERE_REST;
 
 /** Stable ordering so a worklet can address an action by index. */
 const ACTION_NAMES = Object.keys(ASARO_ACTIONS) as AsaroAction[];
@@ -126,6 +129,16 @@ function ch(i: number, p: number, table: number[][], rest: number) {
     return seg(p, T[i], table[i]);
 }
 
+/**
+ * A lid channel moved from the knowing rest toward the sincere one by `s`
+ * (0…1). Offset rather than replaced, so an action still plays in full on top.
+ */
+function lidAt(a: number, s: number, rest: number, sincere: number) {
+    'worklet';
+    const v = a + s * (sincere - rest);
+    return v > 0 ? v : 0;
+}
+
 /** Keeps generated path strings short — a worklet builds one per frame. */
 function r1(v: number) {
     'worklet';
@@ -190,7 +203,7 @@ const lidPath = (cx: number) => `M${cx - 27} ${E.cy - E.ry - 58} L${cx + 27} ${E
 const lidLinePath = (cx: number) => `M${cx - 27} ${LID_EDGE} Q${cx} ${LID_EDGE + E.lid.bow} ${cx + 27} ${LID_EDGE}`;
 
 function AsaroBase(
-    { size = 96, look, action, lookAt, bust, label }: AsaroProps,
+    { size = 96, look, action, lookAt, mood = 'knowing', bust, label }: AsaroProps,
     ref: React.Ref<AsaroHandle>,
 ) {
     const resolved: AsaroLook = look ?? 'cloth';
@@ -227,6 +240,8 @@ function AsaroBase(
     const prog = useSharedValue(0);
     /** Index into ACTION_NAMES, or −1 when idle. */
     const act = useSharedValue(-1);
+    /** 0 knowing … 1 sincere; eased, so a change of mood is not a cut. */
+    const sincerity = useSharedValue(mood === 'sincere' ? 1 : 0);
 
     /** Held separately so a new action can cancel the previous one's reset. */
     const actionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -241,6 +256,11 @@ function AsaroBase(
     useEffect(() => () => {
         if (actionTimer.current) clearTimeout(actionTimer.current);
     }, []);
+
+    useEffect(() => {
+        const to = mood === 'sincere' ? 1 : 0;
+        sincerity.value = reduceMotion ? to : withTiming(to, { duration: 420 });
+    }, [mood, reduceMotion, sincerity]);
 
     // Breath — a slow sine the whole face rides on.
     useEffect(() => {
@@ -301,7 +321,8 @@ function AsaroBase(
          */
         const watch = () => {
             if (!alive) return;
-            if (Math.random() < 0.3) {
+            // Sincere, he holds your eye: no clocking glances.
+            if (mood === 'knowing' && Math.random() < 0.3) {
                 const side = Math.random() < 0.5 ? -1 : 1;
                 const hold = 700 + Math.random() * 500;
                 gazeX.value = withSequence(
@@ -325,7 +346,7 @@ function AsaroBase(
             cancelAnimation(gazeX);
             cancelAnimation(gazeY);
         };
-    }, [aimX, aimY, reduceMotion, gazeX, gazeY]);
+    }, [aimX, aimY, mood, reduceMotion, gazeX, gazeY]);
 
     const play = useCallback((name: AsaroAction) => {
         const A = ASARO_ACTIONS[name];
@@ -378,33 +399,44 @@ function AsaroBase(
         rotation: ch(act.value, prog.value, C_TILTL, REST.tiltL),
     }));
 
-    const browRProps = useAnimatedProps(() => ({
-        translateY: ch(act.value, prog.value, C_BROWR, REST.browR),
-        rotation: ch(act.value, prog.value, C_TILTR, REST.tiltR),
-    }));
+    const browRProps = useAnimatedProps(() => {
+        const s = sincerity.value;
+        return {
+            translateY: ch(act.value, prog.value, C_BROWR, REST.browR) + s * (SINCERE.browR - REST.browR),
+            rotation: ch(act.value, prog.value, C_TILTR, REST.tiltR) + s * (SINCERE.tiltR - REST.tiltR),
+        };
+    });
 
     // The involuntary blink and a deliberate wink share one lid, so the eye
     // takes whichever is more closed rather than letting them cancel out.
     const lidLProps = useAnimatedProps(() => {
-        const a = ch(act.value, prog.value, C_LIDL, REST.lidL);
+        const a = lidAt(
+            ch(act.value, prog.value, C_LIDL, REST.lidL), sincerity.value, REST.lidL, SINCERE.lidL,
+        );
         const b = blink.value;
         return { translateY: (a > b ? a : b) * E.lidTravel };
     });
 
     const lidRProps = useAnimatedProps(() => {
-        const a = ch(act.value, prog.value, C_LIDR, REST.lidR);
+        const a = lidAt(
+            ch(act.value, prog.value, C_LIDR, REST.lidR), sincerity.value, REST.lidR, SINCERE.lidR,
+        );
         const b = blink.value;
         return { translateY: (a > b ? a : b) * E.lidTravel };
     });
 
     const lidLineLProps = useAnimatedProps(() => {
-        const a = ch(act.value, prog.value, C_LIDL, REST.lidL);
+        const a = lidAt(
+            ch(act.value, prog.value, C_LIDL, REST.lidL), sincerity.value, REST.lidL, SINCERE.lidL,
+        );
         const l = a > blink.value ? a : blink.value;
         return { translateY: (l < E.lid.hold ? l : E.lid.hold) * E.lidTravel };
     });
 
     const lidLineRProps = useAnimatedProps(() => {
-        const a = ch(act.value, prog.value, C_LIDR, REST.lidR);
+        const a = lidAt(
+            ch(act.value, prog.value, C_LIDR, REST.lidR), sincerity.value, REST.lidR, SINCERE.lidR,
+        );
         const l = a > blink.value ? a : blink.value;
         return { translateY: (l < E.lid.hold ? l : E.lid.hold) * E.lidTravel };
     });
@@ -439,12 +471,14 @@ function AsaroBase(
 
     // One filled lens. Shut, its two edges collapse onto each other and it
     // reads as a drawn line, which is what a closed mouth actually is.
-    // The smirk tilts the corners and leans both bows toward the raised one.
+    // The smirk tilts the corners and leans both bows toward the raised one;
+    // sincerity takes it away.
     const mouthProps = useAnimatedProps(() => {
         const { w, lo, up } = lens(act.value, prog.value);
-        const qx = M.cx + M.smirk.shift;
-        const yl = M.cy + M.smirk.rise;
-        const yr = M.cy - M.smirk.rise;
+        const k = 1 - sincerity.value;
+        const qx = M.cx + M.smirk.shift * k;
+        const yl = M.cy + M.smirk.rise * k;
+        const yr = M.cy - M.smirk.rise * k;
         return {
             d: `M${r1(M.cx - w)} ${yl} Q${qx} ${r1(lo)} ${r1(M.cx + w)} ${yr} `
                 + `Q${qx} ${r1(up)} ${r1(M.cx - w)} ${yl} Z`,
@@ -459,10 +493,11 @@ function AsaroBase(
         const y0 = M.cy + 0.375 * d;
         const yc = M.cy + 0.625 * d;
         const top = yc - 2 * o * M.drop * M.tongue;
-        const x0 = M.cx + 0.375 * M.smirk.shift;
-        const qx = M.cx + 0.625 * M.smirk.shift;
-        const yl = r1(y0 + M.smirk.rise / 2);
-        const yr = r1(y0 - M.smirk.rise / 2);
+        const k = 1 - sincerity.value;
+        const x0 = M.cx + 0.375 * M.smirk.shift * k;
+        const qx = M.cx + 0.625 * M.smirk.shift * k;
+        const yl = r1(y0 + (M.smirk.rise * k) / 2);
+        const yr = r1(y0 - (M.smirk.rise * k) / 2);
         return {
             d: `M${r1(x0 - w / 2)} ${yl} Q${qx} ${r1(yc)} ${r1(x0 + w / 2)} ${yr} `
                 + `Q${qx} ${r1(top)} ${r1(x0 - w / 2)} ${yl} Z`,

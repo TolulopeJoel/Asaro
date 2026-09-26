@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Spacing } from '../theme/spacing';
-import { Asaro, AsaroAction, Card, Text } from './ui';
+import { Asaro, AsaroAction, AsaroMood, Card, Text } from './ui';
 
 /**
  * The return-after-absence moment.
@@ -25,6 +25,11 @@ interface Tier {
     minDays: number;
     /** What Àṣàrò does on arrival. Warmer the longer you have been gone. */
     action: AsaroAction;
+    /**
+     * How he holds his face afterwards. The longest absences get `sincere`:
+     * "no lecture" and "genuinely fine" are not said with a smirk.
+     */
+    mood: AsaroMood;
     heading: string;
     body: string;
 }
@@ -33,24 +38,28 @@ const TIERS: Tier[] = [
     {
         minDays: 30,
         action: 'wave',
+        mood: 'sincere',
         heading: 'There you are.',
         body: 'It has been a while, and that is genuinely fine. Nothing here expired. Pick up wherever you like — today is a good place.',
     },
     {
         minDays: 14,
         action: 'nod',
+        mood: 'sincere',
         heading: 'You came back.',
         body: 'Two weeks is two weeks. No lecture from me — the plan kept your place, and it is still warm.',
     },
     {
         minDays: 7,
         action: 'shrug',
+        mood: 'knowing',
         heading: 'A whole week o.',
         body: 'I noticed. I always notice. But you are here now, so let us not waste it talking about it.',
     },
     {
         minDays: QUIET_THRESHOLD,
         action: 'point',
+        mood: 'knowing',
         heading: 'Ehen. You are back.',
         body: 'A few days off, nothing serious. Today is still today — start here.',
     },
@@ -68,7 +77,7 @@ export function WelcomeBack({ daysAway }: { daysAway: number | null }) {
     return (
         <Card>
             <View style={styles.row}>
-                <Asaro size={74} action={tier.action} label="Àṣàrò" />
+                <Asaro size={74} action={tier.action} mood={tier.mood} label="Àṣàrò" />
 
                 <View style={styles.copy}>
                     <Text variant="subtitle">{tier.heading}</Text>
