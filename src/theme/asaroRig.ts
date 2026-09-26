@@ -94,8 +94,8 @@ export const ASARO_RIG = {
 
     /** Default face outline. */
     face: 'M100 46 C140 46 166 74 166 112 C166 152 138 176 100 176 C62 176 34 152 34 112 C34 74 60 46 100 46 Z',
-    /** Shade low on the face, clipped to it. */
-    shade: 'M20 166 C60 146 140 146 180 166 L180 200 L20 200 Z',
+    /** Shade low on the face, clipped to it; it fades in from above, so it has no hard edge. */
+    shade: 'M20 158 C60 136 140 136 180 158 L180 200 L20 200 Z',
     /** Head transform origin: the centre of the face. */
     pivotX: 100,
     pivotY: 111,
@@ -129,7 +129,7 @@ export const ASARO_RIG = {
         irisLight: { dy: 6, rx: 8.5, ry: 5.2, opacity: 0.8 },
         /** Dark limbal ring just inside the iris edge. */
         ring: { inset: 0.8, w: 1.6, opacity: 0.55 },
-        glint: { dx: -5, dy: -6, r: 4.6 },
+        glint: { dx: -5, dy: -6, r: 4 },
         spark: { dx: 4.5, dy: 5, r: 2 },
         /** Pupil travel at full gaze. Keeps the iris inside the eye. */
         travelX: 7.5,
@@ -185,29 +185,30 @@ export const ASARO_RIG = {
         /** How far the lower edge drops per unit of `mouthO`. */
         drop: 30,
         /** Half-thickness of the shut lens. */
-        lip: 5.5,
+        lip: 4.6,
         /** Tongue height, as a fraction of the open drop. */
         tongue: 0.75,
         /** Standing smirk: right corner `rise` higher, bow shifted `shift` toward it. */
         smirk: { rise: 3, shift: 1.5 },
+        /** Crease at the raised corner; fades as the mouth opens or he turns sincere. */
+        crease: { w: 2, opacity: 0.55 },
     },
 
     /** Blush: `base` at rest, plus `gain` per unit of smile above rest. */
     cheek: { lx: 66, rx: 134, cy: 138, w: 14, h: 8.5, base: 0.03, gain: 0.42 },
 
     /** Tonal curve under the mouth. */
-    chin: { d: 'M94 163.5 Q100 167 106 163.5', w: 2.2, opacity: 0.45 },
+    chin: { d: 'M92.5 164.5 Q100 166.8 107.5 164.5', w: 2.2, opacity: 0.4 },
 
-    /** Lashes at the outer corner of the left eye; mirrored for the right. */
+    /** Lashes at the left eye's outer corner, mirrored: [x1, y1, qx, qy, x2, y2]. */
     lashes: {
         strokes: [
-            [56, 91, 50, 86],
-            [51, 99, 44, 96],
-            [50, 107, 43, 107],
+            [57.9, 85.6, 54, 83.8, 51.5, 80],
+            [53, 91.5, 49, 90.2, 45.5, 86.8],
+            [50.5, 98.5, 46.6, 98.2, 43.6, 95.2],
         ],
         mirror: 100,
-        /** Finer than a brow. */
-        w: 2,
+        w: 2.4,
     },
 
     /** Ilà (pélé): strokes on the left cheek, mirrored for the right. */
@@ -289,7 +290,7 @@ export const ASARO_LOOKS: Record<AsaroLook, {
         rim: '#6f3f2f',
         // Darker than the iris, so the brows always read.
         brow: '#44271d',
-        eyeWhite: '#ffffff',
+        eyeWhite: '#fbf7f1',
         eyeRim: 'rgba(0,0,0,0.18)',
         iris: '#5a3426',
         pupil: '#180e0a',
@@ -349,7 +350,7 @@ export const ASARO_LOOKS: Record<AsaroLook, {
         hairLight: '#e393b2',
         rim: '#6f3f2f',
         brow: '#44271d',
-        eyeWhite: '#ffffff',
+        eyeWhite: '#fbf7f1',
         eyeRim: 'rgba(0,0,0,0.18)',
         iris: '#5a3426',
         pupil: '#180e0a',

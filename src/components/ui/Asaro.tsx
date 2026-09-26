@@ -156,7 +156,9 @@ function taperBrow(d: string, w: number) {
         const dx = 2 * (1 - t) * (qx - x0) + 2 * t * (x1 - qx);
         const dy = 2 * (1 - t) * (qy - y0) + 2 * t * (y1 - qy);
         const s = innerFirst ? 1 - t : t;
-        const hw = ((w / 2) * (tail + (inner - tail) * s)) / Math.hypot(dx, dy);
+        // The last fifth of the inner end rounds off instead of stopping square.
+        const cap = s > 0.8 ? Math.sqrt(1 - ((s - 0.8) / 0.2) ** 2 * 0.75) : 1;
+        const hw = ((w / 2) * (tail + (inner - tail) * s) * cap) / Math.hypot(dx, dy);
         top.push(`${r1(x - dy * hw)} ${r1(y + dx * hw)}`);
         bottom.unshift(`${r1(x + dy * hw)} ${r1(y - dx * hw)}`);
     }
@@ -177,6 +179,33 @@ const EAR_INNER_R = mirrorX(R.ear.inner, R.ear.mirror);
 const LID_EDGE = E.cy - E.ry - E.lid.lift;
 const lidPath = (cx: number) => `M${cx - 27} ${E.cy - E.ry - 58} L${cx + 27} ${E.cy - E.ry - 58} `
     + `L${cx + 27} ${LID_EDGE} Q${cx} ${LID_EDGE + E.lid.bow} ${cx - 27} ${LID_EDGE} Z`;
+/** Where the lid edge meets the left eye's outline, as a screen angle in degrees. */
+function lidCornerAngle(l: number) {
+    const lidY = (x: number) => LID_EDGE + (E.lid.bow / 2) * (1 - ((x - E.lx) / 27) ** 2) + l * E.lidTravel;
+    let a = 90;
+    let b = 270;
+    for (let i = 0; i < 30; i++) {
+        const m = (a + b) / 2;
+        const r = (m * Math.PI) / 180;
+        if (E.cy + E.ry * Math.sin(r) - lidY(E.lx + E.rx * Math.cos(r)) > 0) a = m;
+        else b = m;
+    }
+    return (a + b) / 2;
+}
+
+/** Lash turn from the rest lid, sampled over 0…`lid.hold`, so the lashes ride the lid edge. */
+const LASH_STEPS = 16;
+const LASH_TURN = Array.from({ length: LASH_STEPS + 1 }, (_, k) =>
+    lidCornerAngle((k / LASH_STEPS) * E.lid.hold) - lidCornerAngle(REST.lidL));
+
+function lashTurn(l: number) {
+    'worklet';
+    const u = l / E.lid.hold;
+    const f = (u < 0 ? 0 : u > 1 ? 1 : u) * LASH_STEPS;
+    const i = f >= LASH_STEPS ? LASH_STEPS - 1 : Math.floor(f);
+    return LASH_TURN[i] + (LASH_TURN[i + 1] - LASH_TURN[i]) * (f - i);
+}
+
 const lidLinePath = (cx: number) => `M${cx - 27} ${LID_EDGE} Q${cx} ${LID_EDGE + E.lid.bow} ${cx + 27} ${LID_EDGE}`;
 
 function AsaroBase(
@@ -206,6 +235,7 @@ function AsaroBase(
     const lidLClip = `lidL${uid}`;
     const lidRClip = `lidR${uid}`;
     const fadeFill = `fade${uid}`;
+    const shadeFill = `shade${uid}`;
 
     const [reduceMotion, setReduceMotion] = useState(false);
 
@@ -412,6 +442,20 @@ function AsaroBase(
         return { translateY: (l < E.lid.hold ? l : E.lid.hold) * E.lidTravel };
     });
 
+    const lashLProps = useAnimatedProps(() => {
+        const a = lidAt(
+            ch(act.value, prog.value, C_LIDL, REST.lidL), sincerity.value, REST.lidL, SINCERE.lidL,
+        );
+        return { rotation: lashTurn(a > blink.value ? a : blink.value) };
+    });
+
+    const lashRProps = useAnimatedProps(() => {
+        const a = lidAt(
+            ch(act.value, prog.value, C_LIDR, REST.lidR), sincerity.value, REST.lidR, SINCERE.lidR,
+        );
+        return { rotation: -lashTurn(a > blink.value ? a : blink.value) };
+    });
+
     const squintLProps = useAnimatedProps(() => ({
         translateY: -ch(act.value, prog.value, C_SQUINT, REST.squint) * E.squintTravel,
     }));
@@ -472,6 +516,18 @@ function AsaroBase(
         };
     });
 
+    const creaseProps = useAnimatedProps(() => {
+        const { o, w } = lens(act.value, prog.value);
+        const k = 1 - sincerity.value;
+        const xr = M.cx + w;
+        const yr = M.cy - M.smirk.rise * k;
+        const open = 1 - o * 4;
+        return {
+            d: `M${r1(xr + 0.5)} ${r1(yr + 2)} Q${r1(xr + 3.8)} ${r1(yr + 0.2)} ${r1(xr + 3.4)} ${r1(yr - 4.2)}`,
+            opacity: M.crease.opacity * k * (open > 0 ? open : 0),
+        };
+    });
+
     const cheekLProps = useAnimatedProps(() => {
         const c = ch(act.value, prog.value, C_MOUTHC, REST.mouthC);
         const smile = c - REST.mouthC;
@@ -493,6 +549,7 @@ function AsaroBase(
         irisP: typeof irisLProps,
         lidP: typeof lidLProps,
         lidLineP: typeof lidLineLProps,
+        lashP: typeof lashLProps,
         squintP: typeof squintLProps,
     ) => (
         <React.Fragment key={clip}>
@@ -550,19 +607,23 @@ function AsaroBase(
                 </AG>
             </G>
 
-            {/* Lashes at the outer corner, mirrored for the right eye. */}
-            {C.lashes && !cropped && R.lashes.strokes.map(([x1, y1, x2, y2]) => {
-                const flip = cx > R.lashes.mirror;
-                const X = (v: number) => (flip ? 2 * R.lashes.mirror - v : v);
-                return (
-                    <Path
-                        key={`${clip}-${x1}`}
-                        d={`M${X(x1)} ${y1} L${X(x2)} ${y2}`}
-                        fill="none" stroke={C.brow} strokeWidth={R.lashes.w}
-                        strokeLinecap="round"
-                    />
-                );
-            })}
+            {/* Lashes at the outer corner, mirrored for the right eye; they turn with the lid. */}
+            {C.lashes && !cropped && (
+                <AG animatedProps={lashP} originX={cx} originY={E.cy}>
+                    {R.lashes.strokes.map(([x1, y1, qx, qy, x2, y2]) => {
+                        const flip = cx > R.lashes.mirror;
+                        const X = (v: number) => (flip ? 2 * R.lashes.mirror - v : v);
+                        return (
+                            <Path
+                                key={`${clip}-${x1}`}
+                                d={`M${X(x1)} ${y1} Q${X(qx)} ${qy} ${X(x2)} ${y2}`}
+                                fill="none" stroke={C.brow} strokeWidth={R.lashes.w}
+                                strokeLinecap="round"
+                            />
+                        );
+                    })}
+                </AG>
+            )}
         </React.Fragment>
     );
 
@@ -588,6 +649,11 @@ function AsaroBase(
                 <ClipPath id={lidRClip}>
                     <Ellipse cx={E.rx2} cy={E.cy} rx={E.rx + E.lidBleed} ry={E.ry + E.lidBleed} />
                 </ClipPath>
+                <LinearGradient id={shadeFill} x1="0" y1="0" x2="0" y2="1">
+                    <Stop offset={0} stopColor={C.shade} stopOpacity={0} />
+                    <Stop offset={0.55} stopColor={C.shade} stopOpacity={C.shadeOpacity} />
+                    <Stop offset={1} stopColor={C.shade} stopOpacity={C.shadeOpacity} />
+                </LinearGradient>
                 {hair.fade && (
                     <LinearGradient id={fadeFill} x1="0" y1="0" x2="0" y2="1">
                         {hair.fade.stops.map(([offset, opacity]) => (
@@ -647,7 +713,7 @@ function AsaroBase(
 
                 {/* Soft features, clipped to the face so nothing spills past the jaw. */}
                 <G clipPath={`url(#${faceClip})`}>
-                    <Path d={R.shade} fill={C.shade} opacity={C.shadeOpacity} />
+                    <Path d={R.shade} fill={`url(#${shadeFill})`} />
 
                     {C.cheeks && !cropped && (
                         <>
@@ -706,6 +772,12 @@ function AsaroBase(
 
                     <APath animatedProps={mouthProps} fill={C.mouth} />
                     <APath animatedProps={tongueProps} fill={C.tongue} />
+                    {!cropped && (
+                        <APath
+                            animatedProps={creaseProps} fill="none" stroke={C.contour}
+                            strokeWidth={M.crease.w} strokeLinecap="round"
+                        />
+                    )}
                 </G>
 
                 <Path d={outline} fill="none" stroke={C.rim} strokeWidth={R.rimW} />
@@ -748,8 +820,8 @@ function AsaroBase(
                     </AG>
                 )}
 
-                {eye(E.lx, eyeLClip, lidLClip, irisLProps, lidLProps, lidLineLProps, squintLProps)}
-                {eye(E.rx2, eyeRClip, lidRClip, irisRProps, lidRProps, lidLineRProps, squintRProps)}
+                {eye(E.lx, eyeLClip, lidLClip, irisLProps, lidLProps, lidLineLProps, lashLProps, squintLProps)}
+                {eye(E.rx2, eyeRClip, lidRClip, irisRProps, lidRProps, lidLineRProps, lashRProps, squintRProps)}
 
                 <AG animatedProps={browLProps} originX={R.brow.lpx} originY={R.brow.lpy}>
                     <Path
