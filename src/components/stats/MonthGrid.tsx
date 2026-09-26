@@ -11,14 +11,17 @@ interface MonthGridProps {
     month: number;
     data: Record<string, number>;
     showTitle?: boolean;
+    /** Weekday initials over the grid, for a calendar paged a month at a time. */
+    weekdays?: boolean;
 }
 
+const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
 /**
- * A month, as a shape. Neither mockup draws day numbers, a weekday row, or a
- * per-week celebration — the month reads as a block of marks, and the one
- * number worth reading is already enlarged above it.
+ * A month, as a shape. No day numbers or per-week celebration — the month reads
+ * as a block of marks, and the one number worth reading is stated beside it.
  */
-export const MonthGrid = React.memo(({ year, month, data, showTitle = true }: MonthGridProps) => {
+export const MonthGrid = React.memo(({ year, month, data, showTitle = true, weekdays = false }: MonthGridProps) => {
     const { colors } = useTheme();
     const today = getLocalMidnight();
 
@@ -51,6 +54,15 @@ export const MonthGrid = React.memo(({ year, month, data, showTitle = true }: Mo
                 <Text variant="label" style={styles.monthTitle}>
                     {new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                 </Text>
+            )}
+            {weekdays && (
+                <View style={styles.monthGrid}>
+                    {WEEKDAYS.map((letter, index) => (
+                        <View key={`wd-${index}`} style={styles.weekday}>
+                            <Text variant="meta" tone="secondary">{letter}</Text>
+                        </View>
+                    ))}
+                </View>
             )}
             <View style={styles.monthGrid}>
                 {days.map((day, index) => {
@@ -113,6 +125,11 @@ const styles = StyleSheet.create({
     },
     // The 6px gap of the mockup's grid, expressed as a 3px inset on each cell
     // so the seven columns still divide the width exactly.
+    weekday: {
+        width: `${100 / 7}%`,
+        alignItems: 'center',
+        paddingBottom: 6,
+    },
     monthCellWrapper: {
         width: `${100 / 7}%`,
         aspectRatio: 1,

@@ -40,9 +40,11 @@ interface Props {
     cadence: Cadence;
     /** Overridable so the row can be rendered at a fixed date in a test. */
     today?: string;
+    /** Given, it draws as a card: the practice named over wide cells. */
+    title?: string;
 }
 
-export function PracticeHistory({ completions, cadence, today = getTodayDateString() }: Props) {
+export function PracticeHistory({ completions, cadence, today = getTodayDateString(), title }: Props) {
     const { colors } = useTheme();
 
     const count = cadence === 'weekly' ? WEEKLY_PERIODS : DAILY_PERIODS;
@@ -54,24 +56,44 @@ export function PracticeHistory({ completions, cadence, today = getTodayDateStri
     if (kept === 0) return null;
 
     const unit = cadence === 'weekly' ? 'weeks' : 'days';
+    const card = title !== undefined;
+
+    const cells = (
+        <View style={[styles.cells, card && styles.cardCells]}>
+            {periods.map((wasKept, index) => (
+                <View
+                    key={index}
+                    style={[
+                        card ? styles.cardCell : styles.cell,
+                        {
+                            backgroundColor: wasKept ? colors.accent : card ? colors.background : 'transparent',
+                            borderColor: wasKept ? colors.accent : colors.border,
+                        },
+                    ]}
+                />
+            ))}
+        </View>
+    );
+
+    if (!card) {
+        return (
+            <View style={styles.wrap}>
+                {cells}
+                <Text variant="meta" tone="tertiary">
+                    {`Kept ${kept} of the last ${count} ${unit}`}
+                </Text>
+            </View>
+        );
+    }
 
     return (
-        <View style={styles.wrap}>
-            <View style={styles.cells}>
-                {periods.map((wasKept, index) => (
-                    <View
-                        key={index}
-                        style={[
-                            styles.cell,
-                            {
-                                backgroundColor: wasKept ? colors.accent : 'transparent',
-                                borderColor: wasKept ? colors.accent : colors.border,
-                            },
-                        ]}
-                    />
-                ))}
+        <View style={[styles.card, { backgroundColor: colors.backgroundSubtle, borderBottomColor: colors.border }]}>
+            <View style={styles.cardHead}>
+                <Text variant="body" style={styles.cardTitle} numberOfLines={2}>{title}</Text>
+                <Text variant="meta">{`${kept}/${count}`}</Text>
             </View>
-            <Text variant="meta" tone="tertiary">
+            {cells}
+            <Text variant="bodySmall" tone="secondary">
                 {`Kept ${kept} of the last ${count} ${unit}`}
             </Text>
         </View>
@@ -85,4 +107,11 @@ const styles = StyleSheet.create({
      * cloth motifs are woven blocks, so a row of them reads as of a piece with
      * the rest of the app rather than as a chart dropped into it. */
     cell: { width: 9, height: 9, borderWidth: 1 },
+
+    /* The card: a panel with the heavier lower edge the stat tiles use. */
+    card: { padding: Spacing.md + 2, borderBottomWidth: 3, gap: Spacing.sm + 2 },
+    cardHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: Spacing.md },
+    cardTitle: { flex: 1, fontWeight: '600' },
+    cardCells: { flexWrap: 'nowrap' },
+    cardCell: { flex: 1, height: 16, borderWidth: 1 },
 });
