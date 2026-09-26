@@ -11,7 +11,8 @@ import { recentPeriods } from '../data/practiceStreak';
 import { STORAGE_KEYS } from '../storage/storageKeys';
 import { getTodayDateString } from '../utils/dateUtils';
 import {
-    Growth, GrowthMoment, anniversaryOf, assignSpecies, backTo, growthOf, isResting, isThirsty, momentOf, rootedSeries,
+    Growth, GrowthMoment, anniversaryOf, assignSpecies, backTo, growthOf, isResting, isThirsty, keptCount, momentOf,
+    rootedSeries,
 } from './grove';
 
 export interface GroveTree {
@@ -75,7 +76,7 @@ export async function loadGrove(items: EnhancedActionItem[], today = getTodayDat
         const cadence = item.cadence as Cadence;
         const history = await practiceHistory(item.id!);
         const { periods, first, sinceStart } = periodsOf(item, history, today);
-        const kept = periods.filter(Boolean).length;
+        const kept = keptCount(history, cadence, first);
         const last = history[history.length - 1];
 
         return {
@@ -95,13 +96,21 @@ export async function loadGrove(items: EnhancedActionItem[], today = getTodayDat
 /** A moment from keeping a practice, with what the tree needs to be drawn beside it. */
 export interface KeepMoment extends GrowthMoment {
     species: number;
-    /** Remembered so a stage is marked once ever; null for coming back, which may recur. */
+    /** An anniversary's remembered mark, so it is said once; null for a stage or coming back. */
     key: string | null;
 }
 
+/**
+ * Anniversaries already marked, as `practiceId:m6` / `practiceId:y1`. Stages
+ * are not stored: a stage can only be crossed again if a day was taken back, and
+ * then reaching it again is news. Remembering them would be a mark that
+ * outlives what it marked.
+ */
 async function announced(): Promise<Set<string>> {
     try {
-        return new Set(JSON.parse((await AsyncStorage.getItem(STORAGE_KEYS.GROVE_MOMENTS)) ?? '[]'));
+        const keys: string[] = JSON.parse((await AsyncStorage.getItem(STORAGE_KEYS.GROVE_MOMENTS)) ?? '[]');
+        // Stage marks from before stages stopped being stored.
+        return new Set(keys.filter(key => !/:\d+$/.test(key)));
     } catch {
         return new Set();
     }
@@ -120,42 +129,42 @@ export async function momentOnKeep(item: EnhancedActionItem, today = getTodayDat
     const cadence = item.cadence as Cadence;
     const history = await practiceHistory(item.id);
     const now = periodsOf(item, history, today);
-    const before = periodsOf(item, history.filter(day => day !== today), today).periods;
+    const without = history.filter(day => day !== today);
+    const before = periodsOf(item, without, today).periods;
 
+    const all = await getAllActionItems(200);
     // Against every live practice, so a new one gets the next unused tree rather than the first.
-    const live = (await getAllActionItems(200)).filter(isLivePractice).map(p => p.id!);
+    const live = all.filter(isLivePractice).map(p => p.id!);
     const species = (await speciesFor(live.includes(item.id) ? live : [...live, item.id]))[item.id] ?? 0;
 
-    const keptBefore = before.filter(Boolean).length;
-    const keptAfter = now.periods.filter(Boolean).length;
+    const keptBefore = keptCount(without, cadence, now.first);
+    const keptAfter = keptCount(history, cadence, now.first);
     if (keptAfter <= keptBefore) return null;
     const stage = growthOf(cadence, keptAfter).stage;
     const wasThirsty = isThirsty(before, cadence);
-    const seen = await announced();
 
     // A new stage first, then an anniversary, then coming back: one word per keep.
     const reached = momentOf(cadence, keptBefore, keptAfter, species, false);
-    if (reached?.kind === 'stage') {
-        const key = `${item.id}:${reached.stage}`;
-        if (!seen.has(key)) {
-            seen.add(key);
-            await saveAnnounced(seen);
-            return { ...reached, species, key };
-        }
-    }
+    if (reached?.kind === 'stage') return { ...reached, species, key: null };
+
     const anniversary = anniversaryOf(now.sinceStart, stage);
     if (anniversary) {
+        const seen = await announced();
+        // A deleted practice's anniversaries go with it.
+        const existing = new Set(all.map(p => String(p.id)));
+        for (const key of [...seen]) if (!existing.has(key.split(':')[0])) seen.delete(key);
         const key = `${item.id}:${anniversary.id}`;
         if (!seen.has(key)) {
             seen.add(key);
             await saveAnnounced(seen);
             return { ...anniversary.moment, species, key };
         }
+        await saveAnnounced(seen);
     }
     return wasThirsty ? { ...backTo(stage), species, key: null } : null;
 }
 
-/** Undo a keep's moment, so keeping it again marks the stage properly. */
+/** Undo a keep's anniversary, so keeping it again marks it properly. */
 export async function forgetMoment(key: string) {
     const seen = await announced();
     if (seen.delete(key)) await saveAnnounced(seen);

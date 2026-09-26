@@ -202,3 +202,26 @@ export function anniversaryOf(daysSinceStart: number, stage: number): { id: stri
     if (within(182)) return { id: 'm6', moment: { kind: 'stage', stage, title: 'Six months', line: "Six months. This one's yours now." } };
     return null;
 }
+
+const DAY = 86_400_000;
+const dayOf = (value: string) => {
+    const [y, m, d] = value.slice(0, 10).split('-').map(Number);
+    return new Date(y, (m ?? 1) - 1, d ?? 1).getTime();
+};
+
+/**
+ * Periods kept since the practice began, for growth. Unlike the rolling windows
+ * the streak and thirst use, these never move: a day is a day, and a week is a
+ * fixed week from the day it began. So a tree only changes when a day is kept
+ * or taken back — never because the calendar turned.
+ */
+export function keptCount(completions: string[], cadence: Cadence, startedOn: string): number {
+    const start = dayOf(startedOn);
+    const periods = new Set<number>();
+    for (const day of completions) {
+        const offset = Math.round((dayOf(day) - start) / DAY);
+        if (offset < 0) continue;
+        periods.add(cadence === 'daily' ? offset : Math.floor(offset / 7));
+    }
+    return periods.size;
+}
