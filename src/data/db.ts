@@ -1,53 +1,53 @@
 import * as SQLite from 'expo-sqlite';
 
-/**
- * The open connection, cached as a PROMISE rather than as a handle.
- *
- * The obvious version of this — `if (!db) db = await open()` — is not safe
- * when two callers arrive together, and at startup they always do. Both see
- * `db` still null, because neither has passed its `await` yet, so both call
- * `openDatabaseAsync` and the second assignment quietly replaces the first.
- * The app is then holding two connections to one file: writes collide, reads
- * hit a handle nobody owns any more, and `initializeDatabase` returns false
- * with no explanation. Intermittently, depending entirely on timing — which
- * is exactly how it presented.
- *
- * Caching the promise means the second caller awaits the FIRST open instead
- * of starting another. The window closes because there is nothing to race.
- */
-let opening: Promise<SQLite.SQLiteDatabase> | null = null;
+const DB_NAME = 'bibleJournal.db';
 
-export const getDb = async (): Promise<SQLite.SQLiteDatabase> => {
-    if (!opening) {
-        opening = SQLite.openDatabaseAsync('bibleJournal.db').catch(error => {
-            /*
-             * A failed open must not be cached, or every later call awaits
-             * the same rejection and the app can never recover — including
-             * the reconnect path below, which exists precisely to recover.
-             */
-            opening = null;
+/*
+ * Cached as a promise so callers arriving together share one open. Kept on
+ * globalThis so a Fast Refresh that re-runs this module reuses the same handle:
+ * expo-sqlite hands a second open the same native connection, and when the
+ * orphaned JS wrapper is collected it closes that connection under the live
+ * one — prepareAsync then fails with a NullPointerException.
+ */
+const cache = globalThis as { __journalDb?: Promise<SQLite.SQLiteDatabase> | null };
+
+function open(fresh: boolean) {
+    const opening = SQLite.openDatabaseAsync(DB_NAME, fresh ? { useNewConnection: true } : undefined)
+        .catch(error => {
+            // Never cache a failed open, or nothing can recover.
+            cache.__journalDb = null;
             throw error;
         });
-    }
+    cache.__journalDb = opening;
     return opening;
-};
+}
+
+export const getDb = (): Promise<SQLite.SQLiteDatabase> => cache.__journalDb ?? open(false);
+
+/** A handle whose native side is gone. */
+function isLostConnection(error: any) {
+    const message = String(error?.message ?? '');
+    return message.includes('shared object that was already released')
+        || message.includes('Cannot use shared object')
+        || (message.includes('NativeDatabase') && message.includes('NullPointerException'));
+}
 
 /**
- * Helper to retry database operations if the connection is lost/closed
+ * Runs `operation`, reopening once if the connection was lost. The reopen
+ * bypasses expo-sqlite's cache, which would hand back the dead connection.
  */
 export const withDatabase = async <T>(operation: (database: SQLite.SQLiteDatabase) => Promise<T>): Promise<T> => {
+    const opening = getDb();
     try {
-        const database = await getDb();
-        return await operation(database);
+        return await operation(await opening);
     } catch (error: any) {
-        if (error?.message?.includes('shared object that was already released') ||
-            error?.message?.includes('Cannot use shared object')) {
+        if (!isLostConnection(error)) throw error;
+        // Only the first caller to notice reopens; the rest reuse its handle.
+        if (cache.__journalDb === opening) {
             console.warn('Database connection lost, reconnecting...');
-            opening = null;
-            const database = await getDb();
-            return await operation(database);
+            open(true).catch(() => { }); // surfaced by the await below
         }
-        throw error;
+        return await operation(await getDb());
     }
 };
 
