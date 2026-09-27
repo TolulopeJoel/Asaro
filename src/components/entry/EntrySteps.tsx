@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { ChevronLeft, X } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
@@ -233,6 +233,9 @@ export const ReflectionStep = React.memo(({
     </View>
 ));
 
+/** How long the save screen holds its slot open for a card before settling on the note. */
+const SLOT_WAIT_MS = 1500;
+
 interface SummaryStepProps {
     selectionSummary: string;
     formattedDate: string;
@@ -246,6 +249,8 @@ interface SummaryStepProps {
      * above the actions so leaving is never blocked by it.
      */
     observation?: React.ReactNode;
+    /** Whether the search for `observation` has finished; until then the slot stays empty. */
+    observationSettled?: boolean;
     /**
      * The saved entry's id, used to pick what he says when there is no card. A
      * seed rather than the line itself, so the choosing stays with the words it
@@ -273,9 +278,19 @@ export const SummaryStep = React.memo(({
     onDone,
     onShare,
     observation,
+    observationSettled = true,
     noteSeed,
 }: SummaryStepProps) => {
     const footPadding = useFootPadding();
+
+    // Wait for the card rather than flash the note first; past the cap the note stays put.
+    const [noteLocked, setNoteLocked] = useState(false);
+    useEffect(() => {
+        if (observationSettled) return;
+        const timer = setTimeout(() => setNoteLocked(true), SLOT_WAIT_MS);
+        return () => clearTimeout(timer);
+    }, [observationSettled]);
+    const slot = noteLocked ? 'note' : !observationSettled ? 'waiting' : observation ? 'card' : 'note';
     const meta = `${spell(answerCount)} ${answerCount === 1 ? 'answer' : 'answers'} · ${formattedDate}`;
 
     return (
@@ -299,11 +314,11 @@ export const SummaryStep = React.memo(({
             >
                 {/* The card if there is one, a word from him if not. NEVER
                   * both: two voices over one moment is what §6 warns about. */}
-                {observation ?? (
+                {slot === 'card' ? observation : slot === 'note' ? (
                     <Text variant="body" tone="secondary" style={styles.savedNote}>
                         {savedNote(noteSeed)}
                     </Text>
-                )}
+                ) : null}
             </ScrollView>
 
             <View

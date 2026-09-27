@@ -84,6 +84,8 @@ export interface ObservationSlot {
     verdict: (agreed: boolean) => Promise<void>;
     /** The reader tapped through to the passage this offered. */
     follow: () => Promise<void>;
+    /** The pass has finished: `observation` is final until the next one. */
+    settled: boolean;
 }
 
 /**
@@ -94,6 +96,7 @@ export interface ObservationSlot {
 export function useObservation(enabled: boolean, surface: Surface = 'home'): ObservationSlot {
     const [observation, setObservation] = useState<StoredObservation | null>(null);
     const [rendered, setRendered] = useState<RenderedObservation | null>(null);
+    const [settled, setSettled] = useState(false);
     const mounted = useRef(true);
 
     useEffect(() => {
@@ -105,6 +108,7 @@ export function useObservation(enabled: boolean, surface: Surface = 'home'): Obs
 
     useEffect(() => {
         if (!enabled) return;
+        setSettled(false);
 
         (async () => {
             try {
@@ -139,6 +143,8 @@ export function useObservation(enabled: boolean, surface: Surface = 'home'): Obs
                 }
             } catch {
                 // A noticing is never important enough to interrupt Home.
+            } finally {
+                if (mounted.current) setSettled(true);
             }
         })();
     }, [enabled, surface]);
@@ -195,5 +201,5 @@ export function useObservation(enabled: boolean, surface: Surface = 'home'): Obs
         [observation, clear],
     );
 
-    return { observation, rendered, seen, open, dismiss, verdict, follow };
+    return { observation, rendered, seen, open, dismiss, verdict, follow, settled };
 }

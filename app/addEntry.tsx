@@ -475,6 +475,7 @@ export default function MeditationSessionScreen() {
                 return (
                     <SummaryStep
                         observation={echoCard}
+                        observationSettled={echo.settled}
                         noteSeed={savedEntryId}
                         selectionSummary={selectionSummary}
                         formattedDate={formattedDate}
