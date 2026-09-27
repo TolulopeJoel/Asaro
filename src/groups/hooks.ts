@@ -14,7 +14,8 @@ import { weekDocId } from './ids';
 import { Group, GroupWeek, Member, Nudge, Role } from './model';
 import { GroupCollection, groupCollection, groupDocRef, groupRef, membersRef, nudgesRef, select, userRef, weekCountRef } from './paths';
 import { checkMembership } from './publish';
-import { clearNudges } from './repository';
+import { clearNudges, loadCreateEligibility } from './repository';
+import { Eligibility } from './eligibility';
 import { errorCode } from './session';
 import { weekKey } from './week';
 import { GroupWindow, groupWindow, nextWindowChange } from './window';
@@ -379,6 +380,32 @@ export function useGroupWeek(group: Group | null): GroupWeekState {
         loading,
         error,
     };
+}
+
+// ─── Starting a group ─────────────────────────────────────────────────────────
+
+/** Whether the reader may start a group, and how far along each rule they are. Null while loading. */
+export function useCreateEligibility(): { eligibility: Eligibility | null; failed: boolean; refresh: () => void } {
+    const uid = useAuth().user?.uid;
+    const [eligibility, setEligibility] = useState<Eligibility | null>(null);
+    const [failed, setFailed] = useState(false);
+    const [tick, setTick] = useState(0);
+
+    useEffect(() => {
+        let cancelled = false;
+        setEligibility(null);
+        setFailed(false);
+        loadCreateEligibility()
+            .then(result => { if (!cancelled) setEligibility(result); })
+            .catch(error => {
+                console.error('[groups] eligibility failed:', error);
+                if (!cancelled) setFailed(true);
+            });
+        return () => { cancelled = true; };
+    }, [uid, tick]);
+
+    const refresh = useCallback(() => setTick(t => t + 1), []);
+    return { eligibility, failed, refresh };
 }
 
 // ─── Nudges ───────────────────────────────────────────────────────────────────

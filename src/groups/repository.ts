@@ -6,6 +6,11 @@ import {
 } from '@react-native-firebase/firestore';
 
 import { STORAGE_KEYS } from '../storage/storageKeys';
+import { getReadingProgress } from '../data/readingRepository';
+import { withDatabase } from '../data/db';
+import { READING_PLAN_DATA } from '../data/readingPlanData';
+import { Eligibility, createEligibility, signedOutEligibility } from './eligibility';
+import { planDoneCount } from './milestones';
 import { generateCode, isCode, normaliseCode, nudgeId } from './ids';
 import { Role, SCHEMA } from './model';
 import {
@@ -31,13 +36,45 @@ async function freshCode(): Promise<string> {
 
 // ─── Create and join ──────────────────────────────────────────────────────────
 
-export type CreateResult = { status: 'created'; groupId: string; code: string } | { status: 'invalid' } | Offline | SignedOut;
+/** Whether the reader may start a group, from local entries, their member docs and the override flag. */
+export async function loadCreateEligibility(): Promise<Eligibility> {
+    const me = await currentMe();
+    if (!me) return signedOutEligibility(READING_PLAN_DATA.length);
+    const [done, days, user, gids] = await Promise.all([
+        getReadingProgress(),
+        withDatabase(db => db.getAllAsync<{ day: string }>(
+            `SELECT DISTINCT DATE(created_at, 'localtime') AS day FROM journal_entries`,
+        )),
+        getDoc(userRef(me.uid)).catch(() => null),
+        myGroupIds(me.uid),
+    ]);
+    // getDoc answers from the cache when offline.
+    const joined = await Promise.all(gids.map(gid => getDoc(memberRef(gid, me.uid))
+        .then(d => d.data()?.joinedAt?.toMillis?.() ?? null)
+        .catch(() => null)));
+    const times = joined.filter((t): t is number => typeof t === 'number');
+    return createEligibility({
+        planCompleted: planDoneCount(READING_PLAN_DATA, done),
+        planLength: READING_PLAN_DATA.length,
+        entryDates: days.map(d => d.day).filter(Boolean),
+        earliestJoinedAt: times.length ? Math.min(...times) : null,
+        override: user?.data()?.canCreateGroups === true,
+        now: Date.now(),
+    });
+}
+
+export type CreateResult =
+    | { status: 'created'; groupId: string; code: string }
+    | { status: 'invalid' | 'not-eligible' }
+    | Offline
+    | SignedOut;
 
 /** Make a group with a new code, in the creator's time zone; the creator is its first member. Needs a connection. */
 export async function createGroup(name: string, description: string = ''): Promise<CreateResult> {
     const me = await currentMe();
     if (!me) return { status: 'signed-out' };
     if (!name.trim()) return { status: 'invalid' };
+    if (!(await loadCreateEligibility()).eligible) return { status: 'not-eligible' };
 
     for (let attempt = 0; attempt < 3; attempt++) {
         try {

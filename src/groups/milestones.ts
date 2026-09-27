@@ -31,6 +31,15 @@ export interface EarnedMilestone {
     label: string;
 }
 
+/** Plan items done, counting only ids in the plan. Checkpoints and the create gate both count this way. */
+export const planDoneCount = (plan: { id: number }[], done: Iterable<number>) => {
+    const ids = new Set(done);
+    return plan.filter(item => ids.has(item.id)).length;
+};
+
+/** Items needed to reach a checkpoint: 91 of 364 for a quarter. */
+export const checkpointItems = (planLength: number, mark: number) => Math.ceil((planLength * mark) / 100);
+
 /** A doc-id-safe key part: "1 John" → "1-john". */
 export const slug = (text: string) => text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
@@ -53,10 +62,9 @@ export function earnedMilestones(input: MilestoneInput): EarnedMilestone[] {
         }
     }
 
-    const planDone = input.plan.filter(item => done.has(item.id)).length;
-    const percent = input.plan.length ? (planDone / input.plan.length) * 100 : 0;
+    const planDone = planDoneCount(input.plan, done);
     for (const mark of PLAN_CHECKPOINTS) {
-        if (percent >= mark) earned.push({ key: `plan-${mark}`, kind: 'plan', label: CHECKPOINT_LABEL[mark] });
+        if (input.plan.length && planDone >= checkpointItems(input.plan.length, mark)) earned.push({ key: `plan-${mark}`, kind: 'plan', label: CHECKPOINT_LABEL[mark] });
     }
 
     for (const practice of input.practices) {
