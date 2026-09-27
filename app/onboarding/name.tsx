@@ -10,8 +10,7 @@ import { useRouter } from 'expo-router';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
-import { ScalePressable } from '@/src/components/ScalePressable';
-import { Asaro, Hero, Screen, Text } from '@/src/components/ui';
+import { Asaro, Hero, Screen, Text, ThemedButton } from '@/src/components/ui';
 import { onboardingStepLabel } from '@/src/utils/onboardingSteps';
 import { useAsaroLook } from '@/src/storage/asaroLook';
 import { useAuth } from '@/src/context/AuthContext';
@@ -98,26 +97,7 @@ export default function NameScreen() {
                     </View>
 
                     <View style={styles.footer}>
-                        <ScalePressable
-                            style={[
-                                styles.button,
-                                {
-                                    backgroundColor: isValid ? colors.textPrimary : colors.cardBackground,
-                                    borderColor: isValid ? 'transparent' : colors.border,
-                                    borderWidth: isValid ? 0 : 1,
-                                    opacity: isValid ? 1 : 0.5,
-                                }
-                            ]}
-                            onPress={handleContinue}
-                            disabled={!isValid}
-                        >
-                            <Text style={[
-                                styles.buttonText,
-                                { color: isValid ? colors.background : colors.textSecondary }
-                            ]}>
-                                Continue
-                            </Text>
-                        </ScalePressable>
+                        <ThemedButton label="Continue" block disabled={!isValid} onPress={handleContinue} />
                     </View>
                 </View>
             </ScrollView>
@@ -168,17 +148,5 @@ const styles = StyleSheet.create({
     },
     footer: {
         paddingTop: Spacing.xxl,
-    },
-    button: {
-        paddingVertical: 20,
-        borderRadius: Spacing.borderRadius.lg,
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: '100%',
-    },
-    buttonText: {
-        fontSize: Typography.size.lg,
-        fontWeight: Typography.weight.semibold,
-        letterSpacing: 0.3,
     },
 });

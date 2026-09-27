@@ -137,7 +137,7 @@ export default function BatteryOptimizationScreen() {
                     </View>
 
                     <View style={styles.foot}>
-                        <ThemedButton label="Fix Settings" variant="accent" block onPress={handleFixSettings} />
+                        <ThemedButton label="Fix Settings" block onPress={handleFixSettings} />
                         {showAutoStart && (
                             <ThemedButton
                                 label={`Allow Auto-Start (${oemAutoStartLabel()})`}

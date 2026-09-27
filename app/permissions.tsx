@@ -104,7 +104,7 @@ export default function PermissionsScreen() {
                     </View>
 
                     <View style={styles.foot}>
-                        <ThemedButton label="Allow Notifications" variant="accent" block onPress={handleRequestPermission} />
+                        <ThemedButton label="Allow Notifications" block onPress={handleRequestPermission} />
                         {permissionStatus === 'denied' && (
                             <ThemedButton label="Open Settings" variant="secondary" block onPress={handleOpenSettings} />
                         )}
