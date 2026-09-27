@@ -2,6 +2,7 @@ import { initializeDatabase } from '@/src/data/database';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '@/src/storage/storageKeys';
 import { loadAsaroLook } from '@/src/storage/asaroLook';
+import { setOnboardingSteps } from '@/src/utils/onboardingSteps';
 import {
   initializeNotificationChannel,
   hasNotificationPermissions,
@@ -53,6 +54,7 @@ function StackNavigator() {
       <Stack.Screen name="land" options={{ headerShown: false }} />
       <Stack.Screen name="permissions" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="battery-optimization" options={{ headerShown: false, gestureEnabled: false }} />
+      <Stack.Screen name="onboarding/character" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="onboarding/name" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="onboarding/sleep-time" options={{ headerShown: false, gestureEnabled: false }} />
     </Stack>
@@ -107,6 +109,16 @@ export default function RootLayout() {
           hasNotificationPermissions(),
           isBatteryOptimizationDisabled(),
         ]);
+
+        if (!name || !sleep) {
+          setOnboardingSteps([
+            ...(name ? [] : ['character' as const]),
+            'name',
+            'sleep-time',
+            ...(perms ? [] : ['permissions' as const]),
+            ...(batteryOk ? [] : ['battery-optimization' as const]),
+          ]);
+        }
 
         setUserName(name);
         setSleepTime(sleep);
@@ -170,7 +182,17 @@ export default function RootLayout() {
       if (name && name !== userName) setUserName(name);
       if (sleep && sleep !== sleepTime) setSleepTime(sleep);
 
-      // 1. Name
+      // 1. Character, for new users only: an existing user keeps the default look.
+      if (!name && !await AsyncStorage.getItem(STORAGE_KEYS.ASARO_LOOK)) {
+        if (cancelled) return;
+        if (currentSegment !== 'onboarding' || segments[1] !== 'character') {
+          router.replace('/onboarding/character');
+        }
+        return;
+      }
+      if (cancelled) return;
+
+      // 2. Name
       if (!name) {
         if (currentSegment !== 'onboarding' || segments[1] !== 'name') {
           router.replace('/onboarding/name');
@@ -178,7 +200,7 @@ export default function RootLayout() {
         return;
       }
 
-      // 2. Sleep time
+      // 3. Sleep time
       if (!sleep) {
         if (currentSegment !== 'onboarding' || segments[1] !== 'sleep-time') {
           router.replace('/onboarding/sleep-time');
@@ -186,7 +208,7 @@ export default function RootLayout() {
         return;
       }
 
-      // 3. Notification permissions. If currently on the screen, wait — don't redirect away yet.
+      // 4. Notification permissions. If currently on the screen, wait — don't redirect away yet.
       if (currentSegment === 'permissions') return;
       let perms = hasPermissions;
       if (!perms) {
@@ -200,7 +222,7 @@ export default function RootLayout() {
         return;
       }
 
-      // 4. Battery optimisation
+      // 5. Battery optimisation
       if (currentSegment === 'battery-optimization') return;
       let batteryOk = isBatteryOk;
       if (!batteryOk) {
@@ -208,12 +230,10 @@ export default function RootLayout() {
         if (cancelled) return;
         setIsBatteryOk(batteryOk);
       }
-      // "Continue anyway" on the battery screen counts as met.
-      if (!batteryOk && !await AsyncStorage.getItem(STORAGE_KEYS.BATTERY_GATE_SKIPPED)) {
-        if (!cancelled) router.replace('/battery-optimization');
+      if (!batteryOk) {
+        router.replace('/battery-optimization');
         return;
       }
-      if (cancelled) return;
 
       // All requirements met — mark ready and schedule notifications once.
       setIsReady(true);

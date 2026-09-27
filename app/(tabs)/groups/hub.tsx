@@ -85,7 +85,7 @@ export default function GroupsScreen() {
 
             <ScrollView
                 ref={scrollViewRef}
-                contentContainerStyle={[styles.body, { paddingBottom: footPadding }]}
+                contentContainerStyle={[styles.body, styles.bodyFill, { paddingBottom: footPadding }]}
                 showsVerticalScrollIndicator={false}
             >
                 {!isLoading && <NudgePanel />}
@@ -134,17 +134,43 @@ export default function GroupsScreen() {
                     </Text>
                 )}
 
-                {!isLoading && (
-                    <View>
-                        <Text variant="label" style={styles.label}>{rows.length ? 'Join another' : 'Join a group'}</Text>
-                        <ThemedButton label="Enter Group Code" block onPress={() => router.push('/(tabs)/groups/join' as any)} />
-                        <ThemedButton
-                            label="Start a group"
-                            variant="secondary"
-                            block
+                {/* In a group already, joining or starting another is a footnote, not the next thing to do. */}
+                {!isLoading && rows.length > 0 && (
+                    <View style={styles.moreFoot}>
+                        <ScalePressable
+                            onPress={() => router.push('/(tabs)/groups/join' as any)}
+                            accessibilityRole="link"
+                            hitSlop={Spacing.md}
+                        >
+                            <Text variant="bodySmall" tone="accent">Join another group</Text>
+                        </ScalePressable>
+                        <Text variant="bodySmall" tone="tertiary">·</Text>
+                        <ScalePressable
                             onPress={() => router.push('/(tabs)/groups/create' as any)}
-                            style={styles.second}
-                        />
+                            accessibilityRole="link"
+                            hitSlop={Spacing.md}
+                        >
+                            <Text variant="bodySmall" tone="accent">Start a group</Text>
+                        </ScalePressable>
+                    </View>
+                )}
+
+                {!isLoading && rows.length === 0 && (
+                    <View>
+                        <Text variant="label" style={styles.label}>Join a group</Text>
+                        <ThemedButton label="Enter Group Code" block onPress={() => router.push('/(tabs)/groups/join' as any)} />
+                        {/* Quiet on purpose: most readers can't start one yet, and joining is the ask. */}
+                        <ScalePressable
+                            onPress={() => router.push('/(tabs)/groups/create' as any)}
+                            accessibilityRole="link"
+                            accessibilityLabel="Start a group"
+                            hitSlop={Spacing.md}
+                            style={styles.startLink}
+                        >
+                            <Text variant="bodySmall" tone="secondary">
+                                Want to lead one? <Text variant="bodySmall" tone="accent">Start a group</Text>
+                            </Text>
+                        </ScalePressable>
                     </View>
                 )}
             </ScrollView>
@@ -165,7 +191,17 @@ const styles = StyleSheet.create({
     groupRow: { alignItems: 'center' },
     rowMain: { flex: 1, minWidth: 0 },
     snip: { marginTop: 4 },
-    second: { marginTop: 10 },
+    startLink: { alignSelf: 'center', marginTop: Spacing.lg },
+    /* Lets the footer settle at the bottom of a short screen rather than under the last group. */
+    bodyFill: { flexGrow: 1 },
+    moreFoot: {
+        marginTop: 'auto',
+        paddingTop: Spacing.xl,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: Spacing.sm,
+    },
 
     authScroll: { flexGrow: 1 },
     authContainer: {

@@ -52,7 +52,7 @@ export interface TodayItem {
     moment?: KeepMoment;
 }
 
-/** Every practice kept for today, marked on the keep that finished them. */
+/** Every practice kept for today — the state, shown for the rest of the day. */
 export interface Watered {
     line: string;
     trees: { id: number; stage: number; species: number }[];
@@ -60,7 +60,7 @@ export interface Watered {
 
 export interface Today {
     items: TodayItem[];
-    /** Set on the visit whose keep finished today's practices, when there are two or more. */
+    /** Set whenever every practice is kept for today, so a finished day never looks empty. */
     watered: Watered | null;
     /** Tick a practice for today. Actions are completed from the Library. */
     keep: (item: EnhancedActionItem) => Promise<void>;
@@ -144,9 +144,10 @@ export function useToday(enabled: boolean): Today {
 
             setItems(live);
 
-            // Only on the visit that finished them, and only when "all" is more than one.
-            const finishedHere = practices.length >= 2 && keptNow === practices.length && keptHere.current.size > 0;
-            if (finishedHere) {
+            // A state, not a moment: shown whenever everything is kept, on every visit,
+            // so the strip says the day is done rather than vanishing as if nothing was asked.
+            const allKept = practices.length > 0 && keptNow === practices.length;
+            if (allKept) {
                 const trees = await loadGrove(practices);
                 setWatered({
                     line: wateredNote(getTodayDateString()),

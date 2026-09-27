@@ -134,7 +134,7 @@ export default function Index() {
      */
     const today = useToday(!isLoading);
     const todayStrip =
-        today.items.length > 0 ? (
+        today.items.length > 0 || today.watered ? (
             <TodayStrip
                 items={today.items}
                 onKeep={entry => today.keep(entry.item)}

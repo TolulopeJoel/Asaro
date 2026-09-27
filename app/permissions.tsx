@@ -7,6 +7,7 @@ import { Spacing } from '@/src/theme/spacing';
 import { useFootPadding } from '@/src/hooks/useScreenInsets';
 import { useAlert } from '@/src/context/AlertContext';
 import { Asaro, Hero, Screen, Text, ThemedButton } from '@/src/components/ui';
+import { onboardingStepLabel } from '@/src/utils/onboardingSteps';
 
 export default function PermissionsScreen() {
     const router = useRouter();
@@ -43,8 +44,8 @@ export default function PermissionsScreen() {
         } else {
             setPermissionStatus('denied');
             showAlert({
-                title: 'Can I Check Up On You? 😏',
-                message: 'Hi, I\'m Àṣàrò. I will disturb you small if you miss your Bible reading. I won\'t let your phone rest\n\nBut, I care! If I don\'t see you, I\'ll check up on you to make sure your relationship with Jehovah is intact 😌',
+                title: 'So I Can\u2019t Check Up On You? 😏',
+                message: 'If I don\u2019t see you, I want to check up on you, to make sure your relationship with Jehovah is intact 😌\n\nTurn notifications on in Settings. I\u2019ll only come on days you haven\u2019t read, and never after you turn in.',
                 buttons: [
                     { text: 'Cancel', style: 'cancel' },
                     { text: 'Open Settings', onPress: () => openNotificationSettings() }
@@ -75,7 +76,7 @@ export default function PermissionsScreen() {
               * button would otherwise fall under the nav bar or off screen. */}
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <Hero ownsTopInset topPadding={64}>
-                    <Text variant="label" tone="onHero" style={styles.heroStep}>Step 3 of 3</Text>
+                    <Text variant="label" tone="onHero" style={styles.heroStep}>{onboardingStepLabel('permissions') ?? 'One more thing'}</Text>
                     <Text variant="display" tone="onBand">Can I Check{'\n'}Up On You?</Text>
                 </Hero>
 
@@ -84,7 +85,7 @@ export default function PermissionsScreen() {
                     <View style={styles.intro}>
                         <Asaro size={74} action="smug" label="Àṣàrò" />
                         <Text variant="sub" style={styles.introText}>
-                            One nudge a day, at a time you choose, and nothing after your sleep hour.
+                            A few nudges on days you haven’t read, and none after you turn in.
                         </Text>
                     </View>
 

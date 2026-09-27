@@ -11,6 +11,7 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { Hero, Screen, Text, ThemedButton, textStyle } from '@/src/components/ui';
+import { onboardingStepLabel } from '@/src/utils/onboardingSteps';
 import { useFootPadding } from '@/src/hooks/useScreenInsets';
 import { saveSleepTime, setupDailyNotifications } from '@/src/utils/notifications';
 
@@ -22,8 +23,8 @@ export default function SleepTimeScreen() {
     const router = useRouter();
     const { colors, style: themeStyle } = useTheme();
 
-    const [hour, setHour] = useState('');
-    const [minute, setMinute] = useState('');
+    const [hour, setHour] = useState('10');
+    const [minute, setMinute] = useState('00');
     const [error, setError] = useState<string | null>(null);
 
     const minuteInputRef = useRef<TextInput>(null);
@@ -44,28 +45,16 @@ export default function SleepTimeScreen() {
             return;
         }
 
-        // STRICT VALIDATION: Don't allow numbers > 12
-        if (val > 12) {
-            return;
-        }
-
-        // Don't allow 00
-        if (cleaned === '00') {
-            return;
-        }
+        // Only 8–11, or the 1 that starts 10 or 11.
+        const typable = cleaned.length === 1
+            ? val === 1 || (val >= EARLIEST_HOUR && val <= 9)
+            : val >= 10 && val <= LATEST_HOUR;
+        if (!typable) return;
 
         setHour(cleaned);
         setError(null);
 
-        // AUTO-ADVANCE LOGIC
-        // 1. If length is 2, we are definitely done (e.g. 10, 11, 12).
-        if (cleaned.length === 2) {
-            minuteInputRef.current?.focus();
-        }
-        // 2. If length is 1 and value > 1 (i.e. 2, 3, ... 9), it cannot be the first digit of a valid hour.
-        //    (e.g. you can't have 20, 30, etc. in 12h format).
-        //    So we assume they are done with the hour.
-        else if (cleaned.length === 1 && val > 1) {
+        if (val >= EARLIEST_HOUR) {
             minuteInputRef.current?.focus();
         }
     };
@@ -90,13 +79,6 @@ export default function SleepTimeScreen() {
         // If first digit > 5 (i.e. 6-9), it can't be first digit of valid minute (max 59).
         else if (cleaned.length === 1 && val > 5) {
             Keyboard.dismiss();
-        }
-    };
-
-    const handleBlurHour = () => {
-        if (hour.length === 1) {
-            // Optional: pad with 0? Or just leave it. 
-            // "9" is fine.
         }
     };
 
@@ -156,7 +138,7 @@ export default function SleepTimeScreen() {
                 keyboardDismissMode="on-drag"
             >
                 <Hero ownsTopInset topPadding={64}>
-                    <Text variant="label" tone="onHero" style={styles.heroStep}>Step 2 of 3</Text>
+                    <Text variant="label" tone="onHero" style={styles.heroStep}>{onboardingStepLabel('sleep-time')}</Text>
                     <Text variant="display" tone="onBand">When do you{'\n'}turn in?</Text>
                 </Hero>
                 <View style={[styles.clothBody, { paddingBottom: footPadding }]}>
@@ -175,11 +157,10 @@ export default function SleepTimeScreen() {
                             placeholderTextColor={colors.textMuted}
                             value={hour}
                             onChangeText={handleHourChange}
-                            onBlur={handleBlurHour}
                             keyboardType="number-pad"
+                            selectTextOnFocus
                             returnKeyType="next"
                             maxLength={2}
-                            autoFocus
                             onSubmitEditing={() => minuteInputRef.current?.focus()}
                             accessibilityLabel="Hour"
                         />
@@ -197,6 +178,7 @@ export default function SleepTimeScreen() {
                             onChangeText={handleMinuteChange}
                             onBlur={handleBlurMinute}
                             keyboardType="number-pad"
+                            selectTextOnFocus
                             returnKeyType="done"
                             maxLength={2}
                             accessibilityLabel="Minute"

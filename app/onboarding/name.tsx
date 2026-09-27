@@ -11,15 +11,11 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { ScalePressable } from '@/src/components/ScalePressable';
-import { Asaro, Hero, Screen, Text, type AsaroLook } from '@/src/components/ui';
-import { setAsaroLook, useAsaroLook } from '@/src/storage/asaroLook';
+import { Asaro, Hero, Screen, Text } from '@/src/components/ui';
+import { onboardingStepLabel } from '@/src/utils/onboardingSteps';
+import { useAsaroLook } from '@/src/storage/asaroLook';
 import { useAuth } from '@/src/context/AuthContext';
 import { useFootPadding } from '@/src/hooks/useScreenInsets';
-
-const LOOK_CHOICES: { look: AsaroLook; label: string }[] = [
-    { look: 'male', label: 'Him' },
-    { look: 'female', label: 'Her' },
-];
 
 export default function NameScreen() {
     const router = useRouter();
@@ -49,7 +45,7 @@ export default function NameScreen() {
     return (
         <Screen>
             <Hero>
-                <Text variant="label" tone="onHero" style={styles.heroStep}>Step 1 of 3</Text>
+                <Text variant="label" tone="onHero" style={styles.heroStep}>{onboardingStepLabel('name')}</Text>
                 <Text variant="display" tone="onBand">Hello.</Text>
             </Hero>
             {/* Scrolls so the keyboard can never cover the field: Android's
@@ -63,29 +59,8 @@ export default function NameScreen() {
                 <View style={[styles.content, { paddingBottom: footPadding }]}>
                     <View style={styles.textContainer}>
                         <View style={styles.introBlock}>
-                            {/* Both looks, full size: the chosen one waves, the other steps back. */}
-                            <View style={styles.looks} accessibilityRole="radiogroup">
-                                {LOOK_CHOICES.map(({ look: l, label }) => {
-                                    const on = l === look;
-                                    return (
-                                        <ScalePressable
-                                            key={l}
-                                            onPress={() => setAsaroLook(l)}
-                                            accessibilityRole="radio"
-                                            accessibilityState={{ checked: on }}
-                                            accessibilityLabel={label}
-                                            style={[styles.lookChoice, { opacity: on ? 1 : 0.45 }]}
-                                        >
-                                            <View style={[
-                                                styles.lookRing,
-                                                { borderColor: on ? colors.textPrimary : 'transparent' },
-                                            ]}>
-                                                <Asaro size={104} look={l} action={on ? 'wave' : undefined} />
-                                            </View>
-                                            <Text variant="meta" tone={on ? 'primary' : 'secondary'}>{label}</Text>
-                                        </ScalePressable>
-                                    );
-                                })}
+                            <View style={styles.asaro}>
+                                <Asaro size={104} look={look} action="wave" />
                             </View>
 
                             <Text variant="body" style={styles.introText}>
@@ -172,18 +147,7 @@ const styles = StyleSheet.create({
     introBlock: {
         marginBottom: Spacing.xxxl,
     },
-    looks: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        gap: Spacing.xl,
-        marginBottom: Spacing.lg,
-    },
-    lookChoice: { alignItems: 'center', gap: Spacing.sm },
-    lookRing: {
-        borderWidth: Spacing.border.strong,
-        borderRadius: Spacing.borderRadius.round,
-        padding: 3,
-    },
+    asaro: { alignItems: 'center', marginBottom: Spacing.lg },
     heroStep: { marginBottom: Spacing.sm },
     introText: { opacity: 0.8 },
     nameSection: {

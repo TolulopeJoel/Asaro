@@ -1,5 +1,5 @@
 /**
- * What Àṣàrò says when the last of today's practices is kept. Low volume per
+ * What Àṣàrò says once every practice for the day is kept. Low volume per
  * design/ASARO-CHARACTER.md §5: someone with several practices may see it
  * daily. About the garden, never the reader's standing — it is watered, that is all.
  */

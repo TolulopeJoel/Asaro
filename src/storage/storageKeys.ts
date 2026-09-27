@@ -13,8 +13,6 @@ export const STORAGE_KEYS = {
     GROVE_SPECIES: 'grove_species',
     /** Anniversaries already marked, as `practiceId:m6` or `practiceId:y1`, so each is said once. */
     GROVE_MOMENTS: 'grove_moments',
-    /** Set when the user chose to go on without lifting battery optimisation. */
-    BATTERY_GATE_SKIPPED: 'battery_gate_skipped',
     /** Group milestones already dealt with, per uid, so each is posted once. */
     GROUP_MILESTONES: 'group_milestones',
     /** Nudges sent, per uid, as `toUid_weekKey`. */

@@ -3,12 +3,11 @@ import { needsOemAutoStartStep, oemAutoStartLabel, openAutoStartSettings } from 
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { AppState, Platform, ScrollView, View, StyleSheet } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { STORAGE_KEYS } from '@/src/storage/storageKeys';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { useFootPadding } from '@/src/hooks/useScreenInsets';
 import { Hero, Screen, Text, ThemedButton } from '@/src/components/ui';
+import { onboardingStepLabel } from '@/src/utils/onboardingSteps';
 
 /**
  * The Android battery-optimisation follow-up.
@@ -68,16 +67,6 @@ export default function BatteryOptimizationScreen() {
         await openAutoStartSettings();
     };
 
-    // Some phones never lift the restriction, so the gate must not be a wall.
-    const handleContinueAnyway = async () => {
-        try {
-            await AsyncStorage.setItem(STORAGE_KEYS.BATTERY_GATE_SKIPPED, '1');
-        } catch (error) {
-            console.error('Failed to save battery skip:', error);
-        }
-        router.replace('/');
-    };
-
     /** Why the OS should leave the app alone — the mockup's row of reasons. */
     const REASONS = [
         'Your daily reading reminder, on time',
@@ -98,7 +87,7 @@ export default function BatteryOptimizationScreen() {
               * button would otherwise fall under the nav bar or off screen. */}
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <Hero ownsTopInset topPadding={64}>
-                    <Text variant="label" tone="onHero" style={styles.heroStep}>Almost there</Text>
+                    <Text variant="label" tone="onHero" style={styles.heroStep}>{onboardingStepLabel('battery-optimization') ?? 'One more thing'}</Text>
                     <Text variant="display" tone="onBand">Don&apos;t Let{'\n'}Me Sleep</Text>
                 </Hero>
 
@@ -127,7 +116,6 @@ export default function BatteryOptimizationScreen() {
                             onPress={handleAutoStart}
                         />
                     )}
-                    <ThemedButton label="Continue anyway" variant="secondary" block onPress={handleContinueAnyway} />
                 </View>
             </ScrollView>
         </Screen>
