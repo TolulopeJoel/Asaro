@@ -146,7 +146,13 @@ async function computeThemes(
     return null;
 }
 
-export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?: (count: number | null) => void } = {}) {
+interface ThemesContentProps {
+    onPatternCountChange?: (count: number | null) => void;
+    /** The Library band's search. Matches a theme's name, its books, or what its entries say. */
+    searchQuery?: string;
+}
+
+export function ThemesContent({ onPatternCountChange, searchQuery = '' }: ThemesContentProps = {}) {
     const { colors, style: themeStyle } = useTheme();
     const router = useRouter();
     const [phase, setPhase] = useState<Phase>('checking');
@@ -277,6 +283,32 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
      */
     const suggested = useMemo(() => suggestNames(clusters), [clusters]);
 
+    const nameOf = useCallback(
+        (index: number) =>
+            matchThemeName(
+                clusters[index].members.map(m => ({ entryId: m.entryId, field: m.field })),
+                named,
+            )?.name ?? suggested[index],
+        [clusters, named, suggested],
+    );
+
+    const query = searchQuery.trim().toLowerCase();
+
+    /** Indices into `clusters`, so naming and opening keep addressing the same theme. */
+    const visible = useMemo(() => {
+        const all = clusters.map((_, index) => index);
+        if (!query) return all;
+        return all.filter(index => {
+            const cluster = clusters[index];
+            return (
+                nameOf(index)?.toLowerCase().includes(query) ||
+                cluster.members.some(
+                    m => m.bookName?.toLowerCase().includes(query) || m.text.toLowerCase().includes(query),
+                )
+            );
+        });
+    }, [clusters, query, nameOf]);
+
     // ── states before there is anything to show ──────────────────────────────
 
     if (phase === 'checking') {
@@ -370,32 +402,45 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
     // ── the themes ───────────────────────────────────────────────────────────
 
     const openCluster = openIndex !== null ? clusters[openIndex] : null;
-    const openName =
-        openCluster &&
-        (matchThemeName(
-            openCluster.members.map(m => ({ entryId: m.entryId, field: m.field })),
-            named,
-        )?.name ??
-            suggested[openIndex!]);
+    const openName = openCluster && nameOf(openIndex!);
 
     return (
         <>
         <FlatList
-            data={clusters}
-            keyExtractor={(_, index) => `cluster-${index}`}
+            data={visible}
+            keyExtractor={index => `cluster-${index}`}
             contentContainerStyle={styles.list}
+            keyboardShouldPersistTaps="handled"
             ListHeaderComponent={
                 <UIText variant="bodySmall" tone="secondary" style={styles.intro}>
-                    {clusters.length} {clusters.length === 1 ? 'pattern' : 'patterns'} across your
-                    entries. Name the ones you recognise.
+                    {query
+                        ? `${visible.length} of ${clusters.length} ${clusters.length === 1 ? 'pattern' : 'patterns'} match.`
+                        : `${clusters.length} ${clusters.length === 1 ? 'pattern' : 'patterns'} across your entries. Name the ones you recognise.`}
                 </UIText>
             }
-            renderItem={({ item, index }) => {
+            ListEmptyComponent={
+                <View style={styles.noMatch}>
+                    <UIText variant="subtitle" style={styles.centred}>Nothing matches</UIText>
+                    <UIText variant="body" tone="secondary" style={styles.centred}>
+                        No theme mentions &ldquo;{searchQuery.trim()}&rdquo;.
+                    </UIText>
+                </View>
+            }
+            renderItem={({ item: index, index: position }) => {
+                const item = clusters[index];
                 // Snippets taper rather than repeating at full weight: past
                 // the first screenful excerpts stop orienting and start being a
                 // wall. Clusters arrive strongest first, so position is rank.
-                const previewCount = PREVIEW_SNIPPETS[index] ?? 0;
-                const reps = previewCount > 0 ? representatives(item, previewCount) : [];
+                const previewCount = PREVIEW_SNIPPETS[position] ?? 0;
+                // While searching, the excerpts are the matches, so the reader
+                // can see why a theme came back.
+                const matches = query ? item.members.filter(m => m.text.toLowerCase().includes(query)) : [];
+                const reps =
+                    previewCount === 0
+                        ? []
+                        : matches.length > 0
+                          ? matches.slice(0, previewCount)
+                          : representatives(item, previewCount);
                 const books = [...new Set(item.members.map(m => m.bookName))].filter(Boolean);
                 /*
                  * The span leads, not the count. "5 entries" is a fact about
@@ -413,7 +458,7 @@ export function ThemesContent({ onPatternCountChange }: { onPatternCountChange?:
                 // Every theme carries a name: the reader's own, else the words
                 // their entries lean on. `savedName` still gates the naming
                 // affordances — a suggestion is something to replace.
-                const displayName = savedName?.name ?? suggested[index];
+                const displayName = nameOf(index);
 
                 /*
                  * design/all-screens.html #themes, the `.cl` slot: an unnamed
@@ -596,6 +641,7 @@ const styles = StyleSheet.create({
     },
     centred: { textAlign: 'center' },
     intro: { paddingBottom: Spacing.md },
+    noMatch: { gap: Spacing.sm, paddingTop: Spacing.xl, paddingHorizontal: Spacing.xl },
     clothNameCta: { marginTop: Spacing.sm },
     list: {
         paddingHorizontal: Spacing.layout.screenPadding,
