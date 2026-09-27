@@ -123,16 +123,25 @@ export default function JoinGroupScreen() {
 
                 <View style={[styles.clothPanel, { backgroundColor: colors.backgroundSubtle }]}>
                     <Text variant="label" style={styles.clothPanelLabel}>No code?</Text>
-                    <Text variant="body" tone="secondary">
-                        Groups sync through your account, so you&apos;ll need to sign in before
-                        joining one.
-                    </Text>
-                    <ThemedButton
-                        label="Sign in to Join Them"
-                        variant="secondary"
-                        style={styles.clothSignIn}
-                        onPress={() => router.push('/(tabs)/groups/auth' as any)}
-                    />
+                    {user ? (
+                        <Text variant="body" tone="secondary">
+                            Ask anyone in the group to share it with you. It&apos;s six letters
+                            and numbers.
+                        </Text>
+                    ) : (
+                        <>
+                            <Text variant="body" tone="secondary">
+                                Groups sync through your account, so you&apos;ll need to sign in before
+                                joining one.
+                            </Text>
+                            <ThemedButton
+                                label="Sign in to Join Them"
+                                variant="secondary"
+                                style={styles.clothSignIn}
+                                onPress={() => router.push('/(tabs)/groups/auth' as any)}
+                            />
+                        </>
+                    )}
                 </View>
             </ScrollView>
         </Screen>
