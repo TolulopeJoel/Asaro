@@ -12,6 +12,7 @@ import { Typography } from '@/src/theme/typography';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { ClothMark, Hero, Screen, Text, ThemedButton } from '@/src/components/ui';
 import { useFootPadding } from '@/src/hooks/useScreenInsets';
+import { getAsaroLook } from '@/src/storage/asaroLook';
 
 /**
  * Which of the two the reader is, as a cell.
@@ -62,7 +63,8 @@ export default function AuthScreen() {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [isSignUp, setIsSignUp] = useState(false);
-    const [gender, setGender] = useState<'m' | 'f' | null>(null);
+    // Onboarding already asked brother or sister; the field is there to correct it.
+    const [gender, setGender] = useState<'m' | 'f' | null>(() => getAsaroLook() === 'female' ? 'f' : 'm');
     const [loading, setLoading] = useState(false);
     const { colors } = useTheme();
     const { showAlert } = useAlert();
@@ -90,7 +92,6 @@ export default function AuthScreen() {
 
                 // Update profile from local onboarding data
                 const localName = await AsyncStorage.getItem('user_name');
-                const localGender = await AsyncStorage.getItem('user_gender');
 
                 if (userCredential.user) {
                     const profileUpdates: any = {};
@@ -99,10 +100,8 @@ export default function AuthScreen() {
                         profileUpdates.displayName = localName;
                     }
 
-                    // Use the gender selected on the sign up form
-                    const finalGender = gender || localGender;
-                    if (finalGender) {
-                        profileUpdates.gender = finalGender;
+                    if (gender) {
+                        profileUpdates.gender = gender;
                     }
 
                     if (Object.keys(profileUpdates).length > 0) {
