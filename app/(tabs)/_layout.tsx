@@ -6,6 +6,7 @@ import { Tabs, useRouter } from 'expo-router';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { useRef } from 'react';
 import { Spacing } from '@/src/theme/spacing';
+import { coachTarget } from '@/src/onboarding/coachTargets';
 
 export default function TabLayout() {
     const { colors: themeColors } = useTheme();
@@ -90,12 +91,18 @@ export default function TabLayout() {
                                   * word in the foreground colour, which is the whole
                                   * mechanism.
                                   */}
-                                <Text
-                                    variant="tab"
-                                    style={{ color: shouldHighlight ? colors.tabLabelActive : colors.tabLabel }}
+                                {/* The first-run walk points at Library and Groups by name. */}
+                                <View
+                                    ref={route.name === 'library' ? coachTarget('tab-library') : route.name === 'groups' ? coachTarget('tab-groups') : undefined}
+                                    collapsable={false}
                                 >
-                                    {label}
-                                </Text>
+                                    <Text
+                                        variant="tab"
+                                        style={{ color: shouldHighlight ? colors.tabLabelActive : colors.tabLabel }}
+                                    >
+                                        {label}
+                                    </Text>
+                                </View>
                             </ScalePressable>
                         );
                     })}

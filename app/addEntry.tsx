@@ -21,6 +21,10 @@ import { useAutoSave, useStepFade, Step, DraftData, ChapterRange, VerseRange, su
 import { answeredCount } from '@/src/data/questions';
 import { BookStep, ChapterStep, ReflectionStep, SummaryStep } from '../src/components/entry/EntrySteps';
 import { Screen } from '@/src/components/ui';
+import { CoachLine } from '@/src/components/onboarding/CoachLine';
+import { PracticeAftermath } from '@/src/components/onboarding/PracticeAftermath';
+import { COACH, PRACTICE_ANSWERS, PRACTICE_BOOK, PRACTICE_CHAPTERS } from '@/src/onboarding/practiceEntry';
+import { setFirstRun } from '@/src/onboarding/firstRun';
 import { KEYBOARD_BEHAVIOR } from '../src/utils/keyboard';
 
 
@@ -34,14 +38,20 @@ export default function MeditationSessionScreen() {
 
     const isEditMode = !!params.entryId;
     const entryId = params.entryId ? Number(params.entryId) : undefined;
+    /*
+     * A new user's practice entry with the chosen sibling. It runs the real
+     * wizard and saves NOTHING: no entry, no draft, no group posts, no
+     * reminder changes, no insights. See src/onboarding/practiceEntry.ts.
+     */
+    const practice = params.practice === 'true';
 
-    const [currentStep, setCurrentStep] = useState<Step>('book');
+    const [currentStep, setCurrentStep] = useState<Step>(practice ? 'chapter' : 'book');
 
     // Something committed to before, shown once the entry is saved. Loaded
     // only on the summary step: earlier is a query behind a screen nobody sees
     // it on, and the detector's age floor means it is never the one just
     // written.
-    const echo = useObservation(currentStep === 'summary', 'afterSave');
+    const echo = useObservation(currentStep === 'summary' && !practice, 'afterSave');
     const [echoOpen, setEchoOpen] = useState(false);
 
     const echoCard =
@@ -56,8 +66,8 @@ export default function MeditationSessionScreen() {
                 onDismiss={() => echo.dismiss()}
             />
         ) : null;
-    const [selectedBook, setSelectedBook] = useState<BibleBook>();
-    const [selectedChapters, setSelectedChapters] = useState<ChapterRange>();
+    const [selectedBook, setSelectedBook] = useState<BibleBook | undefined>(() => practice ? getBookByName(PRACTICE_BOOK) : undefined);
+    const [selectedChapters, setSelectedChapters] = useState<ChapterRange | undefined>(practice ? PRACTICE_CHAPTERS : undefined);
     const [verseRange, setVerseRange] = useState<VerseRange | null>(null);
     const [reflectionAnswers, setReflectionAnswers] = useState<ReflectionAnswers>();
     const isResuming = !!params.resuming;
@@ -66,8 +76,8 @@ export default function MeditationSessionScreen() {
     const [isLoading, setIsLoading] = useState(needsAsyncLoad);
     const [savedEntryId, setSavedEntryId] = useState<number | undefined>();
     const isSaving = useRef(false);
-    // Set once the entry is saved or the draft discarded, so autosave can't resurrect it.
-    const draftClosed = useRef(false);
+    // Set once the entry is saved or the draft discarded, so autosave can't resurrect it. Always set in practice.
+    const draftClosed = useRef(practice);
     // What each action said when an edit opened, so only new or changed actions must give a reason.
     const loadedActions = useRef(new Map<number, string>());
 
@@ -87,6 +97,17 @@ export default function MeditationSessionScreen() {
         });
         return () => sub.remove();
     }, [currentStep]);
+
+    // The practice entry can't be left until it's done: no skip, like the rest of a first run.
+    const practiceDone = useRef(false);
+    useEffect(() => {
+        if (!practice) return;
+        return navigation.addListener('beforeRemove', e => {
+            if (practiceDone.current) return;
+            e.preventDefault();
+            setCurrentStep(step => (step === 'book' ? 'chapter' : step));
+        });
+    }, [practice, navigation]);
 
     // An edit isn't autosaved, so leaving with changes asks first.
     const loadedEdit = useRef<string | null>(null);
@@ -303,6 +324,13 @@ export default function MeditationSessionScreen() {
             return;
         }
 
+        // Practice: straight to the saved screen, touching nothing.
+        if (practice) {
+            setReflectionAnswers(answers);
+            setCurrentStep('summary');
+            return;
+        }
+
         if (isSaving.current) return;
         isSaving.current = true;
         const wasClosed = draftClosed.current;
@@ -363,11 +391,19 @@ export default function MeditationSessionScreen() {
         } finally {
             isSaving.current = false;
         }
-    }, [selectedBook, selectedChapters, verseRange, isEditMode, entryId, savedEntryId, router, readingItemId, showAlert, runPostSaveNotifications]);
+    }, [practice, selectedBook, selectedChapters, verseRange, isEditMode, entryId, savedEntryId, router, readingItemId, showAlert, runPostSaveNotifications]);
 
-    const handleDone = useCallback(() => {
+    const handleDone = useCallback(async () => {
+        if (practice) {
+            // Back to the Home underneath, whose walk picks up from the flag.
+            await setFirstRun('walk');
+            practiceDone.current = true;
+            if (router.canGoBack()) router.back();
+            else router.replace('/');
+            return;
+        }
         router.replace({ pathname: '/(tabs)/library' });
-    }, [router]);
+    }, [practice, router]);
 
     const handleShare = useCallback(async () => {
         if (!selectedBook || !selectedChapters) return;
@@ -442,7 +478,7 @@ export default function MeditationSessionScreen() {
     const renderCurrentStep = () => {
         switch (currentStep) {
             case 'book':
-                return <BookStep selectedBook={selectedBook} onBookSelect={handleBookSelect} onExit={() => router.back()} />;
+                return <BookStep selectedBook={selectedBook} onBookSelect={handleBookSelect} onExit={practice ? () => setCurrentStep('chapter') : () => router.back()} />;
             case 'chapter':
                 return (
                     <ChapterStep
@@ -452,9 +488,10 @@ export default function MeditationSessionScreen() {
                         onChapterSelect={handleChapterSelect}
                         onVerseRangeChange={handleVerseRangeChange}
                         onBack={() => setCurrentStep('book')}
-                        onExit={() => router.back()}
+                        onExit={practice ? undefined : () => router.back()}
                         onContinue={handleContinueToReflection}
                         canContinue={!!(selectedChapters && selectedChapters.start > 0)}
+                        coach={practice ? <CoachLine line={COACH.chapter.line} action={COACH.chapter.action} /> : undefined}
                     />
                 );
             case 'reflection':
@@ -467,8 +504,13 @@ export default function MeditationSessionScreen() {
                         isEditMode={isEditMode}
                         onBack={() => setCurrentStep('chapter')}
                         onDiscard={handleDiscardDraft}
-                        onExit={() => router.back()}
+                        onExit={practice ? undefined : () => router.back()}
                         saveButtonText={savedEntryId ? 'Update entry' : undefined}
+                        coach={practice ? (page) => {
+                            const beat = COACH.pages[page];
+                            return beat ? <CoachLine line={beat.line} action={beat.action} /> : null;
+                        } : undefined}
+                        samples={practice ? PRACTICE_ANSWERS : undefined}
                     />
                 );
             case 'summary':
@@ -482,6 +524,8 @@ export default function MeditationSessionScreen() {
                         answerCount={answerCount}
                         onDone={handleDone}
                         onShare={handleShare}
+                        practice={practice ? <PracticeAftermath /> : undefined}
+                        doneLabel={practice ? 'Show me around' : undefined}
                     />
                 );
             default: return null;

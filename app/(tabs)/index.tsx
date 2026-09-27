@@ -13,7 +13,10 @@ import { Typography } from "@/src/theme/typography";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
-import { DeviceEventEmitter, ScrollView, StyleSheet, View } from "react-native";
+import { DeviceEventEmitter, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
+import { HomeWalk } from '@/src/components/onboarding/HomeWalk';
+import { getFirstRun, setFirstRun } from '@/src/onboarding/firstRun';
+import type { CoachTarget, Rect } from '@/src/onboarding/coachTargets';
 import { JournalEntryDetail } from '@/src/components/JournalEntryDetail';
 import { LoadingView } from '@/src/components/LoadingView';
 import { Share } from 'react-native';
@@ -182,6 +185,45 @@ export default function Index() {
     const { showAlert } = useAlert();
     const scrollViewRef = useRef<ScrollView>(null);
     const router = useRouter();
+    const scrollY = useRef(0);
+    const { height: windowHeight } = useWindowDimensions();
+
+    /*
+     * A new user's first run: straight into the practice entry, then back here
+     * for the walk. src/onboarding/firstRun.ts.
+     */
+    const [walking, setWalking] = useState(false);
+    const practiceOpened = useRef(false);
+    const checkFirstRun = useCallback(async () => {
+        const stage = await getFirstRun();
+        if (stage === 'practice' && !practiceOpened.current) {
+            practiceOpened.current = true;
+            router.push({ pathname: '/addEntry', params: { practice: 'true' } });
+        } else if (stage === 'walk') {
+            practiceOpened.current = false;
+            setWalking(true);
+        }
+    }, [router]);
+    useEffect(() => {
+        const sub = DeviceEventEmitter.addListener('first-run-changed', checkFirstRun);
+        return () => sub.remove();
+    }, [checkFirstRun]);
+
+    // Tab targets are fixed; anything in the page scrolls to sit clear of the bubble.
+    const revealTarget = useCallback(async (target: CoachTarget, rect: Rect) => {
+        if (target.startsWith('tab-')) return;
+        const top = 140;
+        const bottom = windowHeight - 300;
+        if (rect.y >= top && rect.y + rect.height <= bottom) return;
+        scrollViewRef.current?.scrollTo({ y: Math.max(0, scrollY.current + rect.y - top), animated: true });
+        await new Promise((resolve) => setTimeout(resolve, 450));
+    }, [windowHeight]);
+
+    const finishWalk = useCallback(() => {
+        setWalking(false);
+        void setFirstRun('done');
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    }, []);
 
     const loadStats = useCallback(async () => {
         // Must be the LOCAL month: the queries filter on
@@ -279,13 +321,14 @@ export default function Index() {
         useCallback(() => {
             loadHomeData();
             checkDraft();
+            void checkFirstRun();
 
             // Simulate initial load if it's very fast
             if (isLoading) {
                 const timer = setTimeout(() => setIsLoading(false), 400);
                 return () => clearTimeout(timer);
             }
-        }, [loadHomeData, checkDraft, isLoading])
+        }, [loadHomeData, checkDraft, checkFirstRun, isLoading])
     );
 
     // Home stays mounted, so a new day or a return from the background reloads it too.
@@ -416,6 +459,8 @@ export default function Index() {
         <Screen edges={[]}>
             <ScrollView
                 ref={scrollViewRef}
+                onScroll={(e) => { scrollY.current = e.nativeEvent.contentOffset.y; }}
+                scrollEventThrottle={32}
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
@@ -462,6 +507,7 @@ export default function Index() {
 
             {homeDetailModal}
             {echoReceipts}
+            <HomeWalk visible={walking && !isLoading} onDone={finishWalk} reveal={revealTarget} />
 
         </Screen>
     );

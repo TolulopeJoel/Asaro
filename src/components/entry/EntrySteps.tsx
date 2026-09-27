@@ -82,10 +82,12 @@ interface ChapterStepProps {
     verseRange?: VerseRange | null;
     onVerseRangeChange: (verses: VerseRange | null) => void;
     onBack: () => void;
-    /** Leave the entry entirely — Cloth's `.cl-top` close button. */
-    onExit: () => void;
+    /** Leave the entry entirely — Cloth's `.cl-top` close button. Absent hides it. */
+    onExit?: () => void;
     onContinue: () => void;
     canContinue: boolean;
+    /** Practice entry: the sibling's line, above the button. */
+    coach?: React.ReactNode;
 }
 
 /**
@@ -102,7 +104,8 @@ export const ChapterStep = React.memo(({
     onBack,
     onExit,
     onContinue,
-    canContinue
+    canContinue,
+    coach,
 }: ChapterStepProps) => {
     const { colors } = useTheme();
     const gutter = Spacing.layout.screenPadding;
@@ -128,14 +131,16 @@ export const ChapterStep = React.memo(({
                     >
                         <ChevronLeft size={20} color={colors.accent} strokeWidth={1.9} />
                     </ScalePressable>
-                    <ScalePressable
-                        onPress={onExit}
-                        accessibilityRole="button"
-                        accessibilityLabel="Close"
-                        hitSlop={Spacing.md}
-                    >
-                        <X size={19} color={colors.accent} strokeWidth={1.9} />
-                    </ScalePressable>
+                    {onExit && (
+                        <ScalePressable
+                            onPress={onExit}
+                            accessibilityRole="button"
+                            accessibilityLabel="Close"
+                            hitSlop={Spacing.md}
+                        >
+                            <X size={19} color={colors.accent} strokeWidth={1.9} />
+                        </ScalePressable>
+                    )}
                 </View>
                 <Text variant="display" tone="onBand" style={styles.clothHeroTitle}>
                     {selectedBook?.name ?? 'Chapters'}
@@ -178,7 +183,8 @@ export const ChapterStep = React.memo(({
                 </ScrollView>
             </View>
 
-            <View style={[styles.stepFooter, { paddingHorizontal: gutter, paddingBottom: footPadding }]}>
+            <View style={[styles.stepFooter, styles.coachedFooter, { paddingHorizontal: gutter, paddingBottom: footPadding }]}>
+                {coach}
                 <ThemedButton
                     label={picked && selectedBook ? `Use ${selectedBook.name} ${range}` : 'Pick a chapter'}
                     variant="primary"
@@ -199,9 +205,13 @@ interface ReflectionStepProps {
     isEditMode: boolean;
     onBack: () => void;
     onDiscard: () => void;
-    /** Leave the entry entirely — the top bar's close button. */
-    onExit: () => void;
+    /** Leave the entry entirely — the top bar's close button. Absent hides it. */
+    onExit?: () => void;
     saveButtonText?: string;
+    /** Practice entry: the sibling's line for each page. */
+    coach?: (page: number) => React.ReactNode;
+    /** Practice entry: answers typed in as each page opens. */
+    samples?: ReflectionAnswers;
 }
 
 export const ReflectionStep = React.memo(({
@@ -213,7 +223,9 @@ export const ReflectionStep = React.memo(({
     onBack,
     onDiscard,
     onExit,
-    saveButtonText
+    saveButtonText,
+    coach,
+    samples,
 }: ReflectionStepProps) => (
     // The writing surface owns the whole screen. design/all-screens.html
     // #entry gives it its own `.co-top` and footer — no step header, no outer
@@ -228,7 +240,9 @@ export const ReflectionStep = React.memo(({
             reference={selectionSummary}
             onExit={onExit}
             onChangePassage={onBack}
-            onDiscard={!isEditMode && reflectionAnswers ? onDiscard : undefined}
+            onDiscard={!isEditMode && reflectionAnswers && !samples ? onDiscard : undefined}
+            coach={coach}
+            samples={samples}
         />
     </View>
 ));
@@ -257,6 +271,10 @@ interface SummaryStepProps {
      * chooses between — see `savedNotes.ts`.
      */
     noteSeed?: number;
+    /** Practice entry: shown in place of the note or card, with its own way on. */
+    practice?: React.ReactNode;
+    /** The main button's label; the practice entry's goes on to Home. */
+    doneLabel?: string;
 }
 
 /**
@@ -280,6 +298,8 @@ export const SummaryStep = React.memo(({
     observation,
     observationSettled = true,
     noteSeed,
+    practice,
+    doneLabel = 'Check in Library',
 }: SummaryStepProps) => {
     const footPadding = useFootPadding();
 
@@ -314,11 +334,11 @@ export const SummaryStep = React.memo(({
             >
                 {/* The card if there is one, a word from him if not. NEVER
                   * both: two voices over one moment is what §6 warns about. */}
-                {slot === 'card' ? observation : slot === 'note' ? (
+                {practice ?? (slot === 'card' ? observation : slot === 'note' ? (
                     <Text variant="body" tone="secondary" style={styles.savedNote}>
                         {savedNote(noteSeed)}
                     </Text>
-                ) : null}
+                ) : null)}
             </ScrollView>
 
             <View
@@ -327,14 +347,16 @@ export const SummaryStep = React.memo(({
                     { paddingHorizontal: Spacing.layout.screenPadding, paddingBottom: footPadding },
                 ]}
             >
-                <ThemedButton label="Check in Library" block onPress={onDone} />
-                <ScalePressable
-                    style={styles.shareLink}
-                    onPress={onShare}
-                    accessibilityRole="button"
-                >
-                    <Text variant="button" tone="tertiary">Share this reflection</Text>
-                </ScalePressable>
+                <ThemedButton label={doneLabel} block onPress={onDone} />
+                {!practice && (
+                    <ScalePressable
+                        style={styles.shareLink}
+                        onPress={onShare}
+                        accessibilityRole="button"
+                    >
+                        <Text variant="button" tone="tertiary">Share this reflection</Text>
+                    </ScalePressable>
+                )}
             </View>
         </View>
     );
@@ -344,6 +366,8 @@ const styles = StyleSheet.create({
     stepContainer: {
         flex: 1,
     },
+    /** Room between the coach line and the button in the practice entry. */
+    coachedFooter: { gap: Spacing.md },
 
     // ── the picker screens ────────────────────────────────────────────────
     /** `.co-top` — a mark, and the way out. */

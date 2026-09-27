@@ -23,6 +23,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { Spacing } from '../../theme/spacing';
 import { formatRange } from '../../utils/reference';
 import { DraftSummary, draftProgress } from '../../hooks/useEntryHooks';
+import { coachTarget } from '../../onboarding/coachTargets';
 
 export interface ClothHomeProps {
     /** design/all-screens.html #welcomeback: first under the band, after a gap. */
@@ -159,25 +160,29 @@ export function ClothHome({
                           * write across it — and a control that dims says
                           * finish this first, where one that vanishes teaches
                           * nothing. */}
-                        <ScalePressable
-                            onPress={onAddEntry}
-                            disabled={!onAddEntry || !!draft}
-                            accessibilityRole="button"
-                            accessibilityLabel="Write an entry"
-                            accessibilityState={{ disabled: !!draft }}
-                            hitSlop={Spacing.md}
-                            style={draft ? styles.held : undefined}
-                        >
-                            <WavyAddIcon size={20} color={colors.accent} />
-                        </ScalePressable>
-                        <ScalePressable
-                            onPress={onSettings}
-                            accessibilityRole="button"
-                            accessibilityLabel="Settings"
-                            hitSlop={Spacing.md}
-                        >
-                            <SettingsGlyph color={colors.accent} />
-                        </ScalePressable>
+                        <View ref={coachTarget('add')} collapsable={false}>
+                            <ScalePressable
+                                onPress={onAddEntry}
+                                disabled={!onAddEntry || !!draft}
+                                accessibilityRole="button"
+                                accessibilityLabel="Write an entry"
+                                accessibilityState={{ disabled: !!draft }}
+                                hitSlop={Spacing.md}
+                                style={draft ? styles.held : undefined}
+                            >
+                                <WavyAddIcon size={20} color={colors.accent} />
+                            </ScalePressable>
+                        </View>
+                        <View ref={coachTarget('settings')} collapsable={false}>
+                            <ScalePressable
+                                onPress={onSettings}
+                                accessibilityRole="button"
+                                accessibilityLabel="Settings"
+                                hitSlop={Spacing.md}
+                            >
+                                <SettingsGlyph color={colors.accent} />
+                            </ScalePressable>
+                        </View>
                     </View>
                 </View>
                 <Text variant="sub" tone="onHero" style={styles.heroSub}>{dateLine}</Text>
@@ -204,7 +209,7 @@ export function ClothHome({
                         />
                     </View>
                 ) : reading && (
-                    <View>
+                    <View ref={coachTarget('reading')} collapsable={false}>
                         <Text variant="label" style={styles.label}>
                             {readingNumber ? `Reading ${readingNumber} · Today` : 'Today'}
                         </Text>
@@ -227,31 +232,35 @@ export function ClothHome({
                     </View>
                 )}
 
-                <WeekPanels days={weekDays} onPress={onWeekPress} />
+                <View ref={coachTarget('week')} collapsable={false}>
+                    <WeekPanels days={weekDays} onPress={onWeekPress} />
+                </View>
 
                 {today}
 
                 {planProgress && (
-                    <ScalePressable
-                        style={[styles.panel, { backgroundColor: colors.backgroundSubtle }]}
-                        onPress={onProgressPress}
-                        disabled={!onProgressPress}
-                        accessibilityRole={onProgressPress ? 'button' : undefined}
-                        accessibilityLabel={onProgressPress ? 'See your land' : undefined}
-                    >
-                        <View style={styles.progressTop}>
-                            <Text variant="label">{`${planProgress.completed} of ${planProgress.total} readings`}</Text>
-                            <Text variant="label" tone="accent">{`${planProgress.percent}%`}</Text>
-                        </View>
-                        <View style={[styles.progressTrack, { backgroundColor: colors.border }]}>
-                            <View
-                                style={[
-                                    styles.progressFill,
-                                    { backgroundColor: colors.accent, width: `${Math.min(100, planProgress.percent)}%` },
-                                ]}
-                            />
-                        </View>
-                    </ScalePressable>
+                    <View ref={coachTarget('progress')} collapsable={false}>
+                        <ScalePressable
+                            style={[styles.panel, { backgroundColor: colors.backgroundSubtle }]}
+                            onPress={onProgressPress}
+                            disabled={!onProgressPress}
+                            accessibilityRole={onProgressPress ? 'button' : undefined}
+                            accessibilityLabel={onProgressPress ? 'See your land' : undefined}
+                        >
+                            <View style={styles.progressTop}>
+                                <Text variant="label">{`${planProgress.completed} of ${planProgress.total} readings`}</Text>
+                                <Text variant="label" tone="accent">{`${planProgress.percent}%`}</Text>
+                            </View>
+                            <View style={[styles.progressTrack, { backgroundColor: colors.border }]}>
+                                <View
+                                    style={[
+                                        styles.progressFill,
+                                        { backgroundColor: colors.accent, width: `${Math.min(100, planProgress.percent)}%` },
+                                    ]}
+                                />
+                            </View>
+                        </ScalePressable>
+                    </View>
                 )}
 
                 <View style={[styles.panel, styles.stat, styles.hiddenStat, { backgroundColor: colors.backgroundSubtle }]}>

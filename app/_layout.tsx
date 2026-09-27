@@ -2,7 +2,8 @@ import { initializeDatabase } from '@/src/data/database';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '@/src/storage/storageKeys';
 import { loadAsaroLook } from '@/src/storage/asaroLook';
-import { setOnboardingSteps } from '@/src/utils/onboardingSteps';
+import { isOnboardingRun, setOnboardingSteps } from '@/src/utils/onboardingSteps';
+import { getFirstRun, setFirstRun } from '@/src/onboarding/firstRun';
 import {
   initializeNotificationChannel,
   hasNotificationPermissions,
@@ -12,7 +13,7 @@ import {
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { AppState, View } from 'react-native';
+import { AppState, DeviceEventEmitter, View } from 'react-native';
 import { startGroups } from '@/src/groups/publish';
 
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -235,6 +236,13 @@ export default function RootLayout() {
         router.replace('/battery-optimization');
         return;
       }
+
+      // A new user goes on to the practice entry and the walk; Home picks it up from the flag.
+      if (isOnboardingRun() && !(await getFirstRun())) {
+        await setFirstRun('practice');
+        DeviceEventEmitter.emit('first-run-changed');
+      }
+      if (cancelled) return;
 
       // All requirements met — mark ready and schedule notifications once.
       setIsReady(true);

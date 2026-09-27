@@ -42,13 +42,20 @@ interface ReflectionFormProps {
   saveButtonText?: string;
   /** What is being reflected on — the `.co-mark` at the top of the screen. */
   reference: string;
-  /** Leave the entry. */
-  onExit: () => void;
+  /** Leave the entry. Absent hides the close button, as in the practice entry. */
+  onExit?: () => void;
   /** Step back off the first question, to the passage you chose. */
   onChangePassage: () => void;
   /** Throw the draft away. Absent when editing an entry that already exists. */
   onDiscard?: () => void;
+  /** Practice entry: what the sibling says on each page, above the buttons. */
+  coach?: (page: number) => React.ReactNode;
+  /** Practice entry: typed into a page's answer, letter by letter, when it opens empty. */
+  samples?: ReflectionAnswers;
 }
+
+/** Per letter, when a sample answer types itself in. */
+const TYPE_MS = 26;
 
 export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
   initialAnswers,
@@ -60,6 +67,8 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
   onExit,
   onChangePassage,
   onDiscard,
+  coach,
+  samples,
 }) => {
   const { colors } = useTheme();
   const { showAlert } = useAlert();
@@ -124,7 +133,14 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
   // Typing still inside the debounce reaches the parent when the form closes.
   useEffect(() => flushAnswers, [flushAnswers]);
 
+  const typing = useRef<ReturnType<typeof setInterval> | null>(null);
+  const stopTyping = () => {
+    if (typing.current) clearInterval(typing.current);
+    typing.current = null;
+  };
+
   const updateAnswer = (questionId: keyof ReflectionAnswers, value: string) => {
+    stopTyping();
     setAnswers(prev => ({
       ...prev,
       [questionId]: value,
@@ -202,6 +218,58 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
   }, []);
   const goForward = () => setPage(p => Math.min(p + 1, REFLECTION_QUESTIONS.length));
 
+  /*
+   * The practice entry answers each empty page as it opens, typing like
+   * someone is at the keys. The reader typing anything stops it, so it never
+   * fights them.
+   */
+  useEffect(() => {
+    if (!samples || page >= REFLECTION_QUESTIONS.length) return;
+    const q = REFLECTION_QUESTIONS[page];
+    const now = latestAnswers.current;
+    let steps: ((n: number) => boolean)[] = [];
+    const typeText = (text: string, put: (t: string) => void) => (n: number) => {
+      put(text.slice(0, n));
+      return n >= text.length;
+    };
+    if (q.isActionList) {
+      const sample = samples.actionItems[0];
+      if (!sample || now.actionItems.some(item => item.action.trim())) return;
+      steps = [
+        typeText(sample.action, t => setAnswers(p => ({ ...p, actionItems: [{ ...p.actionItems[0], action: t }] }))),
+        typeText(sample.motivation, t => setAnswers(p => ({ ...p, actionItems: [{ ...p.actionItems[0], motivation: t }] }))),
+        () => { setAnswers(p => ({ ...p, actionItems: [{ ...p.actionItems[0], cadence: sample.cadence ?? null }] })); return true; },
+      ];
+    } else {
+      const id = q.id as keyof ReflectionAnswers;
+      const text = samples[id];
+      if (typeof text !== 'string' || !text || (now[id] as string)?.trim()) return;
+      steps = [typeText(text, t => setAnswers(p => ({ ...p, [id]: t })))];
+      if (id === 'studyFurther') {
+        steps.push(() => {
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          tomorrow.setHours(19, 0, 0, 0);
+          setAnswers(p => ({ ...p, studyFurtherReminder: tomorrow.toISOString() }));
+          return true;
+        });
+      }
+    }
+    let step = 0;
+    let n = 0;
+    const start = setTimeout(() => {
+      typing.current = setInterval(() => {
+        n += 1;
+        if (steps[step](n)) {
+          step += 1;
+          n = 0;
+          if (step >= steps.length) stopTyping();
+        }
+      }, TYPE_MS);
+    }, 900);
+    return () => { clearTimeout(start); stopTyping(); };
+  }, [page, samples]);
+
   const gutter = Spacing.layout.screenPadding;
   const footPadding = useFootPadding();
 
@@ -210,14 +278,16 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
       {/* ── .co-top: what you're reflecting on, and the way out ────────── */}
       <View style={[styles.topBar, { paddingHorizontal: gutter }]}>
         <UIText variant="tab" numberOfLines={1} style={styles.mark}>{reference}</UIText>
-        <ScalePressable
-          onPress={leaveTo(onExit)}
-          accessibilityRole="button"
-          accessibilityLabel="Close"
-          hitSlop={Spacing.md}
-        >
-          <X size={19} color={colors.textTertiary} strokeWidth={1.9} />
-        </ScalePressable>
+        {onExit && (
+          <ScalePressable
+            onPress={leaveTo(onExit)}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+            hitSlop={Spacing.md}
+          >
+            <X size={19} color={colors.textTertiary} strokeWidth={1.9} />
+          </ScalePressable>
+        )}
       </View>
 
       <View style={[styles.body, { paddingHorizontal: gutter }]}>
@@ -237,7 +307,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
               <ActionItemsInput
                 label={current.question}
                 items={answers.actionItems}
-                onChange={(items) => setAnswers(prev => ({ ...prev, actionItems: items }))}
+                onChange={(items) => { stopTyping(); setAnswers(prev => ({ ...prev, actionItems: items })); }}
                 disabled={disabled}
               />
             </ScrollView>
@@ -335,6 +405,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
       {/* ── the two things you can do next ───────────────────────────────── */}
       {!disabled && (
         <View style={[styles.footer, { paddingHorizontal: gutter, paddingBottom: footPadding }]}>
+          {coach?.(page)}
           <View style={styles.footerButtons}>
             {/* `block` as well as the flex: the flex sizes ThemedButton's
                 wrapper, `block` is what makes the button inside fill it. */}

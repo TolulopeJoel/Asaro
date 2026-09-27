@@ -23,4 +23,6 @@ export const STORAGE_KEYS = {
     GROUP_UPKEEP: 'group_upkeep',
     /** Set once the first-visit note on a group has been dismissed. */
     GROUP_INTRO_SEEN: 'group_intro_seen',
+    /** A new user's first run after onboarding: 'practice', then 'walk', then 'done'. Absent for everyone else. */
+    FIRST_RUN: 'first_run',
 } as const;

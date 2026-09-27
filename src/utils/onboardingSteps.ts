@@ -12,3 +12,8 @@ export function onboardingStepLabel(step: OnboardingStep): string | null {
     const i = steps.indexOf(step);
     return i < 0 ? null : `Step ${i + 1} of ${steps.length}`;
 }
+
+/** Whether this launch began as a new user's onboarding. */
+export function isOnboardingRun(): boolean {
+    return steps.length > 0;
+}
