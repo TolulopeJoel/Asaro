@@ -1,5 +1,5 @@
 /**
- * One group. design/groups-mockup.html #group-week and #group-sunday.
+ * One group. design/all-screens.html #group and #group-sunday.
  *
  * Outside the open window: your own week, the group's reads counted together,
  * and the members by name. In the window: each person's week, and who read.

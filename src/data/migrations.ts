@@ -1,6 +1,6 @@
 import { withDatabase, getDbVersion, setDbVersion } from './db';
 
-const CURRENT_DB_VERSION = 15;
+const CURRENT_DB_VERSION = 16;
 
 /**
  * The migration run, shared by everyone who asks for it.
@@ -426,6 +426,15 @@ const runMigrations = async (): Promise<boolean> => {
                 } catch {
                     /* already present */
                 }
+            });
+
+            if (currentVersion < 16) await step(16, async () => {
+                // v16: drop the preview findings the dev smoke test planted.
+                await database.execAsync(`
+                    DELETE FROM observation_evidence WHERE observation_id IN
+                        (SELECT id FROM observations WHERE dedupe_key LIKE 'preview:%');
+                    DELETE FROM observations WHERE dedupe_key LIKE 'preview:%';
+                `);
             });
 
             await setDbVersion(database, CURRENT_DB_VERSION);

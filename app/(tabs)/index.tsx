@@ -98,9 +98,6 @@ function clip(text: string, max: number): string {
     return text.slice(0, space > max * 0.6 ? space : max) + '…';
 }
 
-/** Dev only: pretend the last entry was this many days ago (3, 7, 14, 30). */
-const SIMULATE_DAYS_AWAY: number | null = null;
-
 export default function Index() {
     const [stats, setStats] = useState({ totalEntries: 0 });
     const [nextReading, setNextReading] = useState<ReadingItem | null>(null);
@@ -249,7 +246,7 @@ export default function Index() {
             setHomeDateLine(formatHomeDate());
             setWeekDays(newWeekDays);
             setFlashbackEntry(newFlashback);
-            setDaysAway(__DEV__ && SIMULATE_DAYS_AWAY !== null ? SIMULATE_DAYS_AWAY : newDaysAway);
+            setDaysAway(newDaysAway);
         } catch (error) {
             console.error('Error loading home data:', error);
         }

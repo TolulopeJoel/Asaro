@@ -1,5 +1,5 @@
 /**
- * Start a group. design/groups-mockup.html #create: a name and an optional line
+ * Start a group. design/all-screens.html #create: a name and an optional line
  * about it, then the six-character code to pass on. Readers who don't meet
  * design/GROUPS.md#who-can-start-a-group yet see how far along they are instead.
  */

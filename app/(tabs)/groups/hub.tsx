@@ -1,5 +1,5 @@
 /**
- * The groups hub. design/groups-mockup.html #hub: a nudge if there is one, each
+ * The groups hub. design/all-screens.html #groups: a nudge if there is one, each
  * group's week counted together with no names, and the two ways in.
  */
 import React, { useEffect, useRef } from 'react';
