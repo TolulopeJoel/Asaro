@@ -250,6 +250,7 @@ export const memberFrom = (uid: string, d: Data): Member => ({
     displayName: str(d.displayName) || 'Reader',
     role: ROLES.includes(d.role) ? d.role : 'member',
     joinedAt: millis(d.joinedAt),
+    photoAt: typeof d.photoAt === 'number' ? d.photoAt : null,
 });
 
 export const weekFrom = (id: string, d: Data): MemberWeek => ({

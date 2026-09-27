@@ -83,3 +83,15 @@ export function offsetLabel(offset: number): string {
     const abs = Math.abs(offset);
     return `UTC${sign}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`;
 }
+
+/** A day's grace after the window closes, before TTL may delete a week's docs. */
+export const EXPIRY_GRACE_MS = DAY;
+/** Counters are written by every member's phone, so they use the zone that closes last and all agree. */
+export const COUNTER_ZONE = -720;
+export const NUDGE_LIFE_MS = 7 * DAY;
+
+/** When a group doc for the week `key` expires: that week's window close (Monday 12:00 in the zone) plus the grace. */
+export function expiresAtFor(key: string, offset: number): number {
+    const [y, m, d] = key.split('-').map(Number);
+    return Date.UTC(y, m - 1, d + 7, CLOSES_HOUR) - offset * MINUTE + EXPIRY_GRACE_MS;
+}

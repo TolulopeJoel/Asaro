@@ -20,11 +20,35 @@ service cloud.firestore {
     // UTC−12 to UTC+14, in minutes east.
     function validOffset(n) { return n is int && n >= -720 && n <= 840; }
 
+    // A member doc says only when its person's photo last changed; the photo
+    // itself is at avatars/{uid}, so reading a member list never pulls photos.
+    function validPhotoAt(data) {
+      return !('photoAt' in data) || data.photoAt is int;
+    }
+
     // Sunday 00:00 to Monday 12:00 in the group's zone, by server time.
     // Timestamp.dayOfWeek() runs 1 (Monday) to 7 (Sunday).
+    function localNow(gid) {
+      return request.time + duration.value(get(groupPath(gid)).data.get('utcOffsetMinutes', 0), 'm');
+    }
     function isOpen(gid) {
-      let local = request.time + duration.value(get(groupPath(gid)).data.get('utcOffsetMinutes', 0), 'm');
+      let local = localNow(gid);
       return local.dayOfWeek() == 7 || (local.dayOfWeek() == 1 && local.hours() < 12);
+    }
+
+    // The week the open window shows, as its Monday "YYYY-MM-DD": this week's on
+    // Sunday, last week's on Monday morning. Only meaningful while isOpen(gid).
+    function pad(n) { return n < 10 ? '0' + string(n) : string(n); }
+    function reviewKey(gid) {
+      let local = localNow(gid);
+      let monday = local - duration.value(local.dayOfWeek() == 7 ? 6 : 7, 'd');
+      return string(monday.year()) + '-' + pad(monday.month()) + '-' + pad(monday.day());
+    }
+
+    // Every week doc carries a TTL time no more than 11 days out (a week's window plus a day's grace).
+    function validExpiry() {
+      return request.resource.data.expiresAt is timestamp
+        && request.resource.data.expiresAt < request.time + duration.value(11, 'd');
     }
 
     // ─── Join codes ────────────────────────────────────────────────────────
@@ -67,7 +91,8 @@ service cloud.firestore {
         allow get: if isMember(gid) || (signedIn() && uid == me());
         allow list: if isMember(gid);
         allow create: if signedIn() && uid == me()
-          && request.resource.data.keys().hasOnly(['displayName', 'role', 'joinedAt', 'joinCode'])
+          && request.resource.data.keys().hasOnly(['displayName', 'role', 'joinedAt', 'joinCode', 'photoAt'])
+          && validPhotoAt(request.resource.data)
           && (
           // Joining: only as a member, and only with a code that points here.
           (request.resource.data.role == 'member'
@@ -79,8 +104,10 @@ service cloud.firestore {
             && getAfter(groupPath(gid)).data.createdBy == me())
         );
         allow update: if signedIn() && (
-          // Your own doc: your name only.
-          (uid == me() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName']))
+          // Your own doc: your name and your avatar only.
+          (uid == me()
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'photoAt'])
+            && validPhotoAt(request.resource.data))
           // Only the creator changes roles, and nothing else on someone's doc.
           || (hasRole(gid, ['creator'])
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role'])
@@ -92,42 +119,54 @@ service cloud.firestore {
         );
       }
 
-      // Members read these only while the group is open; you can read your own
-      // any day. You write only your own, under your own id. Deleting your own
-      // needs no membership, so someone removed can clean up.
+      // Members read these only while the group is open, and only the week on
+      // show; you can read your own any day. Admins can find a removed member's
+      // docs to delete them. You write only your own, under your own id.
       function weekRead(docId) {
-        return isMember(gid) && (isOpen(gid) || ownId(docId) || resource.data.userId == me());
+        return isMember(gid) && (
+          (isOpen(gid) && resource.data.weekKey == reviewKey(gid))
+          || ownId(docId)
+          || resource.data.userId == me()
+          || (hasRole(gid, ['creator', 'admin']) && !exists(memberPath(gid, resource.data.userId)))
+        );
       }
       function ownWrite(docId) {
-        return isMember(gid) && ownId(docId) && request.resource.data.userId == me();
+        return isMember(gid) && ownId(docId) && request.resource.data.userId == me() && validExpiry();
+      }
+      // Your own, with or without membership; or, for admins, a person no longer
+      // here, including one removed in this same batch.
+      function weekDelete(docId) {
+        return ownId(docId)
+          || (resource != null && hasRole(gid, ['creator', 'admin'])
+            && !existsAfter(memberPath(gid, resource.data.userId)));
       }
 
       match /readings/{docId} {
         allow read: if weekRead(docId);
         allow create, update: if ownWrite(docId);
-        allow delete: if ownId(docId);
+        allow delete: if weekDelete(docId);
       }
       match /shares/{docId} {
         allow read: if weekRead(docId);
         allow create, update: if ownWrite(docId);
-        allow delete: if ownId(docId);
+        allow delete: if weekDelete(docId);
       }
       match /practices/{docId} {
         allow read: if weekRead(docId);
         allow create, update: if ownWrite(docId);
-        allow delete: if ownId(docId);
+        allow delete: if weekDelete(docId);
       }
       match /milestones/{docId} {
         allow read: if weekRead(docId);
         allow create, update: if ownWrite(docId);
-        allow delete: if ownId(docId);
+        allow delete: if weekDelete(docId);
       }
       match /weeks/{docId} {
         allow read: if weekRead(docId);
         allow create, update: if ownWrite(docId)
-          && request.resource.data.keys().hasOnly(['userId', 'weekKey', 'days'])
+          && request.resource.data.keys().hasOnly(['userId', 'weekKey', 'days', 'expiresAt'])
           && docId == me() + '_' + request.resource.data.weekKey;
-        allow delete: if ownId(docId);
+        allow delete: if weekDelete(docId);
       }
 
       // The whole-group reads for a week, readable any day. It names no one,
@@ -136,8 +175,9 @@ service cloud.firestore {
         allow read: if isMember(gid);
         allow create: if isMember(gid)
           && weekKey.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
-          && request.resource.data.keys().hasOnly(['reads'])
-          && request.resource.data.reads == 1;
+          && request.resource.data.keys().hasOnly(['reads', 'expiresAt'])
+          && request.resource.data.reads == 1
+          && validExpiry();
         allow update: if isMember(gid)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reads'])
           && (request.resource.data.reads == resource.data.reads + 1
@@ -147,17 +187,33 @@ service cloud.firestore {
 
     // ─── People ────────────────────────────────────────────────────────────
 
+    // A photo, kept in Firestore since the project has no Storage: one small
+    // JPEG per person, written only by them. Readable by anyone signed in —
+    // the uid that finds it is only ever shown to that person's groups.
+    match /avatars/{uid} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && uid == me()
+        && request.resource.data.keys().hasOnly(['image', 'updatedAt'])
+        && request.resource.data.image is string
+        && request.resource.data.image.size() < 40000
+        && request.resource.data.image.matches('^data:image/jpeg;base64,[A-Za-z0-9+/=]+$')
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if signedIn() && uid == me();
+    }
+
     match /users/{uid} {
       allow read, write: if signedIn() && uid == me();
 
       // Private to the person nudged. The fixed id `{fromUid}_{weekKey}` and
-      // no update rule make it one per sender per week.
+      // no update rule make it one per sender per week; TTL deletes it in a week.
       match /nudges/{nid} {
         allow read, delete: if signedIn() && uid == me();
         allow create: if signedIn() && uid != me()
           && nid.matches('^' + me() + '_[0-9]{4}-[0-9]{2}-[0-9]{2}$')
           && request.resource.data.fromUid == me()
           && request.resource.data.groupId is string
+          && request.resource.data.expiresAt is timestamp
+          && request.resource.data.expiresAt < request.time + duration.value(8, 'd')
           && exists(memberPath(request.resource.data.groupId, me()))
           && exists(memberPath(request.resource.data.groupId, uid));
       }

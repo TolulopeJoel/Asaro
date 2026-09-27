@@ -1,8 +1,8 @@
 /** The groups data model as the screens read it (design/GROUPS.md#data-model). Times are epoch ms. */
 
 export const SCHEMA = 2;
-/** Own readings, shares and practices older than this many weeks are deleted. */
-export const KEEP_WEEKS = 8;
+/** Own docs older than this many weeks are deleted from the phone too; TTL does it on the server. */
+export const KEEP_WEEKS = 2;
 
 export type Role = 'creator' | 'admin' | 'member';
 
@@ -22,6 +22,8 @@ export interface Member {
     displayName: string;
     role: Role;
     joinedAt: number | null;
+    /** When their photo last changed; the photo is at avatars/{uid}. Null without one. */
+    photoAt: number | null;
 }
 
 /** One member's days read in one week, readable only while the group is open. */

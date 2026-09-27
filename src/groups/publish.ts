@@ -30,10 +30,11 @@ import { milestoneId, practiceId, practiceItemId, readingId, shareId, weekDocId 
 import { EarnedMilestone, PostedMilestones, earnedMilestones, nextMilestones, postedInWeek } from './milestones';
 import { Share, WeekAnswer } from './model';
 import {
-    PRUNED_COLLECTIONS, groupCollection, groupDocRef, memberRef, nudgesRef, readQuery, select, userRef, weekCountRef,
+    PRUNED_COLLECTIONS, groupCollection, groupDocRef, groupRef, memberRef, nudgesRef, readQuery, select, userRef, weekCountRef,
 } from './paths';
 import { Me, commitInBatches, currentMe, errorCode, myGroupIds, newBatch } from './session';
 import { weekKey } from './week';
+import { COUNTER_ZONE, deviceOffsetMinutes, expiresAtFor, isOffset } from './window';
 
 type Batch = FirebaseFirestoreTypes.WriteBatch;
 
@@ -81,10 +82,33 @@ function send(uid: string, gid: string, batch: Batch): void {
     });
 }
 
-function fanOut(uid: string, gids: string[], write: (batch: Batch, gid: string) => void): void {
+type Expires = (key: string) => FirebaseFirestoreTypes.Timestamp;
+
+const zones = new Map<string, number>();
+
+/** The group's zone, remembered for the session; the phone's own when the group can't be read. */
+async function groupZone(gid: string): Promise<number> {
+    const known = zones.get(gid);
+    if (known !== undefined) return known;
+    const zone = await getDoc(groupRef(gid)).then(d => d.data()?.utcOffsetMinutes).catch(() => undefined);
+    if (isOffset(zone)) {
+        zones.set(gid, zone);
+        return zone;
+    }
+    return deviceOffsetMinutes();
+}
+
+/** `expiresAt` for a week's docs in this group, for Firestore TTL. */
+async function expiryIn(gid: string): Promise<Expires> {
+    const zone = await groupZone(gid);
+    return key => Timestamp.fromMillis(expiresAtFor(key, zone));
+}
+
+async function fanOut(uid: string, gids: string[], write: (batch: Batch, gid: string, expires: Expires) => void): Promise<void> {
     for (const gid of gids) {
+        const expires = await expiryIn(gid);
         const batch = newBatch();
-        write(batch, gid);
+        write(batch, gid, expires);
         send(uid, gid, batch);
     }
 }
@@ -103,8 +127,8 @@ async function weekDoc(uid: string, key: string) {
     return { key, data: { userId: uid, weekKey: key, days: daysInWeek(rows.map(r => r.created_local), key) } };
 }
 
-const setWeekDocs = (batch: Batch, gid: string, uid: string, weeks: Awaited<ReturnType<typeof weekDoc>>[]) =>
-    weeks.forEach(w => batch.set(groupDocRef(gid, 'weeks', weekDocId(uid, w.key)), w.data));
+const setWeekDocs = (batch: Batch, gid: string, uid: string, weeks: Awaited<ReturnType<typeof weekDoc>>[], expires: Expires) =>
+    weeks.forEach(w => batch.set(groupDocRef(gid, 'weeks', weekDocId(uid, w.key)), { ...w.data, expiresAt: expires(w.key) }));
 
 async function loadAllCounted(): Promise<Record<string, Counted>> {
     try {
@@ -137,7 +161,8 @@ function withCounted<T>(uid: string, fn: (counted: Counted) => Promise<{ counted
 /** One ±1 per write: the rules allow nothing else on a counter. */
 function bump(uid: string, gid: string, key: string, by: 1 | -1) {
     const batch = newBatch();
-    batch.set(weekCountRef(gid, key), { reads: increment(by) }, { merge: true });
+    const expiresAt = Timestamp.fromMillis(expiresAtFor(key, COUNTER_ZONE));
+    batch.set(weekCountRef(gid, key), { reads: increment(by), expiresAt }, { merge: true });
     send(uid, gid, batch);
 }
 
@@ -150,18 +175,19 @@ async function publishRows(me: Me, gids: string[], rows: EntryRow[], now: Date):
 
     await withCounted(me.uid, async counted => {
         for (const gid of gids) {
+            const expires = await expiryIn(gid);
             const batch = newBatch();
             const bumps: string[] = [];
             for (const r of readings) {
                 const ref = groupDocRef(gid, 'readings', readingId(me.uid, r.row.id));
-                batch.set(ref, { ...r.data, createdAt: Timestamp.fromDate(r.readAt) });
+                batch.set(ref, { ...r.data, createdAt: Timestamp.fromDate(r.readAt), expiresAt: expires(r.data.weekKey) });
                 if (countedWeek(counted, gid, r.row.id)) continue;
                 // A reading already on the server was counted when it was first written.
                 const exists = await getDoc(ref).then(d => d.exists()).catch(() => false);
                 if (!exists) bumps.push(r.data.weekKey);
                 counted = markCounted(counted, gid, r.data.weekKey, r.row.id);
             }
-            setWeekDocs(batch, gid, me.uid, weeks);
+            setWeekDocs(batch, gid, me.uid, weeks, expires);
             send(me.uid, gid, batch);
             bumps.forEach(key => bump(me.uid, gid, key, 1));
         }
@@ -201,10 +227,11 @@ export async function unpublishReading(entryId: number): Promise<void> {
                 )).then(snap => snap.docs).catch(() => []);
                 const [shares, practices] = await Promise.all([fromEntry('shares'), fromEntry('practices')]);
 
+                const expires = await expiryIn(gid);
                 const batch = newBatch();
                 batch.delete(ref);
                 [...shares, ...practices].forEach(d => batch.delete(d.ref));
-                if (key) setWeekDocs(batch, gid, me.uid, [await weekDoc(me.uid, key)]);
+                if (key) setWeekDocs(batch, gid, me.uid, [await weekDoc(me.uid, key)], expires);
                 send(me.uid, gid, batch);
                 if (key) bump(me.uid, gid, key, -1);
                 counted = unmarkCounted(counted, gid, entryId);
@@ -221,7 +248,7 @@ export async function publishWeek(): Promise<void> {
     const s = await session();
     if (!s?.gids.length) return;
     const now = new Date();
-    fanOut(s.me.uid, s.gids, (batch, gid) => batch.update(memberRef(gid, s.me.uid), { displayName: s.me.name }));
+    await fanOut(s.me.uid, s.gids, (batch, gid) => batch.update(memberRef(gid, s.me.uid), { displayName: s.me.name }));
     await publishRows(s.me, s.gids, await entriesInWeek(weekKey(now)), now);
 }
 
@@ -254,16 +281,23 @@ export async function publishToGroup(gid: string): Promise<void> {
 
         await publishRows(me, [gid], rows, now);
 
+        const expires = await expiryIn(gid);
         const batch = newBatch();
         for (const m of posted ? postedInWeek(posted, now) : []) {
             const at = posted?.[m.key]?.at ?? now.getTime();
-            batch.set(groupDocRef(gid, 'milestones', milestoneId(me.uid, m.key)), milestoneDoc(me.uid, m, Timestamp.fromMillis(at), now));
+            batch.set(groupDocRef(gid, 'milestones', milestoneId(me.uid, m.key)), milestoneDoc(me.uid, m, Timestamp.fromMillis(at), now, expires));
         }
         if (share) {
             const { id, ...data } = share;
-            batch.set(groupDocRef(gid, 'shares', id), { ...data, createdAt: Timestamp.fromMillis(share.createdAt ?? now.getTime()) });
+            batch.set(groupDocRef(gid, 'shares', id), {
+                ...data,
+                createdAt: Timestamp.fromMillis(share.createdAt ?? now.getTime()),
+                expiresAt: expires(share.weekKey),
+            });
         }
-        for (const p of practices) if (p.data) batch.set(groupDocRef(gid, 'practices', practiceId(me.uid, p.itemId)), p.data);
+        for (const p of practices) {
+            if (p.data) batch.set(groupDocRef(gid, 'practices', practiceId(me.uid, p.itemId)), { ...p.data, expiresAt: expires(p.data.weekKey) });
+        }
         send(me.uid, gid, batch);
     } catch (error) {
         console.error('[groups] publishToGroup failed:', error);
@@ -302,7 +336,7 @@ export async function shareAnswer(
         weekKey: key,
         createdAt: serverTimestamp(),
     };
-    fanOut(s.me.uid, gids, (batch, gid) => batch.set(groupDocRef(gid, 'shares', id), data));
+    await fanOut(s.me.uid, gids, (batch, gid, expires) => batch.set(groupDocRef(gid, 'shares', id), { ...data, expiresAt: expires(key) }));
     return id;
 }
 
@@ -311,7 +345,7 @@ export async function removeShare(target: string | 'all', id: string): Promise<v
     const s = await session();
     if (!s) return;
     const gids = target === 'all' ? s.gids : [target];
-    fanOut(s.me.uid, gids, (batch, gid) => batch.delete(groupDocRef(gid, 'shares', id)));
+    await fanOut(s.me.uid, gids, (batch, gid) => batch.delete(groupDocRef(gid, 'shares', id)));
 }
 
 async function myShareIn(gid: string, uid: string, key: string): Promise<Share | null> {
@@ -383,10 +417,10 @@ async function practiceDocs(uid: string, itemIds: number[], now: Date) {
 
 async function writePractices(me: Me, gids: string[], itemIds: number[]) {
     const docs = await practiceDocs(me.uid, itemIds, new Date());
-    fanOut(me.uid, gids, (batch, gid) => {
+    await fanOut(me.uid, gids, (batch, gid, expires) => {
         for (const p of docs) {
             const ref = groupDocRef(gid, 'practices', practiceId(me.uid, p.itemId));
-            if (p.data) batch.set(ref, p.data);
+            if (p.data) batch.set(ref, { ...p.data, expiresAt: expires(p.data.weekKey) });
             else batch.delete(ref);
         }
     });
@@ -405,7 +439,7 @@ export async function sharePractice(itemId: number): Promise<boolean> {
 export async function unsharePractice(itemId: number): Promise<void> {
     const s = await session();
     if (!s) return;
-    fanOut(s.me.uid, s.gids, (batch, gid) => batch.delete(groupDocRef(gid, 'practices', practiceId(s.me.uid, itemId))));
+    await fanOut(s.me.uid, s.gids, (batch, gid) => batch.delete(groupDocRef(gid, 'practices', practiceId(s.me.uid, itemId))));
 }
 
 /** Which of the reader's practices are shared, for the practice editor. */
@@ -456,12 +490,13 @@ async function savePosted(uid: string, posted: PostedMilestones) {
     await AsyncStorage.setItem(STORAGE_KEYS.GROUP_MILESTONES, JSON.stringify(all));
 }
 
-const milestoneDoc = (uid: string, m: EarnedMilestone, createdAt: unknown, now: Date) => ({
+const milestoneDoc = (uid: string, m: EarnedMilestone, createdAt: unknown, now: Date, expires: Expires) => ({
     userId: uid,
     kind: m.kind,
     label: m.label,
     weekKey: weekKey(now),
     createdAt,
+    expiresAt: expires(weekKey(now)),
 });
 
 async function localPractices() {
@@ -511,9 +546,9 @@ async function emitNow(): Promise<EarnedMilestone[]> {
     const { posted, post } = nextMilestones(before, earned, now);
     await savePosted(me.uid, posted);
 
-    fanOut(me.uid, post.length ? gids : [], (batch, gid) => {
+    await fanOut(me.uid, post.length ? gids : [], (batch, gid, expires) => {
         for (const m of post) {
-            batch.set(groupDocRef(gid, 'milestones', milestoneId(me.uid, m.key)), milestoneDoc(me.uid, m, serverTimestamp(), now));
+            batch.set(groupDocRef(gid, 'milestones', milestoneId(me.uid, m.key)), milestoneDoc(me.uid, m, serverTimestamp(), now, expires));
         }
     });
     return post;
@@ -521,7 +556,7 @@ async function emitNow(): Promise<EarnedMilestone[]> {
 
 // ─── Cleanup ──────────────────────────────────────────────────────────────────
 
-/** Delete the reader's own readings, shares and practices older than KEEP_WEEKS, and old nudges. */
+/** Delete the reader's own week docs older than KEEP_WEEKS, and old nudges. Belt and braces: TTL does this on the server. */
 export async function pruneOld(): Promise<void> {
     const s = await session();
     if (!s) return;

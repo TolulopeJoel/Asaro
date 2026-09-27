@@ -2,7 +2,8 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-    arrayRemove, arrayUnion, deleteDoc, doc, getDoc, getDocFromServer, serverTimestamp, setDoc, updateDoc, where,
+    Timestamp, arrayRemove, arrayUnion, deleteDoc, deleteField, doc, getDoc, getDocFromServer, serverTimestamp, setDoc,
+    updateDoc, where,
 } from '@react-native-firebase/firestore';
 
 import { STORAGE_KEYS } from '../storage/storageKeys';
@@ -20,7 +21,7 @@ import {
 import { publishToGroup, uncountGroup } from './publish';
 import { Settled, commitInBatches, currentMe, errorCode, isOffline, myGroupIds, newBatch, settle } from './session';
 import { weekKey } from './week';
-import { deviceOffsetMinutes, isOffset } from './window';
+import { NUDGE_LIFE_MS, deviceOffsetMinutes, isOffset } from './window';
 
 export type SignedOut = { status: 'signed-out' };
 export type Offline = { status: 'offline' };
@@ -237,10 +238,25 @@ export async function setRole(gid: string, uid: string, role: Role): Promise<Wri
 }
 
 /** Admins and the creator; the creator cannot be removed. */
+/**
+ * Admins and the creator; the creator cannot be removed. The member doc goes
+ * first, since the rules let admins find a person's docs only once they're
+ * not a member; then everything they wrote here goes too. TTL clears any the
+ * second step misses.
+ */
 export async function removeMember(gid: string, uid: string): Promise<WriteResult> {
     const me = await currentMe();
     if (!me) return 'signed-out';
-    return settle(deleteDoc(memberRef(gid, uid)));
+    const result = await settle(deleteDoc(memberRef(gid, uid)));
+    try {
+        const theirs = await Promise.all(OWN_COLLECTIONS.map(name =>
+            readQuery(select(groupCollection(gid, name), where('userId', '==', uid))).then(snap => snap.docs)));
+        const docs = theirs.flat();
+        if (docs.length) await commitInBatches(docs.map(d => batch => batch.delete(d.ref)), () => { });
+    } catch (error) {
+        console.error('[groups] could not clear a removed member’s docs; TTL will:', error);
+    }
+    return result;
 }
 
 /** Admins and the creator. `utcOffsetMinutes` moves the group's open window to another time zone. */
@@ -327,6 +343,7 @@ export async function sendNudge(gid: string, toUid: string): Promise<NudgeResult
             groupId: gid,
             groupName: typeof groupName === 'string' ? groupName : '',
             createdAt: serverTimestamp(),
+            expiresAt: Timestamp.fromMillis(Date.now() + NUDGE_LIFE_MS),
         }));
         await recordNudge(me.uid, key);
         return result;
@@ -347,4 +364,32 @@ export async function clearNudges(id?: string): Promise<void> {
     }
     const all = await readQuery(nudgesRef(me.uid)).catch(() => null);
     if (all?.docs.length) await commitInBatches(all.docs.map(d => batch => batch.delete(d.ref)), () => { }).catch(() => { });
+}
+
+/**
+ * Carry the reader's name and photo into every group they are in. The member
+ * doc holds what the group sees, so a change that stopped at the account would
+ * leave every group showing the old one. Writes only what differs; a group that
+ * cannot be reached now is caught up at the next sign-in. A null photo removes it.
+ */
+export async function syncProfileToGroups(profile: { displayName?: string | null; photoAt?: number | null }): Promise<void> {
+    const me = await currentMe();
+    if (!me) return;
+    const name = profile.displayName?.trim();
+    const ids = await myGroupIds(me.uid);
+    await Promise.all(ids.map(async gid => {
+        try {
+            const mine = await getDoc(memberRef(gid, me.uid));
+            if (!mine.exists()) return;
+            const now = mine.data() ?? {};
+            const changes: Record<string, unknown> = {};
+            if (name && now.displayName !== name) changes.displayName = name;
+            if (profile.photoAt !== undefined && (now.photoAt ?? null) !== profile.photoAt) {
+                changes.photoAt = profile.photoAt ?? deleteField();
+            }
+            if (Object.keys(changes).length > 0) await settle(updateDoc(memberRef(gid, me.uid), changes));
+        } catch {
+            // Left, removed or offline: the next sign-in tries again.
+        }
+    }));
 }

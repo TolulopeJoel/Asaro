@@ -25,7 +25,7 @@ import { useGroup, useGroupWeek } from '@/src/groups/hooks';
 import { Group, Member, Reading, Role } from '@/src/groups/model';
 import { hasNudged, leaveGroup, regenerateCode, removeMember, sendNudge, setRole } from '@/src/groups/repository';
 import { weekdayIndex } from '@/src/groups/week';
-import { Avatar } from '@/src/components/Avatar';
+import { MemberAvatar } from '@/src/components/MemberAvatar';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { Skeleton } from '@/src/components/Skeleton';
 import { ActionSheet, SheetAction } from '@/src/components/groups/ActionSheet';
@@ -73,7 +73,7 @@ function MemberRow({ member, line, isMe, nudge, onPress }: {
     return (
         <ScalePressable onPress={onPress} disabled={!onPress} accessibilityRole={onPress ? 'button' : undefined}>
             <Row style={styles.memberRow}>
-                <Avatar id={member.uid} name={member.displayName} size={38} radius={19} />
+                <MemberAvatar uid={member.uid} name={member.displayName} photoAt={member.photoAt} size={38} radius={19} />
                 <View style={styles.rowMain}>
                     <Text variant="reference">{member.displayName}</Text>
                     {!!line && <Text variant="bodySmall" style={styles.snip}>{line}</Text>}
@@ -432,7 +432,10 @@ export default function GroupScreen() {
                         ) : shown.map(person => (
                             <Row key={person.member.uid} style={styles.person}>
                                 <View style={styles.personHead}>
-                                    <Avatar id={person.member.uid} name={person.member.displayName} size={38} radius={19} />
+                                    <MemberAvatar
+                                        uid={person.member.uid} name={person.member.displayName}
+                                        photoAt={person.member.photoAt} size={38} radius={19}
+                                    />
                                     <Text variant="reference">{person.member.displayName}</Text>
                                 </View>
                                 {person.readings.length > 0 && <ReadingList readings={person.readings} />}
