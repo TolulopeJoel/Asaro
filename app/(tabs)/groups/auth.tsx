@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, StyleSheet, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Lock, Mail } from 'lucide-react-native';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from '@react-native-firebase/auth';
@@ -11,7 +11,7 @@ import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { ClothMark, Hero, Screen, Text, ThemedButton } from '@/src/components/ui';
-import { KEYBOARD_BEHAVIOR } from '@/src/utils/keyboard';
+import { useFootPadding } from '@/src/hooks/useScreenInsets';
 
 /**
  * Which of the two the reader is, as a cell.
@@ -67,6 +67,7 @@ export default function AuthScreen() {
     const { colors } = useTheme();
     const { showAlert } = useAlert();
     const router = useRouter();
+    const footPadding = useFootPadding();
 
     const handleAuth = async () => {
         if (!email || !password) {
@@ -134,16 +135,19 @@ export default function AuthScreen() {
               * segmented control above the form: the two modes are not two
               * places, and the link at the foot already moves between them.
               */}
-            <Hero ownsTopInset>
-                <Text variant="display" tone="onBand">
-                    {isSignUp ? 'Create\nAccount' : 'Welcome\nBack'}
-                </Text>
-            </Hero>
-            <KeyboardAvoidingView
-                behavior={KEYBOARD_BEHAVIOR}
-                style={{ flex: 1 }}
+            {/* Scrolls, band and all: sign-up is taller than a small phone
+              * with the keyboard up, and Android keeps the focused field in
+              * view only inside a ScrollView. */}
+            <ScrollView
+                style={styles.container}
+                keyboardShouldPersistTaps="handled"
             >
-                <View style={styles.content}>
+                <Hero ownsTopInset>
+                    <Text variant="display" tone="onBand">
+                        {isSignUp ? 'Create\nAccount' : 'Welcome\nBack'}
+                    </Text>
+                </Hero>
+                <View style={[styles.content, { paddingBottom: footPadding }]}>
                     <Text variant="body" tone="secondary" style={styles.subtitle}>
                         {isSignUp ? 'Ready to get serious? No more hiding.' : "Welcome back. Let's see what you've been up to."}
                     </Text>
@@ -229,7 +233,7 @@ export default function AuthScreen() {
                         </ScalePressable>
                     </View>
                 </View>
-            </KeyboardAvoidingView>
+            </ScrollView>
         </Screen>
     );
 }
@@ -239,7 +243,6 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     content: {
-        flex: 1,
         paddingHorizontal: Spacing.layout.screenPadding,
         paddingTop: Spacing.xxxl,
     },
@@ -264,7 +267,8 @@ const styles = StyleSheet.create({
     input: {
         flex: 1,
         fontSize: Typography.size.lg,
-        height: 52,
+        // A floor, not a height: at a large font size a fixed 52 clips the text.
+        minHeight: 52,
     },
     roleRow: {
         flexDirection: 'row',

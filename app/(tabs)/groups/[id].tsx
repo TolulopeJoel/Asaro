@@ -7,6 +7,7 @@ import {
     Dimensions,
     DeviceEventEmitter,
     TextInput,
+    ScrollView,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useTheme } from '@/src/theme/ThemeContext';
@@ -338,11 +339,17 @@ const GroupEditModal = ({
 
     return (
         <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-            <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: Spacing.xl }}>
+            {/* Scrolls: once the keyboard takes half the screen the card is
+              * taller than what is left, and Save would sit off screen. */}
+            <ScrollView
+                style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' }}
+                contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: Spacing.xl }}
+                keyboardShouldPersistTaps="handled"
+            >
                 <View style={{ backgroundColor: colors.background, borderRadius: Spacing.borderRadius.lg, padding: Spacing.xl, gap: Spacing.lg }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.sm }}>
                         <Text style={{ fontSize: 26, fontWeight: '800', color: colors.textPrimary, letterSpacing: -0.5 }}>Edit Group Deets</Text>
-                        <ScalePressable onPress={onClose}>
+                        <ScalePressable onPress={onClose} hitSlop={Spacing.md} accessibilityRole="button" accessibilityLabel="Close">
                             <X size={24} color={colors.textSecondary} />
                         </ScalePressable>
                     </View>
@@ -404,7 +411,7 @@ const GroupEditModal = ({
                         <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textSecondary }}>Cancel</Text>
                     </ScalePressable>
                 </View>
-            </View>
+            </ScrollView>
         </Modal>
     );
 };

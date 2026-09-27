@@ -3,10 +3,9 @@ import {
     View,
     TextInput,
     StyleSheet,
-    KeyboardAvoidingView,
+    ScrollView,
     } from 'react-native';
 import { useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
@@ -14,7 +13,8 @@ import { Typography } from '@/src/theme/typography';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { Asaro, Hero, Screen, Text, type AsaroLook } from '@/src/components/ui';
 import { setAsaroLook, useAsaroLook } from '@/src/storage/asaroLook';
-import { KEYBOARD_BEHAVIOR } from '@/src/utils/keyboard';
+import { useAuth } from '@/src/context/AuthContext';
+import { useFootPadding } from '@/src/hooks/useScreenInsets';
 
 const LOOK_CHOICES: { look: AsaroLook; label: string }[] = [
     { look: 'male', label: 'Him' },
@@ -27,11 +27,13 @@ export default function NameScreen() {
     const [name, setName] = useState('');
     const [isValid, setIsValid] = useState(false);
     const look = useAsaroLook();
+    const { updateName } = useAuth();
+    const footPadding = useFootPadding(Spacing.layout.screenPadding);
 
     const handleContinue = async () => {
         if (name.trim().length > 0) {
             try {
-                await AsyncStorage.setItem('user_name', name.trim());
+                await updateName(name);
                 router.push('/onboarding/sleep-time');
             } catch (error) {
                 console.error('Error saving name:', error);
@@ -50,11 +52,15 @@ export default function NameScreen() {
                 <Text variant="label" tone="onHero" style={styles.heroStep}>Step 1 of 3</Text>
                 <Text variant="display" tone="onBand">Hello.</Text>
             </Hero>
-            <KeyboardAvoidingView
-                behavior={KEYBOARD_BEHAVIOR}
+            {/* Scrolls so the keyboard can never cover the field: Android's
+              * ScrollView keeps the focused input on screen as the window
+              * shrinks for the keyboard. */}
+            <ScrollView
                 style={styles.keyboardView}
+                contentContainerStyle={styles.scrollContent}
+                keyboardShouldPersistTaps="handled"
             >
-                <View style={styles.content}>
+                <View style={[styles.content, { paddingBottom: footPadding }]}>
                     <View style={styles.textContainer}>
                         <View style={styles.introBlock}>
                             {/* Both looks, full size: the chosen one waves, the other steps back. */}
@@ -139,7 +145,7 @@ export default function NameScreen() {
                         </ScalePressable>
                     </View>
                 </View>
-            </KeyboardAvoidingView>
+            </ScrollView>
         </Screen>
     );
 }
@@ -152,6 +158,7 @@ const styles = StyleSheet.create({
     keyboardView: {
         flex: 1,
     },
+    scrollContent: { flexGrow: 1 },
     content: {
         flex: 1,
         padding: Spacing.layout.screenPadding,

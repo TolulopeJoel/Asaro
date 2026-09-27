@@ -12,6 +12,7 @@ import { BookPicker } from '../BookPicker';
 import { ChapterPicker } from '../ChapterPicker';
 import { Hero, Text, ThemedButton, textStyle } from '../ui';
 import { formatRange, spell } from '../../utils/reference';
+import { useFootPadding } from '../../hooks/useScreenInsets';
 
 /** The canon, for the picker's "N of 66 books match". */
 const TOTAL_BOOKS = 66;
@@ -105,6 +106,7 @@ export const ChapterStep = React.memo(({
 }: ChapterStepProps) => {
     const { colors } = useTheme();
     const gutter = Spacing.layout.screenPadding;
+    const footPadding = useFootPadding();
 
     const start = selectedChapters?.start ?? 0;
     const end = selectedChapters?.end || start;
@@ -176,7 +178,7 @@ export const ChapterStep = React.memo(({
                 </ScrollView>
             </View>
 
-            <View style={[styles.stepFooter, { paddingHorizontal: gutter }]}>
+            <View style={[styles.stepFooter, { paddingHorizontal: gutter, paddingBottom: footPadding }]}>
                 <ThemedButton
                     label={picked && selectedBook ? `Use ${selectedBook.name} ${range}` : 'Pick a chapter'}
                     variant="primary"
@@ -273,6 +275,7 @@ export const SummaryStep = React.memo(({
     observation,
     noteSeed,
 }: SummaryStepProps) => {
+    const footPadding = useFootPadding();
     const meta = `${spell(answerCount)} ${answerCount === 1 ? 'answer' : 'answers'} · ${formattedDate}`;
 
     return (
@@ -306,7 +309,7 @@ export const SummaryStep = React.memo(({
             <View
                 style={[
                     styles.savedFooter,
-                    { paddingHorizontal: Spacing.layout.screenPadding },
+                    { paddingHorizontal: Spacing.layout.screenPadding, paddingBottom: footPadding },
                 ]}
             >
                 <ThemedButton label="Check in Library" block onPress={onDone} />
@@ -344,7 +347,6 @@ const styles = StyleSheet.create({
     list: { flex: 1 },
     stepFooter: {
         paddingTop: Spacing.md + 2,
-        paddingBottom: Spacing.layout.tabBarPadding,
     },
     // `.cl-top{justify-content:space-between}` — this band carries two bare
     // icon buttons with nothing between them, so unlike BookStep's title+close
@@ -428,7 +430,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: Spacing.xs + 2,
         paddingTop: Spacing.xl - 4,
-        paddingBottom: Spacing.layout.tabBarPadding,
     },
     shareLink: {
         paddingVertical: Spacing.sm,

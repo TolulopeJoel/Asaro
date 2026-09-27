@@ -21,6 +21,7 @@ import { TreeDetail } from '@/src/components/grove/Grove';
 import { LoadingView } from '@/src/components/LoadingView';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { Hero, Screen, Text as UIText } from '@/src/components/ui';
+import { useFootPadding } from '@/src/hooks/useScreenInsets';
 import { GREEK_BOOKS, HEBREW_BOOKS } from '@/src/data/bibleBooks';
 import { getAllActionItems, getChapterCoverage } from '@/src/data/database';
 import { actionKindOf, isCadence } from '@/src/data/actionKind';
@@ -57,6 +58,9 @@ export default function LandScreen() {
     const [selected, setSelected] = useState<BookCloth | null>(null);
     const [grove, setGrove] = useState<GroveTree[]>([]);
     const [openTree, setOpenTree] = useState<number | null>(null);
+    const [cardHeight, setCardHeight] = useState(0);
+    const footPadding = useFootPadding(Spacing.xxl);
+    const cardFoot = useFootPadding(Spacing.xl);
 
     useFocusEffect(
         useCallback(() => {
@@ -141,7 +145,14 @@ export default function LandScreen() {
                     <LoadingView size={48} />
                 </View>
             ) : (
-                <ScrollView ref={scroll} contentContainerStyle={styles.content}>
+                <ScrollView
+                    ref={scroll}
+                    // No horizontal padding: the land runs to both screen edges,
+                    // which is the difference between a map and a picture of a
+                    // map. While a tree's card is up, the foot of the land can
+                    // still be scrolled out from under it.
+                    contentContainerStyle={{ paddingBottom: footPadding + (tapped ? cardHeight : 0) }}
+                >
                     {/* One holding, Genesis to Revelation, with no break at
                       * Matthew. Splitting it draws a boundary the reading does
                       * not have — the point of the land is that it is one place
@@ -195,7 +206,10 @@ export default function LandScreen() {
             )}
 
             {tapped && (
-                <View style={[styles.treeCard, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
+                <View
+                    style={[styles.treeCard, { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: cardFoot }]}
+                    onLayout={e => setCardHeight(e.nativeEvent.layout.height)}
+                >
                     <ScalePressable
                         onPress={() => setOpenTree(null)}
                         accessibilityRole="button"
@@ -216,10 +230,6 @@ const styles = StyleSheet.create({
     back: { alignSelf: 'flex-start', marginBottom: Spacing.sm },
     heroTitle: { marginBottom: Spacing.xs },
     loading: { flex: 1, justifyContent: 'center' },
-    /* No horizontal padding: the land runs to both screen edges, which is the
-     * difference between a map and a picture of a map. Anything that is not
-     * the land pads itself. */
-    content: { paddingBottom: Spacing.xxl },
     /* A tapped tree opens over the foot of the land, like a card turned up. */
     treeCard: {
         position: 'absolute',
@@ -228,7 +238,6 @@ const styles = StyleSheet.create({
         bottom: 0,
         borderTopWidth: 1,
         padding: Spacing.lg,
-        paddingBottom: Spacing.xl,
     },
     treeClose: { position: 'absolute', top: Spacing.md, right: Spacing.md, zIndex: 1 },
     quiet: {

@@ -251,9 +251,10 @@ function JournalContent({
 }: JournalContentProps) {
     const router = useRouter();
 
-    const handleEntryPress = (entry: JournalEntry) => {
+    // Stable, or every memoised EntryCard re-renders with this screen.
+    const handleEntryPress = useCallback((entry: JournalEntry) => {
         router.push(`/library/${entry.id}`);
-    };
+    }, [router]);
 
 
     return (

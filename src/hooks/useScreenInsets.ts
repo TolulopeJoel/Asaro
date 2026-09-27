@@ -12,6 +12,7 @@
 import { useMemo } from 'react';
 import { Platform, StatusBar } from 'react-native';
 import { EdgeInsets, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Spacing } from '../theme/spacing';
 
 /**
  * The height the status bar occupies when shown. Read from the platform rather
@@ -27,4 +28,14 @@ export function useScreenInsets(): EdgeInsets {
     () => ({ ...insets, top: Math.max(insets.top, MIN_TOP_INSET) }),
     [insets]
   );
+}
+
+/**
+ * Bottom padding for a screen's foot: the mockup's `base`, or clear of the
+ * Android nav bar when that is taller. Under edge-to-edge a three-button bar
+ * (48dp) otherwise sits over the bottom of a fixed 30px foot.
+ */
+export function useFootPadding(base: number = Spacing.layout.tabBarPadding): number {
+  const { bottom } = useSafeAreaInsets();
+  return Math.max(base, bottom + Spacing.md);
 }

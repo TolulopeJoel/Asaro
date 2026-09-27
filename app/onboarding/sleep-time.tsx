@@ -4,15 +4,14 @@ import {
     StyleSheet,
     TextInput,
     Keyboard,
-    TouchableWithoutFeedback,
-    KeyboardAvoidingView,
+    ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
 import { Hero, Screen, Text, ThemedButton, textStyle } from '@/src/components/ui';
-import { KEYBOARD_BEHAVIOR } from '@/src/utils/keyboard';
+import { useFootPadding } from '@/src/hooks/useScreenInsets';
 import { saveSleepTime, setupDailyNotifications } from '@/src/utils/notifications';
 
 // The same window Settings offers: 8 PM to midnight.
@@ -28,6 +27,7 @@ export default function SleepTimeScreen() {
     const [error, setError] = useState<string | null>(null);
 
     const minuteInputRef = useRef<TextInput>(null);
+    const footPadding = useFootPadding();
 
     const handleHourChange = (text: string) => {
         // Only allow numbers
@@ -145,73 +145,76 @@ export default function SleepTimeScreen() {
      * the pair read as a single time rather than two numbers.
      */
     return (
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <Screen edges={[]}>
+        <Screen edges={[]}>
+            {/* The band scrolls with the fields so a short screen with the
+              * keyboard up still has room for them. `handled` lets a tap on
+              * empty ground dismiss the keyboard while buttons still work. */}
+            <ScrollView
+                style={styles.keyboardView}
+                contentContainerStyle={styles.scrollContent}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
+            >
                 <Hero ownsTopInset topPadding={64}>
                     <Text variant="label" tone="onHero" style={styles.heroStep}>Step 2 of 3</Text>
                     <Text variant="display" tone="onBand">When do you{'\n'}turn in?</Text>
                 </Hero>
-                <KeyboardAvoidingView
-                    behavior={KEYBOARD_BEHAVIOR}
-                    style={styles.keyboardView}
-                >
-                    <View style={styles.clothBody}>
-                        <Text variant="sub">
-                            Reminders stop at this hour, so the app never nags you after bedtime.
-                        </Text>
+                <View style={[styles.clothBody, { paddingBottom: footPadding }]}>
+                    <Text variant="sub">
+                        Reminders stop at this hour, so the app never nags you after bedtime.
+                    </Text>
 
-                        <View style={[styles.clothPanel, { backgroundColor: colors.backgroundSubtle }]}>
-                            <TextInput
-                                style={[
-                                    styles.clothTimeInput,
-                                    textStyle(themeStyle, 'display'),
-                                    { backgroundColor: colors.background, color: error ? colors.danger : colors.textPrimary },
-                                ]}
-                                placeholder="10"
-                                placeholderTextColor={colors.textMuted}
-                                value={hour}
-                                onChangeText={handleHourChange}
-                                onBlur={handleBlurHour}
-                                keyboardType="number-pad"
-                                returnKeyType="next"
-                                maxLength={2}
-                                autoFocus
-                                onSubmitEditing={() => minuteInputRef.current?.focus()}
-                                accessibilityLabel="Hour"
-                            />
-                            <Text variant="display" tone="accent">:</Text>
-                            <TextInput
-                                ref={minuteInputRef}
-                                style={[
-                                    styles.clothTimeInput,
-                                    textStyle(themeStyle, 'display'),
-                                    { backgroundColor: colors.background, color: error ? colors.danger : colors.textPrimary },
-                                ]}
-                                placeholder="00"
-                                placeholderTextColor={colors.textMuted}
-                                value={minute}
-                                onChangeText={handleMinuteChange}
-                                onBlur={handleBlurMinute}
-                                keyboardType="number-pad"
-                                returnKeyType="done"
-                                maxLength={2}
-                                accessibilityLabel="Minute"
-                            />
-                            <Text variant="tab" tone="secondary">PM</Text>
-                        </View>
-
-                        {error && <Text variant="bodySmall" tone="danger">{error}</Text>}
-
-                        <ThemedButton
-                            label="Continue"
-                            block
-                            disabled={!isFormValid}
-                            onPress={handleContinue}
+                    <View style={[styles.clothPanel, { backgroundColor: colors.backgroundSubtle }]}>
+                        <TextInput
+                            style={[
+                                styles.clothTimeInput,
+                                textStyle(themeStyle, 'display'),
+                                { backgroundColor: colors.background, color: error ? colors.danger : colors.textPrimary },
+                            ]}
+                            placeholder="10"
+                            placeholderTextColor={colors.textMuted}
+                            value={hour}
+                            onChangeText={handleHourChange}
+                            onBlur={handleBlurHour}
+                            keyboardType="number-pad"
+                            returnKeyType="next"
+                            maxLength={2}
+                            autoFocus
+                            onSubmitEditing={() => minuteInputRef.current?.focus()}
+                            accessibilityLabel="Hour"
                         />
+                        <Text variant="display" tone="accent">:</Text>
+                        <TextInput
+                            ref={minuteInputRef}
+                            style={[
+                                styles.clothTimeInput,
+                                textStyle(themeStyle, 'display'),
+                                { backgroundColor: colors.background, color: error ? colors.danger : colors.textPrimary },
+                            ]}
+                            placeholder="00"
+                            placeholderTextColor={colors.textMuted}
+                            value={minute}
+                            onChangeText={handleMinuteChange}
+                            onBlur={handleBlurMinute}
+                            keyboardType="number-pad"
+                            returnKeyType="done"
+                            maxLength={2}
+                            accessibilityLabel="Minute"
+                        />
+                        <Text variant="tab" tone="secondary">PM</Text>
                     </View>
-                </KeyboardAvoidingView>
-            </Screen>
-        </TouchableWithoutFeedback>
+
+                    {error && <Text variant="bodySmall" tone="danger">{error}</Text>}
+
+                    <ThemedButton
+                        label="Continue"
+                        block
+                        disabled={!isFormValid}
+                        onPress={handleContinue}
+                    />
+                </View>
+            </ScrollView>
+        </Screen>
     );
 }
 
@@ -244,6 +247,7 @@ const styles = StyleSheet.create({
     keyboardView: {
         flex: 1,
     },
+    scrollContent: { flexGrow: 1 },
     content: {
         flex: 1,
         padding: Spacing.layout.screenPadding,

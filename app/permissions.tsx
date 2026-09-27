@@ -1,14 +1,16 @@
 import { requestNotificationPermissions, openNotificationSettings, hasNotificationPermissions } from '@/src/utils/notifications';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { AppState, View, StyleSheet } from 'react-native';
+import { AppState, ScrollView, View, StyleSheet } from 'react-native';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
+import { useFootPadding } from '@/src/hooks/useScreenInsets';
 import { useAlert } from '@/src/context/AlertContext';
 import { Asaro, Hero, Screen, Text, ThemedButton } from '@/src/components/ui';
 
 export default function PermissionsScreen() {
     const router = useRouter();
+    const footPadding = useFootPadding();
     const { colors } = useTheme();
     const { showAlert } = useAlert();
     const [permissionStatus, setPermissionStatus] = useState<'undetermined' | 'denied'>('undetermined');
@@ -69,35 +71,39 @@ export default function PermissionsScreen() {
      */
     return (
         <Screen edges={[]}>
-            <Hero ownsTopInset topPadding={64}>
-                <Text variant="label" tone="onHero" style={styles.heroStep}>Step 3 of 3</Text>
-                <Text variant="display" tone="onBand">Can I Check{'\n'}Up On You?</Text>
-            </Hero>
+            {/* Scrolls: on a short screen or at a large font size the last
+              * button would otherwise fall under the nav bar or off screen. */}
+            <ScrollView contentContainerStyle={styles.scrollContent}>
+                <Hero ownsTopInset topPadding={64}>
+                    <Text variant="label" tone="onHero" style={styles.heroStep}>Step 3 of 3</Text>
+                    <Text variant="display" tone="onBand">Can I Check{'\n'}Up On You?</Text>
+                </Hero>
 
-            <View style={styles.clothBody}>
-                {/* On ecru, not the band: the rim is tuned for this ground. */}
-                <View style={styles.intro}>
-                    <Asaro size={74} action="smug" label="Àṣàrò" />
-                    <Text variant="sub" style={styles.introText}>
-                        One nudge a day, at a time you choose, and nothing after your sleep hour.
-                    </Text>
+                <View style={[styles.clothBody, { paddingBottom: footPadding }]}>
+                    {/* On ecru, not the band: the rim is tuned for this ground. */}
+                    <View style={styles.intro}>
+                        <Asaro size={74} action="smug" label="Àṣàrò" />
+                        <Text variant="sub" style={styles.introText}>
+                            One nudge a day, at a time you choose, and nothing after your sleep hour.
+                        </Text>
+                    </View>
+
+                    <View style={[styles.clothPanel, { backgroundColor: colors.backgroundSubtle }]}>
+                        <Text variant="label" style={styles.clothPanelLabel}>What you&apos;ll get</Text>
+                        {PROMISES.map((promise, i) => (
+                            <View key={promise}>
+                                {i > 0 && <View style={[styles.clothHr, { backgroundColor: colors.border }]} />}
+                                <Text variant="body">{promise}</Text>
+                            </View>
+                        ))}
+                    </View>
+
+                    <ThemedButton label="Allow Notifications" variant="accent" block onPress={handleRequestPermission} />
+                    {permissionStatus === 'denied' && (
+                        <ThemedButton label="Open Settings" variant="secondary" block onPress={handleOpenSettings} />
+                    )}
                 </View>
-
-                <View style={[styles.clothPanel, { backgroundColor: colors.backgroundSubtle }]}>
-                    <Text variant="label" style={styles.clothPanelLabel}>What you&apos;ll get</Text>
-                    {PROMISES.map((promise, i) => (
-                        <View key={promise}>
-                            {i > 0 && <View style={[styles.clothHr, { backgroundColor: colors.border }]} />}
-                            <Text variant="body">{promise}</Text>
-                        </View>
-                    ))}
-                </View>
-
-                <ThemedButton label="Allow Notifications" variant="accent" block onPress={handleRequestPermission} />
-                {permissionStatus === 'denied' && (
-                    <ThemedButton label="Open Settings" variant="secondary" block onPress={handleOpenSettings} />
-                )}
-            </View>
+            </ScrollView>
         </Screen>
     );
 }
@@ -105,6 +111,7 @@ export default function PermissionsScreen() {
 const styles = StyleSheet.create({
     /** The band's eyebrow: `margin:0 0 10px`. */
     heroStep: { marginBottom: 10 },
+    scrollContent: { flexGrow: 1 },
 
     /** `.cl-body{padding-top:30px; gap:18px}` */
     clothBody: {

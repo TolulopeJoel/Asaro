@@ -34,6 +34,7 @@ import { getDailyTitle } from '@/src/data/homeTitles';
 import { ClothHome } from '@/src/components/home/ClothHome';
 import { WelcomeBack } from '@/src/components/WelcomeBack';
 import { formatDateToLocalString } from '@/src/utils/dateUtils';
+import { unwrapReferences } from '@/src/utils/reference';
 import { Screen } from '@/src/components/ui';
 import { DraftSummary, summariseDraft } from '@/src/hooks/useEntryHooks';
 
@@ -88,6 +89,13 @@ async function handleNextReadingPress(
 
 const formatHomeDate = () =>
     new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+
+/** Cut at the last word break before `max`, so the quote never ends mid-word. */
+function clip(text: string, max: number): string {
+    if (text.length <= max) return text;
+    const space = text.lastIndexOf(' ', max);
+    return text.slice(0, space > max * 0.6 ? space : max) + '…';
+}
 
 /** Dev only: pretend the last entry was this many days ago (3, 7, 14, 30). */
 const SIMULATE_DAYS_AWAY: number | null = null;
@@ -361,12 +369,13 @@ export default function Index() {
     const flashbackLine = useMemo(() => {
         if (!flashbackEntry) return null;
         const { entry, type } = flashbackEntry;
-        const text = [entry.reflection_1, entry.reflection_2, entry.reflection_4, entry.notes]
-            .find((r) => r && r.trim().length > 0)?.trim();
-        if (!text) return null;
+        const raw = [entry.reflection_1, entry.reflection_2, entry.reflection_4, entry.notes]
+            .find((r) => r && r.trim().length > 0);
+        if (!raw) return null;
+        const text = unwrapReferences(raw);
 
         return {
-            text: text.length > 120 ? text.slice(0, 120) + '…' : text,
+            text: clip(text, 120),
             reference: `${entry.book_name} ${entry.chapter_start}${
                 entry.chapter_end && entry.chapter_end !== entry.chapter_start ? `–${entry.chapter_end}` : ''
             }`,

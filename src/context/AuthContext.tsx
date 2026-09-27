@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { getAuth, onAuthStateChanged, signOut as firebaseSignOut, FirebaseAuthTypes } from '@react-native-firebase/auth';
+import { getAuth, onAuthStateChanged, signOut as firebaseSignOut, updateProfile, FirebaseAuthTypes } from '@react-native-firebase/auth';
 import { getFirestore, doc, setDoc, serverTimestamp } from '@react-native-firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '../storage/storageKeys';
@@ -9,6 +9,8 @@ interface AuthContextType {
     loading: boolean;
     displayName: string | null;
     signOut: () => Promise<void>;
+    /** The one place the reader's name changes, so the local copy and the account never disagree. */
+    updateName: (name: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -16,6 +18,7 @@ const AuthContext = createContext<AuthContextType>({
     loading: true,
     displayName: null,
     signOut: async () => { },
+    updateName: async () => { },
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -65,8 +68,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await firebaseSignOut(getAuth());
     };
 
+    // The account's name wins over the local one at every sign-in (above), so
+    // a rename has to reach the account too or it reverts on the next launch.
+    const updateName = async (name: string) => {
+        const trimmed = name.trim();
+        if (!trimmed) return;
+        await AsyncStorage.setItem(STORAGE_KEYS.USER_NAME, trimmed);
+        setDisplayName(trimmed);
+
+        const current = getAuth().currentUser;
+        if (current) {
+            await updateProfile(current, { displayName: trimmed });
+            await setDoc(doc(getFirestore(), 'users', current.uid), {
+                displayName: trimmed,
+                lastModified: serverTimestamp(),
+            }, { merge: true });
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, loading, displayName, signOut }}>
+        <AuthContext.Provider value={{ user, loading, displayName, signOut, updateName }}>
             {children}
         </AuthContext.Provider>
     );

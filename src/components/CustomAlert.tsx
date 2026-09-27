@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View, Modal, Pressable } from 'react-native';
+import { StyleSheet, View, Modal, Pressable, ScrollView, useWindowDimensions } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { useAlert } from '../context/AlertContext';
 import { ScalePressable } from './ScalePressable';
@@ -10,6 +10,7 @@ import { Asaro, Text } from './ui';
 export const CustomAlert: React.FC = () => {
     const { colors } = useTheme();
     const { visible, alertOptions, hideAlert } = useAlert();
+    const { height } = useWindowDimensions();
 
     if (!alertOptions || !visible) return null;
 
@@ -28,76 +29,90 @@ export const CustomAlert: React.FC = () => {
             statusBarTranslucent
         >
             <Pressable style={styles.backdrop} onPress={handleBackdropPress}>
-                <View
+                {/*
+                  * The card claims its own taps, or they fall through to the
+                  * backdrop and a touch on the message closes the alert. Its
+                  * contents scroll so a long message or a large font size
+                  * never pushes the buttons off screen.
+                  */}
+                <Pressable
+                    accessible={false}
+                    onPress={() => { }}
                     style={[
                         styles.alertCard,
                         {
+                            maxHeight: height * 0.85,
                             backgroundColor: colors.cardBackground,
                             borderColor: colors.cardBorder,
                             shadowColor: colors.textPrimary,
                         },
                     ]}
                 >
-                    {face ? (
-                        <Asaro size={96} look={face.look} action={face.action} />
-                    ) : icon && (
-                        <View style={[styles.iconWrap, { backgroundColor: iconBackground ?? (colors.accent + '15') }]}>
-                            {React.createElement(icon, { size: 28, color: iconColor ?? colors.accent })}
-                        </View>
-                    )}
-
-                    {/*
-                      * `title`, not `display`.
-                      *
-                      * An alert floats over a screen that has already spent
-                      * its one oversized element, so it takes the heading step
-                      * below `display` rather than stacking a second giant on
-                      * top of the first.
-                      */}
-                    <Text variant="title" style={styles.title}>{title}</Text>
-                    <Text variant="body" tone="secondary" style={styles.message}>{message}</Text>
-
-                    <View style={styles.buttonContainer}>
-                        {buttons && buttons.length > 0 ? (
-                            buttons.map((btn, index) => {
-                                const isCancel = btn.style === 'cancel';
-                                const isDestructive = btn.style === 'destructive';
-                                const bgColor = isDestructive
-                                    ? colors.danger
-                                    : isCancel
-                                        ? colors.backgroundSubtle
-                                        : colors.accent;
-                                const textColor = isDestructive || !isCancel
-                                    ? colors.buttonPrimaryText
-                                    : colors.textSecondary;
-                                return (
-                                    <ScalePressable
-                                        key={index}
-                                        style={[styles.pillButton, { backgroundColor: bgColor }]}
-                                        onPress={() => {
-                                            hideAlert();
-                                            if (btn.onPress) btn.onPress();
-                                        }}
-                                    >
-                                        {btn.icon && (
-                                            React.createElement(btn.icon, { size: 18, color: textColor })
-                                        )}
-                                        <Text variant="button" style={{ color: textColor }}>
-                                            {btn.text}
-                                        </Text>
-                                    </ScalePressable>
-                                );
-                            })
-                        ) : (
-                            <ScalePressable
-                                style={[styles.pillButton, { backgroundColor: colors.accent }]}
-                                onPress={hideAlert}
-                            >
-                                <Text variant="button" tone="inverse">OK</Text>
-                            </ScalePressable>
+                    <ScrollView
+                        contentContainerStyle={styles.alertContent}
+                        showsVerticalScrollIndicator={false}
+                    >
+                        {face ? (
+                            <Asaro size={96} look={face.look} action={face.action} />
+                        ) : icon && (
+                            <View style={[styles.iconWrap, { backgroundColor: iconBackground ?? (colors.accent + '15') }]}>
+                                {React.createElement(icon, { size: 28, color: iconColor ?? colors.accent })}
+                            </View>
                         )}
-                    </View>
-                </View>
+
+                        {/*
+                          * `title`, not `display`.
+                          *
+                          * An alert floats over a screen that has already spent
+                          * its one oversized element, so it takes the heading step
+                          * below `display` rather than stacking a second giant on
+                          * top of the first.
+                          */}
+                        <Text variant="title" style={styles.title}>{title}</Text>
+                        <Text variant="body" tone="secondary" style={styles.message}>{message}</Text>
+
+                        <View style={styles.buttonContainer}>
+                            {buttons && buttons.length > 0 ? (
+                                buttons.map((btn, index) => {
+                                    const isCancel = btn.style === 'cancel';
+                                    const isDestructive = btn.style === 'destructive';
+                                    const bgColor = isDestructive
+                                        ? colors.danger
+                                        : isCancel
+                                            ? colors.backgroundSubtle
+                                            : colors.accent;
+                                    const textColor = isDestructive || !isCancel
+                                        ? colors.buttonPrimaryText
+                                        : colors.textSecondary;
+                                    return (
+                                        <ScalePressable
+                                            key={index}
+                                            style={[styles.pillButton, { backgroundColor: bgColor }]}
+                                            onPress={() => {
+                                                hideAlert();
+                                                if (btn.onPress) btn.onPress();
+                                            }}
+                                        >
+                                            {btn.icon && (
+                                                React.createElement(btn.icon, { size: 18, color: textColor })
+                                            )}
+                                            <Text variant="button" style={{ color: textColor }}>
+                                                {btn.text}
+                                            </Text>
+                                        </ScalePressable>
+                                    );
+                                })
+                            ) : (
+                                <ScalePressable
+                                    style={[styles.pillButton, { backgroundColor: colors.accent }]}
+                                    onPress={hideAlert}
+                                >
+                                    <Text variant="button" tone="inverse">OK</Text>
+                                </ScalePressable>
+                            )}
+                        </View>
+                    </ScrollView>
+                </Pressable>
             </Pressable>
         </Modal>
     );
@@ -115,14 +130,17 @@ const styles = StyleSheet.create({
         width: '100%',
         maxWidth: 340,
         borderRadius: Spacing.borderRadius.lg,
-        padding: Spacing.xl,
         borderWidth: 1,
-        alignItems: 'center',
-        gap: 10,
+        overflow: 'hidden',
         shadowOffset: { width: 0, height: 16 },
         shadowOpacity: 0.18,
         shadowRadius: 24,
         elevation: 12,
+    },
+    alertContent: {
+        padding: Spacing.xl,
+        alignItems: 'center',
+        gap: 10,
     },
     iconWrap: {
         width: 64,

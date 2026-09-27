@@ -6,6 +6,7 @@ import {
     type AsaroHandle,
     Text as UIText,
     ThemedButton,
+    textStyle,
 } from '@/src/components/ui';
 import { useAlert } from '@/src/context/AlertContext';
 import { Spacing } from '@/src/theme/spacing';
@@ -35,6 +36,7 @@ import {
 } from 'lucide-react-native';
 import { getFirestore, doc, setDoc, getDoc, writeBatch, query, where, onSnapshot, collectionGroup } from '@react-native-firebase/firestore';
 import { useAuth } from '@/src/context/AuthContext';
+import { useFootPadding } from '@/src/hooks/useScreenInsets';
 import { Avatar } from '@/src/components/Avatar';
 import { TextInput } from 'react-native';
 import React from 'react';
@@ -99,6 +101,57 @@ const ProfilePhotoCard = React.memo(({
         </View>
     );
 });
+
+// ─── Name Card ───────────────────────────────────────────────────────────────
+// Its own component for the same reason as the photo card: the draft lives
+// here so typing never re-renders the screen.
+
+const NameCard = ({ initialName, onSave, onCancel }: {
+    initialName: string;
+    onSave: (name: string) => Promise<void>;
+    onCancel: () => void;
+}) => {
+    const { colors, style: themeStyle } = useTheme();
+    const [draft, setDraft] = useState(initialName);
+    const [saving, setSaving] = useState(false);
+    const canSave = draft.trim().length > 0 && draft.trim() !== initialName && !saving;
+
+    const save = async () => {
+        if (!canSave) return;
+        setSaving(true);
+        try {
+            await onSave(draft);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <View style={styles.nameCard}>
+            <UIText variant="label">Your name</UIText>
+            <TextInput
+                style={[
+                    styles.nameInput,
+                    textStyle(themeStyle, 'body'),
+                    { backgroundColor: colors.backgroundSubtle, borderColor: colors.border, color: colors.textPrimary },
+                ]}
+                value={draft}
+                onChangeText={setDraft}
+                autoFocus
+                maxLength={40}
+                autoCapitalize="words"
+                autoComplete="name"
+                returnKeyType="done"
+                onSubmitEditing={save}
+                accessibilityLabel="Your name"
+            />
+            <View style={styles.nameActions}>
+                <ThemedButton label="Cancel" variant="secondary" onPress={onCancel} style={styles.nameAction} />
+                <ThemedButton label="Save name" onPress={save} disabled={!canSave} loading={saving} style={styles.nameAction} />
+            </View>
+        </View>
+    );
+};
 
 import { LucideIcon } from 'lucide-react-native';
 
@@ -194,7 +247,9 @@ export default function Settings() {
     const [isExporting, setIsExporting] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
     const scrollViewRef = useRef<ScrollView>(null);
-    const { user } = useAuth();
+    const { user, displayName, updateName } = useAuth();
+    const name = displayName || user?.displayName || 'Reader';
+    const footPadding = useFootPadding();
     const db = getFirestore();
     const [isAdmin, setIsAdmin] = useState(false);
     const [photoURL, setPhotoURL] = useState('');
@@ -205,11 +260,22 @@ export default function Settings() {
     /*
      * The three things the mockup's Settings rows state that the screen never
      * knew: when you started reading, whether notifications are actually on,
-     * and (for admins) whether the photo editor is open under the profile row.
+     * and whether the name (and, for admins, photo) editor is open under the
+     * profile row.
      */
     const [readingSince, setReadingSince] = useState<string | null>(null);
     const [notificationsOn, setNotificationsOn] = useState<boolean | null>(null);
-    const [showPhotoEditor, setShowPhotoEditor] = useState(false);
+    const [showProfileEditor, setShowProfileEditor] = useState(false);
+
+    const handleSaveName = useCallback(async (next: string) => {
+        try {
+            await updateName(next);
+            setShowProfileEditor(false);
+        } catch (error) {
+            console.error('Failed to save name:', error);
+            showAlert({ title: 'Couldn\'t save your name', message: 'Check your connection and try again.' });
+        }
+    }, [updateName, showAlert]);
 
     const handleSaveProfileURL = useCallback(async (url: string) => {
         if (!user?.uid) return;
@@ -444,10 +510,27 @@ export default function Settings() {
                 title: `Select Minute for ${hourLabel}`,
                 message: 'Àṣàrò is waiting...',
                 buttons: [
-                    { text: ':00', onPress: () => finalizeSleepTimeChange(h24, 0) },
-                    { text: ':15', onPress: () => finalizeSleepTimeChange(h24, 15) },
-                    { text: ':30', onPress: () => finalizeSleepTimeChange(h24, 30) },
-                    { text: ':45', onPress: () => finalizeSleepTimeChange(h24, 45) },
+                    { text: ':00', onPress: () => confirmSleepTime(h24, 0) },
+                    { text: ':15', onPress: () => confirmSleepTime(h24, 15) },
+                    { text: ':30', onPress: () => confirmSleepTime(h24, 30) },
+                    { text: ':45', onPress: () => confirmSleepTime(h24, 45) },
+                ],
+                cancelable: true
+            });
+        };
+
+        // Nothing is saved until this is answered: a slip on the stacked hour
+        // buttons would otherwise hold the wrong reminders for a month.
+        const confirmSleepTime = (h24: number, min: number) => {
+            const label = formatSleepTime(formatSleepTimeValue({ hour: h24, minute: min }));
+            showAlert({
+                face: { action: 'sideEye' },
+                title: `${label}? Sure?`,
+                message: 'Your reminders are built around this, and once it is set you cannot change it again for 30 days.',
+                buttons: [
+                    { text: 'Lock it in', onPress: () => finalizeSleepTimeChange(h24, min) },
+                    { text: 'Pick again', onPress: pickHour },
+                    { text: 'Cancel', style: 'cancel' },
                 ],
                 cancelable: true
             });
@@ -480,19 +563,23 @@ export default function Settings() {
             }
         };
 
-        showAlert({
-            face: { action: 'smug' },
-            title: 'Select Sleep Hour',
-            message: 'I only allow sleep after 8:00 PM. Anything earlier is just laziness!',
-            buttons: [
-                { text: '08 PM', onPress: () => pickMinute(20, '08:00 PM') },
-                { text: '09 PM', onPress: () => pickMinute(21, '09:00 PM') },
-                { text: '10 PM', onPress: () => pickMinute(22, '10:00 PM') },
-                { text: '11 PM', onPress: () => pickMinute(23, '11:00 PM') },
-                { text: 'Cancel', style: 'cancel' }
-            ],
-            cancelable: true
-        });
+        function pickHour() {
+            showAlert({
+                face: { action: 'smug' },
+                title: 'Select Sleep Hour',
+                message: 'I only allow sleep after 8:00 PM. Anything earlier is just laziness! Choose well: it stays for 30 days.',
+                buttons: [
+                    { text: '08 PM', onPress: () => pickMinute(20, '08:00 PM') },
+                    { text: '09 PM', onPress: () => pickMinute(21, '09:00 PM') },
+                    { text: '10 PM', onPress: () => pickMinute(22, '10:00 PM') },
+                    { text: '11 PM', onPress: () => pickMinute(23, '11:00 PM') },
+                    { text: 'Cancel', style: 'cancel' }
+                ],
+                cancelable: true
+            });
+        }
+
+        pickHour();
     };
 
     const formatSleepTime = (value: string | null) => {
@@ -574,21 +661,20 @@ export default function Settings() {
                             <ChevronLeft size={20} color={colors.accent} strokeWidth={1.9} />
                         </ScalePressable>
                         <ScalePressable
-                            disabled={!isAdmin}
-                            onPress={() => setShowPhotoEditor(v => !v)}
-                            accessibilityRole={isAdmin ? 'button' : undefined}
-                            accessibilityLabel={isAdmin ? 'Edit profile photo' : undefined}
+                            onPress={() => setShowProfileEditor(v => !v)}
+                            accessibilityRole="button"
+                            accessibilityLabel={`${name}. Edit your name${isAdmin ? ' and photo' : ''}`}
                             style={styles.clothProfile}
                         >
                             <Avatar
                                 id={user?.uid}
-                                name={user?.displayName || 'Reader'}
+                                name={name}
                                 url={photoURL}
                                 size={52}
                                 radius={26}
                             />
                             <View style={styles.clothProfileText}>
-                                <UIText variant="title" tone="onBand">{user?.displayName || 'Reader'}</UIText>
+                                <UIText variant="title" tone="onBand">{name}</UIText>
                                 {readingSince && (
                                     <UIText variant="sub" tone="onHero" style={styles.clothProfileSub}>
                                         {`Reading since ${readingSince}`}
@@ -603,9 +689,16 @@ export default function Settings() {
                   * panel anywhere, and no Appearance selector until there is a
                   * second Cloth palette to choose between. */}
                 <View style={styles.clothBody}>
-                    {/* Admins keep the photo editor; it opens under the profile
-                        rather than as a section neither mockup draws. */}
-                    {isAdmin && showPhotoEditor && (
+                    {/* The profile editors open under the band rather than as a
+                        section the mockup never draws. */}
+                    {showProfileEditor && (
+                        <NameCard
+                            initialName={displayName || user?.displayName || ''}
+                            onSave={handleSaveName}
+                            onCancel={() => setShowProfileEditor(false)}
+                        />
+                    )}
+                    {isAdmin && showProfileEditor && (
                         <ProfilePhotoCard
                             user={user}
                             colors={colors}
@@ -696,7 +789,7 @@ export default function Settings() {
             {/* The mockup's footer. Every setting persists the moment it
               * changes, so there is nothing to commit and the button just
               * closes the screen. */}
-            <View style={styles.footer}>
+            <View style={[styles.footer, { paddingBottom: footPadding }]}>
                 <ThemedButton label="Save Changes" block onPress={() => router.back()} />
             </View>
         </Screen>
@@ -714,6 +807,15 @@ const styles = StyleSheet.create({
     },
     clothProfileText: { flex: 1, minWidth: 0 },
     clothProfileSub: { marginTop: 3 },
+    nameCard: { gap: Spacing.sm, paddingTop: 20 },
+    /** `.cl-input{padding:12px 14px; border:1px solid var(--hair)}` */
+    nameInput: {
+        borderWidth: Spacing.border.hairline,
+        paddingHorizontal: 14,
+        paddingVertical: Spacing.md,
+    },
+    nameActions: { flexDirection: 'row', gap: Spacing.sm },
+    nameAction: { flex: 1 },
     sectionLabel: { marginBottom: 10 },
     /** `.cl-label{margin:20px 0 4px}` */
     clothSectionLabel: { marginTop: 20, marginBottom: 4 },
@@ -725,7 +827,6 @@ const styles = StyleSheet.create({
     footer: {
         paddingHorizontal: Spacing.layout.screenPadding,
         paddingTop: Spacing.md + 2,
-        paddingBottom: Spacing.layout.tabBarPadding,
     },
     /** `.cl-row{padding:16px 0}` */
     settingRow: {

@@ -22,6 +22,7 @@ import { ScalePressable } from './ScalePressable';
 import { Text as UIText, ThemedButton } from './ui';
 import { ClothMark } from './ui/Cloth';
 import { REFLECTION_QUESTIONS, ReflectionQuestion, isAnswered } from '../data/questions';
+import { useFootPadding } from '../hooks/useScreenInsets';
 
 export interface ReflectionAnswers {
   reflection1: string;
@@ -202,6 +203,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
   const goForward = () => setPage(p => Math.min(p + 1, REFLECTION_QUESTIONS.length));
 
   const gutter = Spacing.layout.screenPadding;
+  const footPadding = useFootPadding();
 
   return (
     <View style={styles.container}>
@@ -332,7 +334,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
 
       {/* ── the two things you can do next ───────────────────────────────── */}
       {!disabled && (
-        <View style={[styles.footer, { paddingHorizontal: gutter }]}>
+        <View style={[styles.footer, { paddingHorizontal: gutter, paddingBottom: footPadding }]}>
           <View style={styles.footerButtons}>
             {/* `block` as well as the flex: the flex sizes ThemedButton's
                 wrapper, `block` is what makes the button inside fill it. */}
@@ -402,7 +404,6 @@ const styles = StyleSheet.create({
 
   footer: {
     paddingTop: Spacing.xl - 4,
-    paddingBottom: Spacing.layout.tabBarPadding,
     gap: Spacing.md,
   },
   footerButtons: {

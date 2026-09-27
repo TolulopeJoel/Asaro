@@ -143,6 +143,10 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
             setEntries(updated);
             setHasMore(dbEntries.length === PAGE_SIZE);
 
+            // Paging doesn't change the totals, and refetching them mid-scroll
+            // costs two queries and a re-render.
+            if (!reset) return;
+
             // Fetch book counts from DB (covers ALL entries, not just the current page)
             const bookCounts = await getBookEntryCounts();
             const totalCount = await getTotalJournalCount();

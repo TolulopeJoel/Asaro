@@ -26,6 +26,7 @@ import { ScalePressable } from '../ScalePressable';
 import { Text } from '../ui';
 import { Tree } from '../grove/Tree';
 import { TodayItem, Watered } from '../../hooks/useToday';
+import { unwrapReferences } from '../../utils/reference';
 
 interface Props {
     items: TodayItem[];
@@ -68,8 +69,8 @@ export function TodayStrip({ items, onKeep, onUndo, onOpen, watered }: Props) {
                                         accessibilityState={{ checked: entry.kept }}
                                         accessibilityLabel={
                                             entry.kept
-                                                ? `Undo ${entry.item.action} for today`
-                                                : `Mark ${entry.item.action} done for today`
+                                                ? `Undo ${unwrapReferences(entry.item.action)} for today`
+                                                : `Mark ${unwrapReferences(entry.item.action)} done for today`
                                         }
                                         hitSlop={Spacing.md}
                                         style={[
@@ -96,7 +97,7 @@ export function TodayStrip({ items, onKeep, onUndo, onOpen, watered }: Props) {
                                         numberOfLines={2}
                                         tone={entry.kept ? 'tertiary' : undefined}
                                     >
-                                        {entry.item.action}
+                                        {unwrapReferences(entry.item.action)}
                                     </Text>
                                 </ScalePressable>
 

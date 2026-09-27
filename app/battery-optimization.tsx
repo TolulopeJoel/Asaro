@@ -2,12 +2,13 @@ import { isBatteryOptimizationDisabled } from '@/src/utils/notifications';
 import { needsOemAutoStartStep, oemAutoStartLabel, openAutoStartSettings } from '@/src/utils/oemRestrictions';
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
-import { AppState, Platform, Linking, View, StyleSheet } from 'react-native';
+import { AppState, Platform, Linking, ScrollView, View, StyleSheet } from 'react-native';
 import * as IntentLauncher from 'expo-intent-launcher';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '@/src/storage/storageKeys';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
+import { useFootPadding } from '@/src/hooks/useScreenInsets';
 import { Hero, Screen, Text, ThemedButton } from '@/src/components/ui';
 
 /**
@@ -21,6 +22,7 @@ import { Hero, Screen, Text, ThemedButton } from '@/src/components/ui';
  */
 export default function BatteryOptimizationScreen() {
     const router = useRouter();
+    const footPadding = useFootPadding();
     const { colors } = useTheme();
 
     const checkBatteryOptimization = async () => {
@@ -116,38 +118,42 @@ export default function BatteryOptimizationScreen() {
      */
     return (
         <Screen edges={[]}>
-            <Hero ownsTopInset topPadding={64}>
-                <Text variant="label" tone="onHero" style={styles.heroStep}>Almost there</Text>
-                <Text variant="display" tone="onBand">Don&apos;t Let{'\n'}Me Sleep</Text>
-            </Hero>
+            {/* Scrolls: on a short screen or at a large font size the last
+              * button would otherwise fall under the nav bar or off screen. */}
+            <ScrollView contentContainerStyle={styles.scrollContent}>
+                <Hero ownsTopInset topPadding={64}>
+                    <Text variant="label" tone="onHero" style={styles.heroStep}>Almost there</Text>
+                    <Text variant="display" tone="onBand">Don&apos;t Let{'\n'}Me Sleep</Text>
+                </Hero>
 
-            <View style={styles.clothBody}>
-                <Text variant="sub">
-                    Your phone will probably lie to you about how bad this is for the
-                    battery. Àṣàrò needs to run in the background to keep its word.
-                </Text>
+                <View style={[styles.clothBody, { paddingBottom: footPadding }]}>
+                    <Text variant="sub">
+                        Your phone will probably lie to you about how bad this is for the
+                        battery. Àṣàrò needs to run in the background to keep its word.
+                    </Text>
 
-                <View style={[styles.clothPanel, { backgroundColor: colors.backgroundSubtle }]}>
-                    <Text variant="label" style={styles.clothPanelLabel}>What this is for</Text>
-                    {REASONS.map((reason, i) => (
-                        <View key={reason}>
-                            {i > 0 && <View style={[styles.clothHr, { backgroundColor: colors.border }]} />}
-                            <Text variant="body">{reason}</Text>
-                        </View>
-                    ))}
+                    <View style={[styles.clothPanel, { backgroundColor: colors.backgroundSubtle }]}>
+                        <Text variant="label" style={styles.clothPanelLabel}>What this is for</Text>
+                        {REASONS.map((reason, i) => (
+                            <View key={reason}>
+                                {i > 0 && <View style={[styles.clothHr, { backgroundColor: colors.border }]} />}
+                                <Text variant="body">{reason}</Text>
+                            </View>
+                        ))}
+                    </View>
+
+                    <ThemedButton label="Fix Settings" variant="accent" block onPress={handleFixSettings} />
+                    {showAutoStart && (
+                        <ThemedButton
+                            label={`Allow Auto-Start (${oemAutoStartLabel()})`}
+                            variant="secondary"
+                            block
+                            onPress={handleAutoStart}
+                        />
+                    )}
+                    <ThemedButton label="Continue anyway" variant="secondary" block onPress={handleContinueAnyway} />
                 </View>
-
-                <ThemedButton label="Fix Settings" variant="accent" block onPress={handleFixSettings} />
-                {showAutoStart && (
-                    <ThemedButton
-                        label={`Allow Auto-Start (${oemAutoStartLabel()})`}
-                        variant="secondary"
-                        block
-                        onPress={handleAutoStart}
-                    />
-                )}
-                <ThemedButton label="Continue anyway" variant="secondary" block onPress={handleContinueAnyway} />
-            </View>
+            </ScrollView>
         </Screen>
     );
 }
@@ -155,6 +161,7 @@ export default function BatteryOptimizationScreen() {
 const styles = StyleSheet.create({
     /** The band's eyebrow: `margin:0 0 10px`. */
     heroStep: { marginBottom: 10 },
+    scrollContent: { flexGrow: 1 },
 
     // ── Cloth ─────────────────────────────────────────────────────────────
     clothBody: {
