@@ -283,10 +283,12 @@ export async function sendNudge(gid: string, toUid: string): Promise<NudgeResult
     const key = `${toUid}_${weekKey(new Date())}`;
     if ((await sentNudges(me.uid)).includes(key)) return 'already';
     try {
+        const groupName = await getDoc(groupRef(gid)).then(d => d.data()?.name ?? '').catch(() => '');
         const result = await settle(setDoc(nudgeRef(toUid, nudgeId(me.uid, weekKey(new Date()))), {
             fromUid: me.uid,
             fromName: me.name,
             groupId: gid,
+            groupName: typeof groupName === 'string' ? groupName : '',
             createdAt: serverTimestamp(),
         }));
         await recordNudge(me.uid, key);

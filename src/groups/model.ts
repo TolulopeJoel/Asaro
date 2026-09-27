@@ -86,7 +86,19 @@ export interface Nudge {
     fromUid: string;
     fromName: string;
     groupId: string;
+    groupName: string;
     createdAt: number | null;
+}
+
+/** One answer from the reader's own entries, as the Bring sheet offers it. */
+export interface WeekAnswer {
+    entryId: number;
+    questionId: 'reflection1' | 'reflection2' | 'reflection3' | 'reflection4' | 'studyFurther';
+    /** "About Jehovah". */
+    label: string;
+    text: string;
+    /** "Romans 8". */
+    passage: string;
 }
 
 /** One group's week, as the Sunday screen reads it. */

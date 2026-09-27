@@ -41,6 +41,18 @@ export const REFLECTION_QUESTIONS: ReflectionQuestion[] = [
 
 export const QUESTION_COUNT = REFLECTION_QUESTIONS.length;
 
+/** Each question in a few words, for a label over a shared answer. */
+export const QUESTION_LABELS: Record<QuestionId, string> = {
+    reflection1: 'About Jehovah',
+    reflection2: 'The Bible’s message',
+    reflection3: 'Applying it',
+    reflection4: 'Helping others',
+    studyFurther: 'To study further',
+};
+
+export const isQuestionId = (id: unknown): id is QuestionId =>
+    typeof id === 'string' && REFLECTION_QUESTIONS.some(q => q.id === id);
+
 /** What `answeredCount` reads: the wizard's answers, or an entry mapped onto them. */
 export interface AnswerFields {
     reflection1?: string | null;

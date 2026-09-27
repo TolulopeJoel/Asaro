@@ -1,9 +1,8 @@
-import { isBatteryOptimizationDisabled } from '@/src/utils/notifications';
+import { isBatteryOptimizationDisabled, openBatteryOptimizationSettings } from '@/src/utils/notifications';
 import { needsOemAutoStartStep, oemAutoStartLabel, openAutoStartSettings } from '@/src/utils/oemRestrictions';
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
-import { AppState, Platform, Linking, ScrollView, View, StyleSheet } from 'react-native';
-import * as IntentLauncher from 'expo-intent-launcher';
+import { AppState, Platform, ScrollView, View, StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '@/src/storage/storageKeys';
 import { useTheme } from '@/src/theme/ThemeContext';
@@ -51,30 +50,7 @@ export default function BatteryOptimizationScreen() {
         };
     }, []);
 
-    const handleFixSettings = async () => {
-        if (Platform.OS === 'android') {
-            const pkg = 'com.asaro.meditation';
-
-            try {
-                await IntentLauncher.startActivityAsync(
-                    'android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
-                    {
-                        data: `package:${pkg}`
-                    }
-                );
-            } catch {
-                try {
-                    await IntentLauncher.startActivityAsync(
-                        'android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS'
-                    );
-                } catch {
-                    Linking.openSettings();
-                }
-            }
-        } else {
-            Linking.openSettings();
-        }
-    };
+    const handleFixSettings = openBatteryOptimizationSettings;
 
     /*
      * The second half of the ask, on phones that have one.

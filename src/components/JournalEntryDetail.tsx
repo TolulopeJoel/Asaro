@@ -13,17 +13,20 @@
  * not the accent. Six ochre rules down one page would spend the accent on
  * structure and leave nothing for the share affordance and the reminder.
  *
- * The per-answer share icon stays beside its question and the bar at the foot
- * acts on the whole entry: you share *an answer*, you delete *an entry*.
+ * The per-answer share icon brings that answer to your groups for this week;
+ * the bar at the foot acts on the whole entry.
  *
  * It owns its own <Screen> and its own action bar, because the Cloth band has
  * to reach the top of the display (<Hero ownsTopInset>) and the bar has to sit
  * on the foot — neither of which a caller can supply from outside.
  */
 import { JournalEntry } from '@/src/data/database';
-import { shareReflectionToGroup } from '@/src/services/groupActivityService';
+import { useMyGroupIds } from '@/src/groups/hooks';
+import { Share as GroupShare } from '@/src/groups/model';
+import { myShare, removeShare, shareAnswer } from '@/src/groups/publish';
+import { QuestionId } from '@/src/data/questions';
 import { getDaysDifference, getLocalMidnight } from '@/src/utils/dateUtils';
-import React, { useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Share2, Bell, X } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
@@ -55,6 +58,9 @@ const REFLECTION_QUESTIONS = [
     'What would I like to study further?',
     'Additional Thoughts',
 ];
+
+/** The question each block answers; notes are not one, so they can't be brought. */
+const QUESTION_AT: (QuestionId | null)[] = ['reflection1', 'reflection2', 'reflection3', 'reflection4', 'studyFurther', null];
 
 const ACTION_QUESTION_INDEX = 2;
 const STUDY_FURTHER_INDEX = 4;
@@ -142,23 +148,59 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
         return entry.chapter_start.toString();
     };
 
+    const { ids: groupIds } = useMyGroupIds();
+    const [brought, setBrought] = useState<GroupShare | null>(null);
+    const refreshBrought = useCallback(() => {
+        myShare().then(setBrought).catch(() => setBrought(null));
+    }, []);
+    useEffect(refreshBrought, [refreshBrought, groupIds.length]);
+
+    const isBrought = (questionIndex: number) =>
+        !!brought && brought.entryId === entry.id && brought.questionId === QUESTION_AT[questionIndex];
+
     const handleShareReflection = (reflectionText: string, questionIndex: number) => {
+        const question = QUESTION_AT[questionIndex];
+        if (!question || entry.id === undefined) return;
+        if (groupIds.length === 0) {
+            showAlert({
+                title: 'Join a group to share',
+                message: 'Answers go to your groups. Join one, and you can bring an answer from here.',
+            });
+            return;
+        }
+        if (isBrought(questionIndex) && brought) {
+            showAlert({
+                title: 'You brought this',
+                message: 'Your groups see it this week.',
+                buttons: [
+                    { text: 'Keep it', style: 'cancel' },
+                    {
+                        text: 'Take it back',
+                        style: 'destructive',
+                        onPress: async () => {
+                            await removeShare('all', brought.id);
+                            setBrought(null);
+                        },
+                    },
+                ],
+            });
+            return;
+        }
         showAlert({
-            title: 'Share with Group',
-            message: 'Share this specific reflection to your group feed?',
+            title: 'Bring this to your groups?',
+            message: brought
+                ? 'Your groups see one thing from you each week. This replaces what you brought.'
+                : 'Your groups see it when they open on Sunday. It is your one thing for this week.',
             buttons: [
                 { text: 'Cancel', style: 'cancel' },
                 {
-                    text: 'Share',
+                    text: 'Bring it',
                     onPress: async () => {
                         setIsSharingAnswer(true);
                         try {
-                            const success = await shareReflectionToGroup(entry, reflectionText.trim(), REFLECTION_QUESTIONS[questionIndex]);
-                            if (success) {
-                                showAlert({ title: 'Success', message: 'Reflection shared to your group!' });
-                            } else {
-                                showAlert({ title: 'Notice', message: 'Could not share reflection. Make sure you are in a group.' });
-                            }
+                            const id = await shareAnswer(entry.id!, question, reflectionText.trim());
+                            if (id) refreshBrought();
+                            else showAlert({ title: 'Not brought', message: 'That answer could not be brought. Check you are signed in.' });
                         } catch {
                             showAlert({ title: 'Error', message: 'An error occurred while sharing.' });
                         } finally {
@@ -172,17 +214,10 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
 
     const handleShareActionItems = () => {
         if (!entry.action_items || entry.action_items.length === 0) return;
-        let content = '';
-        entry.action_items.forEach((item) => {
-            if (item.action.trim()) {
-                content += `* ${item.action.trim()}\n\n`;
-                if (item.motivation.trim()) {
-                    content += `motivation:\n\n${item.motivation.trim()}\n\n`;
-                }
-            } else if (item.motivation.trim()) {
-                content += `motivation:\n\n${item.motivation.trim()}\n\n`;
-            }
-        });
+        const content = entry.action_items
+            .filter(item => item.action.trim())
+            .map(item => (item.motivation.trim() ? `${item.action.trim()}\n${item.motivation.trim()}` : item.action.trim()))
+            .join('\n\n');
         if (content.trim()) {
             handleShareReflection(content, ACTION_QUESTION_INDEX);
         }
@@ -203,9 +238,9 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                     disabled={isSharingAnswer}
                     hitSlop={Spacing.sm}
                     accessibilityRole="button"
-                    accessibilityLabel="Share this answer with your group"
+                    accessibilityLabel={isBrought(questionIndex) ? 'You brought this answer to your groups' : 'Bring this answer to your groups'}
                 >
-                    <Share2 size={16} color={colors.textTertiary} strokeWidth={1.9} />
+                    <Share2 size={16} color={isBrought(questionIndex) ? colors.accent : colors.textTertiary} strokeWidth={1.9} />
                 </ScalePressable>
             )}
         </View>
@@ -266,7 +301,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
 
             return (
                 <View key={questionIndex} style={[styles.block, rule]}>
-                    {blockHead(questionIndex)}
+                    {blockHead(questionIndex, () => handleShareReflection(entry.study_further ?? '', questionIndex))}
                     <View style={styles.answer}>
                         {paragraphs.map((paragraph, pIndex) => (
                             <HyperlinkedText key={pIndex} style={bodyFace} text={paragraph.trim()} />
@@ -296,7 +331,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
 
         return (
             <View key={questionIndex} style={[styles.block, rule]}>
-                {blockHead(questionIndex, () => handleShareReflection(actualReflection, questionIndex))}
+                {blockHead(questionIndex, QUESTION_AT[questionIndex] ? () => handleShareReflection(actualReflection, questionIndex) : undefined)}
                 <View style={styles.answer}>
                     {paragraphs.map((paragraph, pIndex) => (
                         <HyperlinkedText key={pIndex} style={bodyFace} text={paragraph.trim()} />

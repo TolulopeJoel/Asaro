@@ -141,11 +141,11 @@ export function useMyGroupIds(): { ids: string[]; loading: boolean; error: boole
 export interface HubRow {
     group: Group;
     memberCount: number;
-    /** From the group's counter for this week. */
+    /** From the group's counter for the week on show. */
     readsThisWeek: number;
     myRole: Role | null;
     window: GroupWindow;
-    /** "8 members · 23 reads this week", or the window's label while it is open. */
+    /** "8 members · 23 reads this week". */
     line: string;
 }
 
@@ -179,7 +179,9 @@ export function useMyGroups(): { rows: HubRow[]; loading: boolean; error: boolea
         [ids, data],
     );
     const now = useWindowNow(groups.map(g => g.utcOffsetMinutes));
-    const countKeys = groups.map(g => `${g.id}|${groupWindow(now, g.utcOffsetMinutes).weekKey}`).join(',');
+    // The week on show: the one the open window reviews, otherwise this one.
+    const shownKey = (w: GroupWindow) => (w.open ? w.reviewKey : w.weekKey);
+    const countKeys = groups.map(g => `${g.id}|${shownKey(groupWindow(now, g.utcOffsetMinutes))}`).join(',');
 
     useEffect(() => {
         const stops = (countKeys ? countKeys.split(',') : []).map(entry => {
@@ -200,7 +202,7 @@ export function useMyGroups(): { rows: HubRow[]; loading: boolean; error: boolea
         const d = data[group.id];
         const window = groupWindow(now, group.utcOffsetMinutes);
         const count = counts[group.id];
-        const reads = count?.key === window.weekKey ? count.reads : 0;
+        const reads = count?.key === shownKey(window) ? count.reads : 0;
         const memberCount = d?.members?.length ?? 0;
         const mine = d?.members?.find(m => m.id === uid);
         return {
@@ -209,7 +211,7 @@ export function useMyGroups(): { rows: HubRow[]; loading: boolean; error: boolea
             readsThisWeek: reads,
             myRole: mine ? memberFrom(mine.id, mine.data).role : null,
             window,
-            line: hubLine(memberCount, reads, window),
+            line: hubLine(memberCount, reads),
         };
     }), [groups, data, counts, now, uid]);
 
@@ -226,7 +228,7 @@ export interface GroupState {
     me: Member | null;
     myRole: Role | null;
     window: GroupWindow | null;
-    /** From the group's counter for this week, for the whole-group line. */
+    /** From the group's counter for the week on show, for the whole-group line. */
     readsThisWeek: number;
     /** The reader's own days this week, Monday-first. */
     myDays: boolean[];
@@ -259,7 +261,8 @@ export function useGroup(gid: string | undefined): GroupState {
 
     const group = useMemo(() => (gid && groupData ? groupFrom(gid, groupData) : null), [gid, groupData]);
     const window = useGroupWindow(group);
-    const countKey = window?.weekKey;
+    // The week on show: the one the open window reviews, otherwise this one.
+    const countKey = window ? (window.open ? window.reviewKey : window.weekKey) : undefined;
 
     useEffect(() => {
         setCount(null);

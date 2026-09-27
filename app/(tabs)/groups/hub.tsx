@@ -1,158 +1,38 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
-    View,
-    StyleSheet,
-    ScrollView,
-    DeviceEventEmitter,
-} from 'react-native';
+/**
+ * The groups hub. design/groups-mockup.html #hub: a nudge if there is one, each
+ * group's week counted together with no names, and the two ways in.
+ */
+import React, { useEffect, useRef } from 'react';
+import { DeviceEventEmitter, ScrollView, StyleSheet, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Users } from 'lucide-react-native';
+
 import { useAuth } from '@/src/context/AuthContext';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
+import { useFootPadding } from '@/src/hooks/useScreenInsets';
+import { useMyGroups } from '@/src/groups/hooks';
 import { ScalePressable } from '@/src/components/ScalePressable';
-import { useRouter } from 'expo-router';
-import { Users, CloudOff, RefreshCw, Plus, ChevronRight, Flame } from 'lucide-react-native';
-import { getFirestore, collection, doc, onSnapshot, getDocs, query, where, documentId, limit } from '@react-native-firebase/firestore';
 import { Button } from '@/src/components/Button';
 import { Skeleton } from '@/src/components/Skeleton';
 import { Avatar } from '@/src/components/Avatar';
-import { Hero, Screen, Text } from '@/src/components/ui';
+import { NudgePanel } from '@/src/components/groups/NudgePanel';
+import { Hero, Row, Screen, Text, ThemedButton } from '@/src/components/ui';
 
 export default function GroupsScreen() {
-    const { user, loading, displayName } = useAuth();
+    const { user, loading } = useAuth();
     const { colors } = useTheme();
     const router = useRouter();
-    const db = getFirestore();
-    const [joinedGroups, setJoinedGroups] = useState<any[]>([]);
-    /**
-     * Groups that have nobody holding Admin, so the empty description can say
-     * WHY it is empty.
-     *
-     * Only a group's Admin can write the description — see the Iron Man rule
-     * on the About screen — so "somebody should write one" is a fair nudge
-     * pointed at an Admin and an unfair one pointed at a group that has not
-     * got one. The second case is the funnier line anyway: the description is
-     * blank because nobody has read for twenty-one days in a month yet.
-     *
-     * Admin lives on each group's `members` subcollection, which this screen
-     * otherwise never reads. The extra query is taken ONLY for groups whose
-     * description is already empty — most groups have one, so most sessions
-     * pay nothing for the joke.
-     */
-    const [adminless, setAdminless] = useState<Set<string>>(new Set());
-    const [checkingGroups, setCheckingGroups] = useState(true);
-    const [isOffline, setIsOffline] = useState(false);
+    const footPadding = useFootPadding();
+    const { rows, loading: groupsLoading, error } = useMyGroups();
     const scrollViewRef = useRef<ScrollView>(null);
 
-    // Scroll to top on tab press
     useEffect(() => {
         const subscription = DeviceEventEmitter.addListener('tab-press-top-groups', () => {
             scrollViewRef.current?.scrollTo({ y: 0, animated: true });
         });
         return () => subscription.remove();
     }, []);
-
-    /** The user's group ids, comma-joined so the listener below resubscribes only on a real change. */
-    const [groupIdsKey, setGroupIdsKey] = useState('');
-
-    const uid = user?.uid;
-    useEffect(() => {
-        setGroupIdsKey('');
-        if (!uid) {
-            setJoinedGroups([]);
-            setCheckingGroups(false);
-            return;
-        }
-        setCheckingGroups(true);
-
-        return onSnapshot(
-            doc(db, 'users', uid),
-            (docSnap: any) => {
-                setIsOffline(false);
-                const ids: string[] = docSnap.data()?.groupIds || [];
-                setGroupIdsKey(ids.join(','));
-                if (ids.length === 0) {
-                    setJoinedGroups([]);
-                    setCheckingGroups(false);
-                }
-            },
-            (error: any) => {
-                console.error('Error fetching user groups:', error);
-                setIsOffline(true);
-                setCheckingGroups(false);
-            }
-        );
-    }, [uid]);
-
-    // Live group docs, so names, streaks and read-today counts stay current.
-    useEffect(() => {
-        const ids = groupIdsKey ? groupIdsKey.split(',') : [];
-        if (ids.length === 0) return;
-
-        // 'in' takes at most 30 values.
-        const chunks: string[][] = [];
-        for (let i = 0; i < ids.length; i += 30) chunks.push(ids.slice(i, i + 30));
-
-        const byChunk: (any[] | undefined)[] = chunks.map(() => undefined);
-        const publish = () => {
-            if (byChunk.some(c => c === undefined)) return;
-            const byId = new Map(byChunk.flat().map((g: any) => [g.id, g]));
-            setJoinedGroups(ids.map(id => byId.get(id)).filter(Boolean));
-            setCheckingGroups(false);
-        };
-
-        const unsubscribes = chunks.map((chunk, i) =>
-            onSnapshot(
-                query(collection(db, 'groups'), where(documentId(), 'in', chunk)),
-                (snap: any) => {
-                    setIsOffline(false);
-                    byChunk[i] = snap.docs.map((docSnap: any) => ({ id: docSnap.id, ...docSnap.data() }));
-                    publish();
-                },
-                (error: any) => {
-                    // Keep whatever is already showing.
-                    console.error('Error fetching group metadata:', error);
-                    setIsOffline(true);
-                    setCheckingGroups(false);
-                }
-            )
-        );
-        return () => unsubscribes.forEach(unsubscribe => unsubscribe());
-    }, [groupIdsKey]);
-
-    /* Only the blank ones, and only ever one doc each; rechecked when that set changes. */
-    const blankKey = useMemo(
-        () => joinedGroups.filter((g: any) => !g.description).map((g: any) => g.id).join(','),
-        [joinedGroups]
-    );
-    useEffect(() => {
-        if (!blankKey) {
-            setAdminless(new Set());
-            return;
-        }
-        let cancelled = false;
-        Promise.all(
-            blankKey.split(',').map(async id => {
-                try {
-                    const admins = await getDocs(
-                        query(
-                            collection(db, 'groups', id, 'members'),
-                            where('role', '==', 'admin'),
-                            limit(1),
-                        ),
-                    );
-                    return admins.empty ? id : null;
-                } catch {
-                    /* Offline, or rules say no. Fall back to
-                     * the neutral line rather than accusing
-                     * a group of something unverified. */
-                    return null;
-                }
-            }),
-        ).then(checked => {
-            if (!cancelled) setAdminless(new Set(checked.filter(Boolean) as string[]));
-        });
-        return () => { cancelled = true; };
-    }, [blankKey]);
 
     // While auth is still loading, the skeleton below shows rather than the sign-in card.
     if (!user && !loading) {
@@ -170,13 +50,13 @@ export default function GroupsScreen() {
                 >
                     <View style={styles.authContainer}>
                         <View style={[styles.welcomeCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
-                            <View style={[styles.welcomeIconIconWrap, { backgroundColor: colors.accentSecondaryLight + '20' }]}>
+                            <View style={[styles.welcomeIconWrap, { backgroundColor: colors.accentSecondaryLight + '20' }]}>
                                 <Users size={34} color={colors.accentSecondary} />
                             </View>
 
-                            <Text variant="display" style={styles.authHeroTitle}>Better Together</Text>
-                            <Text variant="body" tone="secondary" style={styles.authHeroSubtitle}>
-                                "If you want to go fast, go alone. If you want to go far, go together"
+                            <Text variant="display" style={styles.centre}>Better Together</Text>
+                            <Text variant="body" tone="secondary" style={styles.authQuote}>
+                                {'“If you want to go fast, go alone. If you want to go far, go together”'}
                             </Text>
 
                             <Button
@@ -194,142 +74,78 @@ export default function GroupsScreen() {
         );
     }
 
-    const isLoading = loading || !user || checkingGroups;
+    const isLoading = loading || !user || groupsLoading;
 
     return (
         <Screen edges={[]}>
             <Hero ownsTopInset>
-                <View style={styles.headerTitleRow}>
-                    <Text variant="display" tone="onBand">My Groups</Text>
-                    <ScalePressable
-                        onPress={() => router.push('/(tabs)/groups/join' as any)}
-                        accessibilityRole="button"
-                        accessibilityLabel="Join a group"
-                    >
-                        <Plus size={22} color={colors.accent} />
-                    </ScalePressable>
-                </View>
+                <Text variant="display" tone="onBand">Better Together</Text>
+                <Text variant="sub" tone="onHero" style={styles.heroSub}>Consistency is key. Read together!</Text>
             </Hero>
 
-            {(isOffline || isLoading) && (
-                <View style={[styles.offlineBanner, { backgroundColor: colors.border }]}>
-                    {isOffline ? (
-                        <CloudOff size={14} color={colors.textSecondary} />
-                    ) : (
-                        <RefreshCw size={14} color={colors.textSecondary} />
-                    )}
-                    <Text variant="label" tone="secondary">
-                        {isOffline ? "You're offline — showing cached groups" : "Syncing your groups..."}
-                    </Text>
-                </View>
-            )}
             <ScrollView
                 ref={scrollViewRef}
-                contentContainerStyle={styles.scrollContent}
+                contentContainerStyle={[styles.body, { paddingBottom: footPadding }]}
                 showsVerticalScrollIndicator={false}
             >
+                {!isLoading && <NudgePanel />}
+
                 {isLoading ? (
-                    // ── Skeleton Loader ──
-                    [1, 2, 3].map((i) => (
-                        <View key={i} style={[styles.groupCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder, opacity: 0.6 }]}>
-                            <View style={styles.groupCardTop}>
-                                <Skeleton circle height={48} width={48} />
-                                <View style={styles.groupInfo}>
-                                    <Skeleton width="60%" height={20} borderRadius={4} />
-                                    <View style={{ height: 4 }} />
-                                    <Skeleton width="90%" height={14} borderRadius={4} />
+                    <View>
+                        <Text variant="label" style={styles.label}>My groups</Text>
+                        {[1, 2].map(i => (
+                            <Row key={i} style={styles.groupRow}>
+                                <Skeleton circle width={38} height={38} />
+                                <View style={styles.rowMain}>
+                                    <Skeleton width="55%" height={18} borderRadius={0} />
+                                    <View style={{ height: 6 }} />
+                                    <Skeleton width="80%" height={13} borderRadius={0} />
                                 </View>
-                            </View>
-                            <View style={[styles.groupCardDivider, { backgroundColor: colors.borderSubtle + '30' }]} />
-                            <View style={styles.groupCardBottom}>
-                                <Skeleton width={60} height={16} borderRadius={4} />
-                                <Skeleton width={40} height={20} borderRadius={8} />
-                            </View>
-                        </View>
-                    ))
-                ) : joinedGroups.length > 0 ? (
-                    // ── Group Cards ──
-                    joinedGroups.map((group) => {
-                        const today = new Date();
-                        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-                        const readTodayCount = group.readTodayDate === todayStr ? (group.readTodayCount || 0) : 0;
-                        const groupStreak = group.groupStreak || 0;
-
-                        return (
+                            </Row>
+                        ))}
+                    </View>
+                ) : rows.length > 0 ? (
+                    <View>
+                        <Text variant="label" style={styles.label}>My groups</Text>
+                        {error && (
+                            <Text variant="bodySmall" style={styles.note}>Couldn’t reach your groups just now. Showing what’s saved.</Text>
+                        )}
+                        {rows.map(row => (
                             <ScalePressable
-                                key={group.id}
-                                style={[styles.groupCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
-                                onPress={() => router.push(`/(tabs)/groups/${group.id}` as any)}
+                                key={row.group.id}
+                                onPress={() => router.push(`/(tabs)/groups/${row.group.id}` as any)}
+                                accessibilityRole="button"
+                                accessibilityLabel={`${row.group.name}. ${row.line}`}
                             >
-                                <View style={styles.groupCardTop}>
-                                    <Avatar id={group.id} name={group.name} url={group.photoURL} size={48} radius={14} />
-                                    <View style={styles.groupInfo}>
-                                        <Text variant="body">{group.name}</Text>
-                                        <Text variant="bodySmall" tone="secondary" style={styles.groupDesc}>
-                                            {group.description
-                                                || `No description. Somebody should write one.${adminless.has(group.id) ? ' Oh. Nobody here is Admin. 😂' : ''
-                                                }`}
-                                        </Text>
+                                <Row style={styles.groupRow}>
+                                    <Avatar id={row.group.id} name={row.group.name} size={38} radius={19} />
+                                    <View style={styles.rowMain}>
+                                        <Text variant="reference" numberOfLines={1}>{row.group.name}</Text>
+                                        <Text variant="bodySmall" style={styles.snip}>{row.line}</Text>
                                     </View>
-                                    <ChevronRight size={18} color={colors.textTertiary} />
-                                </View>
-
-                                <View style={[styles.groupCardDivider, { backgroundColor: colors.borderSubtle + '30' }]} />
-
-                                <View style={styles.groupCardBottom}>
-                                    <View style={styles.groupStatsRow}>
-                                        <View style={styles.groupStatItem}>
-                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-                                                <Flame size={14} color={colors.accent} />
-                                                <Text variant="body" tone="accent">{groupStreak}</Text>
-                                            </View>
-                                        </View>
-                                        <View style={[styles.groupStatDivider, { backgroundColor: colors.borderSubtle }]} />
-                                    </View>
-
-                                    {readTodayCount > 0 ? (
-                                        <View style={[styles.activeIndicator, { backgroundColor: colors.indicatorActive + '15' }]}>
-                                            <View style={[styles.activeDot, { backgroundColor: colors.indicatorActive }]} />
-                                            <Text variant="caption" tone="accent">
-                                                {readTodayCount}
-                                            </Text>
-                                        </View>
-                                    ) : (
-                                        <View style={[styles.activeIndicator, { backgroundColor: colors.backgroundSubtle, opacity: 0.5 }]}>
-                                            <View style={[styles.activeDot, { backgroundColor: colors.textTertiary }]} />
-                                        </View>
-                                    )}
-                                </View>
+                                    {row.window.open && <Text variant="meta" tone="accent">{row.window.label}</Text>}
+                                </Row>
                             </ScalePressable>
-                        );
-                    })
+                        ))}
+                    </View>
                 ) : (
-                    // ── Empty State ──
-                    <>
-                        <View style={styles.welcomeHeader}>
-                            <Text variant="bodySmall" style={styles.label}>HELLO, {displayName?.toUpperCase() || 'READER'}</Text>
-                            <Text variant="body" tone="secondary" style={{ textAlign: 'left' }}>
-                                Flying solo, I see?
-                            </Text>
-                        </View>
+                    <Text variant="sub">
+                        {error ? 'Couldn’t reach your groups just now.' : 'You’re not in a group yet. Read with the people you want to keep going with.'}
+                    </Text>
+                )}
 
-                        <View style={[styles.welcomeCard, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
-                            <View style={[styles.welcomeIconIconWrap, { backgroundColor: colors.accentSecondaryLight + '20' }]}>
-                                <Plus size={34} color={colors.accentSecondary} />
-                            </View>
-                            <Text variant="body" tone="secondary" style={styles.emptyStateText}>
-                                Accountability is a team sport. Join a group or create one so we can make sure you're actually reading.
-                            </Text>
-
-                            <Button
-                                label="Enter Group Code"
-                                variant="primary"
-                                size="lg"
-                                onPress={() => router.push('/(tabs)/groups/join' as any)}
-                                style={{ marginTop: Spacing.lg, width: '100%' }}
-                            />
-                        </View>
-                    </>
+                {!isLoading && (
+                    <View>
+                        <Text variant="label" style={styles.label}>{rows.length ? 'Join another' : 'Join a group'}</Text>
+                        <ThemedButton label="Enter Group Code" block onPress={() => router.push('/(tabs)/groups/join' as any)} />
+                        <ThemedButton
+                            label="Start a group"
+                            variant="secondary"
+                            block
+                            onPress={() => router.push('/(tabs)/groups/create' as any)}
+                            style={styles.second}
+                        />
+                    </View>
                 )}
             </ScrollView>
         </Screen>
@@ -338,21 +154,20 @@ export default function GroupsScreen() {
 
 const styles = StyleSheet.create({
     heroSub: { marginTop: Spacing.sm },
+    /** `.cl-body{padding:22px 24px 0; gap:18px}` */
+    body: {
+        paddingHorizontal: Spacing.layout.screenPadding,
+        paddingTop: Spacing.layout.cardPadding + 4,
+        gap: Spacing.layout.cardPadding,
+    },
+    label: { marginBottom: 9 },
+    note: { marginBottom: Spacing.sm },
+    groupRow: { alignItems: 'center' },
+    rowMain: { flex: 1, minWidth: 0 },
+    snip: { marginTop: 4 },
+    second: { marginTop: 10 },
 
-    container: {
-        flex: 1,
-    },
-    offlineBanner: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: Spacing.xs,
-        paddingVertical: Spacing.xs,
-        paddingHorizontal: Spacing.md,
-    },
-    authScroll: {
-        flexGrow: 1,
-    },
+    authScroll: { flexGrow: 1 },
     authContainer: {
         flex: 1,
         padding: Spacing.layout.screenPadding,
@@ -361,106 +176,18 @@ const styles = StyleSheet.create({
     },
     welcomeCard: {
         padding: Spacing.xxl,
-        borderRadius: Spacing.borderRadius.lg,
         alignItems: 'center',
         borderWidth: 1,
         gap: Spacing.sm,
         marginTop: Spacing.md,
     },
-    authHeroTitle: { textAlign: 'center' },
-    authHeroSubtitle: { textAlign: 'center', opacity: 0.7, paddingHorizontal: Spacing.md },
-    welcomeIconIconWrap: {
+    centre: { textAlign: 'center' },
+    authQuote: { textAlign: 'center', opacity: 0.7, paddingHorizontal: Spacing.md },
+    welcomeIconWrap: {
         width: 72,
         height: 72,
-        borderRadius: Spacing.borderRadius.lg,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: Spacing.md,
-    },
-    emptyStateTitle: {
-        fontSize: 20,
-        fontWeight: '800',
-        letterSpacing: -0.5,
-    },
-    emptyStateText: { textAlign: 'center', opacity: 0.6, paddingHorizontal: Spacing.sm },
-    groupCard: {
-        padding: Spacing.lg,
-        borderRadius: Spacing.borderRadius.lg,
-        borderWidth: 1,
-        marginBottom: Spacing.lg,
-    },
-    groupCardTop: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.md,
-    },
-    groupIcon: {
-        width: 52,
-        height: 52,
-        borderRadius: Spacing.borderRadius.lg,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    groupInfo: {
-        flex: 1,
-        gap: 2,
-    },
-    groupDesc: { opacity: 0.6 },
-    groupCardDivider: {
-        height: 1,
-        marginVertical: Spacing.lg,
-    },
-    groupCardBottom: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    groupStatsRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.md,
-    },
-    groupStatItem: {
-        alignItems: 'flex-start',
-        gap: 1,
-    },
-    groupStatDivider: {
-        width: 1,
-        height: 20,
-        opacity: 1,
-    },
-    activeIndicator: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: Spacing.borderRadius.lg,
-        gap: 6,
-    },
-    activeDot: {
-        width: 6,
-        height: 6,
-        borderRadius: Spacing.borderRadius.round,
-    },
-    header: {
-        marginBottom: Spacing.xl,
-    },
-    headerTitleRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    label: { marginBottom: Spacing.xs },
-    subtitle: {
-        fontSize: 16,
-        lineHeight: 24,
-    },
-    welcomeHeader: {
-        marginBottom: Spacing.xxl,
-        marginTop: Spacing.lg,
-    },
-    scrollContent: {
-        padding: Spacing.layout.screenPadding,
-        paddingBottom: Spacing.xxl,
     },
 });

@@ -1,10 +1,12 @@
 /** What the groups screens work out from members' documents. Pure; `now` is passed in. */
 
-import { answeredCount } from '../data/questions';
+import { QUESTION_LABELS, QuestionId, answeredCount } from '../data/questions';
+import { formatRange } from '../utils/reference';
 import { weekKey, weekStart } from './week';
-import { GroupWindow, isOffset } from './window';
+import { isOffset } from './window';
 import {
     Group, GroupMilestone, GroupWeek, KEEP_WEEKS, Member, MemberWeek, Nudge, Reading, Role, Share, SharedPractice,
+    WeekAnswer,
 } from './model';
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -94,6 +96,44 @@ export function didNotRead<M extends Pick<Member, 'uid'>>(members: M[], weeks: P
 /** "Read N days" on Sunday's member list. */
 export const daysRead = (week: Pick<MemberWeek, 'days'> | null | undefined) => week?.days.filter(Boolean).length ?? 0;
 
+/** "Romans 8", "Genesis 12–15". */
+export const passageOf = (row: Pick<EntryRow, 'book_name' | 'chapter_start' | 'chapter_end'>) =>
+    formatRange(`${row.book_name} ${chaptersOf(row.chapter_start, row.chapter_end)}`.trim());
+
+const BRINGABLE: { id: QuestionId; column: keyof EntryRow }[] = [
+    { id: 'reflection1', column: 'reflection_1' },
+    { id: 'reflection2', column: 'reflection_2' },
+    { id: 'reflection4', column: 'reflection_4' },
+    { id: 'studyFurther', column: 'study_further' },
+];
+
+/** The written answers in these entries, newest entry first, in question order within one. */
+export function answersOf(rows: EntryRow[]): WeekAnswer[] {
+    return [...rows]
+        .sort((a, b) => b.created_local.localeCompare(a.created_local) || b.id - a.id)
+        .flatMap(row => BRINGABLE.flatMap(({ id, column }) => {
+            const text = String(row[column] ?? '').trim();
+            return text ? [{ entryId: row.id, questionId: id, label: QUESTION_LABELS[id], text, passage: passageOf(row) }] : [];
+        }));
+}
+
+// ─── Nudges ───────────────────────────────────────────────────────────────────
+
+/** One quiet line for any number of nudges: "Bisi is thinking of you." or "Bisi and 2 others are…". */
+export function nudgeLine(nudges: Pick<Nudge, 'fromUid' | 'fromName' | 'groupName' | 'createdAt'>[]) {
+    const newest = [...nudges].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+    const senders = [...new Map(newest.map(n => [n.fromUid, n])).values()];
+    if (!senders.length) return null;
+    const first = senders[0];
+    const others = senders.length - 1;
+    const groups = [...new Set(senders.map(n => n.groupName).filter(Boolean))];
+    return {
+        name: first.fromName,
+        rest: others === 0 ? ' is thinking of you.' : ` and ${others} ${others === 1 ? 'other' : 'others'} are thinking of you.`,
+        groups: groups.join(' · '),
+    };
+}
+
 // ─── Counting ─────────────────────────────────────────────────────────────────
 
 /** Entry ids already added to each group's weekly counter: gid → weekKey → ids. */
@@ -134,9 +174,8 @@ export function pruneCounted(counted: Counted, cutoff: string): Counted {
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
-/** The hub row: "8 members · 23 reads this week", or the window's label while it is open. */
-export function hubLine(memberCount: number, reads: number, window: Pick<GroupWindow, 'open' | 'label'>): string {
-    if (window.open) return window.label;
+/** The hub row: "8 members · 23 reads this week". The window's label sits beside it while open. */
+export function hubLine(memberCount: number, reads: number): string {
     return `${plural(memberCount, 'member', 'members')} · ${plural(reads, 'read', 'reads')} this week`;
 }
 
@@ -268,6 +307,7 @@ export const nudgeFrom = (id: string, d: Data): Nudge => ({
     fromUid: str(d.fromUid),
     fromName: str(d.fromName) || 'Someone',
     groupId: str(d.groupId),
+    groupName: str(d.groupName),
     createdAt: millis(d.createdAt),
 });
 

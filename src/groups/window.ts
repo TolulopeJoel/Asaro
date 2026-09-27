@@ -76,3 +76,10 @@ export function nextWindowChange(nowMs: number, offset: number): number {
     }
     return nowMs + DAY;
 }
+
+/** "UTC+01:00", "UTC−05:30". */
+export function offsetLabel(offset: number): string {
+    const sign = offset < 0 ? '−' : '+';
+    const abs = Math.abs(offset);
+    return `UTC${sign}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`;
+}

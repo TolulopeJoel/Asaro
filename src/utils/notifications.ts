@@ -182,6 +182,25 @@ export async function isBatteryOptimizationDisabled(): Promise<boolean> {
   }
 }
 
+/** Ask Android to exempt the app from battery optimisation, falling back to the general list. */
+export async function openBatteryOptimizationSettings(): Promise<void> {
+  if (Platform.OS !== 'android') {
+    Linking.openSettings();
+    return;
+  }
+  try {
+    await IntentLauncher.startActivityAsync('android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS', {
+      data: 'package:com.asaro.meditation',
+    });
+  } catch {
+    try {
+      await IntentLauncher.startActivityAsync('android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS');
+    } catch {
+      Linking.openSettings();
+    }
+  }
+}
+
 // Request notification permissions with user interaction
 export async function requestNotificationPermissions(): Promise<boolean> {
   if (!Device.isDevice) {
@@ -632,18 +651,3 @@ export async function getAllScheduledNotifications(): Promise<Notifications.Noti
   return await Notifications.getAllScheduledNotificationsAsync();
 }
 
-export async function sendTestNotification(): Promise<void> {
-  if (!await hasNotificationPermissions()) {
-
-    return;
-  }
-
-  await Notifications.scheduleNotificationAsync({
-    content: createNotificationContent(
-      '🔔 Test Notification',
-      'If you can see this, notifications are working perfectly! 🎉'
-    ),
-    // The reminders' own channel, so a blocked channel fails the test too.
-    trigger: { channelId: REMINDER_CHANNEL_ID },
-  });
-}

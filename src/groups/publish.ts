@@ -22,14 +22,13 @@ import { READING_PLAN_DATA } from '../data/readingPlanData';
 import { keptCount } from '../grove/grove';
 import { loadBookTallies } from '../insight/detectors/milestone';
 import { STORAGE_KEYS } from '../storage/storageKeys';
-import { formatRange } from '../utils/reference';
 import {
-    Counted, EntryRow, chaptersOf, countedWeek, dayKey, daysInWeek, markCounted, pruneBefore, pruneCounted, readingOf,
+    Counted, EntryRow, answersOf, countedWeek, dayKey, daysInWeek, markCounted, passageOf, pruneBefore, pruneCounted, readingOf,
     shareFrom, shiftWeek, unmarkCounted, weekStartOf,
 } from './derive';
 import { milestoneId, practiceId, practiceItemId, readingId, shareId, weekDocId } from './ids';
 import { EarnedMilestone, PostedMilestones, earnedMilestones, nextMilestones, postedInWeek } from './milestones';
-import { Share } from './model';
+import { Share, WeekAnswer } from './model';
 import {
     PRUNED_COLLECTIONS, groupCollection, groupDocRef, memberRef, nudgesRef, readQuery, select, userRef, weekCountRef,
 } from './paths';
@@ -248,7 +247,7 @@ export async function publishToGroup(gid: string): Promise<void> {
         const [rows, posted, share, practiceIds] = await Promise.all([
             entriesInWeek(weekKey(now)),
             loadPosted(me.uid),
-            others.length ? myShareIn(others[0], me.uid, now) : Promise.resolve(null),
+            others.length ? myShareIn(others[0], me.uid, weekKey(now)) : Promise.resolve(null),
             sharedPracticeIds(me.uid, others),
         ]);
         const practices = await practiceDocs(me.uid, [...practiceIds], now);
@@ -273,14 +272,25 @@ export async function publishToGroup(gid: string): Promise<void> {
 
 // ─── The one thing brought ────────────────────────────────────────────────────
 
-/** Bring one answer to every group, replacing this week's. Returns the share id, or null. */
-export async function shareAnswer(entryId: number, question: QuestionId, text: string): Promise<string | null> {
+export interface ShareOptions {
+    /** One group, or every group the reader is in. */
+    target?: string | 'all';
+    /** The week it counts for; this week unless the open window shows an earlier one. */
+    weekKey?: string;
+}
+
+/** Bring one answer, replacing that week's. Returns the share id, or null. */
+export async function shareAnswer(
+    entryId: number,
+    question: QuestionId,
+    text: string,
+    { target = 'all', weekKey: key = weekKey(new Date()) }: ShareOptions = {},
+): Promise<string | null> {
     const s = await session();
-    if (!s?.gids.length || !text.trim()) return null;
+    const gids = target === 'all' ? s?.gids ?? [] : (s?.gids ?? []).filter(g => g === target);
+    if (!s || !gids.length || !text.trim()) return null;
     const row = await entryRow(entryId);
     if (!row) return null;
-    const now = new Date();
-    const key = weekKey(now);
     const id = shareId(s.me.uid, key);
     const data = {
         userId: s.me.uid,
@@ -288,11 +298,11 @@ export async function shareAnswer(entryId: number, question: QuestionId, text: s
         questionId: question,
         question: REFLECTION_QUESTIONS.find(q => q.id === question)?.question ?? '',
         text: text.trim(),
-        passage: formatRange(`${row.book_name} ${chaptersOf(row.chapter_start, row.chapter_end)}`.trim()),
+        passage: passageOf(row),
         weekKey: key,
         createdAt: serverTimestamp(),
     };
-    fanOut(s.me.uid, s.gids, (batch, gid) => batch.set(groupDocRef(gid, 'shares', id), data));
+    fanOut(s.me.uid, gids, (batch, gid) => batch.set(groupDocRef(gid, 'shares', id), data));
     return id;
 }
 
@@ -304,20 +314,30 @@ export async function removeShare(target: string | 'all', id: string): Promise<v
     fanOut(s.me.uid, gids, (batch, gid) => batch.delete(groupDocRef(gid, 'shares', id)));
 }
 
-async function myShareIn(gid: string, uid: string, now: Date): Promise<Share | null> {
+async function myShareIn(gid: string, uid: string, key: string): Promise<Share | null> {
     try {
-        const snap = await getDoc(groupDocRef(gid, 'shares', shareId(uid, weekKey(now))));
+        const snap = await getDoc(groupDocRef(gid, 'shares', shareId(uid, key)));
         return snap.exists() ? shareFrom(snap.id, snap.data() ?? {}) : null;
     } catch {
         return null;
     }
 }
 
-/** What the reader brought this week, if anything. */
-export async function myShare(): Promise<Share | null> {
+/** What the reader brought for a week, in one group or the first that has it. */
+export async function myShare({ target = 'all', weekKey: key = weekKey(new Date()) }: ShareOptions = {}): Promise<Share | null> {
     const s = await session();
-    if (!s?.gids.length) return null;
-    return myShareIn(s.gids[0], s.me.uid, new Date());
+    const gids = target === 'all' ? s?.gids ?? [] : [target];
+    if (!s) return null;
+    for (const gid of gids) {
+        const share = await myShareIn(gid, s.me.uid, key);
+        if (share) return share;
+    }
+    return null;
+}
+
+/** The reader's written answers from the week `key`, for the Bring sheet. */
+export async function weekAnswers(key: string): Promise<WeekAnswer[]> {
+    return answersOf(await entriesInWeek(key));
 }
 
 // ─── Shared practices ─────────────────────────────────────────────────────────

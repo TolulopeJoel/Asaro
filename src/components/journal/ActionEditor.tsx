@@ -11,9 +11,9 @@
  * since a form has no fact to enlarge.
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, ScrollView, StyleSheet, TextInput, View } from 'react-native';
-import { Archive, ArchiveRestore, X } from 'lucide-react-native';
+import { Archive, ArchiveRestore, Users, X } from 'lucide-react-native';
 
 import { useTheme } from '../../theme/ThemeContext';
 import { useAlert } from '../../context/AlertContext';
@@ -21,10 +21,12 @@ import { Spacing } from '../../theme/spacing';
 import { ScalePressable } from '../ScalePressable';
 import { Screen, Text, ThemedButton, textStyle } from '../ui';
 import { KindChips } from './KindChips';
-import { ActionKind, actionKindOf } from '../../data/actionKind';
+import { ActionKind, actionKindOf, isCadence } from '../../data/actionKind';
 import { EnhancedActionItem } from '../../data/database';
 import { hasReason } from '../../data/actionValidation';
 import { KEYBOARD_BEHAVIOR } from '../../utils/keyboard';
+import { useMyGroupIds } from '../../groups/hooks';
+import { mySharedPracticeIds, sharePractice, unsharePractice } from '../../groups/publish';
 
 interface Props {
     item: EnhancedActionItem;
@@ -60,6 +62,37 @@ export function ActionEditor({ item, onClose, onSave, onArchive }: Props) {
     // mistake — the flag belongs to the attempt.
     const [tried, setTried] = useState(false);
     const archived = !!item.archived_at;
+
+    // Only a saved, live practice can be shared: its kept days are what the groups see.
+    const { ids: groupIds } = useMyGroupIds();
+    const canShare = item.id !== undefined && isCadence(item.cadence) && !archived && groupIds.length > 0;
+    const [shared, setShared] = useState<boolean | null>(null);
+    const [sharing, setSharing] = useState(false);
+    useEffect(() => {
+        if (!canShare) return;
+        let cancelled = false;
+        mySharedPracticeIds()
+            .then(ids => { if (!cancelled) setShared(ids.has(item.id!)); })
+            .catch(() => { if (!cancelled) setShared(false); });
+        return () => { cancelled = true; };
+    }, [canShare, item.id]);
+
+    const toggleShare = async () => {
+        if (sharing || shared === null) return;
+        setSharing(true);
+        try {
+            if (shared) {
+                await unsharePractice(item.id!);
+                setShared(false);
+            } else if (await sharePractice(item.id!)) {
+                setShared(true);
+            } else {
+                showAlert({ title: 'Not shared', message: 'Only a practice you are still keeping can be shared.' });
+            }
+        } finally {
+            setSharing(false);
+        }
+    };
 
     const derived = actionKindOf(kind);
     /*
@@ -200,6 +233,21 @@ export function ActionEditor({ item, onClose, onSave, onArchive }: Props) {
                             disabled={saving}
                             onPress={save}
                         />
+
+                        {canShare && shared !== null && (
+                            <ScalePressable
+                                onPress={toggleShare}
+                                disabled={sharing}
+                                accessibilityRole="button"
+                                accessibilityHint="Your groups see this practice and the days you kept it each week"
+                                style={styles.archive}
+                            >
+                                <Users size={14} color={shared ? colors.textTertiary : colors.accent} />
+                                <Text variant="label" tone={shared ? 'tertiary' : 'accent'}>
+                                    {shared ? 'Stop sharing' : 'Share with my groups'}
+                                </Text>
+                            </ScalePressable>
+                        )}
 
                         {/* Archive, never delete: the item stays on its entry
                           * and a practice keeps its completions. Nothing here

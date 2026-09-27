@@ -1,11 +1,10 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
     View,
     StyleSheet,
     TextInput,
     ScrollView,
 } from 'react-native';
-import { getFirestore, doc, collection, getDoc, getDocs, setDoc, query, where, limit, increment, arrayUnion, serverTimestamp, writeBatch } from '@react-native-firebase/firestore';
 import { useAuth } from '@/src/context/AuthContext';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { useAlert } from '@/src/context/AlertContext';
@@ -14,104 +13,50 @@ import { useRouter } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 import { Hero, Screen, Text, ThemedButton, textStyle } from '@/src/components/ui';
 import { ScalePressable } from '@/src/components/ScalePressable';
-
-// In a real app, this might be a dynamic code or fetched from a config
+import { joinGroup } from '@/src/groups/repository';
 
 export default function JoinGroupScreen() {
     const [code, setCode] = useState('');
     const [loading, setLoading] = useState(false);
-    const { user, displayName } = useAuth();
+    const { user } = useAuth();
     const { colors, style: themeStyle } = useTheme();
     const { showAlert } = useAlert();
     const router = useRouter();
-    const db = getFirestore();
 
-    const joining = useRef(false);
-
+    // joinGroup hands a second tap the first tap's result, so no guard is needed here.
     const handleJoin = async () => {
-        const inputCode = code.trim().toUpperCase();
-        if (!inputCode) return;
-
-        if (!user) return;
-        if (joining.current) return;
-        joining.current = true;
+        if (!code.trim()) return;
+        if (!user) {
+            router.push('/(tabs)/groups/auth' as any);
+            return;
+        }
 
         setLoading(true);
         try {
-            // Query for group with this code
-            const groupQuery = await getDocs(
-                query(collection(db, 'groups'), where('code', '==', inputCode), limit(1))
-            );
-
-            // A cached answer means no connection, and joining needs one.
-            if (groupQuery.metadata.fromCache) {
-                showAlert({ title: "You're offline", message: 'Joining a group needs a connection. Try again once you are back online.' });
-                return;
+            const result = await joinGroup(code);
+            switch (result.status) {
+                case 'invalid':
+                    showAlert({ title: 'Invalid Code', message: 'No group found with this access code. Please check and try again.' });
+                    break;
+                case 'offline':
+                    showAlert({ title: "You're offline", message: 'Joining a group needs a connection. Try again once you are back online.' });
+                    break;
+                case 'signed-out':
+                    router.push('/(tabs)/groups/auth' as any);
+                    break;
+                case 'already':
+                    showAlert({ title: 'Already a Member', message: `You are already part of "${result.name}".` });
+                    router.replace(`/(tabs)/groups/${result.groupId}` as any);
+                    break;
+                case 'joined':
+                    showAlert({ title: 'Welcome!', message: `You have joined "${result.name}". This week's readings are on their way to the group.` });
+                    router.replace(`/(tabs)/groups/${result.groupId}` as any);
+                    break;
             }
-
-            if (groupQuery.empty) {
-                showAlert({ title: 'Invalid Code', message: 'No group found with this access code. Please check and try again.' });
-                return;
-            }
-
-            const groupDoc = groupQuery.docs[0];
-            const groupId = groupDoc.id;
-            const groupData = groupDoc.data();
-
-            const memberRef = doc(db, 'groups', groupId, 'members', user.uid);
-            const userRef = doc(db, 'users', user.uid);
-
-            const [existingMember, userDocSnap] = await Promise.all([getDoc(memberRef), getDoc(userRef)]);
-            const userDocData = userDocSnap.data() || {};
-            const inUserGroups: boolean = (userDocData.groupIds || []).includes(groupId);
-
-            if (existingMember.exists()) {
-                if (inUserGroups) {
-                    showAlert({ title: 'Already a Member', message: `You are already part of "${groupData.name}".` });
-                } else {
-                    // A member doc without the group in groupIds: finish that join.
-                    await setDoc(userRef, {
-                        groupIds: arrayUnion(groupId),
-                        lastModified: serverTimestamp(),
-                    }, { merge: true });
-                    showAlert({ title: 'Welcome!', message: `You have joined "${groupData.name}".` });
-                }
-                router.replace('/(tabs)/groups' as any);
-                return;
-            }
-
-            const resolvedName = displayName || user.displayName || user.email?.split('@')[0] || 'User';
-
-            // All four writes land together or not at all.
-            const batch = writeBatch(db);
-            batch.set(memberRef, {
-                userId: user.uid,
-                displayName: displayName || user.email?.split('@')[0] || 'User',
-                gender: userDocData.gender || 'm',
-                photoURL: userDocData.photoURL || null,
-                joinedAt: serverTimestamp(),
-                lastActive: serverTimestamp(),
-            });
-            batch.set(doc(db, 'groups', groupId), { memberCount: increment(1) }, { merge: true });
-            batch.set(userRef, {
-                groupIds: arrayUnion(groupId),
-                lastModified: serverTimestamp(),
-            }, { merge: true });
-            batch.set(doc(db, 'groups', groupId, 'activities', `joined_${user.uid}`), {
-                userId: user.uid,
-                userName: resolvedName,
-                type: 'member_joined',
-                timestamp: serverTimestamp(),
-            });
-            await batch.commit();
-
-            showAlert({ title: 'Welcome!', message: `You have joined "${groupData.name}".` });
-            router.replace('/(tabs)/groups' as any);
         } catch (error: any) {
             console.error(error);
-            showAlert({ title: 'Error', message: 'Failed to join group: ' + error.message });
+            showAlert({ title: 'Error', message: 'Failed to join group: ' + (error?.message ?? 'something went wrong') });
         } finally {
-            joining.current = false;
             setLoading(false);
         }
     };

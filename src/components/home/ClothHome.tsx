@@ -59,6 +59,8 @@ export interface ClothHomeProps {
     observation?: React.ReactNode;
     /** What is live today. Absent on most days — see `TodayStrip`. */
     today?: React.ReactNode;
+    /** A group nudge, above the reading. It renders nothing when there is none. */
+    nudge?: React.ReactNode;
     /**
      * Progress through the reading plan. "34 of 364" is a goal with an end,
      * where a monotonic count of entries written is a fact about the database
@@ -138,6 +140,7 @@ export function ClothHome({
     onFlashbackPress,
     observation,
     today,
+    nudge,
     planProgress,
     onProgressPress,
 }: ClothHomeProps) {
@@ -182,6 +185,8 @@ export function ClothHome({
 
             <View style={styles.body}>
                 {welcomeBack}
+
+                {nudge}
 
                 {draft ? (
                     <View>

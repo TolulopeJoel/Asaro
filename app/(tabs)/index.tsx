@@ -32,6 +32,7 @@ import { ObservationReceipts } from '@/src/components/insight/ObservationReceipt
 import { AnimatedModal } from '@/src/components/AnimatedModal';
 import { getDailyTitle } from '@/src/data/homeTitles';
 import { ClothHome } from '@/src/components/home/ClothHome';
+import { NudgePanel } from '@/src/components/groups/NudgePanel';
 import { WelcomeBack } from '@/src/components/WelcomeBack';
 import { formatDateToLocalString } from '@/src/utils/dateUtils';
 import { unwrapReferences } from '@/src/utils/reference';
@@ -435,6 +436,7 @@ export default function Index() {
                         welcomeBack={
                             <WelcomeBack daysAway={daysAway} readingBelow={!!(draft || nextReading)} />
                         }
+                        nudge={<NudgePanel />}
                         greeting={getDailyTitle()}
                         dateLine={homeDateLine}
                         reading={nextReading}
