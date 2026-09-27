@@ -8,6 +8,7 @@ import {
     Asaro, Hero, Screen, START_DELAY_MS, Text, ThemedButton,
     type AsaroAction, type AsaroHandle,
 } from '@/src/components/ui';
+import { TOUR_VISUALS, type TourVisual } from '@/src/components/onboarding/TourVisuals';
 import { useAuth } from '@/src/context/AuthContext';
 import { useFootPadding } from '@/src/hooks/useScreenInsets';
 
@@ -15,29 +16,33 @@ import { useFootPadding } from '@/src/hooks/useScreenInsets';
 const HOLD_MS = 2500;
 
 /** What the app is, told by the chosen sibling. Keep in step with design/all-screens.html#tour. */
-const PAGES: { title: string; action: AsaroAction; hold: boolean; body: (name: string) => string }[] = [
+const PAGES: { title: string; action: AsaroAction; hold: boolean; visual: TourVisual; body: (name: string) => string }[] = [
     {
         title: 'One reading a day',
         action: 'smug',
         hold: true,
+        visual: 'readings',
         body: (name) => `Okay ${name}, this is how it works. Every day there’s a reading waiting for you, and we go through the whole Bible together. Just one reading. You can manage that, abi?`,
     },
     {
         title: 'Then we talk about it',
         action: 'think',
         hold: true,
+        visual: 'questions',
         body: () => 'After you read, I ask you five questions, one at a time. What it tells you about Jehovah, how you’ll apply it, who it could help. Answer the ones you can.',
     },
     {
         title: 'Watch it grow',
         action: 'celebrate',
         hold: false,
+        visual: 'trees',
         body: () => 'Every chapter you reflect on becomes land in your field. Every practice you keep grows a tree. Leave them and they go quiet, but nothing is taken away. They wait for you.',
     },
     {
         title: 'Read with your people',
         action: 'nod',
         hold: false,
+        visual: 'sunday',
         body: () => 'Join a group and every Sunday it opens: what everyone read, and the one thing they chose to bring. No rankings. Nobody is comparing.',
     },
 ];
@@ -52,6 +57,7 @@ export default function TourScreen() {
 
     const last = page === PAGES.length - 1;
     const current = PAGES[page];
+    const Visual = TOUR_VISUALS[current.visual];
     const done = () => router.push('/onboarding/sleep-time');
 
     // Each page's face reacts, holds long enough to be seen, then lets go.
@@ -81,8 +87,13 @@ export default function TourScreen() {
 
                 <View style={[styles.clothBody, { paddingBottom: footPadding }]}>
                     <View style={styles.speech}>
-                        <Asaro ref={face} size={124} />
+                        <Asaro ref={face} size={74} />
                         <Text variant="body" style={styles.bodyText}>{current.body(displayName ?? 'o')}</Text>
+                    </View>
+
+                    {/* Keyed by page, so each page's piece of the app flips in fresh. */}
+                    <View key={page} style={styles.visual}>
+                        <Visual />
                     </View>
 
                     {/* Pager and button sit at the foot, well clear of the face. */}
@@ -119,8 +130,10 @@ const styles = StyleSheet.create({
         paddingHorizontal: Spacing.layout.screenPadding,
         gap: Spacing.layout.cardPadding,
     },
-    speech: { alignItems: 'center', gap: Spacing.lg, paddingVertical: Spacing.md },
-    bodyText: { textAlign: 'center' },
+    speech: { flexDirection: 'row', alignItems: 'center', gap: Spacing.lg },
+    bodyText: { flex: 1 },
+    // Centred in the space between the speech and the foot, so the flip has room to land.
+    visual: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: Spacing.lg },
     dots: { flexDirection: 'row', justifyContent: 'center', gap: Spacing.sm },
     foot: { marginTop: 'auto', paddingTop: Spacing.xl, gap: Spacing.lg },
     dot: { width: 8, height: 8, borderRadius: Spacing.borderRadius.round },

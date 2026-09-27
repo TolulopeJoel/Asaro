@@ -139,7 +139,7 @@ export default function SleepTimeScreen() {
             >
                 <Hero ownsTopInset topPadding={64}>
                     <Text variant="label" tone="onHero" style={styles.heroStep}>{onboardingStepLabel('sleep-time')}</Text>
-                    <Text variant="display" tone="onBand">When do you{'\n'}turn in?</Text>
+                    <Text variant="display" tone="onBand">What time{'\n'}do you sleep?</Text>
                 </Hero>
                 <View style={[styles.clothBody, { paddingBottom: footPadding }]}>
                     <Text variant="sub">
