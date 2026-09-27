@@ -10,7 +10,6 @@ import {
 } from '@/src/components/ui';
 import { useAlert } from '@/src/context/AlertContext';
 import { Spacing } from '@/src/theme/spacing';
-import { Typography } from '@/src/theme/typography';
 import { setupDailyNotifications, hasNotificationPermissions, openBatteryOptimizationSettings, openNotificationSettings, getNotificationDiagnostics, readSleepTime, saveSleepTime, formatSleepTimeValue, parseSleepTime } from '@/src/utils/notifications';
 import { oemAutoStartLabel, openAutoStartSettings } from '@/src/utils/oemRestrictions';
 import { exportJournalEntriesToJson, importJournalEntriesFromJson, getFirstEntryDate } from '@/src/data/database';
@@ -24,7 +23,6 @@ import { Stack, useRouter } from 'expo-router';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { Button } from '@/src/components/Button';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import {
     Bed,
@@ -33,74 +31,42 @@ import {
     Archive,
     Download,
 } from 'lucide-react-native';
-import { getFirestore, doc, setDoc, getDoc } from '@react-native-firebase/firestore';
-import { useMyGroups } from '@/src/groups/hooks';
+import { chooseAvatar, myPhotoAt, removeAvatar, useAvatar } from '@/src/profile/avatar';
 import { useAuth } from '@/src/context/AuthContext';
 import { useFootPadding } from '@/src/hooks/useScreenInsets';
 import { Avatar } from '@/src/components/Avatar';
 import { TextInput } from 'react-native';
 import React from 'react';
 
-// ─── Profile Photo Card ──────────────────────────────────────────────────────
-// Isolated in its own component so typing the URL doesn't re-render the whole
-// Settings screen (which would dismiss the keyboard on every keystroke).
+// ─── Photo Card ──────────────────────────────────────────────────────────────
+// Anyone's own photo, shown beside their name in groups.
 
-const ProfilePhotoCard = React.memo(({
-    user, colors, initialURL, onSave, isSaving,
-}: {
-    user: any; colors: any; initialURL: string;
-    onSave: (url: string) => void; isSaving: boolean;
-}) => {
-    const [draft, setDraft] = useState(initialURL);
-
-    // Keep draft in sync if the stored URL changes (e.g. first load)
-    useEffect(() => { setDraft(initialURL); }, [initialURL]);
-
-    return (
-        <View style={{ padding: 20, alignItems: 'center', gap: 20 }}>
-            <View style={{ alignItems: 'center', gap: 10 }}>
-                <Avatar id={user?.uid} name={user?.displayName || 'User'} url={draft} size={80} radius={24} />
-                <View style={{ alignItems: 'center', gap: 3 }}>
-                    <UIText style={{ fontSize: Typography.size.lg, fontWeight: '700', color: colors.textPrimary }}>{user?.displayName}</UIText>
-                    <UIText style={{ fontSize: 10, fontWeight: '700', color: colors.accent, letterSpacing: 1 }}>PRIVILEGED ADMIN</UIText>
-                </View>
-            </View>
-
-            <View style={{ width: '100%', gap: 8 }}>
-                <UIText style={{ fontSize: 10, fontWeight: '700', color: colors.textTertiary, letterSpacing: 1 }}>PROFILE PHOTO URL</UIText>
-                <TextInput
-                    style={{
-                        backgroundColor: colors.buttonSecondary,
-                        padding: 14,
-                        borderRadius: Spacing.borderRadius.lg,
-                        color: colors.textPrimary,
-                        fontSize: 14,
-                        borderWidth: 1,
-                        borderColor: colors.buttonSecondaryBorder,
-                    }}
-                    value={draft}
-                    onChangeText={setDraft}
-                    placeholder="Paste a photo link here"
-                    placeholderTextColor={colors.textTertiary}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    keyboardType="url"
-                />
-            </View>
-
-            <Button
-                label={isSaving ? 'Saving...' : 'Save Changes'}
-                onPress={() => onSave(draft)}
-                disabled={isSaving}
-                loading={isSaving}
-                variant="primary"
-                fullWidth
-                size="md"
-                style={{ borderRadius: Spacing.borderRadius.lg }}
+const PhotoCard = ({ uid, name, image, busy, onChoose, onRemove }: {
+    uid?: string;
+    name: string;
+    image?: string;
+    busy: boolean;
+    onChoose: () => void;
+    onRemove: () => void;
+}) => (
+    <View style={styles.photoCard}>
+        <Avatar id={uid} name={name} url={image} size={80} radius={40} />
+        <View style={styles.photoActions}>
+            <ThemedButton
+                label={image ? 'Change photo' : 'Add a photo'}
+                variant="secondary"
+                onPress={onChoose}
+                disabled={busy}
+                loading={busy}
             />
+            {image && !busy && (
+                <ScalePressable onPress={onRemove} accessibilityRole="button" hitSlop={Spacing.sm}>
+                    <UIText variant="button" tone="tertiary">Remove photo</UIText>
+                </ScalePressable>
+            )}
         </View>
-    );
-});
+    </View>
+);
 
 // ─── Name Card ───────────────────────────────────────────────────────────────
 // Its own component for the same reason as the photo card: the draft lives
@@ -246,20 +212,16 @@ export default function Settings() {
     const { user, displayName, updateName } = useAuth();
     const name = displayName || user?.displayName || 'Reader';
     const footPadding = useFootPadding(60);
-    const db = getFirestore();
-    // The photo editor is for anyone who runs a group.
-    const { rows: groupRows } = useMyGroups();
-    const isAdmin = groupRows.some(row => row.myRole === 'creator' || row.myRole === 'admin');
-    const [photoURL, setPhotoURL] = useState('');
-    const [isSavingProfile, setIsSavingProfile] = useState(false);
+    const [photoAt, setPhotoAt] = useState<number | null>(null);
+    const photo = useAvatar(user?.uid, photoAt);
+    const [savingPhoto, setSavingPhoto] = useState(false);
     const [sleepTime, setSleepTime] = useState<string | null>(null);
     const [lastSleepChangeAt, setLastSleepChangeAt] = useState<string | null>(null);
     const [isUpdatingSleep, setIsUpdatingSleep] = useState(false);
     /*
      * The three things the mockup's Settings rows state that the screen never
      * knew: when you started reading, whether notifications are actually on,
-     * and whether the name (and, for admins, photo) editor is open under the
-     * profile row.
+     * and whether the name and photo editor is open under the profile row.
      */
     const [readingSince, setReadingSince] = useState<string | null>(null);
     const [notificationsOn, setNotificationsOn] = useState<boolean | null>(null);
@@ -275,20 +237,48 @@ export default function Settings() {
         }
     }, [updateName, showAlert]);
 
-    const handleSaveProfileURL = useCallback(async (url: string) => {
-        if (!user?.uid) return;
-        setIsSavingProfile(true);
+    const handleChoosePhoto = useCallback(async () => {
+        setSavingPhoto(true);
         try {
-            await setDoc(doc(db, 'users', user.uid), { photoURL: url.trim() }, { merge: true });
-            setPhotoURL(url.trim());
-            showAlert({ title: 'Done', message: 'Photo changed.' });
-        } catch (error) {
-            console.error('Failed to save profile:', error);
-            showAlert({ title: 'Error', message: 'Failed to update profile photo' });
+            const chosen = await chooseAvatar();
+            if (chosen) setPhotoAt(chosen.photoAt);
+        } catch (error: any) {
+            console.error('Failed to save photo:', error);
+            showAlert({
+                title: 'Couldn\'t save your photo',
+                message: error?.message === 'too-large'
+                    ? 'That photo has too much detail to fit. Try another one.'
+                    : 'Check your connection and try again.',
+            });
         } finally {
-            setIsSavingProfile(false);
+            setSavingPhoto(false);
         }
-    }, [user?.uid]);
+    }, [showAlert]);
+
+    const handleRemovePhoto = useCallback(() => {
+        showAlert({
+            title: 'Remove your photo?',
+            message: 'Your groups will see your initial instead.',
+            buttons: [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Remove',
+                    style: 'destructive',
+                    onPress: async () => {
+                        setSavingPhoto(true);
+                        try {
+                            await removeAvatar();
+                            setPhotoAt(null);
+                        } catch {
+                            showAlert({ title: 'Couldn\'t remove your photo', message: 'Check your connection and try again.' });
+                        } finally {
+                            setSavingPhoto(false);
+                        }
+                    },
+                },
+            ],
+        });
+    }, [showAlert]);
 
 
 
@@ -300,13 +290,7 @@ export default function Settings() {
         readSleepTime().then(time => setSleepTime(time ? formatSleepTimeValue(time) : null)).catch(() => { });
         AsyncStorage.getItem(STORAGE_KEYS.LAST_SLEEP_CHANGE_AT).then(val => setLastSleepChangeAt(val));
 
-        if (user?.uid) {
-            getDoc(doc(db, 'users', user.uid)).then(docSnap => {
-                if (docSnap.exists()) {
-                    setPhotoURL(docSnap.data()?.photoURL || '');
-                }
-            }).catch(() => { });
-        }
+        if (user?.uid) myPhotoAt().then(setPhotoAt).catch(() => { });
     }, [user?.uid]);
 
     // One answer, not a readout: the first thing actually silencing
@@ -576,13 +560,13 @@ export default function Settings() {
                         <ScalePressable
                             onPress={() => setShowProfileEditor(v => !v)}
                             accessibilityRole="button"
-                            accessibilityLabel={`${name}. Edit your name${isAdmin ? ' and photo' : ''}`}
+                            accessibilityLabel={`${name}. Edit your name and photo`}
                             style={styles.clothProfile}
                         >
                             <Avatar
                                 id={user?.uid}
                                 name={name}
-                                url={photoURL}
+                                url={photo}
                                 size={52}
                                 radius={26}
                             />
@@ -611,13 +595,14 @@ export default function Settings() {
                             onCancel={() => setShowProfileEditor(false)}
                         />
                     )}
-                    {isAdmin && showProfileEditor && (
-                        <ProfilePhotoCard
-                            user={user}
-                            colors={colors}
-                            initialURL={photoURL}
-                            onSave={handleSaveProfileURL}
-                            isSaving={isSavingProfile}
+                    {showProfileEditor && (
+                        <PhotoCard
+                            uid={user?.uid}
+                            name={name}
+                            image={photo}
+                            busy={savingPhoto}
+                            onChoose={handleChoosePhoto}
+                            onRemove={handleRemovePhoto}
                         />
                     )}
 
@@ -684,6 +669,8 @@ const styles = StyleSheet.create({
         marginTop: Spacing.md,
     },
     clothProfileText: { flex: 1, minWidth: 0 },
+    photoCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.lg, paddingVertical: Spacing.lg },
+    photoActions: { flex: 1, gap: Spacing.sm, alignItems: 'flex-start' },
     clothProfileSub: { marginTop: 3 },
     nameCard: { gap: Spacing.sm, paddingTop: 20 },
     /** `.cl-input{padding:12px 14px; border:1px solid var(--hair)}` */

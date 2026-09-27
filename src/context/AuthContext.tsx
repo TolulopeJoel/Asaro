@@ -3,6 +3,8 @@ import { getAuth, onAuthStateChanged, signOut as firebaseSignOut, updateProfile,
 import { getFirestore, doc, setDoc, serverTimestamp } from '@react-native-firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '../storage/storageKeys';
+import { syncProfileToGroups } from '../groups/repository';
+import { myPhotoAt } from '../profile/avatar';
 
 interface AuthContextType {
     user: FirebaseAuthTypes.User | null;
@@ -52,6 +54,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         }, { merge: true });
                     }
                     setDisplayName(firebaseUser.displayName);
+                    // Catch up any group still showing an older name. Fire and forget: sign-in never waits on groups.
+                    const name = firebaseUser.displayName;
+                    void myPhotoAt()
+                        .then(photoAt => syncProfileToGroups({ displayName: name, photoAt }))
+                        .catch(() => { });
                 } else {
                     const localName = await AsyncStorage.getItem(STORAGE_KEYS.USER_NAME);
                     if (localName) setDisplayName(localName);
@@ -83,6 +90,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 displayName: trimmed,
                 lastModified: serverTimestamp(),
             }, { merge: true });
+            // The name every group shows is on the member doc, not the account.
+            await syncProfileToGroups({ displayName: trimmed }).catch(() => { });
         }
     };
 
