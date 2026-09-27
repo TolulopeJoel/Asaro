@@ -23,4 +23,6 @@ export const STORAGE_KEYS = {
     GROUP_COUNTED: 'group_counted',
     /** `uid:YYYY-MM-DD` of the last daily groups upkeep. */
     GROUP_UPKEEP: 'group_upkeep',
+    /** Set once the first-visit note on a group has been dismissed. */
+    GROUP_INTRO_SEEN: 'group_intro_seen',
 } as const;

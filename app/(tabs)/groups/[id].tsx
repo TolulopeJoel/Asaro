@@ -8,6 +8,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ScrollView, Share as RNShare, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { STORAGE_KEYS } from '@/src/storage/storageKeys';
 import { ChevronLeft, MoreHorizontal } from 'lucide-react-native';
 
 import { useTheme } from '@/src/theme/ThemeContext';
@@ -114,6 +116,17 @@ export default function GroupScreen() {
     const [menuOpen, setMenuOpen] = useState(false);
     const [editing, setEditing] = useState(false);
     const [bringing, setBringing] = useState(false);
+    const [introSeen, setIntroSeen] = useState(true);
+
+    useEffect(() => {
+        AsyncStorage.getItem(STORAGE_KEYS.GROUP_INTRO_SEEN)
+            .then(v => setIntroSeen(v === '1'))
+            .catch(() => {});
+    }, []);
+    const dismissIntro = useCallback(() => {
+        setIntroSeen(true);
+        AsyncStorage.setItem(STORAGE_KEYS.GROUP_INTRO_SEEN, '1').catch(() => {});
+    }, []);
 
     const memberKey = g.members.map(m => m.uid).join(',');
     useEffect(() => {
@@ -337,6 +350,16 @@ export default function GroupScreen() {
             )}
 
             <ScrollView contentContainerStyle={[styles.body, { paddingBottom: footPadding }]} showsVerticalScrollIndicator={false}>
+                {!introSeen && !g.loading && (
+                    <View style={[styles.intro, { backgroundColor: colors.backgroundSubtle }]}>
+                        <Text variant="body">
+                            Here, your reflections stay yours. Each week you can bring one answer to share, and everyone sees each other’s week on Sunday.
+                        </Text>
+                        <ScalePressable onPress={dismissIntro} accessibilityRole="button" hitSlop={Spacing.sm} style={styles.introDismiss}>
+                            <Text variant="meta" tone="accent">Got it</Text>
+                        </ScalePressable>
+                    </View>
+                )}
                 {g.loading ? (
                     <View style={styles.skeleton}>
                         <Skeleton width="100%" height={44} borderRadius={0} />
@@ -348,6 +371,9 @@ export default function GroupScreen() {
                         <View>
                             <Text variant="label" style={styles.label}>Your week</Text>
                             <WeekCells days={g.myDays} today={today} />
+                            <Text variant="bodySmall" style={styles.weekNote}>
+                                The group opens on Sunday. Until then, the week is yours.
+                            </Text>
                         </View>
                         <View style={[styles.stat, { backgroundColor: colors.backgroundSubtle }]}>
                             <Text variant="hero">{g.readsThisWeek}</Text>
@@ -508,6 +534,9 @@ const styles = StyleSheet.create({
     memberRow: { alignItems: 'center', paddingVertical: Spacing.md },
     rowMain: { flex: 1, minWidth: 0 },
     snip: { marginTop: 4 },
+    intro: { padding: Spacing.layout.cardPadding, gap: Spacing.sm },
+    introDismiss: { alignSelf: 'flex-end' },
+    weekNote: { marginTop: 10 },
     bring: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md + 2, padding: Spacing.layout.cardPadding },
     person: { flexDirection: 'column', alignItems: 'stretch', gap: 0 },
     personHead: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md + 2 },
