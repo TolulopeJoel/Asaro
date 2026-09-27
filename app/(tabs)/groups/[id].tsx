@@ -22,7 +22,7 @@ import { formatRange } from '@/src/utils/reference';
 import { QUESTION_LABELS, QUESTION_COUNT, isQuestionId } from '@/src/data/questions';
 import { daysRead, feedByMember, parseLocalDateTime } from '@/src/groups/derive';
 import { useGroup, useGroupWeek } from '@/src/groups/hooks';
-import { Group, Member, Role } from '@/src/groups/model';
+import { Group, Member, Reading, Role } from '@/src/groups/model';
 import { hasNudged, leaveGroup, regenerateCode, removeMember, sendNudge, setRole } from '@/src/groups/repository';
 import { weekdayIndex } from '@/src/groups/week';
 import { Avatar } from '@/src/components/Avatar';
@@ -93,6 +93,31 @@ function MemberRow({ member, line, isMe, nudge, onPress }: {
                 )}
             </Row>
         </ScalePressable>
+    );
+}
+
+/** Most weeks fit whole; a long one shows its latest few until asked. */
+const READINGS_SHOWN = 3;
+
+function ReadingList({ readings }: { readings: Reading[] }) {
+    const [all, setAll] = useState(false);
+    const shown = all || readings.length <= READINGS_SHOWN + 1 ? readings : readings.slice(-READINGS_SHOWN);
+    return (
+        <View style={styles.readings}>
+            {shown.map(r => (
+                <View key={r.id} style={styles.reading}>
+                    <Text variant="bodySmall" tone="primary" style={styles.flex} numberOfLines={1}>
+                        {formatRange(`${r.bookName} ${r.chapters}`.trim())}
+                    </Text>
+                    <Text variant="bodySmall">{`${r.answered} of ${QUESTION_COUNT}`}</Text>
+                </View>
+            ))}
+            {shown.length < readings.length && (
+                <ScalePressable onPress={() => setAll(true)} accessibilityRole="button" hitSlop={Spacing.sm}>
+                    <Text variant="meta" tone="accent">{`Show all ${readings.length} readings`}</Text>
+                </ScalePressable>
+            )}
+        </View>
     );
 }
 
@@ -410,17 +435,7 @@ export default function GroupScreen() {
                                     <Avatar id={person.member.uid} name={person.member.displayName} size={38} radius={19} />
                                     <Text variant="reference">{person.member.displayName}</Text>
                                 </View>
-                                {person.readings.length > 0 && (
-                                    <Text variant="bodySmall" style={styles.line}>
-                                        {person.readings.map((r, i) => (
-                                            <React.Fragment key={r.id}>
-                                                {i > 0 ? '   ' : ''}
-                                                <Text variant="button" tone="primary">{formatRange(`${r.bookName} ${r.chapters}`.trim())}</Text>
-                                                {` · ${r.answered} of ${QUESTION_COUNT}`}
-                                            </React.Fragment>
-                                        ))}
-                                    </Text>
-                                )}
+                                {person.readings.length > 0 && <ReadingList readings={person.readings} />}
                                 {person.share && (
                                     <View style={[styles.share, { borderLeftColor: colors.accent }]}>
                                         <Text variant="meta" tone="secondary" style={styles.tag}>
@@ -541,6 +556,8 @@ const styles = StyleSheet.create({
     person: { flexDirection: 'column', alignItems: 'stretch', gap: 0 },
     personHead: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md + 2 },
     line: { marginTop: 10 },
+    readings: { marginTop: 10, gap: 6 },
+    reading: { flexDirection: 'row', alignItems: 'baseline', gap: Spacing.md },
     share: { borderLeftWidth: Spacing.border.strong, paddingLeft: Spacing.md, marginTop: Spacing.md },
     tag: { marginBottom: 5 },
     change: { marginTop: Spacing.sm, alignSelf: 'flex-start' },
