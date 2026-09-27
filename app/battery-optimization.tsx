@@ -1,12 +1,13 @@
 import { isBatteryOptimizationDisabled, openBatteryOptimizationSettings } from '@/src/utils/notifications';
 import { needsOemAutoStartStep, oemAutoStartLabel, openAutoStartSettings } from '@/src/utils/oemRestrictions';
 import { useRouter } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AppState, Platform, ScrollView, View, StyleSheet } from 'react-native';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { useFootPadding } from '@/src/hooks/useScreenInsets';
-import { Hero, Screen, Text, ThemedButton } from '@/src/components/ui';
+import { Asaro, Hero, Screen, Text, ThemedButton, type AsaroHandle } from '@/src/components/ui';
+import { Zzz } from '@/src/components/onboarding/Zzz';
 import { onboardingStepLabel } from '@/src/utils/onboardingSteps';
 
 /**
@@ -18,29 +19,50 @@ import { onboardingStepLabel } from '@/src/utils/onboardingSteps';
  * permissions.tsx builds (a band, one panel of reasons, a single button) with
  * battery-specific text rather than inventing a different layout.
  */
+/** One nod-off and jerk awake, and a breath before the next. */
+const DOZE_EVERY_MS = 3600;
+/** Long enough to see him wake and celebrate before the page goes. */
+const AWAKE_MS = 1800;
+
 export default function BatteryOptimizationScreen() {
     const router = useRouter();
     const footPadding = useFootPadding();
     const { colors } = useTheme();
+    const face = useRef<AsaroHandle>(null);
+    // The phone is putting him to sleep until the exemption is granted.
+    const [awake, setAwake] = useState(false);
 
-    const checkBatteryOptimization = async () => {
+    useEffect(() => {
+        if (awake) return;
+        face.current?.play('doze');
+        const id = setInterval(() => face.current?.play('doze'), DOZE_EVERY_MS);
+        return () => clearInterval(id);
+    }, [awake]);
+
+    const checkBatteryOptimization = async (fromSettings: boolean) => {
         if (Platform.OS !== 'android') {
             router.replace('/');
             return;
         }
 
         const isDisabled = await isBatteryOptimizationDisabled();
-        if (isDisabled) {
+        if (!isDisabled) return;
+        // Already fine on arrival: nothing to celebrate, just move on.
+        if (!fromSettings) {
             router.replace('/');
+            return;
         }
+        setAwake(true);
+        face.current?.play('celebrate');
+        setTimeout(() => router.replace('/'), AWAKE_MS);
     };
 
     useEffect(() => {
-        checkBatteryOptimization();
+        checkBatteryOptimization(false);
 
         const subscription = AppState.addEventListener('change', (nextAppState) => {
             if (nextAppState === 'active') {
-                checkBatteryOptimization();
+                checkBatteryOptimization(true);
             }
         });
 
@@ -92,10 +114,17 @@ export default function BatteryOptimizationScreen() {
                 </Hero>
 
                 <View style={[styles.clothBody, { paddingBottom: footPadding }]}>
-                    <Text variant="sub">
-                        Your phone will probably lie to you about how bad this is for the
-                        battery. Àṣàrò needs to run in the background to keep its word.
-                    </Text>
+                    <View style={styles.speech}>
+                        <View>
+                            <Asaro ref={face} size={74} />
+                            {!awake && <Zzz />}
+                        </View>
+                        <Text variant="body" style={styles.speechText} accessibilityLiveRegion="polite">
+                            {awake
+                                ? 'I\u2019m awake! Thank you o.'
+                                : 'My eyes are closing o. Your phone keeps putting me to sleep, and it will tell you this is bad for the battery. It\u2019s lying. Let me stay awake.'}
+                        </Text>
+                    </View>
 
                     <View style={[styles.clothPanel, { backgroundColor: colors.backgroundSubtle }]}>
                         <Text variant="label" style={styles.clothPanelLabel}>What this is for</Text>
@@ -107,15 +136,17 @@ export default function BatteryOptimizationScreen() {
                         ))}
                     </View>
 
-                    <ThemedButton label="Fix Settings" variant="accent" block onPress={handleFixSettings} />
-                    {showAutoStart && (
-                        <ThemedButton
-                            label={`Allow Auto-Start (${oemAutoStartLabel()})`}
-                            variant="secondary"
-                            block
-                            onPress={handleAutoStart}
-                        />
-                    )}
+                    <View style={styles.foot}>
+                        <ThemedButton label="Fix Settings" variant="accent" block onPress={handleFixSettings} />
+                        {showAutoStart && (
+                            <ThemedButton
+                                label={`Allow Auto-Start (${oemAutoStartLabel()})`}
+                                variant="secondary"
+                                block
+                                onPress={handleAutoStart}
+                            />
+                        )}
+                    </View>
                 </View>
             </ScrollView>
         </Screen>
@@ -123,6 +154,10 @@ export default function BatteryOptimizationScreen() {
 }
 
 const styles = StyleSheet.create({
+    speech: { flexDirection: 'row', alignItems: 'center', gap: Spacing.lg },
+    speechText: { flex: 1 },
+    /** Buttons sit at the foot, clear of the face and the reasons. */
+    foot: { marginTop: 'auto', paddingTop: Spacing.xl, gap: Spacing.md },
     /** The band's eyebrow: `margin:0 0 10px`. */
     heroStep: { marginBottom: 10 },
     scrollContent: { flexGrow: 1 },

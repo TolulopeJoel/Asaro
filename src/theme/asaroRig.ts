@@ -13,7 +13,7 @@
  */
 
 export type AsaroAction =
-    | 'wave' | 'nod' | 'point' | 'thumbsUp' | 'celebrate' | 'shrug' | 'sigh' | 'think'
+    | 'wave' | 'nod' | 'point' | 'thumbsUp' | 'celebrate' | 'shrug' | 'sigh' | 'think' | 'doze'
     // Expressions: how he looks, one per permitted emoji.
     | 'deadpan' | 'sideEye' | 'smug' | 'sheepish' | 'laugh';
 
@@ -686,6 +686,30 @@ export const ASARO_ACTIONS: Record<AsaroAction, ActionTable> = {
     },
 
     /** A long inhale, then a longer let-go. The only action that goes sad. */
+    /** Nodding off: lids droop and the head sinks, then he jerks awake. Looped on the battery ask. */
+    doze: {
+        ms: 2600,
+        t: /*      */[0, 0.25, 0.5, 0.7, 0.78, 0.86, 1],
+        // Pauses on the jerk awake, the "huh?", not on the droop.
+        beat: 0.78,
+        tip: /*    */[0, 3, 6, 9, -3, -2, 0],
+        bob: /*    */[0, 3, 6, 9, -6, -3, 0],
+        sq: /*     */[1, 1, 0.99, 0.97, 1.05, 1.02, 1],
+        lean: /*   */[0, 0, 0, 0, 0, 0, 0],
+        browL: /*  */[0, 1, 2, 3, -7, -4, 0],
+        browR: /*  */[-4, -2, 0, 1, -9, -6, -4],
+        tiltL: /*  */[0, 0, 0, 0, -3, -2, 0],
+        tiltR: /*  */[-3, -2, -1, 0, 3, 2, -3],
+        lidL: /*   */[0.15, 0.45, 0.72, 0.9, 0, 0.05, 0.15],
+        lidR: /*   */[0.15, 0.45, 0.72, 0.9, 0, 0.05, 0.15],
+        squint: /* */[0, 0, 0, 0, 0, 0, 0],
+        mouthC: /* */[0.3, 0.15, 0.05, 0, -0.1, 0.1, 0.3],
+        mouthO: /* */[0, 0.05, 0.12, 0.2, 0.25, 0.1, 0],
+        crest: /*  */[0, 3, 6, 9, -10, -5, 0],
+        gx: /*     */[0, 0, 0, 0, 0, 0, 0],
+        gy: /*     */[0, 0.3, 0.5, 0.6, -0.1, 0, 0],
+        gw: /*     */[0, 0.5, 0.8, 0.9, 1, 0.6, 0],
+    },
     sigh: {
         ms: 1450,
         t: /*      */[0, 0.28, 0.42, 0.7, 0.88, 1],

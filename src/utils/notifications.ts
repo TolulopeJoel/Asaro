@@ -367,7 +367,10 @@ async function getDynamicNotificationTimes(): Promise<{ slots: Slot[]; dayStartM
   } catch (e) {
     console.error('[getDynamicNotificationTimes] Error reading sleep time:', e);
   }
+  return slotsFor(sleep);
+}
 
+function slotsFor(sleep: SleepTime): { slots: Slot[]; dayStartMin: number } {
   const afterMidnight = sleep.hour < 12;
   const sleepMin = sleep.hour * 60 + sleep.minute + (afterMidnight ? 24 * 60 : 0);
 
@@ -389,6 +392,21 @@ async function getDynamicNotificationTimes(): Promise<{ slots: Slot[]; dayStartM
     dayStartMin: afterMidnight ? sleep.hour * 60 + sleep.minute : 0,
   };
 }
+
+/** A full day's reminder times for a sleep time, as minutes after midnight: what onboarding shows. */
+export function reminderTimesFor(sleep: SleepTime): { name: string; totalMin: number }[] {
+  return slotsFor(sleep).slots.map(({ name, totalMin }) => ({ name, totalMin }));
+}
+
+/** Minutes after midnight as a 12-hour clock, e.g. "7:00 PM". */
+export function clockLabel(totalMin: number): string {
+  const m = ((totalMin % 1440) + 1440) % 1440;
+  const h = Math.floor(m / 60);
+  return `${h % 12 || 12}:${String(m % 60).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+}
+
+/** One real line per slot, gentle to theatrical, for the notification ask. None carries emoji: the face is on screen. */
+export const PREVIEW_REMINDERS = [middayReminders[0], eveningReminders[1], lateReminders[1], finalReminders[2]];
 
 function triggerTime(request: Notifications.NotificationRequest): Date | null {
   const trigger = request.trigger as any;

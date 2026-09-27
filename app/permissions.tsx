@@ -8,6 +8,7 @@ import { useFootPadding } from '@/src/hooks/useScreenInsets';
 import { useAlert } from '@/src/context/AlertContext';
 import { Asaro, Hero, Screen, Text, ThemedButton } from '@/src/components/ui';
 import { onboardingStepLabel } from '@/src/utils/onboardingSteps';
+import { NotificationPreview } from '@/src/components/onboarding/NotificationPreview';
 
 export default function PermissionsScreen() {
     const router = useRouter();
@@ -89,6 +90,9 @@ export default function PermissionsScreen() {
                         </Text>
                     </View>
 
+                    {/* What they'd actually get, landing at the times their sleep time sets. */}
+                    <NotificationPreview />
+
                     <View style={[styles.clothPanel, { backgroundColor: colors.backgroundSubtle }]}>
                         <Text variant="label" style={styles.clothPanelLabel}>What you&apos;ll get</Text>
                         {PROMISES.map((promise, i) => (
@@ -99,10 +103,12 @@ export default function PermissionsScreen() {
                         ))}
                     </View>
 
-                    <ThemedButton label="Allow Notifications" variant="accent" block onPress={handleRequestPermission} />
-                    {permissionStatus === 'denied' && (
-                        <ThemedButton label="Open Settings" variant="secondary" block onPress={handleOpenSettings} />
-                    )}
+                    <View style={styles.foot}>
+                        <ThemedButton label="Allow Notifications" variant="accent" block onPress={handleRequestPermission} />
+                        {permissionStatus === 'denied' && (
+                            <ThemedButton label="Open Settings" variant="secondary" block onPress={handleOpenSettings} />
+                        )}
+                    </View>
                 </View>
             </ScrollView>
         </Screen>
@@ -124,6 +130,8 @@ const styles = StyleSheet.create({
     intro: { flexDirection: 'row', alignItems: 'center', gap: Spacing.lg },
     introText: { flex: 1 },
     clothPanel: { padding: Spacing.layout.cardPadding },
+    /** Buttons sit at the foot, clear of the preview and the promises. */
+    foot: { marginTop: 'auto', paddingTop: Spacing.xl, gap: Spacing.md },
     clothPanelLabel: { marginBottom: 7 },
     /** `.cl-hr{margin:9px 0}` between the promises. */
     clothHr: { height: Spacing.border.hairline, marginVertical: 9 },

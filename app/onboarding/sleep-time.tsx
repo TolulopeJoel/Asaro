@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import {
     View,
     StyleSheet,
@@ -10,14 +10,35 @@ import { useRouter } from 'expo-router';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
-import { Hero, Screen, Text, ThemedButton, textStyle } from '@/src/components/ui';
+import {
+    Asaro, Hero, Screen, START_DELAY_MS, Text, ThemedButton, textStyle,
+    type AsaroAction, type AsaroHandle,
+} from '@/src/components/ui';
+import { Flip } from '@/src/components/onboarding/Flip';
 import { onboardingStepLabel } from '@/src/utils/onboardingSteps';
 import { useFootPadding } from '@/src/hooks/useScreenInsets';
-import { saveSleepTime, setupDailyNotifications } from '@/src/utils/notifications';
+import { clockLabel, reminderTimesFor, saveSleepTime, setupDailyNotifications } from '@/src/utils/notifications';
 
 // The same window Settings offers: 8 PM to midnight.
 const EARLIEST_HOUR = 8;
 const LATEST_HOUR = 11;
+
+/** What the sibling makes of each hour. */
+const REACTIONS: Record<number, { action: AsaroAction; line: string }> = {
+    8: { action: 'laugh', line: '8? You sleep like a baby o.' },
+    9: { action: 'nod', line: '9. Sensible. I like it.' },
+    10: { action: 'smug', line: 'Ehen. Normal person.' },
+    11: { action: 'sideEye', line: '11? So you\u2019re one of those night people.' },
+};
+const HOLD_MS = 2500;
+
+/** What each reminder is, in the order they escalate. */
+const SLOT_GIST: Record<string, string> = {
+    Midday: 'If you haven\u2019t read yet',
+    Evening: 'Still nothing?',
+    Late: 'Getting serious',
+    Final: 'Last warning',
+};
 
 export default function SleepTimeScreen() {
     const router = useRouter();
@@ -29,6 +50,30 @@ export default function SleepTimeScreen() {
 
     const minuteInputRef = useRef<TextInput>(null);
     const footPadding = useFootPadding();
+    const face = useRef<AsaroHandle>(null);
+
+    // The last complete, in-range time; a half-typed hour keeps showing it.
+    const h = parseInt(hour, 10);
+    const valid = h >= EARLIEST_HOUR && h <= LATEST_HOUR;
+    const [shownHour, setShownHour] = useState(10);
+    useEffect(() => { if (valid) setShownHour(h); }, [valid, h]);
+    const shownMinute = Math.min(59, parseInt(minute, 10) || 0);
+    const reaction = REACTIONS[shownHour];
+
+    const plan = useMemo(() => {
+        const sleep = { hour: shownHour + 12, minute: shownMinute };
+        return [
+            ...reminderTimesFor(sleep).map((slot) => ({ at: clockLabel(slot.totalMin), gist: SLOT_GIST[slot.name] ?? slot.name })),
+            { at: clockLabel(sleep.hour * 60 + sleep.minute), gist: 'I stop. Sleep well.' },
+        ];
+    }, [shownHour, shownMinute]);
+
+    // A new hour, a new reaction: held long enough to be seen, then let go.
+    useEffect(() => {
+        const start = setTimeout(() => face.current?.play(reaction.action, { hold: true }), START_DELAY_MS);
+        const release = setTimeout(() => face.current?.rest(), START_DELAY_MS + HOLD_MS);
+        return () => { clearTimeout(start); clearTimeout(release); };
+    }, [reaction]);
 
     const handleHourChange = (text: string) => {
         // Only allow numbers
@@ -142,9 +187,12 @@ export default function SleepTimeScreen() {
                     <Text variant="display" tone="onBand">What time{'\n'}do you sleep?</Text>
                 </Hero>
                 <View style={[styles.clothBody, { paddingBottom: footPadding }]}>
-                    <Text variant="sub">
-                        Reminders stop at this hour, so the app never nags you after bedtime.
-                    </Text>
+                    <View style={styles.speech}>
+                        <Asaro ref={face} size={74} />
+                        <Text variant="body" style={styles.speechText} accessibilityLiveRegion="polite">
+                            {reaction.line}
+                        </Text>
+                    </View>
 
                     <View style={[styles.clothPanel, { backgroundColor: colors.backgroundSubtle }]}>
                         <TextInput
@@ -188,12 +236,30 @@ export default function SleepTimeScreen() {
 
                     {error && <Text variant="bodySmall" tone="danger">{error}</Text>}
 
-                    <ThemedButton
-                        label="Continue"
-                        block
-                        disabled={!isFormValid}
-                        onPress={handleContinue}
-                    />
+                    {/* The real schedule for this time: each row flips when its time changes. */}
+                    <View style={[styles.planPanel, { backgroundColor: colors.backgroundSubtle }]}>
+                        <Text variant="label" style={styles.planLabel}>This is when I&apos;ll come</Text>
+                        {plan.map((row, i) => (
+                            <Flip key={row.gist} flipKey={row.at} delay={i * 120} stretch puff={false}>
+                                <View style={[
+                                    styles.planRow,
+                                    i > 0 && { borderTopColor: colors.border, borderTopWidth: Spacing.border.hairline },
+                                ]}>
+                                    <Text variant="reference" style={styles.planTime}>{row.at}</Text>
+                                    <Text variant="meta" tone="secondary">{row.gist}</Text>
+                                </View>
+                            </Flip>
+                        ))}
+                    </View>
+
+                    <View style={styles.foot}>
+                        <ThemedButton
+                            label="Continue"
+                            block
+                            disabled={!isFormValid}
+                            onPress={handleContinue}
+                        />
+                    </View>
                 </View>
             </ScrollView>
         </Screen>
@@ -212,6 +278,14 @@ const styles = StyleSheet.create({
         paddingHorizontal: Spacing.layout.screenPadding,
         gap: Spacing.layout.cardPadding,
     },
+    speech: { flexDirection: 'row', alignItems: 'center', gap: Spacing.lg },
+    speechText: { flex: 1 },
+    planPanel: { padding: Spacing.layout.cardPadding },
+    planLabel: { marginBottom: 7 },
+    planRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 9 },
+    planTime: { minWidth: 88 },
+    /** The button sits at the foot, clear of the schedule. */
+    foot: { marginTop: 'auto', paddingTop: Spacing.xl },
     /** One panel holding the whole time, so it reads as a time. */
     clothPanel: {
         flexDirection: 'row',
