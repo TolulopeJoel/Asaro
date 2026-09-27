@@ -1,8 +1,7 @@
-import { createJournalEntry, getEntryById, getTotalJournalCount, JournalEntryInput, updateJournalEntry } from '@/src/data/database';
+import { createJournalEntry, getEntryById, JournalEntryInput, updateJournalEntry } from '@/src/data/database';
 import { useTheme } from '@/src/theme/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '@/src/storage/storageKeys';
-import { getAuth } from '@react-native-firebase/auth';
 import { useLocalSearchParams, useNavigation, useRouter, Stack } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, BackHandler, KeyboardAvoidingView, Share, StyleSheet, View } from 'react-native';
@@ -10,7 +9,7 @@ import { ReflectionAnswers } from '../src/components/ReflectionForm';
 import { LoadingView } from '../src/components/LoadingView';
 import { BibleBook, getBookByName } from '../src/data/bibleBooks';
 import { cancelStudyReminder, setupDailyNotifications, scheduleReminderNotification } from '../src/utils/notifications';
-import { queueActivity, syncPendingActivities } from '../src/utils/syncActivities';
+import { emitMilestones, publishReading } from '@/src/groups/publish';
 import { useAlert } from '@/src/context/AlertContext';
 import { firstWithoutReason, isBlank } from '@/src/data/actionValidation';
 import { useObservation } from '@/src/insight/useObservation';
@@ -19,6 +18,7 @@ import { ObservationReceipts } from '@/src/components/insight/ObservationReceipt
 import { AnimatedModal } from '@/src/components/AnimatedModal';
 import { planItemChapters, setActionItemArchived } from '@/src/data/journalRepository';
 import { useAutoSave, useStepFade, Step, DraftData, ChapterRange, VerseRange, summariseDraft } from '../src/hooks/useEntryHooks';
+import { answeredCount } from '@/src/data/questions';
 import { BookStep, ChapterStep, ReflectionStep, SummaryStep } from '../src/components/entry/EntrySteps';
 import { Screen } from '@/src/components/ui';
 import { KEYBOARD_BEHAVIOR } from '../src/utils/keyboard';
@@ -328,6 +328,8 @@ export default function MeditationSessionScreen() {
 
             if (targetId) {
                 await updateJournalEntry(targetId, entryData);
+                void publishReading(targetId);
+                void emitMilestones();
                 if (isEditMode) {
                     void runPostSaveNotifications(targetId, false, answers.studyFurtherReminder, answers.studyFurther);
                     showAlert({ title: 'Updated', message: 'Your entry is saved.' });
@@ -342,36 +344,9 @@ export default function MeditationSessionScreen() {
                 const newId = await createJournalEntry(entryData);
                 setSavedEntryId(newId);
 
-                // Push the reading to the user's groups. Reflection text never leaves the phone unasked.
-                void (async () => {
-                    try {
-                        const user = getAuth().currentUser;
-                        if (!user) return;
-
-                        const chapters = entryData.chapterEnd && entryData.chapterEnd !== entryData.chapterStart
-                            ? `${entryData.chapterStart}-${entryData.chapterEnd}`
-                            : `${entryData.chapterStart}`;
-
-                        const resolvedName = user.displayName || user.email?.split('@')[0] || 'Reader';
-                        const totalEntries = await getTotalJournalCount();
-
-                        const activity = {
-                            userId: user.uid,
-                            activityId: `${user.uid}_journal_${newId}`,
-                            userName: resolvedName,
-                            bookName: entryData.bookName,
-                            chapters,
-                            type: 'journal_entry' as any,
-                            queuedAt: new Date().toISOString(),
-                            totalEntries,
-                        };
-
-                        await queueActivity(activity);
-                        await syncPendingActivities();
-                    } catch (error) {
-                        console.error('[addEntry] Background Firestore sync error:', error);
-                    }
-                })();
+                // Reflection text never leaves the phone unasked; groups get the passage and a count.
+                void publishReading(newId);
+                void emitMilestones();
 
                 await AsyncStorage.removeItem(STORAGE_KEYS.REFLECTION_DRAFT);
                 setReflectionAnswers(answers);
@@ -459,19 +434,8 @@ export default function MeditationSessionScreen() {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
     }), []);
 
-    /*
-     * What the save screen says under the passage. Counted from what was
-     * actually written rather than from the number of questions, so skipping
-     * one is reported honestly instead of being rounded up to five.
-     */
-    const answerCount = useMemo(() => {
-        const a = reflectionAnswers;
-        if (!a) return 0;
-        const written = [a.reflection1, a.reflection2, a.reflection4, a.studyFurther, a.notes]
-            .filter(text => !!text?.trim()).length;
-        const acted = a.actionItems?.some(item => item.action.trim()) ? 1 : 0;
-        return written + acted;
-    }, [reflectionAnswers]);
+    // Questions actually answered, so a skipped one is never rounded up to five.
+    const answerCount = useMemo(() => answeredCount(reflectionAnswers), [reflectionAnswers]);
 
     // ─── Step renders ─────────────────────────────────────────────────────────
 

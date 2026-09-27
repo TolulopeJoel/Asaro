@@ -38,6 +38,7 @@ import { LoadingView } from './LoadingView';
 import Animated from 'react-native-reanimated';
 import { Spacing } from '../theme/spacing';
 import { Asaro, Text, type AsaroAction } from './ui';
+import { practiceChanged } from '../groups/publish';
 
 type ViewMode = 'recent' | 'books' | 'bookDetail' | 'actions' | 'topics';
 
@@ -261,6 +262,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
                 const current = practiceProgressRef.current.get(item.id!);
                 if (current?.doneNow) await unmarkPracticeDone(item.id!);
                 else await markPracticeDone(item.id!);
+                void practiceChanged(item.id!);
             } else {
                 await toggleActionItemCompletion(item.id!, !item.is_completed);
             }

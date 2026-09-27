@@ -15,4 +15,12 @@ export const STORAGE_KEYS = {
     GROVE_MOMENTS: 'grove_moments',
     /** Set when the user chose to go on without lifting battery optimisation. */
     BATTERY_GATE_SKIPPED: 'battery_gate_skipped',
+    /** Group milestones already dealt with, per uid, so each is posted once. */
+    GROUP_MILESTONES: 'group_milestones',
+    /** Nudges sent, per uid, as `toUid_weekKey`. */
+    GROUP_NUDGES_SENT: 'group_nudges_sent',
+    /** Entries already added to each group's weekly reads counter, per uid. */
+    GROUP_COUNTED: 'group_counted',
+    /** `uid:YYYY-MM-DD` of the last daily groups upkeep. */
+    GROUP_UPKEEP: 'group_upkeep',
 } as const;

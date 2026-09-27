@@ -32,6 +32,7 @@ import { KeepMoment, forgetMoment, loadGrove, momentOnKeep } from '../grove/load
 import { wateredNote } from '../data/wateredNotes';
 import { getTodayDateString } from '../utils/dateUtils';
 import { useLocalDay } from './useLocalDay';
+import { practiceChanged } from '../groups/publish';
 
 const DAY_MS = 86_400_000;
 
@@ -191,6 +192,7 @@ export function useToday(enabled: boolean): Today {
         async (item: EnhancedActionItem) => {
             keptHere.current.add(item.id!);
             await markPracticeDone(item.id!);
+            void practiceChanged(item.id!);
             try {
                 const moment = await momentOnKeep(item);
                 if (moment) momentsHere.current.set(item.id!, moment);
@@ -214,6 +216,7 @@ export function useToday(enabled: boolean): Today {
             momentsHere.current.delete(item.id!);
             if (moment?.key) await forgetMoment(moment.key).catch(() => { });
             await unmarkPracticeDone(item.id!);
+            void practiceChanged(item.id!);
             load();
         },
         [load],

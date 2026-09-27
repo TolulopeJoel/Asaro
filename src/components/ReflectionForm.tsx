@@ -21,6 +21,7 @@ import { Button } from './Button';
 import { ScalePressable } from './ScalePressable';
 import { Text as UIText, ThemedButton } from './ui';
 import { ClothMark } from './ui/Cloth';
+import { REFLECTION_QUESTIONS, ReflectionQuestion, isAnswered } from '../data/questions';
 
 export interface ReflectionAnswers {
   reflection1: string;
@@ -138,10 +139,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
   })();
 
   /** Whether a given question (not necessarily the current one) has an answer on it. */
-  const isQuestionAnswered = (q: ReflectionQuestion) => {
-    if (q.isActionList) return answers.actionItems.some(i => i.action.trim().length > 0);
-    return ((answers[q.id as keyof ReflectionAnswers] as string) || '').trim().length > 0;
-  };
+  const isQuestionAnswered = (q: ReflectionQuestion) => isAnswered(answers, q.id);
 
   // Whether this page is answered — decides "Skip" or "Next". Plain const:
   // `isQuestionAnswered` is redefined every render anyway, so memoizing adds a
@@ -376,42 +374,6 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
 });
 
 ReflectionForm.displayName = 'ReflectionForm';
-
-interface ReflectionQuestion {
-  id: string;
-  question: string;
-  placeholder: string;
-  isActionList?: boolean;
-}
-
-const REFLECTION_QUESTIONS: ReflectionQuestion[] = [
-  {
-    id: 'reflection1',
-    question: 'What does this tell me about Jehovah?',
-    placeholder: '',
-  },
-  {
-    id: 'reflection2',
-    question: 'How does this section of the Scriptures contribute to the Bible’s message?',
-    placeholder: '',
-  },
-  {
-    id: 'reflection3',
-    question: 'How can I realistically apply this in my life?',
-    placeholder: '',
-    isActionList: true,
-  },
-  {
-    id: 'reflection4',
-    question: 'How can I use these verses to help others?',
-    placeholder: '',
-  },
-  {
-    id: 'studyFurther',
-    question: 'What would I like to study further?',
-    placeholder: '',
-  },
-];
 
 const styles = StyleSheet.create({
   container: {

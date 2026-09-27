@@ -5,6 +5,7 @@ import { STORAGE_KEYS } from '../storage/storageKeys';
 import { BibleBook } from '../data/bibleBooks';
 import { ReflectionAnswers } from '../components/ReflectionForm';
 import { formatRange, spell } from '../utils/reference';
+import { QUESTION_COUNT, answeredCount } from '../data/questions';
 
 export type Step = 'book' | 'chapter' | 'reflection' | 'summary';
 
@@ -37,9 +38,6 @@ export interface DraftSummary {
     answered: number;
     total: number;
 }
-
-/** The five questions the wizard asks, for the "three of five" line. */
-const QUESTION_COUNT = 5;
 
 /**
  * How far into an entry you got, as a line Home can print.
@@ -85,11 +83,7 @@ export function summariseDraft(json: string | null): DraftSummary | null {
         ? `${chapters.start}-${chapters.end}`
         : `${chapters.start}`;
 
-    const a = draft.reflectionAnswers;
-    const answered = a
-        ? [a.reflection1, a.reflection2, a.reflection4, a.studyFurther].filter(t => !!t?.trim()).length +
-          (a.actionItems?.some(item => item.action.trim()) ? 1 : 0)
-        : 0;
+    const answered = answeredCount(draft.reflectionAnswers);
 
     return {
         passage: formatRange(`${book} ${range}`),

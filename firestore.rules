@@ -1,0 +1,166 @@
+rules_version = '2';
+
+// design/GROUPS.md#security-rules. Each person writes only their own documents.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function me() { return request.auth.uid; }
+
+    function codePath(code) { return /databases/$(database)/documents/codes/$(code); }
+    function groupPath(gid) { return /databases/$(database)/documents/groups/$(gid); }
+    function memberPath(gid, uid) { return /databases/$(database)/documents/groups/$(gid)/members/$(uid); }
+
+    function isMember(gid) { return signedIn() && exists(memberPath(gid, me())); }
+    function hasRole(gid, roles) { return isMember(gid) && get(memberPath(gid, me())).data.role in roles; }
+
+    // Every document a person writes into a group has an id starting with their uid.
+    function ownId(id) { return signedIn() && id.matches('^' + me() + '_.+$'); }
+
+    // UTC−12 to UTC+14, in minutes east.
+    function validOffset(n) { return n is int && n >= -720 && n <= 840; }
+
+    // Sunday 00:00 to Monday 12:00 in the group's zone, by server time.
+    // Timestamp.dayOfWeek() runs 1 (Monday) to 7 (Sunday).
+    function isOpen(gid) {
+      let local = request.time + duration.value(get(groupPath(gid)).data.get('utcOffsetMinutes', 0), 'm');
+      return local.dayOfWeek() == 7 || (local.dayOfWeek() == 1 && local.hours() < 12);
+    }
+
+    // ─── Join codes ────────────────────────────────────────────────────────
+
+    match /codes/{code} {
+      allow get: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['groupId'])
+        && getAfter(groupPath(request.resource.data.groupId)).data.code == code
+        && (
+          // A new group, written in the same batch.
+          (!exists(groupPath(request.resource.data.groupId))
+            && getAfter(groupPath(request.resource.data.groupId)).data.createdBy == me())
+          // A new code for a group you run.
+          || hasRole(request.resource.data.groupId, ['creator', 'admin'])
+        );
+      allow delete: if hasRole(resource.data.groupId, ['creator', 'admin']);
+    }
+
+    // ─── Groups ────────────────────────────────────────────────────────────
+
+    match /groups/{gid} {
+      allow get: if isMember(gid);
+      allow create: if signedIn()
+        && request.resource.data.createdBy == me()
+        && request.resource.data.schema == 2
+        && request.resource.data.name is string && request.resource.data.name.size() > 0
+        && validOffset(request.resource.data.utcOffsetMinutes)
+        && getAfter(codePath(request.resource.data.code)).data.groupId == gid
+        && getAfter(memberPath(gid, me())).data.role == 'creator';
+      allow update: if hasRole(gid, ['creator', 'admin'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'description', 'code', 'utcOffsetMinutes'])
+        && validOffset(request.resource.data.utcOffsetMinutes)
+        && (request.resource.data.code == resource.data.code
+          || getAfter(codePath(request.resource.data.code)).data.groupId == gid);
+      allow delete: if hasRole(gid, ['creator']);
+
+      // Names and roles only: nothing on a member doc says what anyone did.
+      match /members/{uid} {
+        allow get: if isMember(gid) || (signedIn() && uid == me());
+        allow list: if isMember(gid);
+        allow create: if signedIn() && uid == me()
+          && request.resource.data.keys().hasOnly(['displayName', 'role', 'joinedAt', 'joinCode'])
+          && (
+          // Joining: only as a member, and only with a code that points here.
+          (request.resource.data.role == 'member'
+            && request.resource.data.joinCode is string
+            && get(codePath(request.resource.data.joinCode)).data.groupId == gid)
+          // Making the group, in the same batch.
+          || (request.resource.data.role == 'creator'
+            && !exists(groupPath(gid))
+            && getAfter(groupPath(gid)).data.createdBy == me())
+        );
+        allow update: if signedIn() && (
+          // Your own doc: your name only.
+          (uid == me() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName']))
+          // Only the creator changes roles, and nothing else on someone's doc.
+          || (hasRole(gid, ['creator'])
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role'])
+            && request.resource.data.role in ['creator', 'admin', 'member'])
+        );
+        allow delete: if signedIn() && (
+          uid == me()
+          || (hasRole(gid, ['creator', 'admin']) && resource.data.role != 'creator')
+        );
+      }
+
+      // Members read these only while the group is open; you can read your own
+      // any day. You write only your own, under your own id. Deleting your own
+      // needs no membership, so someone removed can clean up.
+      function weekRead(docId) {
+        return isMember(gid) && (isOpen(gid) || ownId(docId) || resource.data.userId == me());
+      }
+      function ownWrite(docId) {
+        return isMember(gid) && ownId(docId) && request.resource.data.userId == me();
+      }
+
+      match /readings/{docId} {
+        allow read: if weekRead(docId);
+        allow create, update: if ownWrite(docId);
+        allow delete: if ownId(docId);
+      }
+      match /shares/{docId} {
+        allow read: if weekRead(docId);
+        allow create, update: if ownWrite(docId);
+        allow delete: if ownId(docId);
+      }
+      match /practices/{docId} {
+        allow read: if weekRead(docId);
+        allow create, update: if ownWrite(docId);
+        allow delete: if ownId(docId);
+      }
+      match /milestones/{docId} {
+        allow read: if weekRead(docId);
+        allow create, update: if ownWrite(docId);
+        allow delete: if ownId(docId);
+      }
+      match /weeks/{docId} {
+        allow read: if weekRead(docId);
+        allow create, update: if ownWrite(docId)
+          && request.resource.data.keys().hasOnly(['userId', 'weekKey', 'days'])
+          && docId == me() + '_' + request.resource.data.weekKey;
+        allow delete: if ownId(docId);
+      }
+
+      // The whole-group reads for a week, readable any day. It names no one,
+      // and changes only by one at a time.
+      match /weekCounts/{weekKey} {
+        allow read: if isMember(gid);
+        allow create: if isMember(gid)
+          && weekKey.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+          && request.resource.data.keys().hasOnly(['reads'])
+          && request.resource.data.reads == 1;
+        allow update: if isMember(gid)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reads'])
+          && (request.resource.data.reads == resource.data.reads + 1
+            || (request.resource.data.reads == resource.data.reads - 1 && request.resource.data.reads >= 0));
+      }
+    }
+
+    // ─── People ────────────────────────────────────────────────────────────
+
+    match /users/{uid} {
+      allow read, write: if signedIn() && uid == me();
+
+      // Private to the person nudged. The fixed id `{fromUid}_{weekKey}` and
+      // no update rule make it one per sender per week.
+      match /nudges/{nid} {
+        allow read, delete: if signedIn() && uid == me();
+        allow create: if signedIn() && uid != me()
+          && nid.matches('^' + me() + '_[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+          && request.resource.data.fromUid == me()
+          && request.resource.data.groupId is string
+          && exists(memberPath(request.resource.data.groupId, me()))
+          && exists(memberPath(request.resource.data.groupId, uid));
+      }
+    }
+  }
+}

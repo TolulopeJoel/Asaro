@@ -730,7 +730,7 @@ export default function LibraryScreen() {
             ) : tab === 'echoes' ? (
                 <EchoesContent />
             ) : tab === 'themes' ? (
-                <ThemesContent onPatternCountChange={setThemeCount} />
+                <ThemesContent onPatternCountChange={setThemeCount} searchQuery={journalSearch} />
             ) : (
                 <JournalContent
                     viewMode={tab}

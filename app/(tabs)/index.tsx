@@ -19,6 +19,7 @@ import { LoadingView } from '@/src/components/LoadingView';
 import { Share } from 'react-native';
 import { useAlert } from '@/src/context/AlertContext';
 import { deleteJournalEntry } from '@/src/data/database';
+import { emitMilestones, unpublishReading } from '@/src/groups/publish';
 import { cancelStudyReminder } from '@/src/utils/notifications';
 import { fetchWeeklyStreakData, DayStatus } from '@/src/components/WeeklyStreak';
 import { fetchFlashbackData } from '@/src/components/Flashback';
@@ -323,6 +324,8 @@ export default function Index() {
                         setIsDeleting(true);
                         try {
                             await deleteJournalEntry(entry.id!);
+                            void unpublishReading(entry.id!);
+                            void emitMilestones();
                             void cancelStudyReminder(entry.id!).catch(() => {});
                             setIsDetailModalVisible(false);
                             loadHomeData(); // Refresh data

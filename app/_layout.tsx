@@ -12,7 +12,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { AppState, View } from 'react-native';
-import { syncPendingActivities } from '@/src/utils/syncActivities';
+import { startGroups } from '@/src/groups/publish';
 
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '@/src/theme/ThemeContext';
@@ -96,6 +96,7 @@ export default function RootLayout() {
           return;
         }
         setDbInitialized(true);
+        startGroups();
 
         /*
          * Phase 0 plumbing check. Dev only, fire-and-forget so it cannot
@@ -150,7 +151,6 @@ export default function RootLayout() {
     if (!dbInitialized) return;
     const subscription = AppState.addEventListener('change', (nextState) => {
       if (nextState !== 'active') return;
-      syncPendingActivities();
       // The app coming back is also the first moment we can notice that the OS
       // threw the schedule away while we were gone.
       ensureNotificationsArmed().catch(error =>

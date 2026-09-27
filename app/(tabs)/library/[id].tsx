@@ -4,6 +4,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter, Stack } from 'expo-rou
 import { useTheme } from '@/src/theme/ThemeContext';
 import { JournalEntryDetail } from '@/src/components/JournalEntryDetail';
 import { JournalEntry, getEntryById, deleteJournalEntry } from '@/src/data/database';
+import { emitMilestones, unpublishReading } from '@/src/groups/publish';
 import { cancelStudyReminder } from '@/src/utils/notifications';
 import { LoadingView } from '@/src/components/LoadingView';
 import { Share } from 'react-native';
@@ -70,6 +71,8 @@ export default function JournalEntryDetailScreen() {
                         setIsDeleting(true);
                         try {
                             await deleteJournalEntry(entry.id!);
+                            void unpublishReading(entry.id!);
+                            void emitMilestones();
                             void cancelStudyReminder(entry.id!).catch(() => {});
                             router.replace('/library');
                         } catch (error) {
