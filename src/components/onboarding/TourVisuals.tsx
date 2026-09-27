@@ -4,6 +4,7 @@
  */
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
+import Animated, { LinearTransition } from 'react-native-reanimated';
 
 import { READING_PLAN_DATA } from '../../data/readingPlanData';
 import { REFLECTION_QUESTIONS } from '../../data/questions';
@@ -14,16 +15,16 @@ import { Tree } from '../grove/Tree';
 import { Text } from '../ui';
 import { Flip } from './Flip';
 
-/** Counts up every `ms`, starting after `offset`, for as long as it is mounted. */
-function useTick(ms: number, offset = 0) {
+/** Counts up every `ms`, starting after `offset`, and stops at `limit` if given. */
+function useTick(ms: number, offset = 0, limit = Infinity) {
     const [tick, setTick] = useState(0);
     useEffect(() => {
         let interval: ReturnType<typeof setInterval> | undefined;
         const start = setTimeout(() => {
-            interval = setInterval(() => setTick((t) => t + 1), ms);
+            interval = setInterval(() => setTick((t) => Math.min(t + 1, limit)), ms);
         }, offset);
         return () => { clearTimeout(start); clearInterval(interval); };
-    }, [ms, offset]);
+    }, [ms, offset, limit]);
     return tick;
 }
 
@@ -51,16 +52,43 @@ function Readings() {
     );
 }
 
+/** A new question every 2 s, so the fifth lands just before the tour's 10 s countdown ends. */
+const QUESTION_MS = 2000;
+const STACK_CARD_H = 128;
+/** How much of each earlier card shows below the one on top of it. */
+const PEEK = 10;
+const STEP_IN = 6;
+
+/** The five questions piling up: each flips in on top, the earlier ones settle beneath with their edges showing. */
 function Questions() {
-    const tick = useTick(2400, ENTER_MS);
-    const i = tick % REFLECTION_QUESTIONS.length;
+    const { colors } = useTheme();
+    const total = REFLECTION_QUESTIONS.length;
+    const shown = useTick(QUESTION_MS, ENTER_MS, total - 1) + 1;
     return (
-        <Flip flipKey={i} delay={ENTER_MS} stretch>
-            <Card>
-                <Text variant="label">Question {i + 1} of {REFLECTION_QUESTIONS.length}</Text>
-                <Text variant="subtitle">{REFLECTION_QUESTIONS[i].question}</Text>
-            </Card>
-        </Flip>
+        <View style={[styles.stack, { height: STACK_CARD_H + (total - 1) * PEEK }]}>
+            {REFLECTION_QUESTIONS.slice(0, shown).map((q, i) => {
+                const depth = shown - 1 - i;
+                return (
+                    <Animated.View
+                        key={q.question}
+                        layout={LinearTransition.springify().damping(14)}
+                        importantForAccessibility={depth > 0 ? 'no-hide-descendants' : 'auto'}
+                        style={[styles.stacked, { top: depth * PEEK, left: depth * STEP_IN, right: depth * STEP_IN, zIndex: i }]}
+                    >
+                        <Flip flipKey={q.question} delay={i === 0 ? ENTER_MS : 0} stretch>
+                            <View style={[
+                                styles.card,
+                                styles.stackCard,
+                                { backgroundColor: colors.backgroundSubtle, borderColor: colors.border },
+                            ]}>
+                                <Text variant="label">Question {i + 1} of {total}</Text>
+                                <Text variant="subtitle">{q.question}</Text>
+                            </View>
+                        </Flip>
+                    </Animated.View>
+                );
+            })}
+        </View>
     );
 }
 
@@ -120,6 +148,9 @@ export type TourVisual = keyof typeof TOUR_VISUALS;
 const styles = StyleSheet.create({
     /** `.cl-panel{padding:18px}` */
     card: { padding: Spacing.layout.cardPadding, gap: Spacing.xs, minHeight: 112 },
+    stack: { alignSelf: 'stretch' },
+    stacked: { position: 'absolute' },
+    stackCard: { height: STACK_CARD_H, borderWidth: Spacing.border.hairline },
     trees: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', gap: Spacing.md },
     tree: { alignItems: 'center', gap: Spacing.xs },
     row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.sm },

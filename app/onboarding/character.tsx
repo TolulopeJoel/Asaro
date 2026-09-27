@@ -69,23 +69,24 @@ export default function CharacterScreen() {
 
     // Tapping a face is the answer: it reacts, then the check opens.
     const pickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    // Between the tap and the check opening: the choice is made, so the replay goes.
+    const [reacting, setReacting] = useState(false);
     useEffect(() => () => { if (pickTimer.current) clearTimeout(pickTimer.current); }, []);
 
     const pick = (look: AsaroLook) => {
         if (pickTimer.current) return;
         setPicked(look);
+        setReacting(true);
         faces.current[look]?.play('wave');
         faces.current[look === 'male' ? 'female' : 'male']?.play('sigh');
         pickTimer.current = setTimeout(() => {
             pickTimer.current = null;
+            setReacting(false);
             setConfirming(true);
         }, PICK_MS);
     };
 
     const replay = () => {
-        if (pickTimer.current) clearTimeout(pickTimer.current);
-        pickTimer.current = null;
-        setConfirming(false);
         setPicked(null);
         setBeat(0);
     };
@@ -203,7 +204,7 @@ export default function CharacterScreen() {
                             </View>
                         </View>
 
-                        {choosing && (
+                        {choosing && !reacting && (
                             <View style={styles.foot}>
                                 <ThemedButton label="Wait, what did you two say?" variant="secondary" block onPress={replay} />
                             </View>
