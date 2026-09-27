@@ -14,6 +14,8 @@ import { useFootPadding } from '@/src/hooks/useScreenInsets';
 
 /** How long a page's expression is held before the face relaxes back to its idle life. */
 const HOLD_MS = 2500;
+/** Seconds before a page's button can be pressed, so every page is actually seen. */
+const WAIT_S = 10;
 
 /** What the app is, told by the chosen sibling. Keep in step with design/all-screens.html#tour. */
 const PAGES: { title: string; action: AsaroAction; hold: boolean; visual: TourVisual; body: (name: string) => string }[] = [
@@ -54,11 +56,27 @@ export default function TourScreen() {
     const { displayName } = useAuth();
     const [page, setPage] = useState(0);
     const face = useRef<AsaroHandle>(null);
+    // Furthest page whose countdown has finished; going back never waits again.
+    const [unlocked, setUnlocked] = useState(-1);
+    const [left, setLeft] = useState(WAIT_S);
 
     const last = page === PAGES.length - 1;
     const current = PAGES[page];
     const Visual = TOUR_VISUALS[current.visual];
     const done = () => router.push('/onboarding/sleep-time');
+    // The count resets with the page, in one update, so a new page never opens unlocked.
+    const next = () => {
+        if (page + 1 > unlocked) setLeft(WAIT_S);
+        setPage(page + 1);
+    };
+
+    const waiting = page > unlocked;
+    useEffect(() => {
+        if (!waiting) return;
+        const id = setInterval(() => setLeft((n) => Math.max(0, n - 1)), 1000);
+        return () => clearInterval(id);
+    }, [page, waiting]);
+    useEffect(() => { if (waiting && left === 0) setUnlocked(page); }, [waiting, left, page]);
 
     // Each page's face reacts, holds long enough to be seen, then lets go.
     useEffect(() => {
@@ -108,9 +126,10 @@ export default function TourScreen() {
                         </View>
 
                         <ThemedButton
-                            label={last ? 'I’m ready' : 'Next'}
+                            label={waiting ? `Wait o \u00b7 ${left}` : last ? 'I’m ready' : 'Next'}
                             block
-                            onPress={last ? done : () => setPage(page + 1)}
+                            disabled={waiting}
+                            onPress={last ? done : next}
                         />
                     </View>
                 </View>
