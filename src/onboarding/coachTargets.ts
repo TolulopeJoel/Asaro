@@ -4,7 +4,14 @@
  */
 import type { View } from 'react-native';
 
-export type CoachTarget = 'reading' | 'add' | 'settings' | 'week' | 'progress' | 'tab-library' | 'tab-groups';
+export type CoachTarget =
+    | 'reading' | 'add' | 'settings' | 'week' | 'progress' | 'tab-library' | 'tab-groups'
+    | 'home-observation' | 'home-today'
+    | 'library-tabs' | 'library-search' | 'library-entry' | 'library-books' | 'library-practice' | 'library-question'
+    | 'library-themes'
+    | 'stats-tiles' | 'stats-calendar' | 'stats-grove' | 'stats-rooted'
+    | 'land-field' | 'land-tree' | 'land-card'
+    | 'groups-row' | 'group-days' | 'group-share' | 'group-practice' | 'group-members';
 
 export interface Rect { x: number; y: number; width: number; height: number }
 
@@ -33,4 +40,30 @@ export function measureTarget(name: CoachTarget): Promise<Rect | null> {
             resolve(width > 0 && height > 0 ? { x, y, width, height } : null);
         });
     });
+}
+
+/**
+ * The screen on show brings a target into view by scrolling its own list. Each
+ * screen that has walk stops registers one while focused; the walk calls it.
+ */
+type Scroller = (rect: Rect) => Promise<void>;
+let scroller: Scroller | null = null;
+
+export function setCoachScroller(next: Scroller | null) {
+    scroller = next;
+}
+
+export async function revealTarget(rect: Rect): Promise<void> {
+    if (scroller) await scroller(rect);
+}
+
+/** Wait for a target to be laid out on a screen just navigated to. Null if it never shows. */
+export async function waitForTarget(name: CoachTarget, timeoutMs = 3000): Promise<Rect | null> {
+    const until = Date.now() + timeoutMs;
+    while (Date.now() < until) {
+        const rect = await measureTarget(name);
+        if (rect) return rect;
+        await new Promise(resolve => setTimeout(resolve, 120));
+    }
+    return null;
 }
