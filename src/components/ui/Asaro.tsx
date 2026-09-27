@@ -33,8 +33,10 @@ const AEllipse = Animated.createAnimatedComponent(Ellipse);
 export type { AsaroAction, AsaroLook, AsaroMood };
 
 export interface AsaroHandle {
-    /** Play a performance once. Interrupts anything already running. */
-    play: (action: AsaroAction) => void;
+    /** Play a performance once, or stop on its peak with `hold`. Interrupts anything already running. */
+    play: (action: AsaroAction, options?: { hold?: boolean }) => void;
+    /** Settle from a held pose back to rest. */
+    rest: () => void;
 }
 
 export interface AsaroProps {
@@ -47,6 +49,8 @@ export interface AsaroProps {
     hold?: boolean;
     /** Where to look, each axis −1…1. Omit for his idle watch. */
     lookAt?: { x: number; y: number };
+    /** Throw an action's sideways gaze and lean to the left instead, for a face on the right of a pair. */
+    mirror?: boolean;
     /** How he holds his face between actions. Defaults to `knowing`. */
     mood?: AsaroMood;
     /** Crop to the face and drop the hair. Defaults on below 48px. */
@@ -292,7 +296,7 @@ function lashTurn(l: number) {
 const lidLinePath = (cx: number) => `M${cx - 27} ${LID_EDGE} Q${cx} ${LID_EDGE + E.lid.bow} ${cx + 27} ${LID_EDGE}`;
 
 function AsaroBase(
-    { size = 96, look, action, hold = false, lookAt, mood = 'knowing', bust, label }: AsaroProps,
+    { size = 96, look, action, hold = false, lookAt, mirror = false, bust, mood = 'knowing', label }: AsaroProps,
     ref: React.Ref<AsaroHandle>,
 ) {
     const chosen = useAsaroLook();
@@ -328,6 +332,8 @@ function AsaroBase(
     const prog = useSharedValue(0);
     /** Index into ACTION_NAMES, or −1 when idle. */
     const act = useSharedValue(-1);
+    const dir = useSharedValue(mirror ? -1 : 1);
+    useEffect(() => { dir.value = mirror ? -1 : 1; }, [mirror, dir]);
     /** 0 knowing … 1 sincere, eased. */
     const sincerity = useSharedValue(mood === 'sincere' ? 1 : 0);
 
@@ -470,8 +476,28 @@ function AsaroBase(
         }, (reduceMotion ? A.ms + BEAT_MS : A.ms * BEAT_T[i] + BEAT_MS + returnMs(i)) + delay + 40);
     }, [act, prog, reduceMotion]);
 
-    // A replay is a reaction, never a held state.
-    useImperativeHandle(ref, () => ({ play: (name) => play(name, false, 0) }), [play]);
+    const rest = useCallback(() => {
+        const i = act.value;
+        if (i < 0) return;
+        if (actionTimer.current) clearTimeout(actionTimer.current);
+        cancelAnimation(prog);
+        if (reduceMotion) {
+            act.value = -1;
+            actionTimer.current = null;
+            return;
+        }
+        const ms = returnMs(i);
+        prog.value = withTiming(1, { duration: ms, easing: Easing.out(Easing.cubic) });
+        actionTimer.current = setTimeout(() => {
+            act.value = -1;
+            actionTimer.current = null;
+        }, ms + 40);
+    }, [act, prog, reduceMotion]);
+
+    useImperativeHandle(ref, () => ({
+        play: (name, options) => play(name, options?.hold ?? false, 0),
+        rest,
+    }), [play, rest]);
     useEffect(() => { if (action) play(action, hold, START_DELAY_MS); }, [action, hold, play]);
 
     // ---- animated channels -------------------------------------------------
@@ -483,7 +509,7 @@ function AsaroBase(
         const p = prog.value;
         const sq = (1 + br * 0.016) * ch(i, p, C_SQ, REST.sq);
         return mat(
-            ch(i, p, C_LEAN, REST.lean),
+            dir.value * ch(i, p, C_LEAN, REST.lean),
             br * 2.2 + ch(i, p, C_BOB, REST.bob),
             sway * 1.2 + ch(i, p, C_TIP, REST.tip),
             // Squash preserves area: as it flattens it also widens.
@@ -586,7 +612,7 @@ function AsaroBase(
         const p = prog.value;
         const w = ch(i, p, C_GW, REST.gw);
         return mat(
-            (gazeX.value * (1 - w) + ch(i, p, C_GX, REST.gx) * w) * E.travelX,
+            (gazeX.value * (1 - w) + dir.value * ch(i, p, C_GX, REST.gx) * w) * E.travelX,
             (gazeY.value * (1 - w) + ch(i, p, C_GY, REST.gy) * w) * E.travelY,
         );
     });
@@ -596,7 +622,7 @@ function AsaroBase(
         const p = prog.value;
         const w = ch(i, p, C_GW, REST.gw);
         return mat(
-            (gazeX.value * (1 - w) + ch(i, p, C_GX, REST.gx) * w) * E.travelX,
+            (gazeX.value * (1 - w) + dir.value * ch(i, p, C_GX, REST.gx) * w) * E.travelX,
             (gazeY.value * (1 - w) + ch(i, p, C_GY, REST.gy) * w) * E.travelY,
         );
     });

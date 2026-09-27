@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { BackHandler, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { useTheme } from '@/src/theme/ThemeContext';
@@ -13,27 +13,29 @@ import { onboardingStepLabel } from '@/src/utils/onboardingSteps';
 import { setAsaroLook } from '@/src/storage/asaroLook';
 import { useFootPadding } from '@/src/hooks/useScreenInsets';
 
-type Speaker = AsaroLook | 'both';
-
 /** The siblings' quarrel. Keep in step with design/asaro-face.html#quarrel. */
-const BEATS: { who: Speaker; action: AsaroAction; line: string }[] = [
+const BEATS: { who: AsaroLook; action: AsaroAction; line: string }[] = [
     { who: 'male', action: 'smug', line: 'Ehen, you’re here. I’ll be the one checking up on you.' },
     { who: 'female', action: 'sideEye', line: 'You? You can’t even remember your own reading o.' },
     { who: 'male', action: 'deadpan', line: 'Interesting.' },
     { who: 'female', action: 'smug', line: 'Don’t mind him. I’m the one who keeps receipts.' },
     { who: 'male', action: 'sigh', line: 'She’s been saying that since we were small.' },
-    { who: 'both', action: 'nod', line: 'Okay o. You choose.' },
+    { who: 'male', action: 'nod', line: 'Okay o. Brothers, you\u2019re with me.' },
+    { who: 'female', action: 'smug', line: 'And sisters are with me. Obviously.' },
 ];
 
-/** Long enough to read the line, with a floor for the one-word verdicts. */
-const beatMs = (line: string) => Math.max(1800, 900 + line.length * 45);
+/** Long enough to read the line, with a floor so a one-word verdict's face still lands. */
+const beatMs = (line: string) => Math.max(2200, 900 + line.length * 45);
+
+/** Faces that are the message: held for the whole line, so the reader looks up and still sees them. */
+const HELD: ReadonlySet<AsaroAction> = new Set(['deadpan', 'sideEye', 'smug', 'sheepish']);
 
 const LOOK_CHOICES: { look: AsaroLook; label: string }[] = [
-    { look: 'male', label: 'Him' },
-    { look: 'female', label: 'Her' },
+    { look: 'male', label: 'Brother' },
+    { look: 'female', label: 'Sister' },
 ];
 
-/** The first choice anyone makes: which sibling walks them through the rest. */
+/** The first question anyone answers: brother or sister, which decides whose Àṣàrò they get. */
 export default function CharacterScreen() {
     const router = useRouter();
     const { colors } = useTheme();
@@ -42,6 +44,7 @@ export default function CharacterScreen() {
     const [beat, setBeat] = useState(0);
     // Nothing preselected, so the choice is always the user's own.
     const [picked, setPicked] = useState<AsaroLook | null>(null);
+    const [confirming, setConfirming] = useState(false);
 
     const choosing = beat >= BEATS.length;
     const current = choosing ? null : BEATS[beat];
@@ -49,10 +52,11 @@ export default function CharacterScreen() {
     const advance = useCallback(() => setBeat((b) => Math.min(b + 1, BEATS.length)), []);
 
     useEffect(() => {
-        if (!current) return;
         for (const look of ['male', 'female'] as const) {
-            if (current.who === look || current.who === 'both') faces.current[look]?.play(current.action);
+            if (current?.who === look) faces.current[look]?.play(current.action, { hold: HELD.has(current.action) });
+            else faces.current[look]?.rest();
         }
+        if (!current) return;
         const id = setTimeout(advance, beatMs(current.line));
         return () => clearTimeout(id);
     }, [current, advance]);
@@ -63,7 +67,17 @@ export default function CharacterScreen() {
         faces.current[look === 'male' ? 'female' : 'male']?.play('sigh');
     };
 
-    const handleContinue = async () => {
+    // Back from the check returns to the choice, not out of onboarding.
+    useEffect(() => {
+        if (!confirming) return;
+        const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+            setConfirming(false);
+            return true;
+        });
+        return () => sub.remove();
+    }, [confirming]);
+
+    const handleConfirm = async () => {
         if (!picked) return;
         try {
             await setAsaroLook(picked);
@@ -73,15 +87,13 @@ export default function CharacterScreen() {
         }
     };
 
-    /** A listener glares at whoever is talking; a speaker, and both at the end, hold the reader. */
+    /** A listener glares at whoever is talking; the speaker holds the reader. */
     const gazeFor = (look: AsaroLook) => {
-        if (!current || current.who === look || current.who === 'both') return undefined;
+        if (!current || current.who === look) return undefined;
         return { x: look === 'male' ? 1 : -1, y: 0 };
     };
 
-    const bubbleAlign = !current || current.who === 'both'
-        ? 'center'
-        : current.who === 'male' ? 'flex-start' : 'flex-end';
+    const bubbleAlign = !current ? 'stretch' : current.who === 'male' ? 'flex-start' : 'flex-end';
 
     return (
         <Screen edges={[]}>
@@ -91,70 +103,84 @@ export default function CharacterScreen() {
                     <Text variant="display" tone="onBand">Meet Àṣàrò</Text>
                 </Hero>
 
-                <View style={[styles.clothBody, { paddingBottom: footPadding }]}>
-                    <Pressable
-                        onPress={choosing ? undefined : advance}
-                        disabled={choosing}
-                        accessibilityHint={choosing ? undefined : 'Next line'}
-                        style={styles.stage}
-                    >
-                        <View style={[styles.bubbleRow, { alignItems: bubbleAlign }]}>
-                            {current ? (
-                                <View style={[styles.bubble, { backgroundColor: colors.backgroundSubtle }]}>
-                                    <Text variant="body" accessibilityLiveRegion="polite">{current.line}</Text>
-                                    <View style={[
-                                        styles.tail,
-                                        { backgroundColor: colors.backgroundSubtle },
-                                        current.who === 'male' && styles.tailLeft,
-                                        current.who === 'female' && styles.tailRight,
-                                        current.who === 'both' && styles.tailCentre,
-                                    ]} />
-                                </View>
-                            ) : (
-                                <Text variant="sub" style={styles.prompt}>
-                                    Pick who you&apos;ll be reading with. They&apos;ll be the one checking up on you.
-                                </Text>
-                            )}
+                {confirming && picked ? (
+                    <View style={[styles.clothBody, { paddingBottom: footPadding }]}>
+                        <View style={styles.check}>
+                            <Asaro size={124} look={picked} action="think" hold />
+                            <Text variant="title" style={styles.checkText}>
+                                So you&apos;re a {picked === 'male' ? 'man' : 'woman'}?
+                            </Text>
+                            <Text variant="sub" style={styles.checkText}>
+                                Don&apos;t lie, you know who is watching.
+                            </Text>
                         </View>
-
-                        <View style={styles.looks} accessibilityRole={choosing ? 'radiogroup' : undefined}>
-                            {LOOK_CHOICES.map(({ look, label }) => {
-                                const on = look === picked;
-                                return (
-                                    <ScalePressable
-                                        key={look}
-                                        onPress={() => pick(look)}
-                                        disabled={!choosing}
-                                        accessibilityRole="radio"
-                                        accessibilityState={{ checked: on, disabled: !choosing }}
-                                        accessibilityLabel={label}
-                                        style={[styles.lookChoice, { opacity: picked && !on ? 0.45 : 1 }]}
-                                    >
+                        <ThemedButton label="Yes, I am" block onPress={handleConfirm} />
+                        <ThemedButton label="Hmm, let me change" variant="secondary" block onPress={() => setConfirming(false)} />
+                    </View>
+                ) : (
+                    <View style={[styles.clothBody, { paddingBottom: footPadding }]}>
+                        <Pressable
+                            onPress={choosing ? undefined : advance}
+                            disabled={choosing}
+                            accessibilityHint={choosing ? undefined : 'Next line'}
+                            style={styles.stage}
+                        >
+                            <View style={[styles.bubbleRow, { alignItems: bubbleAlign }]}>
+                                {current ? (
+                                    <View style={[styles.bubble, { backgroundColor: colors.backgroundSubtle }]}>
+                                        <Text variant="body" accessibilityLiveRegion="polite">{current.line}</Text>
                                         <View style={[
-                                            styles.lookRing,
-                                            { borderColor: on ? colors.textPrimary : 'transparent' },
-                                        ]}>
-                                            <Asaro
-                                                ref={(h) => { faces.current[look] = h; }}
-                                                size={120}
-                                                look={look}
-                                                mirror={look === 'female'}
-                                                lookAt={gazeFor(look)}
-                                            />
-                                        </View>
-                                        <Text variant="meta" tone={on ? 'primary' : 'secondary'}>{label}</Text>
-                                    </ScalePressable>
-                                );
-                            })}
-                        </View>
-                    </Pressable>
+                                            styles.tail,
+                                            { backgroundColor: colors.backgroundSubtle },
+                                            current.who === 'male' ? styles.tailLeft : styles.tailRight,
+                                        ]} />
+                                    </View>
+                                ) : (
+                                    <Text variant="sub" style={styles.prompt}>
+                                        Are you a brother or a sister?
+                                    </Text>
+                                )}
+                            </View>
 
-                    {choosing ? (
-                        <ThemedButton label="Continue" block disabled={!picked} onPress={handleContinue} />
-                    ) : (
-                        <ThemedButton label="Skip" variant="secondary" block onPress={() => setBeat(BEATS.length)} />
-                    )}
-                </View>
+                            <View style={styles.looks} accessibilityRole={choosing ? 'radiogroup' : undefined}>
+                                {LOOK_CHOICES.map(({ look, label }) => {
+                                    const on = look === picked;
+                                    return (
+                                        <ScalePressable
+                                            key={look}
+                                            onPress={() => pick(look)}
+                                            disabled={!choosing}
+                                            accessibilityRole="radio"
+                                            accessibilityState={{ checked: on, disabled: !choosing }}
+                                            accessibilityLabel={label}
+                                            style={[styles.lookChoice, { opacity: picked && !on ? 0.45 : 1 }]}
+                                        >
+                                            <View style={[
+                                                styles.lookRing,
+                                                { borderColor: on ? colors.textPrimary : 'transparent' },
+                                            ]}>
+                                                <Asaro
+                                                    ref={(h) => { faces.current[look] = h; }}
+                                                    size={120}
+                                                    look={look}
+                                                    mirror={look === 'female'}
+                                                    lookAt={gazeFor(look)}
+                                                />
+                                            </View>
+                                            <Text variant="meta" tone={on ? 'primary' : 'secondary'}>{label}</Text>
+                                        </ScalePressable>
+                                    );
+                                })}
+                            </View>
+                        </Pressable>
+
+                        {choosing ? (
+                            <ThemedButton label="Continue" block disabled={!picked} onPress={() => setConfirming(true)} />
+                        ) : (
+                            <ThemedButton label="Skip" variant="secondary" block onPress={() => setBeat(BEATS.length)} />
+                        )}
+                    </View>
+                )}
             </ScrollView>
         </Screen>
     );
@@ -187,8 +213,9 @@ const styles = StyleSheet.create({
     },
     tailLeft: { left: 64 },
     tailRight: { right: 64 },
-    tailCentre: { alignSelf: 'center' },
     prompt: { textAlign: 'center' },
+    check: { alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.lg },
+    checkText: { textAlign: 'center' },
     looks: {
         flexDirection: 'row',
         justifyContent: 'center',
