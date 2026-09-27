@@ -1,6 +1,6 @@
 import { withDatabase, getDbVersion, setDbVersion } from './db';
 
-const CURRENT_DB_VERSION = 16;
+const CURRENT_DB_VERSION = 5;
 
 /**
  * The migration run, shared by everyone who asks for it.
@@ -145,292 +145,36 @@ const runMigrations = async (): Promise<boolean> => {
                 await addCol('action_items', 'pinned_at DATETIME DEFAULT NULL');
             });
 
-            if (currentVersion < 5) await step(5, async () => {
-                // v5: FTS5 search and performance indexes
-                await database.execAsync(`
-                    CREATE VIRTUAL TABLE IF NOT EXISTS journal_entries_fts USING fts5(
-                        reflection_1, reflection_2, reflection_3, reflection_4, notes, study_further,
-                        content='journal_entries', content_rowid='id'
-                    );
+            // A dev database numbered past this build is rebuilt to v5 too; every statement is idempotent.
+            if (currentVersion < 5 || currentVersion > CURRENT_DB_VERSION) await step(5, async () => {
+                // v5: everything since v4, the last version shipped.
+                const exists = async (name: string) =>
+                    !!(await database.getFirstAsync(`SELECT 1 FROM sqlite_master WHERE name = ?`, [name]));
+                const addColumn = async (table: string, column: string) => {
+                    try { await database.runAsync(`ALTER TABLE ${table} ADD COLUMN ${column}`); } catch { /* already present */ }
+                };
 
-                    CREATE TRIGGER IF NOT EXISTS journal_entries_ai AFTER INSERT ON journal_entries BEGIN
-                      INSERT INTO journal_entries_fts(rowid, reflection_1, reflection_2, reflection_3, reflection_4, notes, study_further)
-                      VALUES (new.id, new.reflection_1, new.reflection_2, new.reflection_3, new.reflection_4, new.notes, new.study_further);
-                    END;
+                // The search index is filled only when it is created; refilling would duplicate it.
+                const hadEntrySearch = await exists('journal_entries_fts');
+                const hadActionSearch = await exists('action_items_fts');
+                await database.execAsync(SEARCH_SCHEMA);
+                if (!hadEntrySearch) await database.execAsync(ENTRY_SEARCH_FILL);
+                if (!hadActionSearch) await database.execAsync(ACTION_SEARCH_FILL);
 
-                    CREATE TRIGGER IF NOT EXISTS journal_entries_ad AFTER DELETE ON journal_entries BEGIN
-                      INSERT INTO journal_entries_fts(journal_entries_fts, rowid, reflection_1, reflection_2, reflection_3, reflection_4, notes, study_further)
-                      VALUES('delete', old.id, old.reflection_1, old.reflection_2, old.reflection_3, old.reflection_4, old.notes, old.study_further);
-                    END;
+                for (const column of ['cadence TEXT', 'due_at DATETIME', 'archived_at DATETIME']) {
+                    await addColumn('action_items', column);
+                }
+                await database.execAsync(PRACTICE_SCHEMA);
+                await database.execAsync(THEMES_SCHEMA);
+                await database.execAsync(OBSERVATIONS_SCHEMA);
+                for (const column of ['shown_count INTEGER NOT NULL DEFAULT 0', 'followed_at DATETIME', 'retracted_at DATETIME']) {
+                    await addColumn('observations', column);
+                }
 
-                    CREATE TRIGGER IF NOT EXISTS journal_entries_au AFTER UPDATE ON journal_entries BEGIN
-                      INSERT INTO journal_entries_fts(journal_entries_fts, rowid, reflection_1, reflection_2, reflection_3, reflection_4, notes, study_further)
-                      VALUES('delete', old.id, old.reflection_1, old.reflection_2, old.reflection_3, old.reflection_4, old.notes, old.study_further);
-                      INSERT INTO journal_entries_fts(rowid, reflection_1, reflection_2, reflection_3, reflection_4, notes, study_further)
-                      VALUES (new.id, new.reflection_1, new.reflection_2, new.reflection_3, new.reflection_4, new.notes, new.study_further);
-                    END;
-
-                    CREATE VIRTUAL TABLE IF NOT EXISTS action_items_fts USING fts5(
-                        action, motivation,
-                        content='action_items', content_rowid='id'
-                    );
-
-                    CREATE TRIGGER IF NOT EXISTS action_items_ai AFTER INSERT ON action_items BEGIN
-                      INSERT INTO action_items_fts(rowid, action, motivation)
-                      VALUES (new.id, new.action, new.motivation);
-                    END;
-
-                    CREATE TRIGGER IF NOT EXISTS action_items_ad AFTER DELETE ON action_items BEGIN
-                      INSERT INTO action_items_fts(action_items_fts, rowid, action, motivation)
-                      VALUES('delete', old.id, old.action, old.motivation);
-                    END;
-
-                    CREATE TRIGGER IF NOT EXISTS action_items_au AFTER UPDATE ON action_items BEGIN
-                      INSERT INTO action_items_fts(action_items_fts, rowid, action, motivation)
-                      VALUES('delete', old.id, old.action, old.motivation);
-                      INSERT INTO action_items_fts(rowid, action, motivation)
-                      VALUES (new.id, new.action, new.motivation);
-                    END;
-
-                    INSERT INTO journal_entries_fts(rowid, reflection_1, reflection_2, reflection_3, reflection_4, notes, study_further)
-                    SELECT id, reflection_1, reflection_2, reflection_3, reflection_4, notes, study_further FROM journal_entries;
-
-                    INSERT INTO action_items_fts(rowid, action, motivation)
-                    SELECT id, action, motivation FROM action_items;
-
-                    CREATE INDEX IF NOT EXISTS idx_action_items_pinned ON action_items(is_pinned, pinned_at);
-                    CREATE INDEX IF NOT EXISTS idx_journal_entries_study ON journal_entries(study_completed);
-                `);
-            });
-
-            if (currentVersion < 7) await step(7, async () => {
-                // v7: standalone study topics (dropped again in v8)
-                await database.execAsync(`
-                    CREATE TABLE IF NOT EXISTS study_topics (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        title TEXT NOT NULL,
-                        content TEXT,
-                        color TEXT,
-                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                    );
-                    CREATE TABLE IF NOT EXISTS study_topic_references (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        topic_id INTEGER NOT NULL,
-                        book_name TEXT NOT NULL,
-                        chapter INTEGER NOT NULL,
-                        verse_start TEXT,
-                        verse_end TEXT,
-                        FOREIGN KEY (topic_id) REFERENCES study_topics(id) ON DELETE CASCADE
-                    );
-                `);
-            });
-
-            if (currentVersion < 8) await step(8, async () => {
-                // v8: drop standalone study topics. Study is one concept — the
-                // study_further field on an entry, born out of the reflection
-                // flow. The topics table was a parallel model under one name.
+                // Leftovers that only dev databases can hold.
                 await database.execAsync(`
                     DROP TABLE IF EXISTS study_topic_references;
                     DROP TABLE IF EXISTS study_topics;
-                `);
-            });
-
-            if (currentVersion < 9) await step(9, async () => {
-                // v9: embeddings for Themes.
-                //
-                // One row per (entry, field), not per entry: answers to one
-                // prompt share a direction that would drown out what each
-                // answer is actually about.
-                //
-                // `model` is recorded so a model change can re-embed only what
-                // it needs to, rather than mixing vectors from two spaces.
-                await database.execAsync(`
-                    CREATE TABLE IF NOT EXISTS entry_embeddings (
-                        entry_id INTEGER NOT NULL,
-                        field TEXT NOT NULL,
-                        model TEXT NOT NULL,
-                        vector BLOB NOT NULL,
-                        text_hash TEXT NOT NULL,
-                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                        PRIMARY KEY (entry_id, field),
-                        FOREIGN KEY (entry_id) REFERENCES journal_entries(id) ON DELETE CASCADE
-                    );
-                    CREATE INDEX IF NOT EXISTS idx_embeddings_model ON entry_embeddings(model);
-
-                    -- Themes the reader has named. Clusters are recomputed as
-                    -- entries accumulate, so a theme is anchored to the entries
-                    -- that formed it and a chosen name survives re-clustering.
-                    CREATE TABLE IF NOT EXISTS themes (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        name TEXT NOT NULL,
-                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                    );
-                    CREATE TABLE IF NOT EXISTS theme_members (
-                        theme_id INTEGER NOT NULL,
-                        entry_id INTEGER NOT NULL,
-                        field TEXT NOT NULL,
-                        PRIMARY KEY (theme_id, entry_id, field),
-                        FOREIGN KEY (theme_id) REFERENCES themes(id) ON DELETE CASCADE,
-                        FOREIGN KEY (entry_id) REFERENCES journal_entries(id) ON DELETE CASCADE
-                    );
-                `);
-            });
-
-            if (currentVersion < 10) await step(10, async () => {
-                /*
-                 * v10: observations — the unit the reader is shown. Every
-                 * detector writes the same record, so ranking, pacing and the
-                 * feedback loop are written once rather than per detector.
-                 *
-                 * `payload` holds the structured claim, never its wording, so a
-                 * better sentence can ship without rewriting anyone's history.
-                 *
-                 * `dedupe_key` identifies the finding rather than the run, so
-                 * rediscovery updates the first row instead of queueing behind
-                 * it. See design/DETECTORS.md.
-                 */
-                await database.execAsync(`
-                    CREATE TABLE IF NOT EXISTS observations (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        detector TEXT NOT NULL,
-                        dedupe_key TEXT NOT NULL,
-                        payload TEXT NOT NULL,
-                        confidence REAL NOT NULL DEFAULT 0,
-                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                        shown_at DATETIME,
-                        opened_at DATETIME,
-                        dismissed_at DATETIME,
-                        feedback INTEGER,
-                        UNIQUE (detector, dedupe_key)
-                    );
-
-                    -- The receipts. Stored with the claim rather than
-                    -- recomputed on demand: recomputed evidence can disagree
-                    -- with the claim it is meant to justify.
-                    CREATE TABLE IF NOT EXISTS observation_evidence (
-                        observation_id INTEGER NOT NULL,
-                        kind TEXT NOT NULL,
-                        entry_id INTEGER,
-                        field TEXT,
-                        verse_id INTEGER,
-                        action_item_id INTEGER,
-                        sort_order INTEGER NOT NULL DEFAULT 0,
-                        FOREIGN KEY (observation_id) REFERENCES observations(id) ON DELETE CASCADE
-                    );
-
-                    CREATE INDEX IF NOT EXISTS idx_obs_detector ON observations(detector, created_at);
-                    CREATE INDEX IF NOT EXISTS idx_obs_pending ON observations(shown_at, confidence);
-                    CREATE INDEX IF NOT EXISTS idx_obs_evidence ON observation_evidence(observation_id);
-                `);
-            });
-
-            if (currentVersion < 11) await step(11, async () => {
-                /*
-                 * v11: what kind of thing an action item is. Three kinds live
-                 * in this column, told apart by what the writer supplied rather
-                 * than by a category they were made to choose:
-                 *
-                 *   nothing   an application — standing, never completed
-                 *   cadence   a practice — recurring, completed per occurrence
-                 *   due_at    an action — a task, completed once
-                 *
-                 * Both columns are null for every existing row, so the whole
-                 * journal becomes applications, which is what it always was.
-                 *
-                 * Guarded like v4: SQLite ALTER TABLE has no IF NOT EXISTS, and
-                 * a half-applied migration must not wedge the next launch.
-                 */
-                for (const column of ['cadence TEXT', 'due_at DATETIME']) {
-                    try {
-                        await database.runAsync(`ALTER TABLE action_items ADD COLUMN ${column}`);
-                    } catch {
-                        /* already present */
-                    }
-                }
-            });
-
-            if (currentVersion < 12) await step(12, async () => {
-                /*
-                 * v12: practice completions. A practice completes per
-                 * occurrence, so a single `is_completed` boolean cannot
-                 * represent it — "done today but not yesterday" needs a log.
-                 *
-                 * Keyed on a LOCAL date string, not a timestamp: today is
-                 * wherever the reader is, and deriving the day from UTC moves
-                 * completions across midnight and breaks streaks.
-                 * `reading_progress` is the same shape.
-                 *
-                 * The primary key makes marking a day done idempotent.
-                 */
-                await database.execAsync(`
-                    CREATE TABLE IF NOT EXISTS action_item_completions (
-                        action_item_id INTEGER NOT NULL,
-                        completed_on TEXT NOT NULL,
-                        completed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                        PRIMARY KEY (action_item_id, completed_on),
-                        FOREIGN KEY (action_item_id) REFERENCES action_items(id) ON DELETE CASCADE
-                    );
-                    CREATE INDEX IF NOT EXISTS idx_completions_item
-                        ON action_item_completions(action_item_id, completed_on DESC);
-                `);
-            });
-
-            if (currentVersion < 13) await step(13, async () => {
-                /*
-                 * v13: archiving, which replaces deleting. An action item is
-                 * part of what someone wrote on a given day, so deleting one
-                 * rewrites the entry rather than tidying a list.
-                 *
-                 * `archived_at` rather than a flag, matching `pinned_at`.
-                 * Archiving hides a thing from what you are working on; it
-                 * never edits the past.
-                 */
-                try {
-                    await database.runAsync(`ALTER TABLE action_items ADD COLUMN archived_at DATETIME`);
-                } catch {
-                    /* already present */
-                }
-            });
-
-            if (currentVersion < 14) await step(14, async () => {
-                /*
-                 * v14: findings that come round again, and knowing when one was
-                 * acted on. `shown_at` becomes "last shown" rather than a
-                 * one-way door, with `shown_count` recording how many times
-                 * round a finding has been — right for a standing commitment,
-                 * which is not a reminder if met once in a lifetime.
-                 *
-                 * `followed_at` records tapping through to a passage, the
-                 * strongest evidence a card worked.
-                 */
-                for (const column of ['shown_count INTEGER NOT NULL DEFAULT 0', 'followed_at DATETIME']) {
-                    try {
-                        await database.runAsync(`ALTER TABLE observations ADD COLUMN ${column}`);
-                    } catch {
-                        /* already present */
-                    }
-                }
-                // Anything already shown has been round exactly once.
-                await database.runAsync(
-                    `UPDATE observations SET shown_count = 1 WHERE shown_at IS NOT NULL`,
-                );
-            });
-
-            if (currentVersion < 15) await step(15, async () => {
-                // v15: a finding that stopped being true is marked, not deleted,
-                // so its verdict and dedupe key survive.
-                try {
-                    await database.execAsync(`ALTER TABLE observations ADD COLUMN retracted_at DATETIME`);
-                } catch {
-                    /* already present */
-                }
-            });
-
-            if (currentVersion < 16) await step(16, async () => {
-                // v16: drop the preview findings the dev smoke test planted.
-                await database.execAsync(`
                     DELETE FROM observation_evidence WHERE observation_id IN
                         (SELECT id FROM observations WHERE dedupe_key LIKE 'preview:%');
                     DELETE FROM observations WHERE dedupe_key LIKE 'preview:%';
@@ -448,3 +192,146 @@ const runMigrations = async (): Promise<boolean> => {
         return false;
     }
 };
+
+// ─── The v5 schema ────────────────────────────────────────────────────────────
+
+/** Full-text search over entries and action items, kept in step by triggers. */
+const SEARCH_SCHEMA = `
+    CREATE VIRTUAL TABLE IF NOT EXISTS journal_entries_fts USING fts5(
+        reflection_1, reflection_2, reflection_3, reflection_4, notes, study_further,
+        content='journal_entries', content_rowid='id'
+    );
+
+    CREATE TRIGGER IF NOT EXISTS journal_entries_ai AFTER INSERT ON journal_entries BEGIN
+      INSERT INTO journal_entries_fts(rowid, reflection_1, reflection_2, reflection_3, reflection_4, notes, study_further)
+      VALUES (new.id, new.reflection_1, new.reflection_2, new.reflection_3, new.reflection_4, new.notes, new.study_further);
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS journal_entries_ad AFTER DELETE ON journal_entries BEGIN
+      INSERT INTO journal_entries_fts(journal_entries_fts, rowid, reflection_1, reflection_2, reflection_3, reflection_4, notes, study_further)
+      VALUES('delete', old.id, old.reflection_1, old.reflection_2, old.reflection_3, old.reflection_4, old.notes, old.study_further);
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS journal_entries_au AFTER UPDATE ON journal_entries BEGIN
+      INSERT INTO journal_entries_fts(journal_entries_fts, rowid, reflection_1, reflection_2, reflection_3, reflection_4, notes, study_further)
+      VALUES('delete', old.id, old.reflection_1, old.reflection_2, old.reflection_3, old.reflection_4, old.notes, old.study_further);
+      INSERT INTO journal_entries_fts(rowid, reflection_1, reflection_2, reflection_3, reflection_4, notes, study_further)
+      VALUES (new.id, new.reflection_1, new.reflection_2, new.reflection_3, new.reflection_4, new.notes, new.study_further);
+    END;
+
+    CREATE VIRTUAL TABLE IF NOT EXISTS action_items_fts USING fts5(
+        action, motivation,
+        content='action_items', content_rowid='id'
+    );
+
+    CREATE TRIGGER IF NOT EXISTS action_items_ai AFTER INSERT ON action_items BEGIN
+      INSERT INTO action_items_fts(rowid, action, motivation)
+      VALUES (new.id, new.action, new.motivation);
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS action_items_ad AFTER DELETE ON action_items BEGIN
+      INSERT INTO action_items_fts(action_items_fts, rowid, action, motivation)
+      VALUES('delete', old.id, old.action, old.motivation);
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS action_items_au AFTER UPDATE ON action_items BEGIN
+      INSERT INTO action_items_fts(action_items_fts, rowid, action, motivation)
+      VALUES('delete', old.id, old.action, old.motivation);
+      INSERT INTO action_items_fts(rowid, action, motivation)
+      VALUES (new.id, new.action, new.motivation);
+    END;
+
+    CREATE INDEX IF NOT EXISTS idx_action_items_pinned ON action_items(is_pinned, pinned_at);
+    CREATE INDEX IF NOT EXISTS idx_journal_entries_study ON journal_entries(study_completed);
+`;
+
+const ENTRY_SEARCH_FILL = `
+    INSERT INTO journal_entries_fts(rowid, reflection_1, reflection_2, reflection_3, reflection_4, notes, study_further)
+    SELECT id, reflection_1, reflection_2, reflection_3, reflection_4, notes, study_further FROM journal_entries;
+`;
+
+const ACTION_SEARCH_FILL = `
+    INSERT INTO action_items_fts(rowid, action, motivation)
+    SELECT id, action, motivation FROM action_items;
+`;
+
+/**
+ * A practice completes once per local day, so completions are a log keyed on
+ * the local date string; the primary key makes marking a day idempotent.
+ */
+const PRACTICE_SCHEMA = `
+    CREATE TABLE IF NOT EXISTS action_item_completions (
+        action_item_id INTEGER NOT NULL,
+        completed_on TEXT NOT NULL,
+        completed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (action_item_id, completed_on),
+        FOREIGN KEY (action_item_id) REFERENCES action_items(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_completions_item
+        ON action_item_completions(action_item_id, completed_on DESC);
+`;
+
+/** One embedding per (entry, field), and the themes the reader has named. */
+const THEMES_SCHEMA = `
+    CREATE TABLE IF NOT EXISTS entry_embeddings (
+        entry_id INTEGER NOT NULL,
+        field TEXT NOT NULL,
+        model TEXT NOT NULL,
+        vector BLOB NOT NULL,
+        text_hash TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (entry_id, field),
+        FOREIGN KEY (entry_id) REFERENCES journal_entries(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_embeddings_model ON entry_embeddings(model);
+
+    CREATE TABLE IF NOT EXISTS themes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS theme_members (
+        theme_id INTEGER NOT NULL,
+        entry_id INTEGER NOT NULL,
+        field TEXT NOT NULL,
+        PRIMARY KEY (theme_id, entry_id, field),
+        FOREIGN KEY (theme_id) REFERENCES themes(id) ON DELETE CASCADE,
+        FOREIGN KEY (entry_id) REFERENCES journal_entries(id) ON DELETE CASCADE
+    );
+`;
+
+/** Findings and their receipts. design/DETECTORS.md */
+const OBSERVATIONS_SCHEMA = `
+    CREATE TABLE IF NOT EXISTS observations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        detector TEXT NOT NULL,
+        dedupe_key TEXT NOT NULL,
+        payload TEXT NOT NULL,
+        confidence REAL NOT NULL DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        shown_at DATETIME,
+        shown_count INTEGER NOT NULL DEFAULT 0,
+        opened_at DATETIME,
+        followed_at DATETIME,
+        dismissed_at DATETIME,
+        feedback INTEGER,
+        retracted_at DATETIME,
+        UNIQUE (detector, dedupe_key)
+    );
+
+    CREATE TABLE IF NOT EXISTS observation_evidence (
+        observation_id INTEGER NOT NULL,
+        kind TEXT NOT NULL,
+        entry_id INTEGER,
+        field TEXT,
+        verse_id INTEGER,
+        action_item_id INTEGER,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        FOREIGN KEY (observation_id) REFERENCES observations(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_obs_detector ON observations(detector, created_at);
+    CREATE INDEX IF NOT EXISTS idx_obs_pending ON observations(shown_at, confidence);
+    CREATE INDEX IF NOT EXISTS idx_obs_evidence ON observation_evidence(observation_id);
+`;
