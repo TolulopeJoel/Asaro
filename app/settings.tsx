@@ -11,7 +11,7 @@ import {
 import { useAlert } from '@/src/context/AlertContext';
 import { Spacing } from '@/src/theme/spacing';
 import { Typography } from '@/src/theme/typography';
-import { getAllScheduledNotifications, setupDailyNotifications, sendTestNotification, hasNotificationPermissions, openNotificationSettings, getNotificationDiagnostics, readSleepTime, saveSleepTime, formatSleepTimeValue, parseSleepTime } from '@/src/utils/notifications';
+import { setupDailyNotifications, hasNotificationPermissions, openBatteryOptimizationSettings, openNotificationSettings, getNotificationDiagnostics, readSleepTime, saveSleepTime, formatSleepTimeValue, parseSleepTime } from '@/src/utils/notifications';
 import { oemAutoStartLabel, openAutoStartSettings } from '@/src/utils/oemRestrictions';
 import { exportJournalEntriesToJson, importJournalEntriesFromJson, getFirstEntryDate } from '@/src/data/database';
 import { STORAGE_KEYS } from '@/src/storage/storageKeys';
@@ -29,12 +29,12 @@ import { ScalePressable } from '@/src/components/ScalePressable';
 import {
     Bed,
     Bell,
-    RefreshCw,
     ChevronLeft,
     Archive,
     Download,
 } from 'lucide-react-native';
-import { getFirestore, doc, setDoc, getDoc, writeBatch, query, where, onSnapshot, collectionGroup } from '@react-native-firebase/firestore';
+import { getFirestore, doc, setDoc, getDoc } from '@react-native-firebase/firestore';
+import { useMyGroups } from '@/src/groups/hooks';
 import { useAuth } from '@/src/context/AuthContext';
 import { useFootPadding } from '@/src/hooks/useScreenInsets';
 import { Avatar } from '@/src/components/Avatar';
@@ -240,18 +240,16 @@ export default function Settings() {
     const router = useRouter();
     const { showAlert } = useAlert();
 
-    const [scheduledNotifications, setScheduledNotifications] = useState<any[]>([]);
-    const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
-    const [showNotifications, setShowNotifications] = useState(false);
-    const [tapCount, setTapCount] = useState(0);
     const [isExporting, setIsExporting] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
     const scrollViewRef = useRef<ScrollView>(null);
     const { user, displayName, updateName } = useAuth();
     const name = displayName || user?.displayName || 'Reader';
-    const footPadding = useFootPadding();
+    const footPadding = useFootPadding(60);
     const db = getFirestore();
-    const [isAdmin, setIsAdmin] = useState(false);
+    // The photo editor is for anyone who runs a group.
+    const { rows: groupRows } = useMyGroups();
+    const isAdmin = groupRows.some(row => row.myRole === 'creator' || row.myRole === 'admin');
     const [photoURL, setPhotoURL] = useState('');
     const [isSavingProfile, setIsSavingProfile] = useState(false);
     const [sleepTime, setSleepTime] = useState<string | null>(null);
@@ -282,20 +280,6 @@ export default function Settings() {
         setIsSavingProfile(true);
         try {
             await setDoc(doc(db, 'users', user.uid), { photoURL: url.trim() }, { merge: true });
-            const userDoc = await getDoc(doc(db, 'users', user.uid));
-            if (userDoc.exists()) {
-                const groupIds = userDoc.data()?.groupIds || [];
-                if (groupIds.length > 0) {
-                    const batch = writeBatch(db);
-                    groupIds.forEach((groupId: string) => {
-                        batch.set(
-                            doc(db, 'groups', groupId, 'members', user.uid),
-                            { photoURL: url.trim() }, { merge: true }
-                        );
-                    });
-                    await batch.commit();
-                }
-            }
             setPhotoURL(url.trim());
             showAlert({ title: 'Done', message: 'Photo changed.' });
         } catch (error) {
@@ -317,139 +301,67 @@ export default function Settings() {
         AsyncStorage.getItem(STORAGE_KEYS.LAST_SLEEP_CHANGE_AT).then(val => setLastSleepChangeAt(val));
 
         if (user?.uid) {
-            // Check if user is an admin in any group
-            const q = query(
-                collectionGroup(db, 'members'),
-                where('userId', '==', user.uid),
-                where('role', '==', 'admin')
-            );
-            const unsubscribe = onSnapshot(q, snapshot => {
-                setIsAdmin(!snapshot.empty);
-            }, error => {
-                // Usually a missing collection-group index on members (userId, role).
-                console.error('[Settings] Admin check query failed; photo editor stays hidden:', error);
-            });
-
-            // Fetch current user's photoURL
             getDoc(doc(db, 'users', user.uid)).then(docSnap => {
                 if (docSnap.exists()) {
                     setPhotoURL(docSnap.data()?.photoURL || '');
                 }
-            });
-
-            return () => unsubscribe();
+            }).catch(() => { });
         }
     }, [user?.uid]);
 
-    const handleNotificationTitleTap = () => {
-        const newCount = tapCount + 1;
-        setTapCount(newCount);
-
-        if (newCount >= 5) {
-            setShowNotifications(true);
-            if (!isLoadingNotifications && scheduledNotifications.length === 0) {
-                loadScheduledNotifications();
-            }
-        }
-    };
-
-    const handleTestNotification = async () => {
-        try {
-            await sendTestNotification();
-        } catch (error) {
-            console.error('Failed to send test notification:', error);
-            showAlert({ title: 'Error', message: 'Failed to send test notification.' });
-        }
-    };
-
-    // Six settings can silence a reminder and they look identical from
-    // outside, so read them all and say which. On a phone with a vendor
-    // auto-start list, offer that door too — the AOSP whitelist misses it.
+    // One answer, not a readout: the first thing actually silencing
+    // reminders, with the door that fixes it. A vendor auto-start list can't
+    // be read back, so on those phones it is the last thing to check.
     const handleDeliveryCheck = async () => {
+        const close = { text: 'Close', style: 'cancel' as const };
         try {
             const d = await getNotificationDiagnostics();
-            const lines = [
-                `Permission: ${d.hasPermission ? 'granted' : 'DENIED'}`,
-                `Notification channel: ${d.channelBlocked ? 'BLOCKED — turn "Àṣàrò Reminders" back on in system settings' : 'on'}`,
-                `Battery optimisation: ${d.batteryOptimised ? 'ON — this delays reminders' : 'off'}`,
-                `Scheduled: ${d.scheduledCount}`,
-                `Next: ${d.nextFireAt ? d.nextFireAt.toLocaleString() : 'none'}`,
-                `Alarms last set: ${d.lastArmedAt ? d.lastArmedAt.toLocaleString() : 'never'}`,
-            ];
-            if (d.needsAutoStart) {
-                lines.push(`Your phone also has ${oemAutoStartLabel()}, which closes apps behind your back. Àṣàrò must be allowed to auto-start there.`);
+            if (!d.hasPermission) {
+                showAlert({
+                    title: 'Notifications are off',
+                    message: 'Àṣàrò isn\'t allowed to send notifications. Turn them on in your phone\'s settings.',
+                    buttons: [{ text: 'Open settings', onPress: openNotificationSettings }, close],
+                });
+                return;
             }
-
+            if (d.channelBlocked) {
+                showAlert({
+                    title: 'Reminders are muted',
+                    message: 'Notifications are on, but "Àṣàrò Reminders" is switched off in your phone\'s settings. Turn it back on there.',
+                    buttons: [{ text: 'Open settings', onPress: openNotificationSettings }, close],
+                });
+                return;
+            }
+            if (d.batteryOptimised) {
+                showAlert({
+                    title: 'Battery saver is in the way',
+                    message: 'Your phone is holding Àṣàrò back in the background, which delays or drops reminders. Let it run unrestricted.',
+                    buttons: [{ text: 'Fix battery setting', onPress: () => { void openBatteryOptimizationSettings(); } }, close],
+                });
+                return;
+            }
+            // Nothing blocking, but nothing queued: put the schedule back.
+            if (d.scheduledCount === 0) {
+                await setupDailyNotifications(false, { force: true });
+            }
+            if (d.needsAutoStart) {
+                showAlert({
+                    title: `Check ${oemAutoStartLabel()}`,
+                    message: `Everything on Àṣàrò's side looks right. But your phone has ${oemAutoStartLabel()}, which closes apps in the background and stops their reminders. Make sure Àṣàrò is allowed to auto-start there.`,
+                    buttons: [{ text: `Open ${oemAutoStartLabel()}`, onPress: () => { openAutoStartSettings(); } }, close],
+                });
+                return;
+            }
             showAlert({
-                title: 'Delivery check',
-                message: lines.join('\n'),
-                buttons: d.needsAutoStart
-                    ? [
-                        { text: `Open ${oemAutoStartLabel()}`, onPress: () => { openAutoStartSettings(); } },
-                        { text: 'Close', style: 'cancel' as const },
-                    ]
-                    : [{ text: 'Close', style: 'cancel' as const }],
+                title: 'Everything looks right',
+                message: 'Notifications are on and your reminders are scheduled. If one still doesn\'t arrive, restart your phone and open Àṣàrò once.',
+                buttons: [close],
             });
         } catch (error) {
             console.error('Failed to read notification diagnostics:', error);
+            showAlert({ title: 'Couldn\'t check', message: 'Something went wrong reading your reminder settings. Try again.', buttons: [close] });
         }
     };
-
-    const handleForceReschedule = async () => {
-        setIsLoadingNotifications(true);
-        try {
-            // force: the point of this button is to re-register the alarms,
-            // which is exactly what a full-looking schedule would skip.
-            const success = await setupDailyNotifications(false, { force: true });
-            if (success) {
-                await loadScheduledNotifications();
-                showAlert({ title: 'Success', message: 'Notifications have been rescheduled.' });
-            } else {
-                showAlert({ title: 'Error', message: 'Failed to reschedule notifications.' });
-            }
-        } catch (error) {
-            console.error('Failed to reschedule notifications:', error);
-        } finally {
-            setIsLoadingNotifications(false);
-        }
-    };
-
-    const loadScheduledNotifications = async () => {
-        setIsLoadingNotifications(true);
-        try {
-            const notifications = await getAllScheduledNotifications();
-
-            // Sort notifications: daily/repeating first, then by date
-            const sorted = notifications.sort((a, b) => {
-                const aIsDaily = a.trigger && 'hour' in a.trigger && a.trigger.hour !== undefined;
-                const bIsDaily = b.trigger && 'hour' in b.trigger && b.trigger.hour !== undefined;
-
-                if (aIsDaily && !bIsDaily) return -1;
-                if (!aIsDaily && bIsDaily) return 1;
-
-                if (aIsDaily && bIsDaily) {
-                    const aTime = (a.trigger as any).hour * 60 + (a.trigger as any).minute;
-                    const bTime = (b.trigger as any).hour * 60 + (b.trigger as any).minute;
-                    return aTime - bTime;
-                }
-
-                if (a.trigger && 'value' in a.trigger && b.trigger && 'value' in b.trigger) {
-                    const aDate = new Date((a.trigger as any).value).getTime();
-                    const bDate = new Date((b.trigger as any).value).getTime();
-                    return aDate - bDate;
-                }
-
-                return 0;
-            });
-
-            setScheduledNotifications(sorted);
-        } catch (error) {
-            console.error('Failed to load scheduled notifications:', error);
-        } finally {
-            setIsLoadingNotifications(false);
-        }
-    };
-
 
     const handleExport = async () => {
         if (isExporting) return;
@@ -554,7 +466,7 @@ export default function Settings() {
                 const adjusted = await setupDailyNotifications(false, { force: true });
                 showAlert(adjusted
                     ? { title: 'Success! ✅', message: 'Your sleep time has been locked in for the next month. I\'ve adjusted your notification schedule. Don\'t sleep too much o!' }
-                    : { title: 'Saved', message: 'Your sleep time has been locked in for the next month, but I couldn\'t adjust your reminders. Check notifications are allowed, then tap Reschedule notifications.' });
+                    : { title: 'Saved', message: 'Your sleep time has been locked in for the next month, but I couldn\'t adjust your reminders. Tap "Why am I not getting reminders?" to see what\'s in the way.' });
             } catch (error) {
                 console.error('Failed to save sleep time:', error);
                 showAlert({ title: 'Error', message: 'Failed to save your new schedule. Please try again.' });
@@ -643,6 +555,7 @@ export default function Settings() {
                      * screen 48px in from the edge instead of the mockup's 24.
                      */
                     styles.scrollContentNoGutter,
+                    { paddingBottom: footPadding },
                 ]}
                 showsVerticalScrollIndicator={false}
             >
@@ -685,7 +598,7 @@ export default function Settings() {
                 </Hero>
 
                 {/* design/all-screens.html #settings: labelled runs of plain
-                  * rows — Reminders, Your data, Engine Room, About — with no
+                  * rows — Reminders, Your data, About — with no
                   * panel anywhere, and no Appearance selector until there is a
                   * second Cloth palette to choose between. */}
                 <View style={styles.clothBody}>
@@ -708,6 +621,10 @@ export default function Settings() {
                         />
                     )}
 
+                    {/* Who you are talking to, before what they do for you. */}
+                    <UIText variant="label" style={styles.clothSectionLabel}>Àṣàrò</UIText>
+                    <AsaroLookRow colors={colors} />
+
                     <UIText variant="label" style={styles.clothSectionLabel}>Reminders</UIText>
                     <SettingsItem
                         label="Sleep time"
@@ -723,7 +640,12 @@ export default function Settings() {
                         onPress={openNotificationSettings}
                         colors={colors}
                     />
-                    <AsaroLookRow colors={colors} />
+                    <SettingsItem
+                        label="Why am I not getting reminders?"
+                        icon={Bell}
+                        onPress={handleDeliveryCheck}
+                        colors={colors}
+                    />
 
                     <UIText variant="label" style={styles.clothSectionLabel}>Your data</UIText>
                     <SettingsItem
@@ -741,57 +663,13 @@ export default function Settings() {
                         colors={colors}
                     />
 
-
-                    {/* Both mockups show these plainly rather than behind the
-                        five-tap easter egg they used to hide under. */}
-                    <UIText variant="label" style={styles.clothSectionLabel}>Engine Room</UIText>
-                    <SettingsItem
-                        label="Reschedule notifications"
-                        value={isLoadingNotifications ? 'Working…' : undefined}
-                        icon={RefreshCw}
-                        onPress={handleForceReschedule}
-                        colors={colors}
-                    />
-                    <SettingsItem
-                        label="Send test notification"
-                        icon={Bell}
-                        onPress={handleTestNotification}
-                        colors={colors}
-                    />
-                    <SettingsItem
-                        label="Why am I not getting reminders?"
-                        icon={Bell}
-                        onPress={handleDeliveryCheck}
-                        colors={colors}
-                    />
-
-                    {/* Version gets its own "About". No rule: the mockup draws
-                      * no `.cl-hr` on this screen, and only the label's own
-                      * margin-top separates sections. */}
-                    <UIText variant="label" style={styles.clothSectionLabel}>About</UIText>
-                    <SettingsItem
-                        label="Version"
-                        value={Constants.expoConfig?.version || '1.0.0'}
-                        icon={Bell}
-                        onPress={handleNotificationTitleTap}
-                        colors={colors}
-                    />
-
-                    {showNotifications && scheduledNotifications.length > 0 && (
-                        <UIText variant="bodySmall" style={styles.sectionLabel}>
-                            {`${scheduledNotifications.length} scheduled`}
-                        </UIText>
-                    )}
+                    {/* A line at the foot, not an About section of one row. */}
+                    <UIText variant="caption" tone="secondary" style={styles.version}>
+                        {`Àṣàrò ${Constants.expoConfig?.version || '1.0.0'}`}
+                    </UIText>
                 </View>
 
             </ScrollView>
-
-            {/* The mockup's footer. Every setting persists the moment it
-              * changes, so there is nothing to commit and the button just
-              * closes the screen. */}
-            <View style={[styles.footer, { paddingBottom: footPadding }]}>
-                <ThemedButton label="Save Changes" block onPress={() => router.back()} />
-            </View>
         </Screen>
     );
 }
@@ -816,17 +694,12 @@ const styles = StyleSheet.create({
     },
     nameActions: { flexDirection: 'row', gap: Spacing.sm },
     nameAction: { flex: 1 },
-    sectionLabel: { marginBottom: 10 },
     /** `.cl-label{margin:20px 0 4px}` */
     clothSectionLabel: { marginTop: 20, marginBottom: 4 },
     /** Cloth's body runs in its own 24px gutter, no top padding of its own —
      *  every .cl-label supplies its own 20px lead-in (clothSectionLabel). */
     clothBody: {
         paddingHorizontal: Spacing.layout.screenPadding,
-    },
-    footer: {
-        paddingHorizontal: Spacing.layout.screenPadding,
-        paddingTop: Spacing.md + 2,
     },
     /** `.cl-row{padding:16px 0}` */
     settingRow: {
@@ -840,6 +713,7 @@ const styles = StyleSheet.create({
     settingRowLabel: { flex: 1, fontWeight: '500' },
     /** The face sets the row's height, so centre rather than baseline-align. */
     asaroRow: { alignItems: 'center', paddingVertical: Spacing.sm },
+    version: { textAlign: 'center', marginTop: Spacing.xxl },
 
     container: {
         flex: 1,
