@@ -333,7 +333,7 @@ export default function GroupScreen() {
     const sharer = shown.find(p => p.share)?.member.uid;
     const practiser = shown.find(p => p.practices.length && p.member.uid !== sharer)?.member.uid;
     const personTarget = (member: Member): CoachTarget | null =>
-        !demo ? null : member.uid === sharer ? 'group-days' : member.uid === practiser ? 'group-practice' : null;
+        !demo ? null : member.uid === sharer ? 'group-days' : null;
 
     if (g.missing) {
         return (
@@ -379,13 +379,12 @@ export default function GroupScreen() {
             </Hero>
 
             {week.open && (
-                <View ref={coachTarget('group-members')} collapsable={false}>
-                    <Segments
-                        items={[{ key: 'week', label: 'This week' }, { key: 'members', label: 'Members' }]}
-                        value={tab}
-                        onChange={key => setTab(key as 'week' | 'members')}
-                    />
-                </View>
+                <Segments
+                    items={[{ key: 'week', label: 'This week' }, { key: 'members', label: 'Members' }]}
+                    value={tab}
+                    onChange={key => setTab(key as 'week' | 'members')}
+                    itemRef={key => (key === 'members' ? coachTarget('group-members') : undefined)}
+                />
             )}
 
             <ScrollView
@@ -482,10 +481,16 @@ export default function GroupScreen() {
                                         )}
                                     </View>
                                 )}
-                                {person.practices.map(p => (
-                                    <Text key={p.id} variant="bodySmall" style={styles.line}>
-                                        {`${p.action} · kept ${p.keptDays.filter(Boolean).length} of 7`}
-                                    </Text>
+                                {person.practices.map((p, i) => (
+                                    <View
+                                        key={p.id}
+                                        ref={demo && i === 0 && person.member.uid === practiser ? coachTarget('group-practice') : undefined}
+                                        collapsable={false}
+                                    >
+                                        <Text variant="bodySmall" style={styles.line}>
+                                            {`${p.action} · kept ${p.keptDays.filter(Boolean).length} of 7`}
+                                        </Text>
+                                    </View>
                                 ))}
                                 {person.milestones.map(m => (
                                     <Text key={m.id} variant="button" tone="accent" style={styles.line}>{m.label}</Text>

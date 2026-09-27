@@ -585,13 +585,19 @@ export function BibleCloth({
                 const left = VERGE_SIDE + (cell.column + 0.5) * size - w / 2;
                 const top = VERGE_DEPTH + (cell.row + 0.85) * size - h * ((112 - box.y) / box.h);
                 return (
-                    <View key={tree.id} pointerEvents="box-none" style={[styles.tree, { left, top, width: w, height: h }]}>
+                    <View
+                        key={tree.id}
+                        // The whole tree, not just the part that takes the tap: the walk draws its box round this.
+                        ref={walkTree ? coachTarget('land-tree') : undefined}
+                        collapsable={false}
+                        pointerEvents="box-none"
+                        style={[styles.tree, { left, top, width: w, height: h }]}
+                    >
                         <View pointerEvents="none">
                             <Tree stage={tree.stage} species={tree.species} thirsty={tree.thirsty} size={w} fit />
                         </View>
                         {onTreePress && (
                             <Pressable
-                                ref={walkTree ? coachTarget('land-tree') : undefined}
                                 onPress={() => onTreePress(tree.id)}
                                 accessibilityRole="button"
                                 accessibilityLabel={`${tree.bookName} ${tree.chapter}, a practice's tree`}

@@ -51,14 +51,28 @@ export function coachTarget(name: CoachTarget) {
     return ref;
 }
 
-/** Where the element is in the window, or null if it isn't on screen now. */
+/*
+ * Targets are measured against the view the walk's overlay fills, never the
+ * window: Android's window coordinates include the status bar on some phones
+ * (108px on a TECNO KM6), which put every box one status bar too low.
+ */
+let root: View | null = null;
+
+/** The app's root view, which the walk's overlay fills. Registered once in app/_layout.tsx. */
+export function coachRoot(node: View | null) {
+    root = node;
+}
+
+/** Where the element is in the walk's overlay, or null if it isn't on screen now. */
 export function measureTarget(name: CoachTarget): Promise<Rect | null> {
     const node = nodes.get(name);
-    if (!node) return Promise.resolve(null);
+    if (!node || !root) return Promise.resolve(null);
     return new Promise((resolve) => {
-        node.measureInWindow((x, y, width, height) => {
-            resolve(width > 0 && height > 0 ? { x, y, width, height } : null);
-        });
+        node.measureLayout(
+            root!,
+            (x, y, width, height) => resolve(width > 0 && height > 0 ? { x, y, width, height } : null),
+            () => resolve(null),
+        );
     });
 }
 

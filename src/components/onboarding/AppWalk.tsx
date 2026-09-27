@@ -8,7 +8,7 @@
  * It ends back on Home, sending them off to do their real first reading. No
  * skip, by decision.
  */
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { BackHandler, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -107,8 +107,8 @@ const GAP = Spacing.md;
 const FIND_MS = 8000;
 const POLL_MS = 300;
 
-/** Stops that point at something fixed on screen, which no list scroll can move. */
-const fixed = (t: CoachTarget) => t.startsWith('tab-') || t.startsWith('back-') || t === 'add' || t === 'settings';
+/** Only the tab bar is fixed; a hero's icons scroll with their page on Home and Settings. */
+const fixed = (t: CoachTarget) => t.startsWith('tab-');
 
 const sameRect = (a: Rect, b: Rect) =>
     Math.abs(a.x - b.x) < 1 && Math.abs(a.y - b.y) < 1 && Math.abs(a.width - b.width) < 1 && Math.abs(a.height - b.height) < 1;
@@ -124,14 +124,6 @@ export function AppWalk() {
     const [index, setIndex] = useState(0);
     const [rect, setRect] = useState<Rect | null>(null);
     const [bubbleH, setBubbleH] = useState(160);
-    // Targets are measured in window coordinates; the overlay may not start at the window's corner.
-    const overlay = useRef<View>(null);
-    const [origin, setOrigin] = useState({ x: 0, y: 0 });
-    const measureOrigin = useCallback(() => {
-        overlay.current?.measureInWindow((x, y) => {
-            setOrigin(prev => (prev.x === x && prev.y === y ? prev : { x, y }));
-        });
-    }, []);
     const stop = all[index];
     const then = stop.then;
 
@@ -211,9 +203,9 @@ export function AppWalk() {
     if (!tour.active) return null;
 
     const hole = rect && (() => {
-        const top = Math.max(0, rect.y - origin.y - PAD);
-        const bottom = Math.min(H, rect.y - origin.y + rect.height + PAD);
-        const x = Math.max(0, rect.x - origin.x - PAD);
+        const top = Math.max(0, rect.y - PAD);
+        const bottom = Math.min(H, rect.y + rect.height + PAD);
+        const x = Math.max(0, rect.x - PAD);
         return { x, y: top, w: Math.min(W - x, rect.width + PAD * 2), h: Math.max(0, bottom - top) };
     })();
 
@@ -228,7 +220,7 @@ export function AppWalk() {
     const block = () => true;
 
     return (
-        <View ref={overlay} onLayout={measureOrigin} collapsable={false} pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+        <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
             {hole ? (
                 <>
                     <View onStartShouldSetResponder={block} style={[styles.dim, { top: 0, left: 0, right: 0, height: hole.y }]} />

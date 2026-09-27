@@ -80,30 +80,31 @@ export default function TabLayout() {
                         else if (route.name === 'groups') label = 'Groups';
 
                         return (
-                            <ScalePressable
+                            /* The first-run walk points at each tab by name, and boxes the whole tab. */
+                            <View
                                 key={route.key}
-                                style={styles.tabButton}
-                                onPress={onPress}
+                                ref={route.name === 'library' ? coachTarget('tab-library') : route.name === 'groups' ? coachTarget('tab-groups') : route.name === 'index' ? coachTarget('tab-home') : undefined}
+                                collapsable={false}
+                                style={styles.flex}
                             >
-                                {/*
-                                  * The bar is type only. The design carries no icons
-                                  * and no highlight pill: the active tab is the one
-                                  * word in the foreground colour, which is the whole
-                                  * mechanism.
-                                  */}
-                                {/* The first-run walk points at each tab by name. */}
-                                <View
-                                    ref={route.name === 'library' ? coachTarget('tab-library') : route.name === 'groups' ? coachTarget('tab-groups') : route.name === 'index' ? coachTarget('tab-home') : undefined}
-                                    collapsable={false}
+                                <ScalePressable
+                                    style={styles.tabButton}
+                                    onPress={onPress}
                                 >
+                                    {/*
+                                      * The bar is type only. The design carries no icons
+                                      * and no highlight pill: the active tab is the one
+                                      * word in the foreground colour, which is the whole
+                                      * mechanism.
+                                      */}
                                     <Text
                                         variant="tab"
                                         style={{ color: shouldHighlight ? colors.tabLabelActive : colors.tabLabel }}
                                     >
                                         {label}
                                     </Text>
-                                </View>
-                            </ScalePressable>
+                                </ScalePressable>
+                            </View>
                         );
                     })}
                 </View>
@@ -121,6 +122,7 @@ const styles = StyleSheet.create({
     tabBar: {
         flexDirection: 'row',
     },
+    flex: { flex: 1 },
     tabButton: {
         flex: 1,
         alignItems: 'center',

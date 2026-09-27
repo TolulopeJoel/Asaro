@@ -31,6 +31,7 @@ import { fallowHeading } from '@/src/land/fallowTone';
 import { landSubtitle, parcelLine } from '@/src/land/landTone';
 import { useTour } from '@/src/onboarding/tour';
 import { coachTarget } from '@/src/onboarding/coachTargets';
+import { useCoachScroller } from '@/src/onboarding/useCoachScroller';
 import { demoCoverage, demoGrove } from '@/src/onboarding/demo';
 import { Spacing } from '@/src/theme/spacing';
 import { useTheme } from '@/src/theme/ThemeContext';
@@ -55,6 +56,8 @@ export default function LandScreen() {
 
     const { height } = useWindowDimensions();
     const scroll = useRef<ScrollView>(null);
+    // Lets the app walk bring the tree it points at into view.
+    const onCoachScroll = useCoachScroller(scroll);
 
     const [cloth, setCloth] = useState<Cloth | null>(null);
     const [next, setNext] = useState<ChapterRef | null>(null);
@@ -135,7 +138,7 @@ export default function LandScreen() {
                         <ChevronLeft size={20} color={colors.accent} strokeWidth={2} />
                     </View>
                 </ScalePressable>
-                <View ref={coachTarget('land-field')} collapsable={false}>
+                <View>
                     <UIText variant="display" tone="onBand" style={styles.heroTitle}>Your land</UIText>
                     {/* The count lives here rather than in a panel of its own: a
                       * block below pushes the land down and frames it, and the
@@ -162,6 +165,8 @@ export default function LandScreen() {
             ) : (
                 <ScrollView
                     ref={scroll}
+                    onScroll={onCoachScroll}
+                    scrollEventThrottle={32}
                     // No horizontal padding: the land runs to both screen edges,
                     // which is the difference between a map and a picture of a
                     // map. While a tree's card is up, the foot of the land can
@@ -172,23 +177,25 @@ export default function LandScreen() {
                       * Matthew. Splitting it draws a boundary the reading does
                       * not have — the point of the land is that it is one place
                       * being worked through. */}
-                    <BibleCloth
-                        books={cloth.books}
-                        selected={selected?.name ?? null}
-                        onBookPress={book => {
-                            setOpenTree(null);
-                            setSelected(current => (current?.name === book.name ? null : book));
-                        }}
-                        trees={trees}
-                        onTreePress={id => {
-                            setSelected(null);
-                            setOpenTree(current => (current === id ? null : id));
-                        }}
-                        marker={next}
-                        // A third of the way down, so the field he is walking
-                        // into shows below him.
-                        onMarkerLayout={y => scroll.current?.scrollTo({ y: Math.max(0, y - height / 3) })}
-                    />
+                    <View ref={coachTarget('land-field')} collapsable={false}>
+                        <BibleCloth
+                            books={cloth.books}
+                            selected={selected?.name ?? null}
+                            onBookPress={book => {
+                                setOpenTree(null);
+                                setSelected(current => (current?.name === book.name ? null : book));
+                            }}
+                            trees={trees}
+                            onTreePress={id => {
+                                setSelected(null);
+                                setOpenTree(current => (current === id ? null : id));
+                            }}
+                            marker={next}
+                            // A third of the way down, so the field he is walking
+                            // into shows below him.
+                            onMarkerLayout={y => scroll.current?.scrollTo({ y: Math.max(0, y - height / 3) })}
+                        />
+                    </View>
 
                     {/* The invitation, and the only place the screen asks for
                       * anything. Names only books already worked — see

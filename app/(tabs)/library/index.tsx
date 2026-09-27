@@ -611,7 +611,7 @@ export default function LibraryScreen() {
      */
     const searchField = (
         <>
-            <View ref={coachTarget('library-search')} collapsable={false}>
+            <View ref={coachTarget('library-search')} collapsable={false} style={styles.walkFill}>
             <TextInput
                 style={[
                     styles.searchInput,

@@ -24,6 +24,7 @@ import { RefPickerProvider } from '@/src/context/RefPickerContext';
 import { LoadingView } from '@/src/components/LoadingView';
 import { CustomAlert } from '@/src/components/CustomAlert';
 import { AppWalk } from '@/src/components/onboarding/AppWalk';
+import { coachRoot } from '@/src/onboarding/coachTargets';
 import { useFonts } from 'expo-font';
 import {
   Fraunces_700Bold,
@@ -290,12 +291,13 @@ export default function RootLayout() {
                   <LoadingView size={48} />
                 </View>
               ) : (
-                <>
+                /* The walk measures its targets against this view, which its overlay fills. */
+                <View ref={coachRoot} collapsable={false} style={{ flex: 1 }}>
                   <StackNavigator />
                   <AppWalk />
                   <CustomAlert />
                   <StatusBar hidden={true} />
-                </>
+                </View>
               )}
             </RefPickerProvider>
           </ThemeProvider>
