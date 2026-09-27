@@ -1,12 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BackHandler, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
-import { Asaro, Hero, Screen, Text, ThemedButton, type AsaroAction } from '@/src/components/ui';
+import {
+    Asaro, Hero, Screen, START_DELAY_MS, Text, ThemedButton,
+    type AsaroAction, type AsaroHandle,
+} from '@/src/components/ui';
 import { useAuth } from '@/src/context/AuthContext';
 import { useFootPadding } from '@/src/hooks/useScreenInsets';
+
+/** How long a page's expression is held before the face relaxes back to its idle life. */
+const HOLD_MS = 2500;
 
 /** What the app is, told by the chosen sibling. Keep in step with design/all-screens.html#tour. */
 const PAGES: { title: string; action: AsaroAction; hold: boolean; body: (name: string) => string }[] = [
@@ -42,10 +48,19 @@ export default function TourScreen() {
     const footPadding = useFootPadding();
     const { displayName } = useAuth();
     const [page, setPage] = useState(0);
+    const face = useRef<AsaroHandle>(null);
 
     const last = page === PAGES.length - 1;
     const current = PAGES[page];
     const done = () => router.push('/onboarding/sleep-time');
+
+    // Each page's face reacts, holds long enough to be seen, then lets go.
+    useEffect(() => {
+        const { action, hold } = PAGES[page];
+        const start = setTimeout(() => face.current?.play(action, { hold }), START_DELAY_MS);
+        const release = hold ? setTimeout(() => face.current?.rest(), START_DELAY_MS + HOLD_MS) : undefined;
+        return () => { clearTimeout(start); clearTimeout(release); };
+    }, [page]);
 
     // Back steps through the tour; on the first page it stays put rather than undoing the name.
     useEffect(() => {
@@ -66,25 +81,27 @@ export default function TourScreen() {
 
                 <View style={[styles.clothBody, { paddingBottom: footPadding }]}>
                     <View style={styles.speech}>
-                        {/* Keyed by page so each page's face plays fresh. */}
-                        <Asaro key={page} size={124} action={current.action} hold={current.hold} />
+                        <Asaro ref={face} size={124} />
                         <Text variant="body" style={styles.bodyText}>{current.body(displayName ?? 'o')}</Text>
                     </View>
 
-                    <View style={styles.dots} accessibilityLabel={`Page ${page + 1} of ${PAGES.length}`}>
-                        {PAGES.map((p, i) => (
-                            <View
-                                key={p.title}
-                                style={[styles.dot, { backgroundColor: i === page ? colors.textPrimary : colors.border }]}
-                            />
-                        ))}
-                    </View>
+                    {/* Pager and button sit at the foot, well clear of the face. */}
+                    <View style={styles.foot}>
+                        <View style={styles.dots} accessibilityLabel={`Page ${page + 1} of ${PAGES.length}`}>
+                            {PAGES.map((p, i) => (
+                                <View
+                                    key={p.title}
+                                    style={[styles.dot, { backgroundColor: i === page ? colors.textPrimary : colors.border }]}
+                                />
+                            ))}
+                        </View>
 
-                    <ThemedButton
-                        label={last ? 'I’m ready' : 'Next'}
-                        block
-                        onPress={last ? done : () => setPage(page + 1)}
-                    />
+                        <ThemedButton
+                            label={last ? 'I’m ready' : 'Next'}
+                            block
+                            onPress={last ? done : () => setPage(page + 1)}
+                        />
+                    </View>
                 </View>
             </ScrollView>
         </Screen>
@@ -105,5 +122,6 @@ const styles = StyleSheet.create({
     speech: { alignItems: 'center', gap: Spacing.lg, paddingVertical: Spacing.md },
     bodyText: { textAlign: 'center' },
     dots: { flexDirection: 'row', justifyContent: 'center', gap: Spacing.sm },
+    foot: { marginTop: 'auto', paddingTop: Spacing.xl, gap: Spacing.lg },
     dot: { width: 8, height: 8, borderRadius: Spacing.borderRadius.round },
 });

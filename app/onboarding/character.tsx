@@ -6,7 +6,7 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import {
-    Asaro, Hero, Screen, Text, ThemedButton,
+    Asaro, Hero, Screen, START_DELAY_MS, Text, ThemedButton,
     type AsaroAction, type AsaroHandle, type AsaroLook,
 } from '@/src/components/ui';
 import { onboardingStepLabel } from '@/src/utils/onboardingSteps';
@@ -29,6 +29,12 @@ const beatMs = (line: string) => Math.max(2200, 900 + line.length * 45);
 
 /** Faces that are the message: held for the whole line, so the reader looks up and still sees them. */
 const HELD: ReadonlySet<AsaroAction> = new Set(['deadpan', 'sideEye', 'smug', 'sheepish']);
+
+/** How long the check's `think` is held before the face relaxes. */
+const CHECK_HOLD_MS = 2500;
+
+/** Long enough for the wave and the sigh to be seen before the check opens. */
+const PICK_MS = 1100;
 
 const LOOK_CHOICES: { look: AsaroLook; label: string }[] = [
     { look: 'male', label: 'Brother' },
@@ -61,11 +67,36 @@ export default function CharacterScreen() {
         return () => clearTimeout(id);
     }, [current, advance]);
 
+    // Tapping a face is the answer: it reacts, then the check opens.
+    const pickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    useEffect(() => () => { if (pickTimer.current) clearTimeout(pickTimer.current); }, []);
+
     const pick = (look: AsaroLook) => {
+        if (pickTimer.current) return;
         setPicked(look);
         faces.current[look]?.play('wave');
         faces.current[look === 'male' ? 'female' : 'male']?.play('sigh');
+        pickTimer.current = setTimeout(() => {
+            pickTimer.current = null;
+            setConfirming(true);
+        }, PICK_MS);
     };
+
+    const replay = () => {
+        if (pickTimer.current) clearTimeout(pickTimer.current);
+        pickTimer.current = null;
+        setConfirming(false);
+        setPicked(null);
+        setBeat(0);
+    };
+
+    const checkFace = useRef<AsaroHandle>(null);
+    useEffect(() => {
+        if (!confirming) return;
+        const start = setTimeout(() => checkFace.current?.play('think', { hold: true }), START_DELAY_MS);
+        const release = setTimeout(() => checkFace.current?.rest(), START_DELAY_MS + CHECK_HOLD_MS);
+        return () => { clearTimeout(start); clearTimeout(release); };
+    }, [confirming]);
 
     // Back from the check returns to the choice, not out of onboarding.
     useEffect(() => {
@@ -106,7 +137,7 @@ export default function CharacterScreen() {
                 {confirming && picked ? (
                     <View style={[styles.clothBody, { paddingBottom: footPadding }]}>
                         <View style={styles.check}>
-                            <Asaro size={124} look={picked} action="think" hold />
+                            <Asaro ref={checkFace} size={124} look={picked} />
                             <Text variant="title" style={styles.checkText}>
                                 So you&apos;re a {picked === 'male' ? 'man' : 'woman'}?
                             </Text>
@@ -114,12 +145,14 @@ export default function CharacterScreen() {
                                 Don&apos;t lie, you know who is watching.
                             </Text>
                         </View>
-                        <ThemedButton label="Yes, I am" block onPress={handleConfirm} />
-                        <ThemedButton label="Hmm, let me change" variant="secondary" block onPress={() => setConfirming(false)} />
+                        <View style={styles.foot}>
+                            <ThemedButton label="Yes, I am" block onPress={handleConfirm} />
+                            <ThemedButton label="Hmm, let me change" variant="secondary" block onPress={() => setConfirming(false)} />
+                        </View>
                     </View>
                 ) : (
                     <View style={[styles.clothBody, { paddingBottom: footPadding }]}>
-                        {/* Plays in full: the quarrel can't be skipped or tapped through. */}
+                        {/* Plays in full with no buttons: the quarrel can't be skipped or tapped through. */}
                         <View style={styles.stage}>
                             <View style={[styles.bubbleRow, { alignItems: bubbleAlign }]}>
                                 {current ? (
@@ -138,7 +171,7 @@ export default function CharacterScreen() {
                                 )}
                             </View>
 
-                            <View style={styles.looks} accessibilityRole={choosing ? 'radiogroup' : undefined}>
+                            <View style={styles.looks}>
                                 {LOOK_CHOICES.map(({ look, label }) => {
                                     const on = look === picked;
                                     return (
@@ -146,8 +179,8 @@ export default function CharacterScreen() {
                                             key={look}
                                             onPress={() => pick(look)}
                                             disabled={!choosing}
-                                            accessibilityRole="radio"
-                                            accessibilityState={{ checked: on, disabled: !choosing }}
+                                            accessibilityRole="button"
+                                            accessibilityState={{ selected: on, disabled: !choosing }}
                                             accessibilityLabel={label}
                                             style={[styles.lookChoice, { opacity: picked && !on ? 0.45 : 1 }]}
                                         >
@@ -170,7 +203,11 @@ export default function CharacterScreen() {
                             </View>
                         </View>
 
-                        <ThemedButton label="Continue" block disabled={!choosing || !picked} onPress={() => setConfirming(true)} />
+                        {choosing && (
+                            <View style={styles.foot}>
+                                <ThemedButton label="Wait, what did you two say?" variant="secondary" block onPress={replay} />
+                            </View>
+                        )}
                     </View>
                 )}
             </ScrollView>
@@ -208,6 +245,8 @@ const styles = StyleSheet.create({
     prompt: { textAlign: 'center' },
     check: { alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.lg },
     checkText: { textAlign: 'center' },
+    /** Buttons sit at the foot, well clear of the faces. */
+    foot: { marginTop: 'auto', paddingTop: Spacing.xl, gap: Spacing.md },
     looks: {
         flexDirection: 'row',
         justifyContent: 'center',

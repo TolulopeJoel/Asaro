@@ -11,7 +11,7 @@ export type { TextProps } from './Text';
 export { ClothGround, ClothStrip, ClothMark, ClothZigzag } from './Cloth';
 export { SettingsGlyph } from './SettingsGlyph';
 
-export { Asaro } from './Asaro';
+export { Asaro, START_DELAY_MS } from './Asaro';
 export type { AsaroProps, AsaroHandle, AsaroAction, AsaroLook, AsaroMood } from './Asaro';
 
 export { Screen, Hero, Card, Row, Segments } from './Surfaces';

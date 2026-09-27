@@ -128,7 +128,7 @@ const BEAT_T = ACTION_NAMES.map((n, i) => {
 });
 
 /** Wait for the screen to settle, so the first movement is seen. */
-const START_DELAY_MS = 400;
+export const START_DELAY_MS = 400;
 /** How long each action holds its last strong pose. */
 const BEAT_MS = 400;
 /** The way back to rest runs this much slower, easing out, so he settles rather than snaps. */
