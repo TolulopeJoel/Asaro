@@ -39,6 +39,7 @@
     "@react-native-firebase/auth": "^23.8.6",
     "@react-native-firebase/firestore": "^23.8.6",
     "expo": "^54.0.26",
+    "expo-application": "~7.0.8",
     "expo-asset": "~12.0.13",
     "expo-battery": "~10.0.8",
     "expo-constants": "~18.0.10",

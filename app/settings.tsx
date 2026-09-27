@@ -36,6 +36,8 @@ import { useAuth } from '@/src/context/AuthContext';
 import { useFootPadding } from '@/src/hooks/useScreenInsets';
 import { Avatar } from '@/src/components/Avatar';
 import { TextInput } from 'react-native';
+import { coachTarget } from '@/src/onboarding/coachTargets';
+import { useCoachScroller } from '@/src/onboarding/useCoachScroller';
 import React from 'react';
 
 // ─── Photo Card ──────────────────────────────────────────────────────────────
@@ -209,6 +211,8 @@ export default function Settings() {
     const [isExporting, setIsExporting] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
     const scrollViewRef = useRef<ScrollView>(null);
+    // Lets the app walk bring a row it points at into view.
+    const onCoachScroll = useCoachScroller(scrollViewRef);
     const { user, displayName, updateName } = useAuth();
     const name = displayName || user?.displayName || 'Reader';
     const footPadding = useFootPadding(60);
@@ -530,6 +534,8 @@ export default function Settings() {
             <Stack.Screen options={{ headerShown: false }} />
             <ScrollView
                 ref={scrollViewRef}
+                onScroll={onCoachScroll}
+                scrollEventThrottle={32}
                 style={styles.scrollView}
                 contentContainerStyle={[
                     styles.scrollContent,
@@ -555,7 +561,9 @@ export default function Settings() {
                             accessibilityLabel="Back"
                             hitSlop={Spacing.md}
                         >
-                            <ChevronLeft size={20} color={colors.accent} strokeWidth={1.9} />
+                            <View ref={coachTarget('back-settings')} collapsable={false}>
+                                <ChevronLeft size={20} color={colors.accent} strokeWidth={1.9} />
+                            </View>
                         </ScalePressable>
                         <ScalePressable
                             onPress={() => setShowProfileEditor(v => !v)}
@@ -608,16 +616,20 @@ export default function Settings() {
 
                     {/* Who you are talking to, before what they do for you. */}
                     <UIText variant="label" style={styles.clothSectionLabel}>Àṣàrò</UIText>
-                    <AsaroLookRow colors={colors} />
+                    <View ref={coachTarget('settings-look')} collapsable={false}>
+                        <AsaroLookRow colors={colors} />
+                    </View>
 
                     <UIText variant="label" style={styles.clothSectionLabel}>Reminders</UIText>
-                    <SettingsItem
-                        label="Sleep time"
-                        value={formatSleepTime(sleepTime)}
-                        icon={Bed}
-                        onPress={handleUpdateSleepTime}
-                        colors={colors}
-                    />
+                    <View ref={coachTarget('settings-sleep')} collapsable={false}>
+                        <SettingsItem
+                            label="Sleep time"
+                            value={formatSleepTime(sleepTime)}
+                            icon={Bed}
+                            onPress={handleUpdateSleepTime}
+                            colors={colors}
+                        />
+                    </View>
                     <SettingsItem
                         label="Notifications"
                         value={notificationsOn === null ? '—' : notificationsOn ? 'On' : 'Off'}
@@ -633,13 +645,15 @@ export default function Settings() {
                     />
 
                     <UIText variant="label" style={styles.clothSectionLabel}>Your data</UIText>
-                    <SettingsItem
-                        label="Share entries backup"
-                        value={isExporting ? 'Working…' : undefined}
-                        icon={Archive}
-                        onPress={handleExport}
-                        colors={colors}
-                    />
+                    <View ref={coachTarget('settings-backup')} collapsable={false}>
+                        <SettingsItem
+                            label="Share entries backup"
+                            value={isExporting ? 'Working…' : undefined}
+                            icon={Archive}
+                            onPress={handleExport}
+                            colors={colors}
+                        />
+                    </View>
                     <SettingsItem
                         label="Import entries"
                         value={isImporting ? 'Working…' : undefined}

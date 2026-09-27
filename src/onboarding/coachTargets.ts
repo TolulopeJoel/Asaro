@@ -1,8 +1,9 @@
 /**
- * Named on-screen elements the Home walk points at. A screen registers one
+ * Named on-screen elements the app walk points at. A screen registers one
  * with `ref={coachTarget('week')}`; the walk measures it where it really is.
+ * A screen reports something the user just did with `coachEvent('...')`.
  */
-import type { View } from 'react-native';
+import { DeviceEventEmitter, type View } from 'react-native';
 
 export type CoachTarget =
     | 'reading' | 'add' | 'settings' | 'week' | 'progress' | 'tab-library' | 'tab-groups'
@@ -11,7 +12,26 @@ export type CoachTarget =
     | 'library-themes'
     | 'stats-tiles' | 'stats-calendar' | 'stats-grove' | 'stats-rooted'
     | 'land-field' | 'land-tree' | 'land-card'
-    | 'groups-row' | 'group-days' | 'group-share' | 'group-practice' | 'group-members';
+    | 'groups-row' | 'group-days' | 'group-share' | 'group-practice' | 'group-members'
+    | 'tab-home'
+    | 'back-stats' | 'back-land' | 'back-settings' | 'back-entry' | 'back-group'
+    | 'settings-sleep' | 'settings-look' | 'settings-backup'
+    | 'library-section-unfinished' | 'library-section-echoes'
+    | 'library-sub-books' | 'library-sub-topics';
+
+/** Things the user can do that a walk stop waits for. */
+export type CoachEvent = 'today-kept' | 'library-searched';
+
+const EVENT = 'coach-event';
+
+export function coachEvent(name: CoachEvent) {
+    DeviceEventEmitter.emit(EVENT, name);
+}
+
+export function onCoachEvent(listener: (name: CoachEvent) => void) {
+    const sub = DeviceEventEmitter.addListener(EVENT, listener);
+    return () => sub.remove();
+}
 
 export interface Rect { x: number; y: number; width: number; height: number }
 
@@ -51,6 +71,11 @@ let scroller: Scroller | null = null;
 
 export function setCoachScroller(next: Scroller | null) {
     scroller = next;
+}
+
+/** Clears it only if it is still this screen's, since the next screen may focus first. */
+export function clearCoachScroller(mine: Scroller) {
+    if (scroller === mine) scroller = null;
 }
 
 export async function revealTarget(rect: Rect): Promise<void> {

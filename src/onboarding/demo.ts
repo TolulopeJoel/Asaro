@@ -9,7 +9,8 @@ import type { PracticeProgress } from '../data/practiceRepository';
 import { streakOf } from '../data/practiceStreak';
 import { growthOf, rootedSeries } from '../grove/grove';
 import type { GroveTree } from '../grove/loadGrove';
-import type { GroupWeek, Member } from '../groups/model';
+import type { TodayItem } from '../hooks/useToday';
+import type { Group, GroupWeek, Member } from '../groups/model';
 import type { GroupWindow } from '../groups/window';
 import type { CoverageRow } from '../land/cloth';
 import type { RenderedObservation } from '../insight/render';
@@ -162,6 +163,17 @@ export function demoCoverage(): CoverageRow[] {
 
 // ─── Home ────────────────────────────────────────────────────────────────────
 
+/** Today's practices, not yet kept, each with the run it would extend. */
+export function demoToday(): TodayItem[] {
+    return DEMO_ACTIONS.map(item => ({
+        item,
+        kind: 'practice',
+        streak: streakOf(completionsOf(item.id!).slice(1), 'daily', dayKey(new Date())),
+        overdue: false,
+        kept: false,
+    }));
+}
+
 /** A noticing on Home, the kind that turns up after a few weeks of writing. */
 export const DEMO_OBSERVATION: RenderedObservation = {
     kind: 'Where your entries point',
@@ -181,9 +193,22 @@ export function demoWindow(): GroupWindow {
     return { open: true, weekKey: key, reviewKey: key, label: 'Open today' };
 }
 
-export function demoMembers(myName: string): Member[] {
+export function demoGroup(): Group {
+    return {
+        id: DEMO_GROUP_ID,
+        name: 'Morning Readers',
+        description: 'A chapter before breakfast.',
+        code: 'READ24',
+        createdBy: 'tour-ada',
+        createdAt: daysAgo(60).getTime(),
+        utcOffsetMinutes: -new Date().getTimezoneOffset(),
+    };
+}
+
+/** @param me the reader's own uid, so the page marks their row as theirs. */
+export function demoMembers(me: string, myName: string): Member[] {
     return [
-        { uid: 'tour-you', displayName: myName || 'You', role: 'member', joinedAt: daysAgo(20).getTime(), photoAt: null },
+        { uid: me, displayName: myName || 'You', role: 'member', joinedAt: daysAgo(20).getTime(), photoAt: null },
         { uid: 'tour-ada', displayName: 'Ada', role: 'creator', joinedAt: daysAgo(60).getTime(), photoAt: null },
         { uid: 'tour-kemi', displayName: 'Kemi', role: 'admin', joinedAt: daysAgo(45).getTime(), photoAt: null },
         { uid: 'tour-tunde', displayName: 'Tunde', role: 'member', joinedAt: daysAgo(30).getTime(), photoAt: null },
@@ -191,12 +216,12 @@ export function demoMembers(myName: string): Member[] {
 }
 
 /** This week in the group: what each person read, one thing each brought, a practice shared. */
-export function demoGroupWeek(): GroupWeek {
+export function demoGroupWeek(me: string): GroupWeek {
     const week = demoWindow().weekKey;
     const days = (pattern: string) => [...pattern].map(c => c === 'x');
     return {
         weeks: [
-            { id: `tour-you_${week}`, userId: 'tour-you', weekKey: week, days: days('xxx.xxx') },
+            { id: `${me}_${week}`, userId: me, weekKey: week, days: days('xxx.xxx') },
             { id: `tour-ada_${week}`, userId: 'tour-ada', weekKey: week, days: days('xxxxxxx') },
             { id: `tour-kemi_${week}`, userId: 'tour-kemi', weekKey: week, days: days('xx.xx.x') },
             { id: `tour-tunde_${week}`, userId: 'tour-tunde', weekKey: week, days: days('.x..x..') },

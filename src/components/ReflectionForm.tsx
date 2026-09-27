@@ -49,7 +49,9 @@ interface ReflectionFormProps {
   /** Throw the draft away. Absent when editing an entry that already exists. */
   onDiscard?: () => void;
   /** Practice entry: what the sibling says on each page, above the buttons. */
-  coach?: (page: number) => React.ReactNode;
+  coach?: (page: number, answers: ReflectionAnswers) => React.ReactNode;
+  /** Practice entry: false holds Next on this page until the user has done its task. */
+  gate?: (page: number, answers: ReflectionAnswers) => boolean;
   /** Practice entry: typed into a page's answer, letter by letter, when it opens empty. */
   samples?: ReflectionAnswers;
 }
@@ -68,6 +70,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
   onChangePassage,
   onDiscard,
   coach,
+  gate,
   samples,
 }) => {
   const { colors } = useTheme();
@@ -227,10 +230,16 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
     if (!samples || page >= REFLECTION_QUESTIONS.length) return;
     const q = REFLECTION_QUESTIONS[page];
     const now = latestAnswers.current;
-    let steps: ((n: number) => boolean)[] = [];
-    const typeText = (text: string, put: (t: string) => void) => (n: number) => {
-      put(text.slice(0, n));
-      return n >= text.length;
+    let steps: (() => boolean)[] = [];
+    // A `[[reference]]` lands whole, as the @ picker would insert it, never bracket by bracket.
+    const typeText = (text: string, put: (t: string) => void) => {
+      let pos = 0;
+      return () => {
+        const close = text.startsWith('[[', pos) ? text.indexOf(']]', pos) : -1;
+        pos = close >= 0 ? close + 2 : pos + 1;
+        put(text.slice(0, pos));
+        return pos >= text.length;
+      };
     };
     if (q.isActionList) {
       const sample = samples.actionItems[0];
@@ -238,31 +247,18 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
       steps = [
         typeText(sample.action, t => setAnswers(p => ({ ...p, actionItems: [{ ...p.actionItems[0], action: t }] }))),
         typeText(sample.motivation, t => setAnswers(p => ({ ...p, actionItems: [{ ...p.actionItems[0], motivation: t }] }))),
-        () => { setAnswers(p => ({ ...p, actionItems: [{ ...p.actionItems[0], cadence: sample.cadence ?? null }] })); return true; },
       ];
     } else {
       const id = q.id as keyof ReflectionAnswers;
       const text = samples[id];
       if (typeof text !== 'string' || !text || (now[id] as string)?.trim()) return;
       steps = [typeText(text, t => setAnswers(p => ({ ...p, [id]: t })))];
-      if (id === 'studyFurther') {
-        steps.push(() => {
-          const tomorrow = new Date();
-          tomorrow.setDate(tomorrow.getDate() + 1);
-          tomorrow.setHours(19, 0, 0, 0);
-          setAnswers(p => ({ ...p, studyFurtherReminder: tomorrow.toISOString() }));
-          return true;
-        });
-      }
     }
     let step = 0;
-    let n = 0;
     const start = setTimeout(() => {
       typing.current = setInterval(() => {
-        n += 1;
-        if (steps[step](n)) {
+        if (steps[step]()) {
           step += 1;
-          n = 0;
           if (step >= steps.length) stopTyping();
         }
       }, TYPE_MS);
@@ -289,6 +285,9 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
           </ScalePressable>
         )}
       </View>
+
+      {/* The practice entry's coach sits up here, where the keyboard can't cover it. */}
+      {coach && <View style={[styles.coach, { paddingHorizontal: gutter }]}>{coach(page, answers)}</View>}
 
       <View style={[styles.body, { paddingHorizontal: gutter }]}>
         {/* ── the step you're on ─────────────────────────────────────────── */}
@@ -405,7 +404,6 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
       {/* ── the two things you can do next ───────────────────────────────── */}
       {!disabled && (
         <View style={[styles.footer, { paddingHorizontal: gutter, paddingBottom: footPadding }]}>
-          {coach?.(page)}
           <View style={styles.footerButtons}>
             {/* `block` as well as the flex: the flex sizes ThemedButton's
                 wrapper, `block` is what makes the button inside fill it. */}
@@ -421,15 +419,16 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
               <ThemedButton
                 label={saveButtonText}
                 onPress={handleSave}
-                disabled={!hasPrimaryContent}
+                disabled={!hasPrimaryContent || (gate ? !gate(page, answers) : false)}
                 block
                 style={styles.grow}
               />
             ) : (
               <ThemedButton
                 variant="secondary"
-                label={answeredHere ? 'Next' : 'Skip'}
+                label={answeredHere || gate ? 'Next' : 'Skip'}
                 onPress={goForward}
+                disabled={gate ? !gate(page, answers) : false}
                 block
                 style={styles.grow}
               />
@@ -461,6 +460,7 @@ const styles = StyleSheet.create({
   // The mockup hangs the arrow into the gutter, so the glyph lines up with
   // the text below it rather than its own box.
   mark: { flex: 1 },
+  coach: { paddingTop: Spacing.lg },
 
   body: {
     flex: 1,

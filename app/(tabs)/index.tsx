@@ -13,10 +13,12 @@ import { Typography } from "@/src/theme/typography";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
-import { DeviceEventEmitter, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
-import { HomeWalk } from '@/src/components/onboarding/HomeWalk';
-import { getFirstRun, setFirstRun } from '@/src/onboarding/firstRun';
-import type { CoachTarget, Rect } from '@/src/onboarding/coachTargets';
+import { DeviceEventEmitter, ScrollView, StyleSheet, View } from "react-native";
+import { getFirstRun } from '@/src/onboarding/firstRun';
+import { coachEvent, coachTarget } from '@/src/onboarding/coachTargets';
+import { getTour, startTour, useTour } from '@/src/onboarding/tour';
+import { useCoachScroller } from '@/src/onboarding/useCoachScroller';
+import { DEMO_OBSERVATION, demoToday } from '@/src/onboarding/demo';
 import { JournalEntryDetail } from '@/src/components/JournalEntryDetail';
 import { LoadingView } from '@/src/components/LoadingView';
 import { Share } from 'react-native';
@@ -101,6 +103,8 @@ function clip(text: string, max: number): string {
     return text.slice(0, space > max * 0.6 ? space : max) + '…';
 }
 
+const noop = () => { };
+
 export default function Index() {
     const [stats, setStats] = useState({ totalEntries: 0 });
     const [nextReading, setNextReading] = useState<ReadingItem | null>(null);
@@ -116,9 +120,14 @@ export default function Index() {
     // on there being entries at all — the graph has nothing to converge on.
     const echo = useObservation(!isLoading && hasEntries);
     const [receiptsOpen, setReceiptsOpen] = useState(false);
+    const tour = useTour();
 
-    const observationCard =
-        echo.rendered && !receiptsOpen ? (
+    // The walk shows an example noticing and example practices, since a new reader has neither.
+    const observationCard = tour.active ? (
+        <View ref={coachTarget('home-observation')} collapsable={false}>
+            <ObservationCard observation={DEMO_OBSERVATION} onSeen={noop} onOpen={noop} onDismiss={noop} />
+        </View>
+    ) : echo.rendered && !receiptsOpen ? (
             <ObservationCard
                 observation={echo.rendered}
                 onSeen={echo.seen}
@@ -136,8 +145,30 @@ export default function Index() {
      * genuinely something to do in fifteen seconds.
      */
     const today = useToday(!isLoading);
-    const todayStrip =
-        today.items.length > 0 || today.watered ? (
+    // The walk's ticks are kept here, on screen only: nothing reaches the database.
+    const [demoKept, setDemoKept] = useState<ReadonlySet<number>>(new Set());
+    useEffect(() => { if (!tour.active) setDemoKept(new Set()); }, [tour.active]);
+    const demoItems = useMemo(
+        () => demoToday().map(entry => ({ ...entry, kept: demoKept.has(entry.item.id!) })),
+        [demoKept],
+    );
+    const todayStrip = tour.active ? (
+        <View ref={coachTarget('home-today')} collapsable={false}>
+            <TodayStrip
+                items={demoItems}
+                onKeep={entry => {
+                    setDemoKept(prev => new Set(prev).add(entry.item.id!));
+                    coachEvent('today-kept');
+                }}
+                onUndo={entry => setDemoKept(prev => {
+                    const nextKept = new Set(prev);
+                    nextKept.delete(entry.item.id!);
+                    return nextKept;
+                })}
+                onOpen={noop}
+            />
+        </View>
+    ) : today.items.length > 0 || today.watered ? (
             <TodayStrip
                 items={today.items}
                 onKeep={entry => today.keep(entry.item)}
@@ -185,14 +216,12 @@ export default function Index() {
     const { showAlert } = useAlert();
     const scrollViewRef = useRef<ScrollView>(null);
     const router = useRouter();
-    const scrollY = useRef(0);
-    const { height: windowHeight } = useWindowDimensions();
+    const onCoachScroll = useCoachScroller(scrollViewRef);
 
     /*
      * A new user's first run: straight into the practice entry, then back here
      * for the walk. src/onboarding/firstRun.ts.
      */
-    const [walking, setWalking] = useState(false);
     const practiceOpened = useRef(false);
     const checkFirstRun = useCallback(async () => {
         const stage = await getFirstRun();
@@ -201,7 +230,7 @@ export default function Index() {
             router.push({ pathname: '/addEntry', params: { practice: 'true' } });
         } else if (stage === 'walk') {
             practiceOpened.current = false;
-            setWalking(true);
+            if (!getTour().active) startTour();
         }
     }, [router]);
     useEffect(() => {
@@ -209,21 +238,12 @@ export default function Index() {
         return () => sub.remove();
     }, [checkFirstRun]);
 
-    // Tab targets are fixed; anything in the page scrolls to sit clear of the bubble.
-    const revealTarget = useCallback(async (target: CoachTarget, rect: Rect) => {
-        if (target.startsWith('tab-')) return;
-        const top = 140;
-        const bottom = windowHeight - 300;
-        if (rect.y >= top && rect.y + rect.height <= bottom) return;
-        scrollViewRef.current?.scrollTo({ y: Math.max(0, scrollY.current + rect.y - top), animated: true });
-        await new Promise((resolve) => setTimeout(resolve, 450));
-    }, [windowHeight]);
-
-    const finishWalk = useCallback(() => {
-        setWalking(false);
-        void setFirstRun('done');
-        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-    }, []);
+    // The walk over, Home starts from the top.
+    const wasTouring = useRef(false);
+    useEffect(() => {
+        if (wasTouring.current && !tour.active) scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        wasTouring.current = tour.active;
+    }, [tour.active]);
 
     const loadStats = useCallback(async () => {
         // Must be the LOCAL month: the queries filter on
@@ -459,7 +479,7 @@ export default function Index() {
         <Screen edges={[]}>
             <ScrollView
                 ref={scrollViewRef}
-                onScroll={(e) => { scrollY.current = e.nativeEvent.contentOffset.y; }}
+                onScroll={onCoachScroll}
                 scrollEventThrottle={32}
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
@@ -507,7 +527,6 @@ export default function Index() {
 
             {homeDetailModal}
             {echoReceipts}
-            <HomeWalk visible={walking && !isLoading} onDone={finishWalk} reveal={revealTarget} />
 
         </Screen>
     );

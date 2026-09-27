@@ -19,6 +19,8 @@ import { Eligibility } from './eligibility';
 import { errorCode } from './session';
 import { weekKey } from './week';
 import { GroupWindow, groupWindow, nextWindowChange } from './window';
+import { useTour } from '../onboarding/tour';
+import { DEMO_GROUP_ID, demoGroup, demoGroupWeek, demoMembers, demoWindow } from '../onboarding/demo';
 
 type Data = Record<string, any>;
 type Docs = { id: string; data: Data }[];
@@ -155,8 +157,29 @@ interface HubData {
     members?: Docs;
 }
 
+/** Signed out or not, the walk shows its example group as your one group. */
+const DEMO_READS = 14;
+const TOUR_UID = 'tour-you';
+
 /** One row per group the reader is in, in `groupIds` order. */
 export function useMyGroups(): { rows: HubRow[]; loading: boolean; error: boolean } {
+    const live = useLiveGroups();
+    const { active } = useTour();
+    return useMemo(() => active ? {
+        rows: [{
+            group: demoGroup(),
+            memberCount: 4,
+            readsThisWeek: DEMO_READS,
+            myRole: 'member',
+            window: demoWindow(),
+            line: hubLine(4, DEMO_READS),
+        }],
+        loading: false,
+        error: false,
+    } : live, [active, live]);
+}
+
+function useLiveGroups(): { rows: HubRow[]; loading: boolean; error: boolean } {
     const uid = useAuth().user?.uid;
     const { ids, loading: idsLoading, error: idsError } = useMyGroupIds();
     const [data, setData] = useState<Record<string, HubData>>({});
@@ -217,7 +240,8 @@ export function useMyGroups(): { rows: HubRow[]; loading: boolean; error: boolea
     }), [groups, data, counts, now, uid]);
 
     const loading = idsLoading || ids.some(gid => data[gid]?.group === undefined || data[gid]?.members === undefined);
-    return { rows, loading: loading && !error, error: error || idsError };
+    const failed = error || idsError;
+    return useMemo(() => ({ rows, loading: loading && !error, error: failed }), [rows, loading, error, failed]);
 }
 
 // ─── One group ────────────────────────────────────────────────────────────────
@@ -242,6 +266,32 @@ export interface GroupState {
 const NO_DAYS = [false, false, false, false, false, false, false];
 
 export function useGroup(gid: string | undefined): GroupState {
+    const demo = gid === DEMO_GROUP_ID;
+    // The example group is never asked of the server.
+    const live = useLiveGroup(demo ? undefined : gid);
+    const { user } = useAuth();
+    const uid = user?.uid ?? TOUR_UID;
+    const name = user?.displayName ?? '';
+    return useMemo(() => {
+        if (!demo) return live;
+        const members = byName(demoMembers(uid, name));
+        const me = members.find(m => m.uid === uid) ?? null;
+        return {
+            group: demoGroup(),
+            members,
+            me,
+            myRole: me?.role ?? null,
+            window: demoWindow(),
+            readsThisWeek: DEMO_READS,
+            myDays: demoGroupWeek(uid).weeks[0].days,
+            loading: false,
+            missing: false,
+            error: false,
+        };
+    }, [demo, live, uid, name]);
+}
+
+function useLiveGroup(gid: string | undefined): GroupState {
     const uid = useAuth().user?.uid;
     const myKey = useWeekKey();
     const [groupData, setGroupData] = useState<Data | null | undefined>(undefined);
@@ -332,6 +382,17 @@ export interface GroupWeekState extends GroupWeek {
  * only snapshots the server has confirmed.
  */
 export function useGroupWeek(group: Group | null): GroupWeekState {
+    const demo = group?.id === DEMO_GROUP_ID;
+    const live = useLiveGroupWeek(demo ? null : group);
+    const uid = useAuth().user?.uid ?? TOUR_UID;
+    return useMemo(() => {
+        if (!demo) return live;
+        const window = demoWindow();
+        return { ...demoGroupWeek(uid), open: true, label: window.label, weekKey: window.reviewKey, loading: false, error: false };
+    }, [demo, live, uid]);
+}
+
+function useLiveGroupWeek(group: Group | null): GroupWeekState {
     const window = useGroupWindow(group);
     const gid = group?.id;
     const key = window?.open ? window.reviewKey : null;

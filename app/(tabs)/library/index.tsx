@@ -38,6 +38,8 @@ import { EchoesContent } from '@/src/components/insight/EchoesContent';
 import { READING_PLAN_DATA, ReadingItem } from '@/src/data/readingPlanData';
 import { getReadingProgress, toggleReadingItem, checkEntryCoversChapters } from '@/src/data/database';
 import { useAlert } from '@/src/context/AlertContext';
+import { useTour } from '@/src/onboarding/tour';
+import { coachTarget } from '@/src/onboarding/coachTargets';
 import * as WebBrowser from 'expo-web-browser';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -551,6 +553,11 @@ export default function LibraryScreen() {
     const params = useLocalSearchParams();
 
     const [tab, setTab] = useState<Tab>((params.view as Tab) || 'recent');
+    const tour = useTour();
+    // The app walk starts the reader on Recent; from there they do the tapping.
+    useEffect(() => {
+        if (tour.active) setTab('recent');
+    }, [tour.active]);
     const [journalSearch, setJournalSearch] = useState('');
     const [journalSelectedBook, setJournalSelectedBook] = useState<BibleBook | undefined>();
     const [journalCount, setJournalCount] = useState(0);
@@ -604,6 +611,7 @@ export default function LibraryScreen() {
      */
     const searchField = (
         <>
+            <View ref={coachTarget('library-search')} collapsable={false}>
             <TextInput
                 style={[
                     styles.searchInput,
@@ -627,6 +635,7 @@ export default function LibraryScreen() {
                 autoCapitalize="none"
                 autoCorrect={false}
             />
+            </View>
             {journalSearch.length > 0 && (
                 <ScalePressable style={styles.clearSearch} onPress={() => setJournalSearch('')}>
                     <UIText variant="title" tone="inverse">×</UIText>
@@ -713,12 +722,16 @@ export default function LibraryScreen() {
                             items={SECTIONS.map(t => ({ key: t.key, label: t.label }))}
                             value={section}
                             onChange={key => handleNavigate(DEFAULT_VIEW[key as Section])}
+                            itemRef={key => key === 'unfinished' ? coachTarget('library-section-unfinished')
+                                : key === 'echoes' ? coachTarget('library-section-echoes') : undefined}
                         />
                         {subviews && (
                             <Segments
                                 items={subviews}
                                 value={activeSubview}
                                 onChange={key => handleNavigate(key as Exclude<Tab, 'bookDetail'>)}
+                                itemRef={key => key === 'books' ? coachTarget('library-sub-books')
+                                    : key === 'topics' ? coachTarget('library-sub-topics') : undefined}
                             />
                         )}
                     </>
@@ -731,7 +744,9 @@ export default function LibraryScreen() {
             ) : tab === 'echoes' ? (
                 <EchoesContent />
             ) : tab === 'themes' ? (
-                <ThemesContent onPatternCountChange={setThemeCount} searchQuery={journalSearch} />
+                <View ref={coachTarget('library-themes')} collapsable={false} style={styles.walkFill}>
+                    <ThemesContent onPatternCountChange={setThemeCount} searchQuery={journalSearch} />
+                </View>
             ) : (
                 <JournalContent
                     viewMode={tab}
@@ -759,6 +774,7 @@ export default function LibraryScreen() {
 const HEBREW_SCRIPTURES_END = 286;
 
 const styles = StyleSheet.create({
+    walkFill: { flex: 1 },
     // .cl-label over a run of rows: margin:18px 0 10px
     clothPlanSectionHeader: {
         paddingTop: Spacing.lg + 2,

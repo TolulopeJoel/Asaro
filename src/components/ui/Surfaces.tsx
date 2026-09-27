@@ -132,7 +132,7 @@ export function Card({ children, style, ...rest }: ViewProps & { children: React
 }
 
 /** A list row with a hairline underneath. */
-export function Row({ children, style, ...rest }: ViewProps & { children: React.ReactNode }) {
+export function Row({ children, style, ...rest }: ViewProps & { children: React.ReactNode; ref?: React.Ref<View> }) {
     const { colors } = useTheme();
     return (
         <View style={[styles.row, { borderBottomColor: colors.border }, style]} {...rest}>
@@ -156,6 +156,8 @@ export interface SegmentsProps {
      * type scale's smallest size.
      */
     scrollable?: boolean;
+    /** A ref for one tab, by key: how the app walk finds the tab it asks the reader to tap. */
+    itemRef?: (key: string) => React.Ref<View> | undefined;
 }
 
 /**
@@ -163,7 +165,7 @@ export interface SegmentsProps {
  *
  * An underlined row of labels.
  */
-export function Segments({ items, value, onChange, scrollable = false }: SegmentsProps) {
+export function Segments({ items, value, onChange, scrollable = false, itemRef }: SegmentsProps) {
     const { colors } = useTheme();
 
     const buttons = items.map((item) => {
@@ -173,6 +175,7 @@ export function Segments({ items, value, onChange, scrollable = false }: Segment
         return (
             <Pressable
                 key={item.key}
+                ref={itemRef?.(item.key)}
                 onPress={() => onChange(item.key)}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: active }}

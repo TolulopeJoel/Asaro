@@ -1,6 +1,7 @@
 import * as Device from 'expo-device';
 import * as IntentLauncher from 'expo-intent-launcher';
 import { Linking, Platform } from 'react-native';
+import { APP_PACKAGE } from './appPackage';
 
 /**
  * The OEM power managers that stop reminders from firing.
@@ -22,8 +23,6 @@ import { Linking, Platform } from 'react-native';
  * a component that does not exist throws ActivityNotFoundException, which is
  * the signal to try the next. The app's own settings page is the fallback.
  */
-
-const PACKAGE = 'com.asaro.meditation';
 
 export type OemFamily = 'transsion' | 'xiaomi' | 'huawei' | 'oppo' | 'vivo' | 'samsung' | 'none';
 
@@ -141,7 +140,7 @@ export async function openAutoStartSettings(): Promise<boolean> {
     try {
         await IntentLauncher.startActivityAsync(
             IntentLauncher.ActivityAction.APPLICATION_DETAILS_SETTINGS,
-            { data: `package:${PACKAGE}` },
+            { data: `package:${APP_PACKAGE}` },
         );
     } catch {
         Linking.openSettings();

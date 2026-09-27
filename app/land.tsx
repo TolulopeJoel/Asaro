@@ -11,7 +11,7 @@
  * the loudest thing on the page.
  */
 
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { ChevronLeft, X } from 'lucide-react-native';
@@ -29,6 +29,9 @@ import { GroveTree, loadGrove } from '@/src/grove/loadGrove';
 import { BookCloth, ChapterRef, Cloth, nextChapter, quietBooks, weaveCloth } from '@/src/land/cloth';
 import { fallowHeading } from '@/src/land/fallowTone';
 import { landSubtitle, parcelLine } from '@/src/land/landTone';
+import { useTour } from '@/src/onboarding/tour';
+import { coachTarget } from '@/src/onboarding/coachTargets';
+import { demoCoverage, demoGrove } from '@/src/onboarding/demo';
 import { Spacing } from '@/src/theme/spacing';
 import { useTheme } from '@/src/theme/ThemeContext';
 
@@ -61,12 +64,15 @@ export default function LandScreen() {
     const [cardHeight, setCardHeight] = useState(0);
     const footPadding = useFootPadding(Spacing.xxl);
     const cardFoot = useFootPadding(Spacing.xl);
+    const tour = useTour();
 
     useFocusEffect(
         useCallback(() => {
             let alive = true;
             (async () => {
-                const rows = await getChapterCoverage();
+                // The app walk shows its example land instead.
+                const demo = tour.active;
+                const rows = demo ? demoCoverage() : await getChapterCoverage();
                 const books = [...HEBREW_BOOKS, ...GREEK_BOOKS];
                 const woven = weaveCloth(rows, books, Date.now());
                 if (alive) {
@@ -75,6 +81,10 @@ export default function LandScreen() {
                 }
                 // Every practice keeps its tree here, resting ones included:
                 // a tree never dies, it only goes thirsty.
+                if (demo) {
+                    if (alive) setGrove(demoGrove());
+                    return;
+                }
                 try {
                     const items = await getAllActionItems(200);
                     const live = items.filter(
@@ -89,8 +99,9 @@ export default function LandScreen() {
             return () => {
                 alive = false;
             };
-        }, []),
+        }, [tour.active]),
     );
+
 
     const trees = useMemo<LandTree[]>(
         () => grove.map(t => ({
@@ -120,24 +131,28 @@ export default function LandScreen() {
                     hitSlop={Spacing.md}
                     style={styles.back}
                 >
-                    <ChevronLeft size={20} color={colors.accent} strokeWidth={2} />
+                    <View ref={coachTarget('back-land')} collapsable={false}>
+                        <ChevronLeft size={20} color={colors.accent} strokeWidth={2} />
+                    </View>
                 </ScalePressable>
-                <UIText variant="display" tone="onBand" style={styles.heroTitle}>Your land</UIText>
-                {/* The count lives here rather than in a panel of its own: a
-                  * block below pushes the land down and frames it, and the
-                  * field should be the screen rather than an illustration
-                  * inside one. Tapping a parcel swaps this line for that
-                  * parcel's tally, so identifying one costs no layout. */}
-                <UIText variant="sub" tone="onHero" numberOfLines={1}>
-                    {selected
-                        ? parcelLine(
-                            selected.name,
-                            selected.worked,
-                            selected.total,
-                            ago(selected.lastWorkedDays ?? 0),
-                        )
-                        : landSubtitle(cloth?.worked ?? 0, cloth?.total ?? 0)}
-                </UIText>
+                <View ref={coachTarget('land-field')} collapsable={false}>
+                    <UIText variant="display" tone="onBand" style={styles.heroTitle}>Your land</UIText>
+                    {/* The count lives here rather than in a panel of its own: a
+                      * block below pushes the land down and frames it, and the
+                      * field should be the screen rather than an illustration
+                      * inside one. Tapping a parcel swaps this line for that
+                      * parcel's tally, so identifying one costs no layout. */}
+                    <UIText variant="sub" tone="onHero" numberOfLines={1}>
+                        {selected
+                            ? parcelLine(
+                                selected.name,
+                                selected.worked,
+                                selected.total,
+                                ago(selected.lastWorkedDays ?? 0),
+                            )
+                            : landSubtitle(cloth?.worked ?? 0, cloth?.total ?? 0)}
+                    </UIText>
+                </View>
             </Hero>
 
             {!cloth ? (
@@ -207,6 +222,8 @@ export default function LandScreen() {
 
             {tapped && (
                 <View
+                    ref={coachTarget('land-card')}
+                    collapsable={false}
                     style={[styles.treeCard, { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: cardFoot }]}
                     onLayout={e => setCardHeight(e.nativeEvent.layout.height)}
                 >

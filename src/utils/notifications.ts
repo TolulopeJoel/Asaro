@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications';
 import { Linking, Platform } from 'react-native';
 import * as Device from 'expo-device';
 import * as IntentLauncher from 'expo-intent-launcher';
+import { APP_PACKAGE } from './appPackage';
 import * as Battery from 'expo-battery';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BRAND_ACCENT } from '../theme/colors';
@@ -182,22 +183,33 @@ export async function isBatteryOptimizationDisabled(): Promise<boolean> {
   }
 }
 
+/** Under this, the request screen closed itself without asking anything. */
+const SILENT_CLOSE_MS = 600;
+
 /** Ask Android to exempt the app from battery optimisation, falling back to the general list. */
 export async function openBatteryOptimizationSettings(): Promise<void> {
   if (Platform.OS !== 'android') {
     Linking.openSettings();
     return;
   }
-  try {
-    await IntentLauncher.startActivityAsync('android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS', {
-      data: 'package:com.asaro.meditation',
-    });
-  } catch {
+  const openList = async () => {
     try {
       await IntentLauncher.startActivityAsync('android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS');
     } catch {
       Linking.openSettings();
     }
+  };
+  try {
+    const opened = Date.now();
+    await IntentLauncher.startActivityAsync('android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS', {
+      data: `package:${APP_PACKAGE}`,
+    });
+    // Some vendor skins close the request screen at once without asking; send them to the list.
+    if (Date.now() - opened < SILENT_CLOSE_MS && !(await isBatteryOptimizationDisabled())) {
+      await openList();
+    }
+  } catch {
+    await openList();
   }
 }
 
@@ -229,13 +241,11 @@ export async function requestNotificationPermissions(): Promise<boolean> {
 // Open notification settings page for the app
 export async function openNotificationSettings() {
   if (Platform.OS === 'android') {
-    const pkg = 'com.asaro.meditation';
-
     try {
       await IntentLauncher.startActivityAsync(
         IntentLauncher.ActivityAction.APP_NOTIFICATION_SETTINGS,
         {
-          extra: { 'android.provider.extra.APP_PACKAGE': pkg }
+          extra: { 'android.provider.extra.APP_PACKAGE': APP_PACKAGE }
         }
       );
     } catch {

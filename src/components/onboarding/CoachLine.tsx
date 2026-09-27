@@ -14,7 +14,13 @@ import { Flip } from './Flip';
 const HOLD_MS = 2500;
 const HELD: ReadonlySet<AsaroAction> = new Set(['deadpan', 'sideEye', 'smug', 'sheepish', 'think']);
 
-export function CoachLine({ line, action, style }: { line: string; action?: AsaroAction; style?: ViewStyle }) {
+export function CoachLine({ line, action, style, children }: {
+    line: string;
+    action?: AsaroAction;
+    style?: ViewStyle;
+    /** Under the line, inside the bubble: a Got it, say. */
+    children?: React.ReactNode;
+}) {
     const { colors } = useTheme();
     const face = useRef<AsaroHandle>(null);
 
@@ -32,6 +38,7 @@ export function CoachLine({ line, action, style }: { line: string; action?: Asar
             <Flip flipKey={line} stretch puff={false} style={styles.grow}>
                 <View style={[styles.bubble, { backgroundColor: colors.backgroundSubtle }]}>
                     <Text variant="bodySmall" accessibilityLiveRegion="polite">{line}</Text>
+                    {children}
                 </View>
             </Flip>
         </View>
@@ -41,5 +48,5 @@ export function CoachLine({ line, action, style }: { line: string; action?: Asar
 const styles = StyleSheet.create({
     row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
     grow: { flex: 1 },
-    bubble: { paddingVertical: Spacing.md, paddingHorizontal: Spacing.lg },
+    bubble: { paddingVertical: Spacing.md, paddingHorizontal: Spacing.lg, gap: Spacing.sm },
 });

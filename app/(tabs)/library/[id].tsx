@@ -9,6 +9,8 @@ import { cancelStudyReminder } from '@/src/utils/notifications';
 import { LoadingView } from '@/src/components/LoadingView';
 import { Share } from 'react-native';
 import { useAlert } from '@/src/context/AlertContext';
+import { useTour } from '@/src/onboarding/tour';
+import { DEMO_ENTRIES } from '@/src/onboarding/demo';
 
 /** "John 3:16–21", "Genesis 12–15", "Genesis 12:4–13:2" — the passage as the entry records it. */
 function entryReference(entry: JournalEntry): string {
@@ -32,12 +34,20 @@ export default function JournalEntryDetailScreen() {
     const [isSharing, setIsSharing] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const { showAlert } = useAlert();
+    // The walk's example entries have negative ids and live only in memory.
+    const { active: touring } = useTour();
+    const demo = touring && Number(id) < 0;
 
     // Reloaded on every focus, so returning from an edit shows the saved text. The spinner is first-load only.
     useFocusEffect(useCallback(() => {
         let alive = true;
         const loadEntry = async () => {
             if (!id) return;
+            if (demo) {
+                setEntry(DEMO_ENTRIES.find(e => e.id === Number(id)) ?? null);
+                setIsLoading(false);
+                return;
+            }
             try {
                 const data = await getEntryById(Number(id));
                 if (alive) setEntry(data);
@@ -49,7 +59,7 @@ export default function JournalEntryDetailScreen() {
         };
         loadEntry();
         return () => { alive = false; };
-    }, [id]));
+    }, [id, demo]));
 
     const handleEdit = (entry: JournalEntry) => {
         router.push({
@@ -133,10 +143,11 @@ export default function JournalEntryDetailScreen() {
                 at its foot — so there is no <Screen> to wrap it in here. */}
             <JournalEntryDetail
                 entry={entry}
-                onEdit={handleEdit}
-                onDelete={() => handleDelete(entry)}
+                // An example can be read, not edited, deleted or shared.
+                onEdit={demo ? undefined : handleEdit}
+                onDelete={demo ? undefined : () => handleDelete(entry)}
                 onClose={handleClose}
-                onShare={() => handleShare(entry)}
+                onShare={demo ? undefined : () => handleShare(entry)}
                 isSharing={isSharing}
                 isDeleting={isDeleting}
                 aboveTabBar

@@ -2,7 +2,7 @@
  * The reader's practices as a grove of trees, on the stats page. Tap a tree to
  * see how rooted it is. design/practices-grove.html.
  */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
@@ -13,6 +13,7 @@ import { Spacing } from '../../theme/spacing';
 import { ScalePressable } from '../ScalePressable';
 import { Text } from '../ui';
 import { Tree } from './Tree';
+import { coachTarget } from '../../onboarding/coachTargets';
 
 /** Every tree on one scale, so each stage is plainly bigger than the last. */
 const TREE_SIZE = 84;
@@ -78,9 +79,16 @@ export function TreeDetail({ tree, divided = true }: { tree: GroveTree; divided?
     );
 }
 
-export function Grove({ trees }: { trees: GroveTree[] }) {
+export function Grove({ trees, openTreeId }: {
+    trees: GroveTree[];
+    /** Open this tree from outside, as the app walk does. */
+    openTreeId?: number;
+}) {
     const { colors } = useTheme();
     const [open, setOpen] = useState<number | null>(null);
+    useEffect(() => {
+        if (openTreeId !== undefined) setOpen(openTreeId);
+    }, [openTreeId]);
 
     const growing = trees
         .filter(t => !t.resting)
@@ -119,7 +127,11 @@ export function Grove({ trees }: { trees: GroveTree[] }) {
                                 );
                             })}
                         </View>
-                        {opened && <TreeDetail tree={opened} />}
+                        {opened && (
+                            <View ref={coachTarget('stats-rooted')} collapsable={false}>
+                                <TreeDetail tree={opened} />
+                            </View>
+                        )}
                     </React.Fragment>
                 );
             })}

@@ -91,9 +91,9 @@ export default function TabLayout() {
                                   * word in the foreground colour, which is the whole
                                   * mechanism.
                                   */}
-                                {/* The first-run walk points at Library and Groups by name. */}
+                                {/* The first-run walk points at each tab by name. */}
                                 <View
-                                    ref={route.name === 'library' ? coachTarget('tab-library') : route.name === 'groups' ? coachTarget('tab-groups') : undefined}
+                                    ref={route.name === 'library' ? coachTarget('tab-library') : route.name === 'groups' ? coachTarget('tab-groups') : route.name === 'index' ? coachTarget('tab-home') : undefined}
                                     collapsable={false}
                                 >
                                     <Text

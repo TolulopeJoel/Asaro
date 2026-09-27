@@ -28,6 +28,7 @@ import { Cell, layoutCells } from '../../land/plots';
 import { useTheme } from '../../theme/ThemeContext';
 import { Asaro, Text } from '../ui';
 import { Tree, boxOf } from '../grove/Tree';
+import { coachTarget } from '../../onboarding/coachTargets';
 import { TERRAIN, mudFor } from './terrain';
 import {
     Speck,
@@ -575,6 +576,8 @@ export function BibleCloth({
               * middle of a tree answers a tap, so a wide canopy does not steal
               * the books beneath it. */}
             {size > 0 && planted.map(({ tree, cell }) => {
+                // The app walk has the reader tap the tree on Genesis, the chapter its line names.
+                const walkTree = tree.id === (planted.find(p => p.tree.bookName === 'Genesis') ?? planted[0])?.tree.id;
                 const box = boxOf(tree.stage, true);
                 const w = size * TREE_SPAN[tree.stage];
                 const h = (w * box.h) / box.w;
@@ -588,6 +591,7 @@ export function BibleCloth({
                         </View>
                         {onTreePress && (
                             <Pressable
+                                ref={walkTree ? coachTarget('land-tree') : undefined}
                                 onPress={() => onTreePress(tree.id)}
                                 accessibilityRole="button"
                                 accessibilityLabel={`${tree.bookName} ${tree.chapter}, a practice's tree`}

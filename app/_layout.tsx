@@ -23,6 +23,7 @@ import { AlertProvider } from '@/src/context/AlertContext';
 import { RefPickerProvider } from '@/src/context/RefPickerContext';
 import { LoadingView } from '@/src/components/LoadingView';
 import { CustomAlert } from '@/src/components/CustomAlert';
+import { AppWalk } from '@/src/components/onboarding/AppWalk';
 import { useFonts } from 'expo-font';
 import {
   Fraunces_700Bold,
@@ -291,6 +292,7 @@ export default function RootLayout() {
               ) : (
                 <>
                   <StackNavigator />
+                  <AppWalk />
                   <CustomAlert />
                   <StatusBar hidden={true} />
                 </>

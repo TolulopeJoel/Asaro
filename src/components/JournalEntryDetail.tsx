@@ -36,6 +36,7 @@ import { ScalePressable } from './ScalePressable';
 import { HyperlinkedText } from './HyperlinkedText';
 import { CardFAB } from './CardFAB';
 import { Hero, Screen, Text, textStyle } from './ui';
+import { coachTarget } from '../onboarding/coachTargets';
 
 interface JournalEntryDetailProps {
     entry: JournalEntry;
@@ -365,11 +366,13 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
             accessibilityRole="button"
             accessibilityLabel="Close"
         >
-            <X
-                size={19}
-                color={colors.textOnHero}
-                strokeWidth={1.9}
-            />
+            <View ref={coachTarget('back-entry')} collapsable={false}>
+                <X
+                    size={19}
+                    color={colors.textOnHero}
+                    strokeWidth={1.9}
+                />
+            </View>
         </ScalePressable>
     );
 

@@ -21,9 +21,9 @@ import { useAutoSave, useStepFade, Step, DraftData, ChapterRange, VerseRange, su
 import { answeredCount } from '@/src/data/questions';
 import { BookStep, ChapterStep, ReflectionStep, SummaryStep } from '../src/components/entry/EntrySteps';
 import { Screen } from '@/src/components/ui';
-import { CoachLine } from '@/src/components/onboarding/CoachLine';
 import { PracticeAftermath } from '@/src/components/onboarding/PracticeAftermath';
-import { COACH, PRACTICE_ANSWERS, PRACTICE_BOOK, PRACTICE_CHAPTERS } from '@/src/onboarding/practiceEntry';
+import { beatsFinished, COACH, PRACTICE_ANSWERS, PRACTICE_BOOK, PRACTICE_CHAPTERS } from '@/src/onboarding/practiceEntry';
+import { CoachSequence } from '@/src/components/onboarding/CoachSequence';
 import { setFirstRun } from '@/src/onboarding/firstRun';
 import { KEYBOARD_BEHAVIOR } from '../src/utils/keyboard';
 
@@ -97,6 +97,12 @@ export default function MeditationSessionScreen() {
         });
         return () => sub.remove();
     }, [currentStep]);
+
+    // How far each practice page's conversation has got, kept when paging back so nothing is said twice.
+    const [beatAt, setBeatAt] = useState<Record<string, number>>({});
+    const advanceBeat = useCallback((key: string) => setBeatAt(prev => ({ ...prev, [key]: (prev[key] ?? 0) + 1 })), []);
+    const advanceChapter = useCallback(() => advanceBeat('chapter'), [advanceBeat]);
+    const pageAdvancers = useMemo(() => COACH.pages.map((_, i) => () => advanceBeat(`p${i}`)), [advanceBeat]);
 
     // The practice entry can't be left until it's done: no skip, like the rest of a first run.
     const practiceDone = useRef(false);
@@ -490,8 +496,8 @@ export default function MeditationSessionScreen() {
                         onBack={() => setCurrentStep('book')}
                         onExit={practice ? undefined : () => router.back()}
                         onContinue={handleContinueToReflection}
-                        canContinue={!!(selectedChapters && selectedChapters.start > 0)}
-                        coach={practice ? <CoachLine line={COACH.chapter.line} action={COACH.chapter.action} /> : undefined}
+                        canContinue={!!(selectedChapters && selectedChapters.start > 0) && (!practice || beatsFinished(COACH.chapter, beatAt.chapter ?? 0))}
+                        coach={practice ? <CoachSequence beats={COACH.chapter} at={beatAt.chapter ?? 0} onAdvance={advanceChapter} /> : undefined}
                     />
                 );
             case 'reflection':
@@ -506,10 +512,16 @@ export default function MeditationSessionScreen() {
                         onDiscard={handleDiscardDraft}
                         onExit={practice ? undefined : () => router.back()}
                         saveButtonText={savedEntryId ? 'Update entry' : undefined}
-                        coach={practice ? (page) => {
-                            const beat = COACH.pages[page];
-                            return beat ? <CoachLine line={beat.line} action={beat.action} /> : null;
-                        } : undefined}
+                        coach={practice ? (page, answers) => COACH.pages[page] ? (
+                            <CoachSequence
+                                key={page}
+                                beats={COACH.pages[page]}
+                                at={beatAt[`p${page}`] ?? 0}
+                                onAdvance={pageAdvancers[page]}
+                                answers={answers}
+                            />
+                        ) : null : undefined}
+                        gate={practice ? (page) => beatsFinished(COACH.pages[page], beatAt[`p${page}`] ?? 0) : undefined}
                         samples={practice ? PRACTICE_ANSWERS : undefined}
                     />
                 );

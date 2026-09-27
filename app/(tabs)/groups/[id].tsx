@@ -5,7 +5,7 @@
  * and the members by name. In the window: each person's week, and who read.
  * Roles are never shown as tags; tapping a member is how they are managed.
  */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, Share as RNShare, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -22,6 +22,9 @@ import { formatRange } from '@/src/utils/reference';
 import { QUESTION_LABELS, QUESTION_COUNT, isQuestionId } from '@/src/data/questions';
 import { daysRead, feedByMember, parseLocalDateTime } from '@/src/groups/derive';
 import { useGroup, useGroupWeek } from '@/src/groups/hooks';
+import { DEMO_GROUP_ID } from '@/src/onboarding/demo';
+import { CoachTarget, coachTarget } from '@/src/onboarding/coachTargets';
+import { useCoachScroller } from '@/src/onboarding/useCoachScroller';
 import { Group, Member, Reading, Role } from '@/src/groups/model';
 import { hasNudged, leaveGroup, regenerateCode, removeMember, sendNudge, setRole } from '@/src/groups/repository';
 import { weekdayIndex } from '@/src/groups/week';
@@ -142,6 +145,9 @@ export default function GroupScreen() {
     const [editing, setEditing] = useState(false);
     const [bringing, setBringing] = useState(false);
     const [introSeen, setIntroSeen] = useState(true);
+    const demo = gid === DEMO_GROUP_ID;
+    const scroll = useRef<ScrollView>(null);
+    const onScroll = useCoachScroller(scroll);
 
     useEffect(() => {
         AsyncStorage.getItem(STORAGE_KEYS.GROUP_INTRO_SEEN)
@@ -323,6 +329,11 @@ export default function GroupScreen() {
     const feed = week.open && week.weekKey ? feedByMember(g.members, week, week.weekKey) : [];
     const shown = feed.filter(p => p.readings.length || p.share || p.practices.length || p.milestones.length);
     const myShare = week.shares.find(s => s.userId === uid) ?? null;
+    // The walk points at the first person who brought something and the first who shared a practice.
+    const sharer = shown.find(p => p.share)?.member.uid;
+    const practiser = shown.find(p => p.practices.length && p.member.uid !== sharer)?.member.uid;
+    const personTarget = (member: Member): CoachTarget | null =>
+        !demo ? null : member.uid === sharer ? 'group-days' : member.uid === practiser ? 'group-practice' : null;
 
     if (g.missing) {
         return (
@@ -349,7 +360,8 @@ export default function GroupScreen() {
             <Hero ownsTopInset>
                 <View style={styles.top}>
                     <Back onPress={() => router.back()} color={colors.accent} />
-                    {g.group && (
+                    {/* The example group has no code to share and nothing to leave. */}
+                    {g.group && !demo && (
                         <ScalePressable
                             onPress={() => setMenuOpen(true)}
                             hitSlop={Spacing.md}
@@ -367,15 +379,23 @@ export default function GroupScreen() {
             </Hero>
 
             {week.open && (
-                <Segments
-                    items={[{ key: 'week', label: 'This week' }, { key: 'members', label: 'Members' }]}
-                    value={tab}
-                    onChange={key => setTab(key as 'week' | 'members')}
-                />
+                <View ref={coachTarget('group-members')} collapsable={false}>
+                    <Segments
+                        items={[{ key: 'week', label: 'This week' }, { key: 'members', label: 'Members' }]}
+                        value={tab}
+                        onChange={key => setTab(key as 'week' | 'members')}
+                    />
+                </View>
             )}
 
-            <ScrollView contentContainerStyle={[styles.body, { paddingBottom: footPadding }]} showsVerticalScrollIndicator={false}>
-                {!introSeen && !g.loading && (
+            <ScrollView
+                ref={scroll}
+                onScroll={onScroll}
+                scrollEventThrottle={32}
+                contentContainerStyle={[styles.body, { paddingBottom: footPadding }]}
+                showsVerticalScrollIndicator={false}
+            >
+                {!introSeen && !g.loading && !demo && (
                     <View style={[styles.intro, { backgroundColor: colors.backgroundSubtle }]}>
                         <Text variant="body">
                             Here, your reflections stay yours. Each week you can bring one answer to share, and everyone sees each other’s week on Sunday.
@@ -420,7 +440,11 @@ export default function GroupScreen() {
                 ) : tab === 'week' ? (
                     <>
                         {!myShare && (
-                            <View style={[styles.bring, { backgroundColor: colors.backgroundSubtle }]}>
+                            <View
+                                ref={coachTarget('group-share')}
+                                collapsable={false}
+                                style={[styles.bring, { backgroundColor: colors.backgroundSubtle }]}
+                            >
                                 <Text variant="body" style={styles.flex}>Bring one thing from your week.</Text>
                                 <ThemedButton label="Choose" variant="accent" onPress={() => setBringing(true)} />
                             </View>
@@ -430,7 +454,12 @@ export default function GroupScreen() {
                         ) : shown.length === 0 ? (
                             <Text variant="sub">Nobody has anything this week yet.</Text>
                         ) : shown.map(person => (
-                            <Row key={person.member.uid} style={styles.person}>
+                            <Row
+                                key={person.member.uid}
+                                ref={personTarget(person.member) ? coachTarget(personTarget(person.member)!) : undefined}
+                                collapsable={false}
+                                style={styles.person}
+                            >
                                 <View style={styles.personHead}>
                                     <MemberAvatar
                                         uid={person.member.uid} name={person.member.displayName}
@@ -517,7 +546,9 @@ export default function GroupScreen() {
 function Back({ onPress, color }: { onPress: () => void; color: string }) {
     return (
         <ScalePressable onPress={onPress} accessibilityRole="button" accessibilityLabel="Back" hitSlop={Spacing.md} style={styles.back}>
-            <ChevronLeft size={20} color={color} strokeWidth={1.9} />
+            <View ref={coachTarget('back-group')} collapsable={false}>
+                <ChevronLeft size={20} color={color} strokeWidth={1.9} />
+            </View>
         </ScalePressable>
     );
 }

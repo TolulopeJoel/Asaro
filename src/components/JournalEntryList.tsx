@@ -18,6 +18,9 @@ import { AHEAD_AT_TOP, BookDetailHeader, StillAhead, coveredChapters } from './j
 import { READING_PLAN_DATA } from '../data/readingPlanData';
 import { planItemCoversBook } from '../data/journalRepository';
 import { getReadingProgress } from '../data/database';
+import { useTour } from '../onboarding/tour';
+import { coachEvent, coachTarget, type CoachTarget } from '../onboarding/coachTargets';
+import { DEMO_ACTIONS, DEMO_BOOK_COUNTS, DEMO_ENTRIES, DEMO_PROGRESS, DEMO_TOPICS } from '../onboarding/demo';
 import { formatRange } from '../utils/reference';
 
 import {
@@ -89,6 +92,11 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
     onBookEntryCountChange,
 }) => {
     const { colors } = useTheme();
+    // The app walk shows its example journal instead of loading this one.
+    const { active: demo } = useTour();
+    const demoRef = useRef(demo);
+    demoRef.current = demo;
+
     const [entries, setEntries] = useState<JournalEntry[]>([]);
     const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
     const [bookEntries, setBookEntries] = useState<JournalEntry[]>([]);
@@ -132,6 +140,17 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
     const PAGE_SIZE = 30;
 
     const loadEntries = useCallback(async (reset = true) => {
+        if (demoRef.current) {
+            entriesRef.current = DEMO_ENTRIES;
+            setEntries(DEMO_ENTRIES);
+            setHasMore(false);
+            onCountChange?.(DEMO_ENTRIES.length);
+            setAvailableBooks(ALL_BIBLE_BOOKS
+                .filter(book => DEMO_BOOK_COUNTS[book.name] !== undefined)
+                .map(book => ({ ...book, entryCount: DEMO_BOOK_COUNTS[book.name] })));
+            setIsLoading(false);
+            return;
+        }
         if (reset) setIsLoading(true);
         try {
             const offset = reset ? 0 : entriesRef.current.length;
@@ -178,6 +197,10 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
 
     const loadBookEntries = useCallback(async () => {
         if (!selectedBook) return;
+        if (demoRef.current) {
+            setBookEntries(DEMO_ENTRIES.filter(entry => entry.book_name === selectedBook.name));
+            return;
+        }
 
         try {
             let dbEntries: JournalEntry[] = [];
@@ -196,6 +219,11 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
     }, [selectedBook, debouncedSearchQuery]);
 
     const loadActions = useCallback(async () => {
+        if (demoRef.current) {
+            setActionsList(DEMO_ACTIONS);
+            setPracticeProgress(DEMO_PROGRESS);
+            return;
+        }
         try {
             const data = await getAllActionItems(200);
             setActionsList(data);
@@ -214,6 +242,10 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
     }, []);
 
     const loadTopics = useCallback(async () => {
+        if (demoRef.current) {
+            setTopicsList(DEMO_TOPICS);
+            return;
+        }
         try {
             const data = await getAllStudyTopics();
             setTopicsList(data);
@@ -223,6 +255,8 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
     }, []);
 
     const handleToggleTopic = useCallback(async (item: JournalEntry) => {
+        // The walk's examples never reach the database.
+        if (demoRef.current) return;
         const id = item.id!;
         const answering = !item.study_completed;
         try {
@@ -259,6 +293,8 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
     }, [loadTopics]);
 
     const handleToggleAction = useCallback(async (item: EnhancedActionItem) => {
+        // The walk's examples never reach the database.
+        if (demoRef.current) return;
         try {
             // A practice is done for a day, not for ever: ticking writes today
             // into the completion log. Only an action flips the row's boolean.
@@ -277,6 +313,8 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
     }, [loadActions]);
 
     const handleTogglePin = useCallback(async (item: EnhancedActionItem) => {
+        // The walk's examples never reach the database.
+        if (demoRef.current) return;
         try {
             await toggleActionItemPin(item.id!, !item.is_pinned);
             loadActions();
@@ -288,6 +326,17 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
     const filterEntries = useCallback(async () => {
         if (!debouncedSearchQuery.trim()) {
             setFilteredEntries(entries);
+            return;
+        }
+
+        // The walk searches its example entries, in memory; the reader's own are never touched.
+        if (demoRef.current) {
+            const q = debouncedSearchQuery.trim().toLowerCase();
+            const found = DEMO_ENTRIES.filter(entry => [
+                entry.book_name, entry.reflection_1, entry.reflection_2, entry.reflection_4, entry.notes, entry.study_further,
+            ].some(text => text?.toLowerCase().includes(q)));
+            setFilteredEntries(found);
+            if (found.length > 0 && q.length >= 3) coachEvent('library-searched');
             return;
         }
 
@@ -645,7 +694,26 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
             .filter(Boolean);
     }, [viewMode, selectedBook, completedPlanIds]);
 
-    const renderListItem = useCallback(({ item }: { item: ListItem }) => {
+    // The walk starting or ending swaps the whole journal, so everything reloads.
+    useEffect(() => {
+        loadEntries(true);
+        loadActions();
+        loadTopics();
+    }, [demo, loadEntries, loadActions, loadTopics]);
+
+    /** The first item of each kind, which the app walk points at. */
+    const walkTargets = useMemo(() => {
+        const first = (type: ListItem['type']) => getFlatListData.find(i => i.type === type)?.id;
+        const firstPractice = getFlatListData.find(i => i.type === 'action' && actionKindOf(i.action) === 'practice')?.id;
+        return new Map<string | number | undefined, CoachTarget>([
+            [first('entry'), 'library-entry'],
+            [first('book'), 'library-books'],
+            [firstPractice, 'library-practice'],
+            [first('topic'), 'library-question'],
+        ]);
+    }, [getFlatListData]);
+
+    const renderListCard = useCallback((item: ListItem) => {
         switch (item.type) {
             case 'header':
                 return <DateGroupHeader title={item.title} />;
@@ -690,7 +758,15 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
             default:
                 return null;
         }
-    }, [colors, viewMode, selectedBook, bookEntries, onEntryPress, handleTogglePin, handleToggleAction, handleToggleTopic, navigateToBookDetail, renderEmptyState]);
+    }, [colors, viewMode, selectedBook, bookEntries, onEntryPress, handleTogglePin, handleToggleAction, handleToggleTopic, navigateToBookDetail, renderEmptyState, practiceProgressMap]);
+
+    const renderListItem = useCallback(({ item }: { item: ListItem }) => {
+        const target = demo ? walkTargets.get(item.id) : undefined;
+        const card = renderListCard(item);
+        return target ? <View ref={coachTarget(target)} collapsable={false}>{card}</View> : card;
+    }, [demo, walkTargets, renderListCard]);
+
+
 
     // Memoized so FlatList gets a stable reference — calling renderListHeader()
     // inline makes a new element each render and remounts the header.

@@ -3,6 +3,10 @@ import { StatTile } from '@/src/components/stats/StatTile';
 import { Grove } from '@/src/components/grove/Grove';
 import { actionKindOf, isCadence } from '@/src/data/actionKind';
 import { GroveTree, loadGrove } from '@/src/grove/loadGrove';
+import { getTour, useTour } from '@/src/onboarding/tour';
+import { coachTarget } from '@/src/onboarding/coachTargets';
+import { useCoachScroller } from '@/src/onboarding/useCoachScroller';
+import { demoCoverage, demoDailyCounts, demoFirstEntry, demoGrove } from '@/src/onboarding/demo';
 import { LoadingView } from '@/src/components/LoadingView';
 import {
     getAllActionItems, getChapterCoverage, getDailyEntryCounts,
@@ -14,7 +18,7 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { formatDateToLocalString, getLocalMidnight } from '@/src/utils/dateUtils';
 import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { ScalePressable } from '@/src/components/ScalePressable';
@@ -80,6 +84,17 @@ export default function StatsScreen() {
     const [monthsBack, setMonthsBack] = useState(0);
 
     const load = useCallback(async () => {
+        // The app walk shows its example record instead.
+        if (getTour().active) {
+            const cloth = weaveCloth(demoCoverage(), ALL_BIBLE_BOOKS, Date.now());
+            setState({
+                data: demoDailyCounts(),
+                firstEntry: demoFirstEntry(),
+                chapters: cloth.worked,
+                books: cloth.books.filter(b => b.total > 0 && b.worked >= b.total).length,
+            });
+            return;
+        }
         const today = new Date();
         const firstEntry = await getFirstEntryDate();
         const start = firstEntry ?? new Date(today.getFullYear(), today.getMonth(), 1);
@@ -101,6 +116,10 @@ export default function StatsScreen() {
 
     useFocusEffect(useCallback(() => { load().catch(() => { }); }, [load]));
 
+    const tour = useTour();
+    const scroll = useRef<ScrollView>(null);
+    const onScroll = useCoachScroller(scroll);
+
     // Practices live here rather than on their Library cards: the Library is
     // where the reader manages what they carry, and "how has this gone" is a
     // different question that belongs beside the other records.
@@ -110,6 +129,10 @@ export default function StatsScreen() {
         useCallback(() => {
             let alive = true;
             (async () => {
+                if (tour.active) {
+                    setGrove(demoGrove());
+                    return;
+                }
                 try {
                     const all = await getAllActionItems(200);
                     const live = all.filter(
@@ -125,8 +148,11 @@ export default function StatsScreen() {
             return () => {
                 alive = false;
             };
-        }, []),
+        }, [tour.active]),
     );
+
+    // The walk starting or ending swaps the record shown.
+    useEffect(() => { load().catch(() => { }); }, [tour.active, load]);
 
     const { longest, current } = useMemo(() => runs(state?.data ?? {}), [state?.data]);
     const daysWritten = useMemo(
@@ -186,7 +212,9 @@ export default function StatsScreen() {
                     hitSlop={Spacing.md}
                     style={styles.back}
                 >
-                    <ChevronLeft size={20} color={colors.accent} strokeWidth={1.9} />
+                    <View ref={coachTarget('back-stats')} collapsable={false}>
+                        <ChevronLeft size={20} color={colors.accent} strokeWidth={1.9} />
+                    </View>
                 </ScalePressable>
                 <UIText variant="display" tone="onBand" style={styles.heroTitle}>What you&apos;ve done</UIText>
                 <UIText variant="sub" tone="onHero" style={styles.heroSub}>{since}</UIText>
@@ -197,7 +225,13 @@ export default function StatsScreen() {
                     <LoadingView size={48} />
                 </View>
             ) : (
-                <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+                <ScrollView
+                    ref={scroll}
+                    onScroll={onScroll}
+                    scrollEventThrottle={32}
+                    contentContainerStyle={styles.body}
+                    showsVerticalScrollIndicator={false}
+                >
                     {/* His ledger. Idle: the page is visited too often for an action not to wear out. */}
                     <View style={styles.ledger}>
                         <Asaro size={64} label="Àṣàrò" />
@@ -217,7 +251,7 @@ export default function StatsScreen() {
 
                     <View>
                         <UIText variant="label" style={styles.sectionLabel}>Statistics</UIText>
-                        <View style={styles.tiles}>
+                        <View ref={coachTarget('stats-tiles')} collapsable={false} style={styles.tiles}>
                             {[0, 2].map(row => (
                                 <View key={row} style={styles.tileRow}>
                                     {tiles.slice(row, row + 2).map(tile => <StatTile key={tile.label} {...tile} />)}
@@ -226,7 +260,7 @@ export default function StatsScreen() {
                         </View>
                     </View>
 
-                    <View>
+                    <View ref={coachTarget('stats-calendar')} collapsable={false}>
                         <View style={styles.pager}>
                             <ScalePressable
                                 onPress={() => setMonthsBack(n => n + 1)}
@@ -264,7 +298,7 @@ export default function StatsScreen() {
                     </View>
 
                     {grove.length > 0 && (
-                        <View>
+                        <View ref={coachTarget('stats-grove')} collapsable={false}>
                             <UIText variant="label" style={styles.sectionLabel}>Practices</UIText>
                             <Grove trees={grove} />
                         </View>

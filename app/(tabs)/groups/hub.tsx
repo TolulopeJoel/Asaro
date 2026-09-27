@@ -12,6 +12,8 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
 import { useFootPadding } from '@/src/hooks/useScreenInsets';
 import { useMyGroups } from '@/src/groups/hooks';
+import { useTour } from '@/src/onboarding/tour';
+import { coachTarget } from '@/src/onboarding/coachTargets';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { Button } from '@/src/components/Button';
 import { Skeleton } from '@/src/components/Skeleton';
@@ -26,6 +28,8 @@ export default function GroupsScreen() {
     const footPadding = useFootPadding();
     const { rows, loading: groupsLoading, error } = useMyGroups();
     const scrollViewRef = useRef<ScrollView>(null);
+    // The walk shows its example group whether or not the reader has signed in.
+    const { active: touring } = useTour();
 
     useEffect(() => {
         const subscription = DeviceEventEmitter.addListener('tab-press-top-groups', () => {
@@ -35,7 +39,7 @@ export default function GroupsScreen() {
     }, []);
 
     // While auth is still loading, the skeleton below shows rather than the sign-in card.
-    if (!user && !loading) {
+    if (!user && !loading && !touring) {
         /* design/all-screens.html #groups, for a reader who has not signed in. */
         return (
             <Screen edges={[]}>
@@ -74,7 +78,7 @@ export default function GroupsScreen() {
         );
     }
 
-    const isLoading = loading || !user || groupsLoading;
+    const isLoading = !touring && (loading || !user || groupsLoading);
 
     return (
         <Screen edges={[]}>
@@ -110,22 +114,23 @@ export default function GroupsScreen() {
                         {error && (
                             <Text variant="bodySmall" style={styles.note}>Couldn’t reach your groups just now. Showing what’s saved.</Text>
                         )}
-                        {rows.map(row => (
-                            <ScalePressable
-                                key={row.group.id}
-                                onPress={() => router.push(`/(tabs)/groups/${row.group.id}` as any)}
-                                accessibilityRole="button"
-                                accessibilityLabel={`${row.group.name}. ${row.line}`}
-                            >
-                                <Row style={styles.groupRow}>
-                                    <Avatar id={row.group.id} name={row.group.name} size={38} radius={19} />
-                                    <View style={styles.rowMain}>
-                                        <Text variant="reference" numberOfLines={1}>{row.group.name}</Text>
-                                        <Text variant="bodySmall" style={styles.snip}>{row.line}</Text>
-                                    </View>
-                                    {row.window.open && <Text variant="meta" tone="accent">{row.window.label}</Text>}
-                                </Row>
-                            </ScalePressable>
+                        {rows.map((row, i) => (
+                            <View key={row.group.id} ref={i === 0 ? coachTarget('groups-row') : undefined} collapsable={false}>
+                                <ScalePressable
+                                    onPress={() => router.push(`/(tabs)/groups/${row.group.id}` as any)}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={`${row.group.name}. ${row.line}`}
+                                >
+                                    <Row style={styles.groupRow}>
+                                        <Avatar id={row.group.id} name={row.group.name} size={38} radius={19} />
+                                        <View style={styles.rowMain}>
+                                            <Text variant="reference" numberOfLines={1}>{row.group.name}</Text>
+                                            <Text variant="bodySmall" style={styles.snip}>{row.line}</Text>
+                                        </View>
+                                        {row.window.open && <Text variant="meta" tone="accent">{row.window.label}</Text>}
+                                    </Row>
+                                </ScalePressable>
+                            </View>
                         ))}
                     </View>
                 ) : (

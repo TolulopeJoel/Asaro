@@ -153,6 +153,7 @@ export const ChapterStep = React.memo(({
             </Hero>
 
             <View style={[styles.clothBody, { paddingHorizontal: gutter }]}>
+                {coach && <View style={styles.coachTop}>{coach}</View>}
                 {picked && selectedBook && (
                     <View style={[styles.clothSummary, { backgroundColor: colors.backgroundSubtle }]}>
                         <Text variant="title" numberOfLines={1} style={styles.clothSummaryText}>
@@ -183,8 +184,7 @@ export const ChapterStep = React.memo(({
                 </ScrollView>
             </View>
 
-            <View style={[styles.stepFooter, styles.coachedFooter, { paddingHorizontal: gutter, paddingBottom: footPadding }]}>
-                {coach}
+            <View style={[styles.stepFooter, { paddingHorizontal: gutter, paddingBottom: footPadding }]}>
                 <ThemedButton
                     label={picked && selectedBook ? `Use ${selectedBook.name} ${range}` : 'Pick a chapter'}
                     variant="primary"
@@ -209,7 +209,9 @@ interface ReflectionStepProps {
     onExit?: () => void;
     saveButtonText?: string;
     /** Practice entry: the sibling's line for each page. */
-    coach?: (page: number) => React.ReactNode;
+    coach?: (page: number, answers: ReflectionAnswers) => React.ReactNode;
+    /** Practice entry: holds Next until the page's task is done. */
+    gate?: (page: number, answers: ReflectionAnswers) => boolean;
     /** Practice entry: answers typed in as each page opens. */
     samples?: ReflectionAnswers;
 }
@@ -225,6 +227,7 @@ export const ReflectionStep = React.memo(({
     onExit,
     saveButtonText,
     coach,
+    gate,
     samples,
 }: ReflectionStepProps) => (
     // The writing surface owns the whole screen. design/all-screens.html
@@ -242,6 +245,7 @@ export const ReflectionStep = React.memo(({
             onChangePassage={onBack}
             onDiscard={!isEditMode && reflectionAnswers && !samples ? onDiscard : undefined}
             coach={coach}
+            gate={gate}
             samples={samples}
         />
     </View>
@@ -366,8 +370,8 @@ const styles = StyleSheet.create({
     stepContainer: {
         flex: 1,
     },
-    /** Room between the coach line and the button in the practice entry. */
-    coachedFooter: { gap: Spacing.md },
+    /** The practice entry's coach, above the chapters it talks about. */
+    coachTop: { marginBottom: Spacing.lg },
 
     // ── the picker screens ────────────────────────────────────────────────
     /** `.co-top` — a mark, and the way out. */
