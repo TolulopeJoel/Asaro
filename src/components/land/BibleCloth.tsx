@@ -244,8 +244,6 @@ export function BibleCloth({
     onMarkerLayout,
     trees,
     onTreePress,
-    cellSize = BED_SIZE,
-    showNames = true,
 }: {
     books: BookCloth[];
     /** Name of the holding currently identified, if any. */
@@ -257,10 +255,6 @@ export function BibleCloth({
     onMarkerLayout?: (y: number) => void;
     trees?: LandTree[];
     onTreePress?: (id: number) => void;
-    /** Points per chapter, near enough. Smaller packs the whole Bible into a picture. */
-    cellSize?: number;
-    /** Book names on the beds. Off where a bed is too small to carry one. */
-    showNames?: boolean;
 }) {
     // Measured, not assumed: the grid divides a real width into whole columns,
     // and a guess leaves a ragged strip down the side of every other phone.
@@ -278,7 +272,7 @@ export function BibleCloth({
             setMeadow({ width: w, height: h });
         }
     };
-    const columns = Math.max(1, Math.floor(width / cellSize));
+    const columns = Math.max(1, Math.floor(width / BED_SIZE));
     const size = width > 0 ? width / columns : 0;
     const { cells, rows, names } = useMemo(
         () => layoutCells(books.map(book => book.total), columns),
@@ -501,7 +495,7 @@ export function BibleCloth({
                     </Svg>
                 )}
 
-                {width > 0 && showNames &&
+                {width > 0 &&
                     names
                         .filter(place => place.span >= MIN_NAME_SPAN)
                         .map(place => {

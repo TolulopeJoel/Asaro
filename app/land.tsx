@@ -14,18 +14,13 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ChevronLeft, Share2, X } from 'lucide-react-native';
-import { captureRef } from 'react-native-view-shot';
-import * as Sharing from 'expo-sharing';
+import { ChevronLeft, X } from 'lucide-react-native';
 
 import { BibleCloth, LandTree } from '@/src/components/land/BibleCloth';
-import { LandShareCard } from '@/src/components/land/LandShareCard';
-import { AnimatedModal } from '@/src/components/AnimatedModal';
-import { useAlert } from '@/src/context/AlertContext';
 import { TreeDetail } from '@/src/components/grove/Grove';
 import { LoadingView } from '@/src/components/LoadingView';
 import { ScalePressable } from '@/src/components/ScalePressable';
-import { Hero, Screen, Text as UIText, ThemedButton } from '@/src/components/ui';
+import { Hero, Screen, Text as UIText } from '@/src/components/ui';
 import { useFootPadding } from '@/src/hooks/useScreenInsets';
 import { GREEK_BOOKS, HEBREW_BOOKS } from '@/src/data/bibleBooks';
 import { getAllActionItems, getChapterCoverage } from '@/src/data/database';
@@ -55,8 +50,7 @@ export default function LandScreen() {
     const { colors } = useTheme();
     const router = useRouter();
 
-    const { height, width: screenWidth } = useWindowDimensions();
-    const { showAlert } = useAlert();
+    const { height } = useWindowDimensions();
     const scroll = useRef<ScrollView>(null);
 
     const [cloth, setCloth] = useState<Cloth | null>(null);
@@ -64,9 +58,6 @@ export default function LandScreen() {
     const [selected, setSelected] = useState<BookCloth | null>(null);
     const [grove, setGrove] = useState<GroveTree[]>([]);
     const [openTree, setOpenTree] = useState<number | null>(null);
-    const [sharing, setSharing] = useState(false);
-    const [capturing, setCapturing] = useState(false);
-    const shareCard = useRef<View>(null);
     const [cardHeight, setCardHeight] = useState(0);
     const footPadding = useFootPadding(Spacing.xxl);
     const cardFoot = useFootPadding(Spacing.xl);
@@ -114,21 +105,6 @@ export default function LandScreen() {
     );
     const tapped = grove.find(t => t.item.id === openTree) ?? null;
 
-    /** Captured at the screen's own density, so the picture is as sharp as the phone. */
-    const shareLand = useCallback(async () => {
-        if (!shareCard.current) return;
-        setCapturing(true);
-        try {
-            const uri = await captureRef(shareCard, { format: 'png', quality: 1, result: 'tmpfile' });
-            await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Share your land' });
-        } catch (error) {
-            console.error('Failed to share the land:', error);
-            showAlert({ title: 'Couldn\'t share your land', message: 'Try again in a moment.' });
-        } finally {
-            setCapturing(false);
-        }
-    }, [showAlert]);
-
     const quiet = useMemo(
         () => (cloth ? quietBooks(cloth, QUIET_DAYS, QUIET_LIMIT) : []),
         [cloth],
@@ -137,27 +113,15 @@ export default function LandScreen() {
     return (
         <Screen edges={[]}>
             <Hero ownsTopInset>
-                <View style={styles.heroTop}>
-                    <ScalePressable
-                        onPress={() => router.back()}
-                        accessibilityRole="button"
-                        accessibilityLabel="Back"
-                        hitSlop={Spacing.md}
-                        style={styles.back}
-                    >
-                        <ChevronLeft size={20} color={colors.accent} strokeWidth={2} />
-                    </ScalePressable>
-                    {cloth && (
-                        <ScalePressable
-                            onPress={() => setSharing(true)}
-                            accessibilityRole="button"
-                            accessibilityLabel="Share your land as a picture"
-                            hitSlop={Spacing.md}
-                        >
-                            <Share2 size={19} color={colors.accent} strokeWidth={1.9} />
-                        </ScalePressable>
-                    )}
-                </View>
+                <ScalePressable
+                    onPress={() => router.back()}
+                    accessibilityRole="button"
+                    accessibilityLabel="Back"
+                    hitSlop={Spacing.md}
+                    style={styles.back}
+                >
+                    <ChevronLeft size={20} color={colors.accent} strokeWidth={2} />
+                </ScalePressable>
                 <UIText variant="display" tone="onBand" style={styles.heroTitle}>Your land</UIText>
                 {/* The count lives here rather than in a panel of its own: a
                   * block below pushes the land down and frames it, and the
@@ -241,28 +205,6 @@ export default function LandScreen() {
                 </ScrollView>
             )}
 
-            {/* The picture before it goes anywhere: what you see is exactly what is sent. */}
-            {cloth && (
-                <AnimatedModal visible={sharing} onRequestClose={() => setSharing(false)} transparent>
-                    <View style={[styles.shareBackdrop, { backgroundColor: 'rgba(0,0,0,0.55)' }]}>
-                        <ScrollView contentContainerStyle={styles.shareScroll}>
-                            <LandShareCard
-                                ref={shareCard}
-                                books={cloth.books}
-                                trees={trees}
-                                width={Math.min(screenWidth - Spacing.lg * 2, 420)}
-                            />
-                            <View style={styles.shareActions}>
-                                <ThemedButton label="Share" variant="accent" block onPress={shareLand} loading={capturing} disabled={capturing} />
-                                <ScalePressable onPress={() => setSharing(false)} accessibilityRole="button" hitSlop={Spacing.md}>
-                                    <UIText variant="button" tone="onBand">Close</UIText>
-                                </ScalePressable>
-                            </View>
-                        </ScrollView>
-                    </View>
-                </AnimatedModal>
-            )}
-
             {tapped && (
                 <View
                     style={[styles.treeCard, { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: cardFoot }]}
@@ -285,11 +227,7 @@ export default function LandScreen() {
 }
 
 const styles = StyleSheet.create({
-    heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.sm },
-    back: { alignSelf: 'flex-start' },
-    shareBackdrop: { flex: 1 },
-    shareScroll: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: Spacing.lg, gap: Spacing.lg },
-    shareActions: { alignSelf: 'stretch', alignItems: 'center', gap: Spacing.md },
+    back: { alignSelf: 'flex-start', marginBottom: Spacing.sm },
     heroTitle: { marginBottom: Spacing.xs },
     loading: { flex: 1, justifyContent: 'center' },
     /* A tapped tree opens over the foot of the land, like a card turned up. */
