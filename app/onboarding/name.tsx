@@ -30,7 +30,7 @@ export default function NameScreen() {
         if (name.trim().length > 0) {
             try {
                 await updateName(name);
-                router.push('/onboarding/sleep-time');
+                router.push('/onboarding/tour');
             } catch (error) {
                 console.error('Error saving name:', error);
             }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { BackHandler, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { BackHandler, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { useTheme } from '@/src/theme/ThemeContext';
@@ -119,12 +119,8 @@ export default function CharacterScreen() {
                     </View>
                 ) : (
                     <View style={[styles.clothBody, { paddingBottom: footPadding }]}>
-                        <Pressable
-                            onPress={choosing ? undefined : advance}
-                            disabled={choosing}
-                            accessibilityHint={choosing ? undefined : 'Next line'}
-                            style={styles.stage}
-                        >
+                        {/* Plays in full: the quarrel can't be skipped or tapped through. */}
+                        <View style={styles.stage}>
                             <View style={[styles.bubbleRow, { alignItems: bubbleAlign }]}>
                                 {current ? (
                                     <View style={[styles.bubble, { backgroundColor: colors.backgroundSubtle }]}>
@@ -172,13 +168,9 @@ export default function CharacterScreen() {
                                     );
                                 })}
                             </View>
-                        </Pressable>
+                        </View>
 
-                        {choosing ? (
-                            <ThemedButton label="Continue" block disabled={!picked} onPress={() => setConfirming(true)} />
-                        ) : (
-                            <ThemedButton label="Skip" variant="secondary" block onPress={() => setBeat(BEATS.length)} />
-                        )}
+                        <ThemedButton label="Continue" block disabled={!choosing || !picked} onPress={() => setConfirming(true)} />
                     </View>
                 )}
             </ScrollView>

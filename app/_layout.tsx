@@ -56,6 +56,7 @@ function StackNavigator() {
       <Stack.Screen name="battery-optimization" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="onboarding/character" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="onboarding/name" options={{ headerShown: false, gestureEnabled: false }} />
+      <Stack.Screen name="onboarding/tour" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="onboarding/sleep-time" options={{ headerShown: false, gestureEnabled: false }} />
     </Stack>
   );
@@ -200,9 +201,9 @@ export default function RootLayout() {
         return;
       }
 
-      // 3. Sleep time
+      // 3. Sleep time, after the tour when it's being shown.
       if (!sleep) {
-        if (currentSegment !== 'onboarding' || segments[1] !== 'sleep-time') {
+        if (currentSegment !== 'onboarding' || (segments[1] !== 'tour' && segments[1] !== 'sleep-time')) {
           router.replace('/onboarding/sleep-time');
         }
         return;
