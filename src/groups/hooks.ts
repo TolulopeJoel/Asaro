@@ -269,12 +269,13 @@ export function useGroup(gid: string | undefined): GroupState {
     const demo = gid === DEMO_GROUP_ID;
     // The example group is never asked of the server.
     const live = useLiveGroup(demo ? undefined : gid);
-    const { user } = useAuth();
+    const { user, displayName } = useAuth();
     const uid = user?.uid ?? TOUR_UID;
-    const name = user?.displayName ?? '';
+    const name = displayName ?? user?.displayName ?? '';
     return useMemo(() => {
         if (!demo) return live;
-        const members = byName(demoMembers(uid, name));
+        // In its own order, not by name: the walk reads down the example group from the reader's row.
+        const members = demoMembers(uid, name);
         const me = members.find(m => m.uid === uid) ?? null;
         return {
             group: demoGroup(),
