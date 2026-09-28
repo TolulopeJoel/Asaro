@@ -42,10 +42,8 @@ const refs = (text: string) => (text.match(/\[\[.+?\]\]/g) ?? []).length;
 
 export const COACH = {
     chapter: [
-        { kind: 'tell', action: 'wave', line: 'Before you start, let’s do one together. It’s practice: nothing here is saved.' },
-        { kind: 'tell', action: 'point', line: 'We start with today’s reading, Genesis 1–3. It’s Reading 1 of the plan, so I picked it for you.' },
-        { kind: 'tell', action: 'think', line: 'Read something else? Tap a chapter to start there, or drag across a few to make a range. Only read some verses? Turn on I read verses, under the chapters, and put in where you started and stopped.' },
-        { kind: 'end', action: 'smug', line: 'For now, leave it on Genesis 1–3 and tap the button.' },
+        { kind: 'tell', action: 'wave', line: 'Before you start, we do one together. Practice, so nothing is saved. Today’s reading is Genesis 1–3, Reading 1 of the plan. I already picked it for you.' },
+        { kind: 'end', action: 'smug', line: 'Another day, read something else? Tap a chapter, or drag across a few. Only some verses? Turn on I read verses. For now, leave it on Genesis 1–3 and tap the button.' },
     ] as Beat[],
     /** One sequence per reflection page: the five questions, then notes. */
     pages: [
@@ -66,31 +64,22 @@ export const COACH = {
             { kind: 'end', action: 'celebrate', line: 'That’s it! Later, tap a verse like that and it opens in JW Library. Every verse you quote also helps me find what connects your entries.' },
         ],
         [
-            { kind: 'tell', action: 'point', line: 'This is where it becomes real: something you’ll actually do because of what you read. Action is what you’ll do, Motivated by is why. The why is the part you forget in a month, so I make you write it.' },
-            { kind: 'tell', action: 'smug', line: 'Now, how often. Every day is for small habits, like thanking Jehovah each morning.' },
-            { kind: 'tell', action: 'think', line: 'Every week is for bigger things, like calling someone who’s struggling every Sunday.' },
-            { kind: 'tell', action: 'point', line: 'By a date is for a one-off with a deadline, like talking to your brother before Friday. It doesn’t repeat.' },
+            { kind: 'tell', action: 'point', line: 'This is the one I care about most: something you’ll actually do because of what you read. Action is what you’ll do, Motivated by is why. The why is the part you forget in a month, so I make you write it.' },
+            { kind: 'tell', action: 'smug', line: 'Then how often. Every day for small habits, like thanking Jehovah each morning. Every week for bigger things, like calling someone who’s struggling on Sunday. By a date for a one-off, like talking to your brother before Friday. And no, Friday doesn’t move because you’re busy.' },
             {
                 kind: 'do', action: 'point', line: 'Thanking him every morning is a habit. So tap Every day.',
                 done: (a) => a.actionItems.some((item) => item.cadence === 'daily'),
             },
-            { kind: 'end', action: 'thumbsUp', line: 'Planted. Every day and every week ones grow a tree. More than one? Tap add action.' },
+            { kind: 'end', action: 'thumbsUp', line: 'Planted. Every day and every week ones grow a tree. Water it well o. More than one? Tap add action.' },
         ],
         [
-            { kind: 'tell', action: 'nod', line: 'Who could this help? Think of one person, and how you’d bring it up.' },
-            { kind: 'end', action: 'smug', line: 'Nothing to say on a question? Leave it empty and Next becomes Skip. Honest beats full.' },
+            { kind: 'end', action: 'smug', line: 'Who could this help? Think of one person, and how you’d bring it up. Nothing to say on a question? Leave it empty and Next becomes Skip. Honest beats full.' },
         ],
         [
-            { kind: 'tell', action: 'think', line: 'Something to dig into later. Write the question down before it’s gone.' },
-            {
-                kind: 'do', action: 'point', line: 'Want me to remind you? Tap Set Reminder and pick a day and a time.',
-                done: (a) => !!a.studyFurtherReminder,
-            },
-            { kind: 'end', action: 'smug', line: 'Noted. In a real entry, I’d remind you then. Your questions wait in Library until you’ve studied them.' },
+            { kind: 'end', action: 'think', line: 'Something to dig into later. Write it down before it’s gone. In a real entry, Set Reminder brings it back on the day you pick, and it waits in Library until you’ve studied it.' },
         ],
         [
-            { kind: 'tell', action: 'nod', line: 'Anything else: a thought, something you noticed. Or nothing.' },
-            { kind: 'end', action: 'smug', line: 'Then tap Record it. It’s practice, so nothing counts.' },
+            { kind: 'end', action: 'nod', line: 'Anything else: a thought, something you noticed. Or nothing. Then tap Record it. It’s practice, so nothing counts.' },
         ],
     ] as Beat[][],
     saved: { action: 'celebrate', line: 'That’s one! When you do your real one, this is what it makes.' } as CoachBeat,

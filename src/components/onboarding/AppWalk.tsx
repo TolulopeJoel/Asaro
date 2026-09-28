@@ -79,9 +79,7 @@ function stops(other: string): Stop[] {
 
         ...part('Library', [
             { target: 'tab-library', action: 'point', then: { path: '/library' }, line: 'Everything you write ends up in your Library. Tap it.' },
-            { target: 'library-entry', action: 'nod', then: { path: '/library/-1' }, line: 'These are examples. Your own go here, newest first. Tap one to read it again.' },
-            { target: 'entry-verse', action: 'point', then: { got: true }, line: 'That’s how an entry reads back. See the verse in orange? Tap one any time and it opens in JW Library. Every verse you quote also helps me find what connects your entries. When I do, it shows up in Echoes.' },
-            { target: 'back-entry', action: 'smug', then: { path: '/library' }, line: 'Tap the X to go back.' },
+            { target: 'library-entry', action: 'nod', then: { got: true }, line: 'These are examples. Your own go here, newest first. Tap one any time to read it again: the verses in orange open in JW Library.' },
             { target: 'library-search', action: 'point', then: { event: 'library-searched' }, line: 'Wrote about something months ago and can’t find it? Search. Type dark.' },
             { target: 'library-search', action: 'smug', then: { got: true }, line: 'There it is. Search looks through every answer you’ve ever written.' },
             { target: 'library-sub-books', action: 'nod', then: { shows: 'library-books' }, line: 'Or go book by book. Tap By book.' },
