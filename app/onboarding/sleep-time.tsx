@@ -158,6 +158,8 @@ export default function SleepTimeScreen() {
             setupDailyNotifications(false, { force: true }).catch(error =>
                 console.error('Failed to reschedule after sleep time:', error)
             );
+            // The pages before are done: the gates and Home start a fresh stack, so Back never lands on one.
+            if (router.canDismiss()) router.dismissAll();
             router.replace('/permissions');
         } catch (error) {
             console.error('Error saving sleep time:', error);

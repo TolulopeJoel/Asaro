@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, ScrollView, StyleSheet, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
@@ -89,13 +89,14 @@ export default function TourScreen() {
     }, [page]);
 
     // Back steps through the tour; on the first page it stays put rather than undoing the name.
-    useEffect(() => {
+    // Only while the tour is showing: a screen on top of it owns Back.
+    useFocusEffect(useCallback(() => {
         const sub = BackHandler.addEventListener('hardwareBackPress', () => {
             setPage((p) => Math.max(0, p - 1));
             return true;
         });
         return () => sub.remove();
-    }, []);
+    }, []));
 
     return (
         <Screen edges={[]}>

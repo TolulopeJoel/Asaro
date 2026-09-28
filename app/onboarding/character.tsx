@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, ScrollView, StyleSheet, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
@@ -99,15 +99,15 @@ export default function CharacterScreen() {
         return () => { clearTimeout(start); clearTimeout(release); };
     }, [confirming]);
 
-    // Back from the check returns to the choice, not out of onboarding.
-    useEffect(() => {
+    // Back from the check returns to the choice, not out of onboarding. Only while this screen is showing.
+    useFocusEffect(useCallback(() => {
         if (!confirming) return;
         const sub = BackHandler.addEventListener('hardwareBackPress', () => {
             setConfirming(false);
             return true;
         });
         return () => sub.remove();
-    }, [confirming]);
+    }, [confirming]));
 
     const handleConfirm = async () => {
         if (!picked) return;
