@@ -41,7 +41,11 @@ interface Stop { target: CoachTarget | null; action: AsaroAction; line: string; 
 /** A stretch of the walk, named in the bubble with how far into it the reader is. */
 const part = (name: string, list: Stop[]): Stop[] => list.map(s => ({ ...s, part: name }));
 
-function stops(other: string): Stop[] {
+/**
+ * @param other the sibling they didn't pick
+ * @param handle the kind of name people give themselves online, for their gender
+ */
+function stops(other: string, handle: string): Stop[] {
     return [
         ...part('Home', [
             { target: 'reading', action: 'point', then: { got: true }, line: 'This is today’s reading, straight from the plan. Read it in your Bible first. Then Begin reflection, and we do what we just practised.' },
@@ -71,7 +75,7 @@ function stops(other: string): Stop[] {
         // Every Settings row does real work, so they are shown, not tapped.
         ...part('Settings', [
             { target: 'settings', action: 'point', then: { path: '/settings' }, line: 'Your settings. Tap it.' },
-            { target: 'settings-profile', action: 'nod', then: { got: true }, line: 'Your name lives up here. Tap it any time to change it, or to add a photo.' },
+            { target: 'settings-profile', action: 'smug', then: { got: true }, line: `Your name lives up here. Tap it any time to change it, or to add a photo. And use your real name, not ${handle}. Your group has to know who they’re reading with.` },
             { target: 'settings-you', action: 'sideEye', then: { got: true }, line: `Your sleep time: my last reminder comes an hour before it, and you can change it once a month. Above it, me. If you ever want my ${other} instead… it’s here. Don’t try it.` },
             { target: 'settings-backup', action: 'think', then: { got: true }, line: 'Your entries live on this phone. Share a backup now and then, so a lost phone never takes them.' },
             { target: 'back-settings', action: 'nod', then: { path: '/' }, line: 'Done here. Tap the arrow to go back.' },
@@ -180,7 +184,7 @@ export function AppWalk() {
     const pathname = usePathname();
     const look = useAsaroLook();
     const tour = useTour();
-    const all = useMemo(() => stops(look === 'female' ? 'brother' : 'sister'), [look]);
+    const all = useMemo(() => look === 'female' ? stops('brother', 'Prettygirl') : stops('sister', 'Handsomeboy'), [look]);
     const [index, setIndex] = useState(0);
     const [rect, setRect] = useState<Rect | null>(null);
     const [bubbleH, setBubbleH] = useState(BUBBLE_GUESS);

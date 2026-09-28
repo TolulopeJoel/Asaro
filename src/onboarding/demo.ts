@@ -202,7 +202,7 @@ export function demoGroup(): Group {
         name: 'Morning Readers',
         description: 'A chapter before breakfast.',
         code: 'READ24',
-        createdBy: 'tour-ada',
+        createdBy: 'tour-fisayo',
         createdAt: daysAgo(60).getTime(),
         utcOffsetMinutes: -new Date().getTimezoneOffset(),
     };
@@ -212,8 +212,8 @@ export function demoGroup(): Group {
 export function demoMembers(me: string, myName: string): Member[] {
     return [
         { uid: me, displayName: myName || 'You', role: 'member', joinedAt: daysAgo(20).getTime(), photoAt: null },
-        { uid: 'tour-ada', displayName: 'Ada', role: 'creator', joinedAt: daysAgo(60).getTime(), photoAt: null },
-        { uid: 'tour-kemi', displayName: 'Kemi', role: 'admin', joinedAt: daysAgo(45).getTime(), photoAt: null },
+        { uid: 'tour-fisayo', displayName: 'Fisayo', role: 'creator', joinedAt: daysAgo(60).getTime(), photoAt: null },
+        { uid: 'tour-tomi', displayName: 'Moyosore', role: 'admin', joinedAt: daysAgo(45).getTime(), photoAt: null },
         { uid: 'tour-tunde', displayName: 'Tunde', role: 'member', joinedAt: daysAgo(30).getTime(), photoAt: null },
     ];
 }
@@ -225,17 +225,17 @@ export function demoGroupWeek(me: string): GroupWeek {
     return {
         weeks: [
             { id: `${me}_${week}`, userId: me, weekKey: week, days: days('xxx.xxx') },
-            { id: `tour-ada_${week}`, userId: 'tour-ada', weekKey: week, days: days('xxxxxxx') },
-            { id: `tour-kemi_${week}`, userId: 'tour-kemi', weekKey: week, days: days('xx.xx.x') },
+            { id: `tour-fisayo_${week}`, userId: 'tour-fisayo', weekKey: week, days: days('xxxxxxx') },
+            { id: `tour-tomi_${week}`, userId: 'tour-tomi', weekKey: week, days: days('xx.xx.x') },
             { id: `tour-tunde_${week}`, userId: 'tour-tunde', weekKey: week, days: days('.x..x..') },
         ],
         readings: [
-            { id: 'tour-r1', userId: 'tour-ada', bookName: 'Genesis', chapters: '12–15', answered: 5, day: dayKey(daysAgo(1)), weekKey: week, createdAt: daysAgo(1).getTime() },
-            { id: 'tour-r2', userId: 'tour-kemi', bookName: 'Psalms', chapters: '23', answered: 3, day: dayKey(daysAgo(2)), weekKey: week, createdAt: daysAgo(2).getTime() },
+            { id: 'tour-r1', userId: 'tour-fisayo', bookName: 'Genesis', chapters: '12–15', answered: 5, day: dayKey(daysAgo(1)), weekKey: week, createdAt: daysAgo(1).getTime() },
+            { id: 'tour-r2', userId: 'tour-tomi', bookName: 'Psalms', chapters: '23', answered: 3, day: dayKey(daysAgo(2)), weekKey: week, createdAt: daysAgo(2).getTime() },
         ],
         shares: [
             {
-                id: `tour-ada_${week}`, userId: 'tour-ada', entryId: -1, questionId: 'reflection1',
+                id: `tour-fisayo_${week}`, userId: 'tour-fisayo', entryId: -1, questionId: 'reflection1',
                 question: 'What does this tell me about Jehovah?',
                 text: 'He kept his promise to Abraham even when Abraham doubted. He’s patient with me too.',
                 passage: 'Genesis 15', weekKey: week, createdAt: daysAgo(1).getTime(),
@@ -243,7 +243,7 @@ export function demoGroupWeek(me: string): GroupWeek {
         ],
         practices: [
             {
-                id: 'tour-kemi_1', userId: 'tour-kemi', itemId: 1, entryId: 1,
+                id: 'tour-tomi_1', userId: 'tour-tomi', itemId: 1, entryId: 1,
                 action: 'Read the day’s text before I pick up my phone', cadence: 'daily', weekKey: week,
                 keptDays: days('xxxxx.x'),
             },
