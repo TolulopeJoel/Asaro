@@ -154,16 +154,20 @@ export function AppWalk() {
         let alive = true;
         let poll: ReturnType<typeof setInterval> | undefined;
         (async () => {
-            const first = await waitForTarget(target, FIND_MS);
+            let first = await waitForTarget(target, FIND_MS);
+            // An explanation that isn't on this reader's screen is passed over. A stop the
+            // user has to act on is never skipped, or the walk runs ahead of them: it keeps looking.
+            while (alive && !first && !('got' in stop.then)) first = await waitForTarget(target, FIND_MS);
             if (!alive) return;
             if (!first) {
-                // Not on this reader's screen: go straight past it.
                 next();
                 return;
             }
             if (!fixed(target)) await revealTarget(first);
+            const settled = alive ? await measureTarget(target) : null;
+            // The user may have moved the walk on while this was measuring; a late box would stick.
             if (!alive) return;
-            setRect((await measureTarget(target)) ?? first);
+            setRect(settled ?? first);
             // It can move under the spotlight: a list settling, a keyboard opening.
             poll = setInterval(async () => {
                 const now = await measureTarget(target);

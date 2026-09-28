@@ -88,7 +88,7 @@ export default function TabLayout() {
                                 style={styles.flex}
                             >
                                 <ScalePressable
-                                    style={styles.tabButton}
+                                    style={styles.tabFill}
                                     onPress={onPress}
                                 >
                                     {/*
@@ -123,8 +123,8 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
     },
     flex: { flex: 1 },
-    tabButton: {
-        flex: 1,
+    /** Fills its tab's width; its height is the label's, never squashed by a flex basis of 0. */
+    tabFill: {
         alignItems: 'center',
         justifyContent: 'center',
     },

@@ -52,9 +52,10 @@ export function coachTarget(name: CoachTarget) {
 }
 
 /*
- * Targets are measured against the view the walk's overlay fills, never the
- * window: Android's window coordinates include the status bar on some phones
- * (108px on a TECNO KM6), which put every box one status bar too low.
+ * Targets are measured in the window and then made relative to the view the
+ * walk's overlay fills. Window coordinates include how far a list has scrolled
+ * (layout-tree measuring does not), and on some phones the status bar too
+ * (108px on a TECNO KM6); measuring the root the same way cancels that out.
  */
 let root: View | null = null;
 
@@ -63,17 +64,17 @@ export function coachRoot(node: View | null) {
     root = node;
 }
 
+const inWindow = (node: View) => new Promise<Rect>((resolve) => {
+    node.measureInWindow((x, y, width, height) => resolve({ x, y, width, height }));
+});
+
 /** Where the element is in the walk's overlay, or null if it isn't on screen now. */
-export function measureTarget(name: CoachTarget): Promise<Rect | null> {
+export async function measureTarget(name: CoachTarget): Promise<Rect | null> {
     const node = nodes.get(name);
-    if (!node || !root) return Promise.resolve(null);
-    return new Promise((resolve) => {
-        node.measureLayout(
-            root!,
-            (x, y, width, height) => resolve(width > 0 && height > 0 ? { x, y, width, height } : null),
-            () => resolve(null),
-        );
-    });
+    if (!node || !root) return null;
+    const [el, base] = await Promise.all([inWindow(node), inWindow(root)]);
+    if (!(el.width > 0 && el.height > 0)) return null;
+    return { x: el.x - base.x, y: el.y - base.y, width: el.width, height: el.height };
 }
 
 /**
