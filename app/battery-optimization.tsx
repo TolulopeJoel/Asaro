@@ -121,7 +121,7 @@ export default function BatteryOptimizationScreen() {
                         </View>
                         <Text variant="body" style={styles.speechText} accessibilityLiveRegion="polite">
                             {awake
-                                ? 'I\u2019m awake! Thank you o.'
+                                ? 'Ehen, I\u2019m awake. Thank you o. Now we can work.'
                                 : 'My eyes are closing o. Your phone keeps putting me to sleep, and it will tell you this is bad for the battery. It\u2019s lying. Let me stay awake.'}
                         </Text>
                     </View>

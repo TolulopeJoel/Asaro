@@ -82,15 +82,22 @@ export function coachRoot(node: View | null) {
 
 type Measurable = Pick<View, 'measureInWindow'>;
 
-const inWindow = (node: Measurable) => new Promise<Rect>((resolve) => {
-    node.measureInWindow((x, y, width, height) => resolve({ x, y, width, height }));
+/** A view that has gone never calls back; nothing waits on it longer than this. */
+const MEASURE_MS = 400;
+
+const inWindow = (node: Measurable) => new Promise<Rect | null>((resolve) => {
+    const late = setTimeout(() => resolve(null), MEASURE_MS);
+    node.measureInWindow((x, y, width, height) => {
+        clearTimeout(late);
+        resolve({ x, y, width, height });
+    });
 });
 
 /** Any view's box in the walk's overlay, or null if it isn't laid out. */
 export async function measureView(node: Measurable | null | undefined): Promise<Rect | null> {
     if (!node || !root) return null;
     const [el, base] = await Promise.all([inWindow(node), inWindow(root)]);
-    if (!(el.width > 0 && el.height > 0)) return null;
+    if (!el || !base || !(el.width > 0 && el.height > 0)) return null;
     return { x: el.x - base.x, y: el.y - base.y, width: el.width, height: el.height };
 }
 

@@ -18,10 +18,11 @@ import Svg, {
 } from 'react-native-svg';
 
 import {
-    ASARO_ACTIONS, ASARO_LOOKS, ASARO_REST, ASARO_RIG, ASARO_SINCERE_REST,
+    ASARO_ACTIONS, ASARO_CAPS, ASARO_LOOKS, ASARO_REST, ASARO_RIG, ASARO_SINCERE_REST,
     type AsaroAction, type AsaroLook, type AsaroMood, type HairShape,
 } from '../../theme/asaroRig';
 import { useAsaroLook } from '../../storage/asaroLook';
+import { useThinkingCap } from '../../storage/thinkingCap';
 
 /** `matrix` is the native group's transform prop; see `mat`. */
 const AG = Animated.createAnimatedComponent(
@@ -310,6 +311,9 @@ function AsaroBase(
 
     const cropped = bust ?? size < 48;
     const box = cropped ? R.bustBox : R.viewBox;
+    // Only the chosen sibling wears it, and it goes with the hair.
+    const capOn = useThinkingCap() && resolved === chosen && !cropped;
+    const cap = ASARO_CAPS[resolved] ?? ASARO_CAPS.male;
     const [, , vw, vh] = box.split(' ').map(Number);
 
     /** Unique clip ids, so two faces on one screen do not collide. */
@@ -501,6 +505,26 @@ function AsaroBase(
     useEffect(() => { if (action) play(action, hold, START_DELAY_MS); }, [action, hold, play]);
 
     // ---- animated channels -------------------------------------------------
+
+    // 1 lifted off the head, 0 on it. Put on while he's watching, it drops in; otherwise it's just there.
+    const capDrop = useSharedValue(capOn ? 0 : 1);
+    const capWas = useRef(capOn);
+    useEffect(() => {
+        const dropIn = capOn && !capWas.current && !reduceMotion;
+        capWas.current = capOn;
+        cancelAnimation(capDrop);
+        if (dropIn) {
+            capDrop.value = 1;
+            capDrop.value = withTiming(0, { duration: 560, easing: Easing.out(Easing.back(1.6)) });
+        } else {
+            capDrop.value = capOn ? 0 : 1;
+        }
+    }, [capOn, reduceMotion, capDrop]);
+
+    const capProps = useAnimatedProps(() => ({
+        ...mat(0, -R.cap.drop * capDrop.value),
+        opacity: Math.min(1, (1 - capDrop.value) * 3),
+    }));
 
     const headProps = useAnimatedProps(() => {
         const br = Math.sin(breath.value * Math.PI * 2);
@@ -965,6 +989,43 @@ function AsaroBase(
                         strokeWidth={1.2} strokeLinejoin="round"
                     />
                 </AG>
+
+                {/* The thinking cap, over the brows. */}
+                {capOn && (
+                    <AG animatedProps={capProps}>
+                        <Path d={cap.d} fill={cap.fill} />
+                        {cap.panel && <Path d={cap.panel} fill={cap.dark} opacity={R.cap.panelOpacity} />}
+                        {cap.band && <Path d={cap.band} fill={cap.dark} opacity={R.cap.bandOpacity} />}
+                        {cap.folds?.map((d) => (
+                            <Path
+                                key={d} d={d} fill="none" stroke={cap.dark}
+                                strokeWidth={R.cap.foldW} strokeLinecap="round" opacity={R.cap.foldOpacity}
+                            />
+                        ))}
+                        {cap.creases.map((d) => (
+                            <Path
+                                key={d} d={d} fill="none" stroke={cap.dark}
+                                strokeWidth={R.cap.creaseW} strokeLinecap="round" opacity={R.cap.creaseOpacity}
+                            />
+                        ))}
+                        {cap.sheen.map((d) => (
+                            <Path
+                                key={d} d={d} fill="none" stroke={cap.light}
+                                strokeWidth={R.cap.sheenW} strokeLinecap="round" opacity={R.cap.sheenOpacity}
+                            />
+                        ))}
+                        <Path
+                            d={cap.d} fill="none" stroke={C.rim}
+                            strokeWidth={H.rimW} strokeLinejoin="round"
+                        />
+                        {cap.knot && (
+                            <Path
+                                d={cap.knot} fill={cap.fill} stroke={C.rim}
+                                strokeWidth={H.rimW} strokeLinejoin="round"
+                            />
+                        )}
+                    </AG>
+                )}
             </AG>
         </Svg>
     );

@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { Spacing } from '../../theme/spacing';
 import { useAsaroLook } from '../../storage/asaroLook';
+import { takeOffThinkingCap } from '../../storage/thinkingCap';
 import {
     measureTarget, onCoachEvent, revealTarget, waitForTarget,
     type CoachEvent, type CoachTarget, type Rect, type Room,
@@ -25,7 +26,7 @@ import { setFirstRun } from '../../onboarding/firstRun';
 import { DEMO_GROUP_ID } from '../../onboarding/demo';
 import { PRACTICE_BOOK, PRACTICE_CHAPTERS } from '../../onboarding/practiceEntry';
 import { ScalePressable } from '../ScalePressable';
-import { Text, ThemedButton, type AsaroAction } from '../ui';
+import { Text, ThemedButton, type AsaroAction, type AsaroMood } from '../ui';
 import { CoachLine } from './CoachLine';
 
 /** How a stop moves on. `got` is an explanation; everything else waits for the user. */
@@ -36,7 +37,7 @@ type Then =
     | { event: CoachEvent }
     | { end: true };
 
-interface Stop { target: CoachTarget | null; action: AsaroAction; line: string; then: Then; part?: string }
+interface Stop { target: CoachTarget | null; action: AsaroAction; mood?: AsaroMood; line: string; then: Then; part?: string }
 
 /** A stretch of the walk, named in the bubble with how far into it the reader is. */
 const part = (name: string, list: Stop[]): Stop[] => list.map(s => ({ ...s, part: name }));
@@ -48,25 +49,25 @@ const part = (name: string, list: Stop[]): Stop[] => list.map(s => ({ ...s, part
 function stops(other: string, handle: string): Stop[] {
     return [
         ...part('Home', [
-            { target: 'reading', action: 'point', then: { got: true }, line: 'This is today’s reading, straight from the plan. Read it in your Bible first. Then Begin reflection, and we do what we just practised.' },
+            { target: 'reading', action: 'point', then: { got: true }, line: 'Today’s reading, straight from the plan. Read it in your Bible first, not while scrolling your phone. Then Begin reflection.' },
             { target: 'add', action: 'nod', then: { got: true }, line: 'Read something that isn’t on the plan? The + writes about anything, any day.' },
             { target: 'home-today', action: 'point', then: { event: 'today-kept' }, line: 'What you said you’d do waits here each day. Done it? Tap the box to tick it off. Go on.' },
-            { target: 'home-today', action: 'celebrate', then: { got: true }, line: 'Ticked. Got it wrong? Tap it again to undo. Every tick waters its tree.' },
-            { target: 'home-observation', action: 'think', then: { got: true }, line: 'After a few weeks I start noticing things across your entries. When I do, it shows up here. Not often.' },
+            { target: 'home-today', action: 'celebrate', then: { got: true }, line: 'Ticked. Look at you, keeping your word. Every tick waters its tree. Wrong one? Tap it again.' },
+            { target: 'home-observation', action: 'think', then: { got: true }, line: 'Give me a few weeks of writing and I start noticing things across your entries. I’ll put them here. Not often. I don’t talk for the sake of talking.' },
         ]),
 
         ...part('Stats', [
             { target: 'week', action: 'smug', then: { path: '/stats' }, line: 'Your week. Every day you reflect fills one. Tap it.' },
             { target: 'stats-tiles', action: 'nod', then: { got: true }, line: 'Your record. This one is an example so you can see it full. Yours starts today.' },
-            { target: 'stats-calendar', action: 'point', then: { got: true }, line: 'Every day you wrote, month by month. The gaps show too. I don’t hide them.' },
+            { target: 'stats-calendar', action: 'point', then: { got: true }, line: 'Every day you wrote, month by month. The gaps show too. Everybody has some.' },
             { target: 'stats-grove', action: 'smug', then: { shows: 'stats-rooted' }, line: 'Every practice you keep grows a tree. Tap one.' },
-            { target: 'stats-rooted', action: 'think', then: { got: true }, line: 'This is how rooted it is: how much it has become part of you. Keep it and it roots deeper. Miss it and it goes thirsty, but it waits.' },
+            { target: 'stats-rooted', action: 'think', then: { got: true }, line: 'This is how rooted it is: how much it has become part of you. Keep it and it roots deeper. Miss it and it goes thirsty. Not dead. Just thirsty.' },
             { target: 'back-stats', action: 'nod', then: { path: '/' }, line: 'Now back. Tap the arrow.' },
         ]),
 
         ...part('Your land', [
             { target: 'progress', action: 'point', then: { path: '/land' }, line: 'How far you’ve gone through the whole Bible. Tap it.' },
-            { target: 'land-field', action: 'nod', then: { got: true }, line: 'Your land, Genesis to Revelation. Every chapter you write about gets worked. Leave it and it goes quiet, but it’s never taken away.' },
+            { target: 'land-field', action: 'nod', then: { got: true }, line: 'Your land, Genesis to Revelation. Every chapter you write about gets worked. The rest is bush for now. We start somewhere.' },
             { target: 'land-tree', action: 'point', then: { shows: 'land-card' }, line: 'Your trees are planted on the chapter they came from. Tap that one.' },
             { target: 'land-card', action: 'smug', then: { got: true }, line: 'This one grew out of Genesis 1. Tap any tree, any time, to see how it’s doing.' },
             { target: 'back-land', action: 'nod', then: { path: '/' }, line: 'Back to Home. Tap the arrow.' },
@@ -74,10 +75,10 @@ function stops(other: string, handle: string): Stop[] {
 
         // Every Settings row does real work, so they are shown, not tapped.
         ...part('Settings', [
-            { target: 'settings', action: 'point', then: { path: '/settings' }, line: 'Your settings. Tap it.' },
+            { target: 'settings', action: 'point', then: { path: '/settings' }, line: 'Settings. Where people come to try and quiet me. Tap it anyway.' },
             { target: 'settings-profile', action: 'smug', then: { got: true }, line: `Your name lives up here. Tap it any time to change it, or to add a photo. And use your real name, not ${handle}. Your group has to know who they’re reading with.` },
-            { target: 'settings-you', action: 'sideEye', then: { got: true }, line: `Your sleep time: my last reminder comes an hour before it, and you can change it once a month. Above it, me. If you ever want my ${other} instead… it’s here. Don’t try it.` },
-            { target: 'settings-backup', action: 'think', then: { got: true }, line: 'Your entries live on this phone. Share a backup now and then, so a lost phone never takes them.' },
+            { target: 'settings-you', action: 'sideEye', then: { got: true }, line: `Your sleep time: my last reminder comes an hour before it. Change it once a month, not every time I annoy you. Above it, me. If you ever want my ${other} instead… it’s here. Don’t try it.` },
+            { target: 'settings-backup', action: 'think', then: { got: true }, line: 'Phones get lost, stolen, dropped in water. Share a backup now and then, so your entries survive.' },
             { target: 'back-settings', action: 'nod', then: { path: '/' }, line: 'Done here. Tap the arrow to go back.' },
         ]),
 
@@ -85,7 +86,7 @@ function stops(other: string, handle: string): Stop[] {
             { target: 'tab-library', action: 'point', then: { path: '/library' }, line: 'Everything you write ends up in your Library. Tap it.' },
             { target: 'library-entry', action: 'nod', then: { got: true }, line: 'These are examples. Your own go here, newest first. Tap one any time to read it again: the verses in orange open in JW Library.' },
             { target: 'library-search', action: 'point', then: { event: 'library-searched' }, line: 'Wrote about something months ago and can’t find it? Search. Type dark.' },
-            { target: 'library-search', action: 'smug', then: { got: true }, line: 'There it is. Search looks through every answer you’ve ever written.' },
+            { target: 'library-search', action: 'smug', then: { got: true }, line: 'There it is. Every answer you’ve ever written, searchable. You’re welcome.' },
             { target: 'library-sub-books', action: 'nod', then: { shows: 'library-books' }, line: 'Or go book by book. Tap By book.' },
             { target: 'library-books', action: 'nod', then: { got: true }, line: 'Every book you’ve written about, with how many entries. Tap one any time to see them all.' },
         ]),
@@ -98,7 +99,7 @@ function stops(other: string, handle: string): Stop[] {
         ]),
 
         ...part('Echoes', [
-            { target: 'library-section-echoes', action: 'think', then: { got: true }, line: 'And Echoes: what I’ve noticed across your entries, and the themes that run through them. Those take a few weeks of writing.' },
+            { target: 'library-section-echoes', action: 'think', then: { got: true }, line: 'And Echoes: what I’ve noticed across your entries, and the themes running through them. Yours fills in after a few weeks of writing. Then come and look.' },
         ]),
 
         ...part('Plan', [
@@ -109,11 +110,11 @@ function stops(other: string, handle: string): Stop[] {
         ]),
 
         ...part('Groups', [
-            { target: 'tab-groups', action: 'smug', then: { path: '/groups' }, line: 'And when you’re ready, bring your people. Tap Groups.' },
+            { target: 'tab-groups', action: 'sheepish', then: { path: '/groups' }, line: 'Last part, I promise. Your people. Tap Groups.' },
             { target: 'groups-row', action: 'nod', then: { path: `/groups/${DEMO_GROUP_ID}` }, line: 'Your groups live here. This one is made up, so you can see inside. Tap it.' },
             { target: 'group-share', action: 'point', then: { event: 'group-brought' }, line: 'On Sunday the group opens, and you bring one answer from your week. Tap Choose, pick one, then Bring.' },
-            { target: 'group-privacy', action: 'celebrate', then: { got: true }, line: 'There it is, in the group. Only this group sees it, and you can take it back any time. Everything else you write stays on your phone: the group sees the chapters you read and how many questions you answered, never your answers, except the one you bring.' },
-            { target: 'group-practice', action: 'smug', then: { got: true }, line: 'Share a practice if you want people watching you keep it. I already am.' },
+            { target: 'group-privacy', action: 'nod', mood: 'sincere', then: { got: true }, line: 'That’s a good one to bring. Only this group sees it, and you can take it back any time. Everything else you write stays on your phone: the group sees the chapters you read and how many questions you answered, never your answers, except the one you bring.' },
+            { target: 'group-practice', action: 'smug', then: { got: true }, line: 'Share a practice if you want people keeping you honest. It helps. Trust me.' },
             { target: 'group-members', action: 'sideEye', then: { got: true }, line: 'Members shows who read this week. Anyone who didn’t, you can nudge. Gently.' },
             { target: 'back-group', action: 'nod', then: { path: '/groups' }, line: 'Back to your groups. Tap the arrow.' },
             { target: 'tab-home', action: 'wave', then: { path: '/' }, line: 'That’s everything. Tap Home.' },
@@ -122,8 +123,9 @@ function stops(other: string, handle: string): Stop[] {
         {
             target: null,
             action: 'wave',
+            mood: 'sincere',
             then: { end: true },
-            line: `Now it’s your turn: go and read ${PRACTICE_BOOK} ${PRACTICE_CHAPTERS.start}–${PRACTICE_CHAPTERS.end}. You won’t see me like this again, unless you’re doing something right… or something wrong. Either way, I’ll know.`,
+            line: `Now it’s your turn: go and read ${PRACTICE_BOOK} ${PRACTICE_CHAPTERS.start}–${PRACTICE_CHAPTERS.end}. You won’t see me like this again, unless you’re doing something right… or something wrong. Either way, I’ll know. And I’m on your side o. That’s why I disturb.`,
         },
     ];
 }
@@ -137,6 +139,8 @@ const FIND_MS = 8000;
 const POLL_MS = 300;
 /** Until the first bubble has laid out. */
 const BUBBLE_GUESS = 200;
+/** The longest a screen gets to scroll a target clear before it is lit where it is. */
+const REVEAL_MS = 1500;
 
 /** Only the tab bar is fixed; a hero's icons scroll with their page on Home and Settings. */
 const fixed = (t: CoachTarget) => t.startsWith('tab-');
@@ -211,6 +215,7 @@ export function AppWalk() {
     const finish = () => {
         endTour();
         void setFirstRun('done');
+        void takeOffThinkingCap();
     };
 
     // Find this stop's element, bring it into view, then keep measuring it while it's up.
@@ -236,7 +241,11 @@ export function AppWalk() {
                 const until = Date.now() + 1000;
                 while (alive && laidOut.current.index !== index && Date.now() < until) await pause(50);
                 if (!alive) return;
-                await revealTarget(first, roomUnder(laidOut.current.height, screen.current));
+                // Scrolling is a nicety: if it fails or hangs, the stop still lights up.
+                await Promise.race([
+                    revealTarget(first, roomUnder(laidOut.current.height, screen.current)).catch(() => undefined),
+                    pause(REVEAL_MS),
+                ]);
             }
             const settled = alive ? await measureTarget(target) : null;
             // The user may have moved the walk on while this was measuring; a late box would stick.
@@ -323,18 +332,15 @@ export function AppWalk() {
                 style={[styles.bubble, { backgroundColor: colors.background, top: bubbleTop }]}
             >
                 {where && <Text variant="label">{where}</Text>}
-                <CoachLine line={stop.line} action={stop.action}>
+                <CoachLine line={stop.line} action={stop.action} mood={stop.mood}>
                     {'got' in then && (
-                        // Held, but kept in the layout, until what it explains is lit.
-                        <ScalePressable
-                            onPress={next}
-                            disabled={!hole}
-                            accessibilityRole="button"
-                            style={[styles.gotIt, !hole && styles.waiting]}
-                            hitSlop={8}
-                        >
-                            <Text variant="label" tone="accent">Got it</Text>
-                        </ScalePressable>
+                        // Held, but kept in the layout, until what it explains is lit. The
+                        // wrapper hides it: the pressable animates its own opacity.
+                        <View style={[styles.gotIt, !hole && styles.waiting]} pointerEvents={hole ? 'auto' : 'none'}>
+                            <ScalePressable onPress={next} disabled={!hole} accessibilityRole="button" hitSlop={8}>
+                                <Text variant="label" tone="accent">Got it</Text>
+                            </ScalePressable>
+                        </View>
                     )}
                 </CoachLine>
                 {last && <ThemedButton label="Okay, let me start" block onPress={finish} />}

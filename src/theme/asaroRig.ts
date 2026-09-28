@@ -113,6 +113,15 @@ export const ASARO_RIG = {
         underOpacity: 0.4,
     },
 
+    /** Strokes over a thinking cap (`ASARO_CAPS`); it drops in from `drop` above the head. */
+    cap: {
+        panelOpacity: 0.4, bandOpacity: 0.3,
+        foldW: 2, foldOpacity: 0.45,
+        creaseW: 2.2, creaseOpacity: 0.8,
+        sheenW: 4, sheenOpacity: 0.6,
+        drop: 70,
+    },
+
     /** Eyes. Large, because they carry most of the expression. */
     eye: {
         cy: 104,
@@ -391,6 +400,59 @@ export const ASARO_LOOKS: Record<AsaroLook, {
             px: 100,
             py: 60,
         },
+    },
+};
+
+/**
+ * The thinking cap a look wears through the first run, drawn over the brows.
+ * Cloths are compared in design/asaro-face.html#thinking-cap.
+ */
+export interface CapShape {
+    name: string;
+    d: string;
+    /** A fold in shadow, in `dark`. */
+    panel?: string;
+    /** The wrap across the brow, in `dark`. */
+    band?: string;
+    /** Soft fabric folds, fainter than `creases`. */
+    folds?: string[];
+    creases: string[];
+    sheen: string[];
+    /** Drawn over the outline, in `fill`. */
+    knot?: string;
+    fill: string; dark: string; light: string;
+}
+
+export const ASARO_CAPS: Record<AsaroLook, CapShape> = {
+    male: {
+        // A soft fila gobi, its crown folded over to his left.
+        name: 'fila',
+        d: 'M48 57 C42 52 44 30 60 16 C80 4 122 2 144 10 C164 16 180 34 180 52 '
+            + 'C180 62 172 66 166 62 C164 52 160 44 154 40 C156 46 158 53 152 57 C126 67 74 67 48 57 Z',
+        panel: 'M144 10 C164 16 180 34 180 52 C180 62 172 66 166 62 C164 52 160 44 154 40 C152 28 149 18 144 10 Z',
+        folds: ['M80 62 C77 48 77 32 82 14', 'M120 63 C122 48 122 30 118 8', 'M50 52 C76 61 124 61 150 52'],
+        creases: ['M60 20 C84 9 120 7 142 12', 'M150 24 C162 32 170 42 172 56'],
+        sheen: ['M53 40 C54 31 58 24 66 19'],
+        // Indigo.
+        fill: '#4d6688', dark: '#33496a', light: '#8298ba',
+    },
+    female: {
+        // Wrapped low at the brow, pleated and fanned out to her left from the knot.
+        name: 'gele',
+        d: 'M32 86 C24 70 24 52 34 40 Q44 34 44 26 Q58 21 62 12 Q78 11 86 4 '
+            + 'Q103 7 114 2 Q130 8 142 4 Q154 12 166 10 Q174 20 188 22 Q192 38 184 50 C182 62 178 72 170 80 '
+            + 'C152 62 128 58 100 58 C72 58 46 64 32 86 Z',
+        band: 'M32 86 C46 64 72 58 100 58 C128 58 152 62 170 80 C172 74 172 70 168 66 '
+            + 'C150 52 126 47 100 47 C72 47 48 54 34 72 C30 76 30 80 32 86 Z',
+        creases: [
+            'M150 62 C110 42 70 30 44 26', 'M150 60 C120 36 90 16 62 12', 'M150 58 C132 32 112 14 86 4',
+            'M150 56 C140 32 128 14 114 2', 'M152 56 C150 34 146 18 142 4', 'M154 58 C160 36 164 22 166 10',
+            'M156 60 C170 44 180 32 188 22',
+        ],
+        knot: 'M156 72 C160 62 172 60 178 66 C184 74 178 84 168 84 C160 84 154 80 156 72 Z',
+        sheen: ['M34 58 C34 48 38 40 44 34'],
+        // Gold.
+        fill: '#d1a65c', dark: '#a07b3b', light: '#ecd29d',
     },
 };
 

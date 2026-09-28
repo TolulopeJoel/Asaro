@@ -28,9 +28,12 @@ export function Flip({ flipKey, delay = 0, stretch = false, puff: withPuff = tru
 }) {
     const { colors } = useTheme();
     const reduceMotion = useReducedMotion();
-    const [shown, setShown] = useState<React.ReactNode>(children);
-    const latest = useRef(children);
-    latest.current = children;
+    // The key whose children are on screen. It trails `flipKey` only while the old
+    // children turn away; the rest of the time they are the live ones, so a
+    // button inside that enables itself later does.
+    const [shownKey, setShownKey] = useState(flipKey);
+    const outgoing = useRef(children);
+    if (shownKey === flipKey) outgoing.current = children;
     const first = useRef(true);
 
     const turn = useSharedValue(reduceMotion ? 0 : -90);
@@ -50,7 +53,7 @@ export function Flip({ flipKey, delay = 0, stretch = false, puff: withPuff = tru
 
     useEffect(() => {
         if (reduceMotion) {
-            setShown(latest.current);
+            setShownKey(flipKey);
             return;
         }
         if (first.current) {
@@ -61,7 +64,7 @@ export function Flip({ flipKey, delay = 0, stretch = false, puff: withPuff = tru
         turn.value = withTiming(90, { duration: OUT_MS, easing: Easing.in(Easing.quad) });
         pop.value = withTiming(0.8, { duration: OUT_MS });
         const id = setTimeout(() => {
-            setShown(latest.current);
+            setShownKey(flipKey);
             flipIn(0);
         }, OUT_MS);
         return () => clearTimeout(id);
@@ -81,7 +84,7 @@ export function Flip({ flipKey, delay = 0, stretch = false, puff: withPuff = tru
     return (
         <View style={[styles.wrap, stretch && styles.stretch, style]}>
             {withPuff && <Animated.View pointerEvents="none" style={[styles.puff, { borderColor: colors.accent }, ring]} />}
-            <Animated.View style={[stretch && styles.stretchChild, card]}>{shown}</Animated.View>
+            <Animated.View style={[stretch && styles.stretchChild, card]}>{shownKey === flipKey ? children : outgoing.current}</Animated.View>
         </View>
     );
 }

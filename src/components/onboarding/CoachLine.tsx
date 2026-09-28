@@ -7,16 +7,18 @@ import { StyleSheet, View, type ViewStyle } from 'react-native';
 
 import { useTheme } from '../../theme/ThemeContext';
 import { Spacing } from '../../theme/spacing';
-import { Asaro, START_DELAY_MS, Text, type AsaroAction, type AsaroHandle } from '../ui';
+import { Asaro, START_DELAY_MS, Text, type AsaroAction, type AsaroHandle, type AsaroMood } from '../ui';
 import { Flip } from './Flip';
 
 /** Held long enough to be seen, then the face relaxes; nothing on these screens stays frozen. */
 const HOLD_MS = 2500;
 const HELD: ReadonlySet<AsaroAction> = new Set(['deadpan', 'sideEye', 'smug', 'sheepish', 'think']);
 
-export function CoachLine({ line, action, style, children }: {
+export function CoachLine({ line, action, mood, style, children }: {
     line: string;
     action?: AsaroAction;
+    /** `sincere` where he means it plainly: a promise, or the end of the first run. */
+    mood?: AsaroMood;
     style?: ViewStyle;
     /** Under the line, inside the bubble: a Got it, say. */
     children?: React.ReactNode;
@@ -34,7 +36,7 @@ export function CoachLine({ line, action, style, children }: {
 
     return (
         <View style={[styles.row, style]}>
-            <Asaro ref={face} size={48} />
+            <Asaro ref={face} size={48} mood={mood} />
             <Flip flipKey={line} stretch puff={false} style={styles.grow}>
                 <View style={[styles.bubble, { backgroundColor: colors.backgroundSubtle }]}>
                     <Text variant="bodySmall" accessibilityLiveRegion="polite">{line}</Text>

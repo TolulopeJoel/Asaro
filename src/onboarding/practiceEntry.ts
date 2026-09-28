@@ -48,12 +48,12 @@ export const COACH = {
     /** One sequence per reflection page: the five questions, then notes. */
     pages: [
         [
-            { kind: 'tell', action: 'smug', line: 'Every entry is five questions, one at a time. First: what does this tell you about Jehovah? Watch me.' },
+            { kind: 'tell', action: 'smug', line: 'Five questions, one at a time. First: what does this tell you about Jehovah? Watch me.' },
             {
-                kind: 'do', action: 'point', line: 'That’s mine. Now add a line of your own, anything.',
+                kind: 'do', action: 'point', line: 'That’s mine. Your turn. One line, anything.',
                 done: (a) => a.reflection1.trim() !== PRACTICE_ANSWERS.reflection1 && a.reflection1.trim().length >= 10,
             },
-            { kind: 'end', action: 'nod', line: 'Ehen. In a real entry, answers save as you go, so if you stop halfway, it’s waiting on Home.' },
+            { kind: 'end', action: 'thumbsUp', line: 'Ehen! Day one and you’re already writing about Jehovah. I like this one. In a real entry, stopping halfway is fine: it waits for you on Home.' },
         ],
         [
             { kind: 'tell', action: 'think', line: 'How does it fit the Bible’s big story? Watch the end of mine: I’m quoting a verse.' },
@@ -61,7 +61,7 @@ export const COACH = {
                 kind: 'do', action: 'point', line: 'You can quote one in any answer. At the end, type @ and start typing a book, like John. Then pick the chapter and the verse.',
                 done: (a) => refs(a.reflection2) > refs(PRACTICE_ANSWERS.reflection2),
             },
-            { kind: 'end', action: 'celebrate', line: 'That’s it! Later, tap a verse like that and it opens in JW Library. Every verse you quote also helps me find what connects your entries.' },
+            { kind: 'end', action: 'celebrate', line: 'Look at you, quoting scripture. Later, tap a verse like that and it opens in JW Library. Every verse you quote also helps me find what connects your entries.' },
         ],
         [
             { kind: 'tell', action: 'point', line: 'This is the one I care about most: something you’ll actually do because of what you read. Action is what you’ll do, Motivated by is why. The why is the part you forget in a month, so I make you write it.' },
@@ -82,7 +82,7 @@ export const COACH = {
             { kind: 'end', action: 'nod', line: 'Anything else: a thought, something you noticed. Or nothing. Then tap Record it. It’s practice, so nothing counts.' },
         ],
     ] as Beat[][],
-    saved: { action: 'celebrate', line: 'That’s one! When you do your real one, this is what it makes.' } as CoachBeat,
+    saved: { action: 'celebrate', line: 'Five questions, and you didn’t run away. When you do your real one, this is what it makes.' } as CoachBeat,
 };
 
 /** Where a page's conversation stands; it has finished once it reaches its `end`. */

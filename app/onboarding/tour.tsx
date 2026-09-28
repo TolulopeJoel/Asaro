@@ -10,42 +10,51 @@ import {
 } from '@/src/components/ui';
 import { TOUR_VISUALS, type TourVisual } from '@/src/components/onboarding/TourVisuals';
 import { useAuth } from '@/src/context/AuthContext';
+import { useAsaroLook } from '@/src/storage/asaroLook';
+import { putOnThinkingCap, takeOffThinkingCap } from '@/src/storage/thinkingCap';
+import { ASARO_CAPS } from '@/src/theme/asaroRig';
 import { useFootPadding } from '@/src/hooks/useScreenInsets';
 
 /** How long a page's expression is held before the face relaxes back to its idle life. */
 const HOLD_MS = 2500;
 /** Seconds before a page's button can be pressed, so every page is actually seen. */
 const WAIT_S = 10;
+/** After the tour: a moment's thought, the cap goes on, then the button. */
+const CAP_ON_MS = 1400;
+const CAP_READY_MS = 2600;
+
+const capLine = (other: string, cap: string) =>
+    `Not that I’m competing o. But I’ll prove my ${other} wrong. Let me get my thinking ${cap}.`;
 
 /** What the app is, told by the chosen sibling. Keep in step with design/all-screens.html#tour. */
-const PAGES: { title: string; action: AsaroAction; hold: boolean; visual: TourVisual; body: (name: string) => string }[] = [
+const PAGES: { title: string; action: AsaroAction; hold: boolean; visual: TourVisual; body: (name: string, other: string) => string }[] = [
     {
         title: 'One reading a day',
         action: 'smug',
         hold: true,
         visual: 'readings',
-        body: (name) => `Okay ${name}, this is how it works. Every day there’s a reading waiting for you, and we go through the whole Bible together. Just one reading. You can manage that, abi?`,
+        body: (name) => `Okay ${name}, this is how it works. One reading a day, and together we go through the whole Bible. Just one. You can manage that, abi?`,
     },
     {
         title: 'Then we talk about it',
         action: 'think',
         hold: true,
         visual: 'questions',
-        body: () => 'After you read, I ask you five questions, one at a time. What it tells you about Jehovah, how you’ll apply it, who it could help. Answer the ones you can.',
+        body: () => 'Then I ask you five questions about what you read. What it tells you about Jehovah, how you’ll apply it, who it could help. You thought the reading was the whole thing? Ehn ehn.',
     },
     {
         title: 'Watch it grow',
         action: 'celebrate',
         hold: false,
         visual: 'trees',
-        body: () => 'Every chapter you reflect on becomes land in your field. Every practice you keep grows a tree. Leave them and they go quiet, but nothing is taken away. They wait for you.',
+        body: () => 'Every chapter you reflect on becomes land. Every practice you keep grows a tree. Miss a few days and they go quiet. Quiet, not gone.',
     },
     {
         title: 'Read with your people',
         action: 'nod',
         hold: false,
         visual: 'sunday',
-        body: () => 'Join a group and every Sunday it opens: what everyone read, and the one thing they chose to bring. No rankings. Nobody is comparing.',
+        body: (_, other) => `Join a group and every Sunday it opens: what everyone read, and the one thing each person chose to bring. No rankings. It’s not a competition, whatever my ${other} says.`,
     },
 ];
 
@@ -54,11 +63,16 @@ export default function TourScreen() {
     const { colors } = useTheme();
     const footPadding = useFootPadding();
     const { displayName } = useAuth();
+    const look = useAsaroLook();
     const [page, setPage] = useState(0);
     const face = useRef<AsaroHandle>(null);
     // Furthest page whose countdown has finished; going back never waits again.
     const [unlocked, setUnlocked] = useState(-1);
     const [left, setLeft] = useState(WAIT_S);
+    // Past the last page: the sibling goes and gets a thinking cap, worn until the walk ends.
+    const [capping, setCapping] = useState(false);
+    const [capReady, setCapReady] = useState(false);
+    const other = look === 'female' ? 'brother' : 'sister';
 
     const last = page === PAGES.length - 1;
     const current = PAGES[page];
@@ -78,6 +92,21 @@ export default function TourScreen() {
     }, [page, waiting]);
     useEffect(() => { if (waiting && left === 0) setUnlocked(page); }, [waiting, left, page]);
 
+    useEffect(() => {
+        if (!capping) return;
+        setCapReady(false);
+        const think = setTimeout(() => face.current?.play('think', { hold: true }), START_DELAY_MS);
+        const on = setTimeout(() => {
+            void putOnThinkingCap();
+            face.current?.rest();
+        }, CAP_ON_MS);
+        const ready = setTimeout(() => {
+            face.current?.play('smug');
+            setCapReady(true);
+        }, CAP_READY_MS);
+        return () => { clearTimeout(think); clearTimeout(on); clearTimeout(ready); };
+    }, [capping]);
+
     // Each page's face reacts, holds long enough to be seen, then lets go.
     useEffect(() => {
         const { action, hold } = PAGES[page];
@@ -89,11 +118,16 @@ export default function TourScreen() {
     // Back steps through the tour; on the first page it stays put rather than undoing the name.
     useEffect(() => {
         const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-            setPage((p) => Math.max(0, p - 1));
+            if (capping) {
+                setCapping(false);
+                void takeOffThinkingCap();
+            } else {
+                setPage((p) => Math.max(0, p - 1));
+            }
             return true;
         });
         return () => sub.remove();
-    }, []);
+    }, [capping]);
 
     return (
         <Screen edges={[]}>
@@ -106,7 +140,9 @@ export default function TourScreen() {
                 <View style={[styles.clothBody, { paddingBottom: footPadding }]}>
                     <View style={styles.speech}>
                         <Asaro ref={face} size={74} />
-                        <Text variant="body" style={styles.bodyText}>{current.body(displayName ?? 'o')}</Text>
+                        <Text variant="body" style={styles.bodyText}>
+                            {capping ? capLine(other, ASARO_CAPS[look].name) : current.body(displayName ?? 'o', other)}
+                        </Text>
                     </View>
 
                     {/* Keyed by page, so each page's piece of the app flips in fresh. */}
@@ -126,10 +162,10 @@ export default function TourScreen() {
                         </View>
 
                         <ThemedButton
-                            label={waiting ? `Wait o \u00b7 ${left}` : last ? 'I’m ready' : 'Next'}
+                            label={waiting ? `Wait o \u00b7 ${left}` : capping ? 'Okay, let’s go' : last ? 'I’m ready' : 'Next'}
                             block
-                            disabled={waiting}
-                            onPress={last ? done : next}
+                            disabled={waiting || (capping && !capReady)}
+                            onPress={capping ? done : last ? () => setCapping(true) : next}
                         />
                     </View>
                 </View>

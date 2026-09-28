@@ -64,8 +64,8 @@ export default function NameScreen() {
                         <View style={styles.speech}>
                             <Asaro size={74} look={look} action="wave" />
                             <Text variant="body" style={styles.speechText}>
-                                I want to help you stay consistent with your reading.
-                                But I can&apos;t be friends with a stranger, can I? Let&apos;s make this official.
+                                So you want to read the whole Bible? Ehen, I like you already.
+                                But I can&apos;t be disturbing a stranger. Let&apos;s make this official.
                             </Text>
                         </View>
 

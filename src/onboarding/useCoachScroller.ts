@@ -17,7 +17,7 @@ export function useCoachScroller(ref: RefObject<ScrollView | null>) {
     useFocusEffect(useCallback(() => {
         const mine = async (rect: Rect, room: Room) => {
             // Only the part of the room this list shows: not under a hero above it or the tab bar below.
-            const frame = await measureView(ref.current?.getNativeScrollRef());
+            const frame = await measureView(ref.current?.getNativeScrollRef?.());
             const top = Math.max(room.top, frame?.y ?? room.top);
             const bottom = Math.min(room.bottom, frame ? frame.y + frame.height : room.bottom);
             if (rect.y >= top && rect.y + rect.height <= bottom) return;

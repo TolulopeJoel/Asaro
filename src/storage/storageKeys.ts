@@ -25,4 +25,6 @@ export const STORAGE_KEYS = {
     GROUP_INTRO_SEEN: 'group_intro_seen',
     /** A new user's first run after onboarding: 'practice', then 'walk', then 'done'. Absent for everyone else. */
     FIRST_RUN: 'first_run',
+    /** Set from the end of the tour until the walk ends: the chosen sibling wears a thinking cap. */
+    THINKING_CAP: 'thinking_cap',
 } as const;

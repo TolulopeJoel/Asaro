@@ -46,7 +46,7 @@ export default function PermissionsScreen() {
             setPermissionStatus('denied');
             showAlert({
                 title: 'So I Can\u2019t Check Up On You? 😏',
-                message: 'If I don\u2019t see you, I want to check up on you, to make sure your relationship with Jehovah is intact 😌\n\nTurn notifications on in Settings. I\u2019ll only come on days you haven\u2019t read, and never after your sleep time.',
+                message: 'You\u2019re saying no to \u00C0\u1E63\u00E0r\u00F2? After everything? 😅\n\nIf I don\u2019t see you, I check up on you. That\u2019s the whole arrangement. Turn notifications on in Settings: I only come on days you haven\u2019t read, never after your sleep time.',
                 buttons: [
                     { text: 'Cancel', style: 'cancel' },
                     { text: 'Open Settings', onPress: () => openNotificationSettings() }
@@ -86,7 +86,7 @@ export default function PermissionsScreen() {
                     <View style={styles.intro}>
                         <Asaro size={74} action="smug" label="Àṣàrò" />
                         <Text variant="sub" style={styles.introText}>
-                            A few nudges on days you haven’t read, and none after your sleep time.
+                            I’ll disturb you small on days you haven’t read. Not because I’m wicked. Because I want you to finish this. After your sleep time, nothing.
                         </Text>
                     </View>
 
