@@ -17,7 +17,8 @@ export type CoachTarget =
     | 'back-stats' | 'back-land' | 'back-settings' | 'back-entry' | 'back-group'
     | 'settings-sleep' | 'settings-look' | 'settings-backup' | 'settings-profile' | 'entry-verse'
     | 'library-section-unfinished' | 'library-section-echoes' | 'library-section-plan'
-    | 'library-sub-books' | 'library-sub-topics';
+    | 'library-sub-books' | 'library-sub-topics'
+    | 'plan-legend' | 'plan-next' | 'plan-footnote';
 
 /** Things the user can do that a walk stop waits for. */
 export type CoachEvent = 'today-kept' | 'library-searched' | 'group-brought';

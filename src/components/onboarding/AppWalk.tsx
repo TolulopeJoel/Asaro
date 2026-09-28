@@ -41,7 +41,7 @@ interface Stop { target: CoachTarget | null; action: AsaroAction; line: string; 
 function stops(other: string): Stop[] {
     return [
         // Home
-        { target: 'reading', action: 'point', then: { got: true }, line: 'This is today’s reading. Read it in your Bible first. Then Begin reflection, and we do what we just practised.' },
+        { target: 'reading', action: 'point', then: { got: true }, line: 'This is today’s reading, straight from the plan. Read it in your Bible first. Then Begin reflection, and we do what we just practised.' },
         { target: 'add', action: 'nod', then: { got: true }, line: 'Read something that isn’t on the plan? The + writes about anything, any day.' },
         { target: 'home-today', action: 'point', then: { event: 'today-kept' }, line: 'What you said you’d do waits here each day. Done it? Tap the box to tick it off. Go on.' },
         { target: 'home-today', action: 'celebrate', then: { got: true }, line: 'Ticked. Got it wrong? Tap it again to undo. Every tick waters its tree.' },
@@ -85,7 +85,10 @@ function stops(other: string): Stop[] {
         { target: 'library-sub-topics', action: 'think', then: { shows: 'library-question' }, line: 'Now tap Questions.' },
         { target: 'library-question', action: 'nod', then: { got: true }, line: 'What you wanted to study further, waiting until you have. Tick it once you’ve dug in.' },
         { target: 'library-section-echoes', action: 'think', then: { got: true }, line: 'And Echoes: what I’ve noticed across your entries, and the themes that run through them. Those take a few weeks of writing.' },
-        { target: 'library-section-plan', action: 'point', then: { got: true }, line: 'And Plan: the whole reading plan, Genesis to Revelation. Every reading you reflect on ticks itself off.' },
+        { target: 'library-section-plan', action: 'point', then: { shows: 'plan-legend' }, line: 'Want to read the whole Bible in a year? That’s what the plan is for. Tap Plan.' },
+        { target: 'plan-legend', action: 'nod', then: { got: true }, line: 'Genesis to Revelation, one reading a day. The diamonds take you through the Hebrew Scriptures, the dots through the Christian Greek Scriptures.' },
+        { target: 'plan-next', action: 'point', then: { got: true }, line: 'This is where Home gets today’s reading. Reflect on it and it ticks itself off here, so come back any time to see how far you’ve got.' },
+        { target: 'plan-footnote', action: 'smug', then: { got: true }, line: 'It comes from the Bible reading plan on jw.org. Tap jw.org any time to read more about it.' },
 
         // Groups
         { target: 'tab-groups', action: 'smug', then: { path: '/groups' }, line: 'And when you’re ready, bring your people. Tap Groups.' },

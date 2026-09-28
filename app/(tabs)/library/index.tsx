@@ -38,7 +38,7 @@ import { EchoesContent } from '@/src/components/insight/EchoesContent';
 import { READING_PLAN_DATA, ReadingItem } from '@/src/data/readingPlanData';
 import { getReadingProgress, toggleReadingItem, checkEntryCoversChapters } from '@/src/data/database';
 import { useAlert } from '@/src/context/AlertContext';
-import { useTour } from '@/src/onboarding/tour';
+import { getTour, useTour } from '@/src/onboarding/tour';
 import { coachTarget } from '@/src/onboarding/coachTargets';
 import * as WebBrowser from 'expo-web-browser';
 
@@ -179,7 +179,7 @@ const ReadingCard = React.memo(({
      */
     const isDiamond = item.id <= HEBREW_SCRIPTURES_END;
 
-    return (
+    const card = (
         <ScalePressable
             style={[
                 styles.clothPlanRow,
@@ -224,6 +224,10 @@ const ReadingCard = React.memo(({
             </View>
         </ScalePressable>
     );
+    // The next reading up is the one Home shows: where the app walk says so.
+    return queueIndex === 0
+        ? <View ref={coachTarget('plan-next', { bottom: Spacing.sm })} collapsable={false}>{card}</View>
+        : card;
 });
 
 // ─── Journal Content ──────────────────────────────────────────────────────────
@@ -294,6 +298,13 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: PlanProgress)
     const [isInitialLoad, setIsInitialLoad] = useState(true);
     const { showAlert } = useAlert();
     const flatListRef = useRef<FlatList>(null);
+    // The footnote sits under 364 readings; the app walk scrolls there rather than asking the reader to.
+    const tour = useTour();
+    useEffect(() => {
+        if (!tour.active) return;
+        if (tour.stop === 'plan-footnote') flatListRef.current?.scrollToEnd({ animated: true });
+        else if (tour.stop === 'plan-legend') flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
+    }, [tour.active, tour.stop]);
 
     /**
      * Each outstanding reading's place in the queue — 0 is the next one up.
@@ -347,6 +358,8 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: PlanProgress)
     useFocusEffect(useCallback(() => { loadProgress(); }, [loadProgress]));
 
     const handleToggle = useCallback(async (id: number, completed: boolean) => {
+        // Shown in the app walk, but never ticked from it.
+        if (getTour().active) return;
         if (completed) {
             const item = READING_PLAN_DATA.find(i => i.id === id);
             if (!item) return;
@@ -464,7 +477,11 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: PlanProgress)
         if (progress > 0) return null;
 
         return (
-            <View style={[styles.planLegendContainer, { backgroundColor: colors.backgroundSubtle, marginBottom: Spacing.md }]}>
+            <View
+                ref={coachTarget('plan-legend', { bottom: Spacing.md })}
+                collapsable={false}
+                style={[styles.planLegendContainer, { backgroundColor: colors.backgroundSubtle, marginBottom: Spacing.md }]}
+            >
                 <View style={styles.planLegendItem}>
                     <View style={[styles.keyDiamond, { backgroundColor: colors.accent, marginTop: 4 }]} />
                     <UIText variant="bodySmall" tone="secondary" style={styles.planLegendText}>
@@ -501,15 +518,17 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: PlanProgress)
                         </View>
                     </View>
                 )}
-                <UIText style={[styles.planFootnote, { color: colors.textSecondary, marginTop: Spacing.xl }]}>
-                    * This reading plan was adapted from the Bible Reading Plan found on{' '}
-                    <UIText
-                        style={{ textDecorationLine: 'underline', color: colors.accent }}
-                        onPress={() => WebBrowser.openBrowserAsync(url)}
-                    >
-                        jw.org
+                <View ref={coachTarget('plan-footnote')} collapsable={false} style={{ marginTop: Spacing.xl }}>
+                    <UIText style={[styles.planFootnote, { color: colors.textSecondary }]}>
+                        * This reading plan was adapted from the Bible Reading Plan found on{' '}
+                        <UIText
+                            style={{ textDecorationLine: 'underline', color: colors.accent }}
+                            onPress={() => WebBrowser.openBrowserAsync(url)}
+                        >
+                            jw.org
+                        </UIText>
                     </UIText>
-                </UIText>
+                </View>
             </View>
         );
     }, [colors.textSecondary, colors.accent, colors.backgroundSubtle, progress]);
