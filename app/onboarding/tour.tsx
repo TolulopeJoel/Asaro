@@ -11,20 +11,12 @@ import {
 import { TOUR_VISUALS, type TourVisual } from '@/src/components/onboarding/TourVisuals';
 import { useAuth } from '@/src/context/AuthContext';
 import { useAsaroLook } from '@/src/storage/asaroLook';
-import { putOnThinkingCap, takeOffThinkingCap } from '@/src/storage/thinkingCap';
-import { ASARO_CAPS } from '@/src/theme/asaroRig';
 import { useFootPadding } from '@/src/hooks/useScreenInsets';
 
 /** How long a page's expression is held before the face relaxes back to its idle life. */
 const HOLD_MS = 2500;
 /** Seconds before a page's button can be pressed, so every page is actually seen. */
 const WAIT_S = 10;
-/** After the tour: a moment's thought, the cap goes on, then the button. */
-const CAP_ON_MS = 1400;
-const CAP_READY_MS = 2600;
-
-const capLine = (other: string, cap: string) =>
-    `Not that I’m competing o. But I’ll prove my ${other} wrong. Let me get my thinking ${cap}.`;
 
 /** What the app is, told by the chosen sibling. Keep in step with design/all-screens.html#tour. */
 const PAGES: { title: string; action: AsaroAction; hold: boolean; visual: TourVisual; body: (name: string, other: string) => string }[] = [
@@ -69,10 +61,6 @@ export default function TourScreen() {
     // Furthest page whose countdown has finished; going back never waits again.
     const [unlocked, setUnlocked] = useState(-1);
     const [left, setLeft] = useState(WAIT_S);
-    // Past the last page: the sibling goes and gets a thinking cap, worn until the walk ends.
-    const [capping, setCapping] = useState(false);
-    const [capReady, setCapReady] = useState(false);
-    const other = look === 'female' ? 'brother' : 'sister';
 
     const last = page === PAGES.length - 1;
     const current = PAGES[page];
@@ -92,21 +80,6 @@ export default function TourScreen() {
     }, [page, waiting]);
     useEffect(() => { if (waiting && left === 0) setUnlocked(page); }, [waiting, left, page]);
 
-    useEffect(() => {
-        if (!capping) return;
-        setCapReady(false);
-        const think = setTimeout(() => face.current?.play('think', { hold: true }), START_DELAY_MS);
-        const on = setTimeout(() => {
-            void putOnThinkingCap();
-            face.current?.rest();
-        }, CAP_ON_MS);
-        const ready = setTimeout(() => {
-            face.current?.play('smug');
-            setCapReady(true);
-        }, CAP_READY_MS);
-        return () => { clearTimeout(think); clearTimeout(on); clearTimeout(ready); };
-    }, [capping]);
-
     // Each page's face reacts, holds long enough to be seen, then lets go.
     useEffect(() => {
         const { action, hold } = PAGES[page];
@@ -118,16 +91,11 @@ export default function TourScreen() {
     // Back steps through the tour; on the first page it stays put rather than undoing the name.
     useEffect(() => {
         const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-            if (capping) {
-                setCapping(false);
-                void takeOffThinkingCap();
-            } else {
-                setPage((p) => Math.max(0, p - 1));
-            }
+            setPage((p) => Math.max(0, p - 1));
             return true;
         });
         return () => sub.remove();
-    }, [capping]);
+    }, []);
 
     return (
         <Screen edges={[]}>
@@ -140,9 +108,7 @@ export default function TourScreen() {
                 <View style={[styles.clothBody, { paddingBottom: footPadding }]}>
                     <View style={styles.speech}>
                         <Asaro ref={face} size={74} />
-                        <Text variant="body" style={styles.bodyText}>
-                            {capping ? capLine(other, ASARO_CAPS[look].name) : current.body(displayName ?? 'o', other)}
-                        </Text>
+                        <Text variant="body" style={styles.bodyText}>{current.body(displayName ?? 'o', look === 'female' ? 'brother' : 'sister')}</Text>
                     </View>
 
                     {/* Keyed by page, so each page's piece of the app flips in fresh. */}
@@ -162,10 +128,10 @@ export default function TourScreen() {
                         </View>
 
                         <ThemedButton
-                            label={waiting ? `Wait o \u00b7 ${left}` : capping ? 'Okay, let’s go' : last ? 'I’m ready' : 'Next'}
+                            label={waiting ? `Wait o \u00b7 ${left}` : last ? 'I’m ready' : 'Next'}
                             block
-                            disabled={waiting || (capping && !capReady)}
-                            onPress={capping ? done : last ? () => setCapping(true) : next}
+                            disabled={waiting}
+                            onPress={last ? done : next}
                         />
                     </View>
                 </View>

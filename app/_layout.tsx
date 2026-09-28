@@ -57,6 +57,7 @@ function StackNavigator() {
       <Stack.Screen name="land" options={{ headerShown: false }} />
       <Stack.Screen name="permissions" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="battery-optimization" options={{ headerShown: false, gestureEnabled: false }} />
+      <Stack.Screen name="thinking-cap" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="onboarding/character" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="onboarding/name" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="onboarding/tour" options={{ headerShown: false, gestureEnabled: false }} />
@@ -239,9 +240,9 @@ export default function RootLayout() {
         return;
       }
 
-      // A new user goes on to the practice entry and the walk; Home picks it up from the flag.
+      // A new user goes on to the thinking cap, the practice entry and the walk; Home picks it up from the flag.
       if (isOnboardingRun() && !(await getFirstRun())) {
-        await setFirstRun('practice');
+        await setFirstRun('cap');
         DeviceEventEmitter.emit('first-run-changed');
       }
       if (cancelled) return;

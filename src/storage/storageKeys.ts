@@ -23,8 +23,8 @@ export const STORAGE_KEYS = {
     GROUP_UPKEEP: 'group_upkeep',
     /** Set once the first-visit note on a group has been dismissed. */
     GROUP_INTRO_SEEN: 'group_intro_seen',
-    /** A new user's first run after onboarding: 'practice', then 'walk', then 'done'. Absent for everyone else. */
+    /** A new user's first run after onboarding: 'cap', 'practice', then 'walk', then 'done'. Absent for everyone else. */
     FIRST_RUN: 'first_run',
-    /** Set from the end of the tour until the walk ends: the chosen sibling wears a thinking cap. */
+    /** The cloth of the thinking cap the chosen sibling wears, from its screen until the walk ends. */
     THINKING_CAP: 'thinking_cap',
 } as const;

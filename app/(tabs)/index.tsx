@@ -214,13 +214,16 @@ export default function Index() {
     const onCoachScroll = useCoachScroller(scrollViewRef);
 
     /*
-     * A new user's first run: straight into the practice entry, then back here
-     * for the walk. src/onboarding/firstRun.ts.
+     * A new user's first run: straight to the thinking cap, which opens the
+     * practice entry, then back here for the walk. src/onboarding/firstRun.ts.
      */
     const practiceOpened = useRef(false);
     const checkFirstRun = useCallback(async () => {
         const stage = await getFirstRun();
-        if (stage === 'practice' && !practiceOpened.current) {
+        if (stage === 'cap' && !practiceOpened.current) {
+            practiceOpened.current = true;
+            router.push('/thinking-cap');
+        } else if (stage === 'practice' && !practiceOpened.current) {
             practiceOpened.current = true;
             router.push({ pathname: '/addEntry', params: { practice: 'true' } });
         } else if (stage === 'walk') {

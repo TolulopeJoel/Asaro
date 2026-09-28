@@ -10,7 +10,7 @@ export const PRACTICE_CHAPTERS = { start: 1, end: 3 };
 
 /** Typed in, letter by letter, when a page opens empty. */
 export const PRACTICE_ANSWERS: ReflectionAnswers = {
-    reflection1: 'He made everything with order and care, and he called it good.',
+    reflection1: 'He made everything with order and care, and he called it good. ',
     reflection2: 'It starts the whole story: a good creation, then the first rebellion, and the first promise to fix it, [[Genesis 3:15]]. ',
     actionItems: [{
         action: 'Thank Jehovah for one thing he made, every morning',

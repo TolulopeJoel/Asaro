@@ -2,7 +2,7 @@
  * The chosen sibling beside a line, flipping in whenever the line changes: how
  * the practice entry and the Home walk talk to a new user.
  */
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { StyleSheet, View, type ViewStyle } from 'react-native';
 
 import { useTheme } from '../../theme/ThemeContext';
@@ -14,9 +14,11 @@ import { Flip } from './Flip';
 const HOLD_MS = 2500;
 const HELD: ReadonlySet<AsaroAction> = new Set(['deadpan', 'sideEye', 'smug', 'sheepish', 'think']);
 
-export function CoachLine({ line, action, mood, style, children }: {
+export function CoachLine({ line, action, mood, lookAt, style, children }: {
     line: string;
     action?: AsaroAction;
+    /** Where the face looks, each axis −1…1: at what the line is about. */
+    lookAt?: { x: number; y: number };
     /** `sincere` where he means it plainly: a promise, or the end of the first run. */
     mood?: AsaroMood;
     style?: ViewStyle;
@@ -34,9 +36,16 @@ export function CoachLine({ line, action, mood, style, children }: {
         return () => { clearTimeout(start); clearTimeout(release); };
     }, [line, action]);
 
+    // The same element every render, so an answer typing itself in beside him never redraws the face.
+    const portrait = useMemo(
+        () => <Asaro ref={face} size={48} mood={mood} lookAt={lookAt} />,
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [mood, lookAt?.x, lookAt?.y],
+    );
+
     return (
         <View style={[styles.row, style]}>
-            <Asaro ref={face} size={48} mood={mood} />
+            {portrait}
             <Flip flipKey={line} stretch puff={false} style={styles.grow}>
                 <View style={[styles.bubble, { backgroundColor: colors.backgroundSubtle }]}>
                     <Text variant="bodySmall" accessibilityLiveRegion="polite">{line}</Text>

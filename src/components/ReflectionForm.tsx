@@ -56,9 +56,13 @@ interface ReflectionFormProps {
   samples?: ReflectionAnswers;
 }
 
-/** When a sample answer types itself in: a tick, and the letters each tick adds. More letters, not faster ticks, so it never renders more often. */
-const TYPE_MS = 26;
-const LETTERS_PER_TICK = 2;
+/**
+ * When a sample answer types itself in: a letter every LETTER_MS by the clock,
+ * drawn every TICK_MS. Paced by the clock, a phone slow to draw skips ahead
+ * rather than typing slower.
+ */
+const LETTER_MS = 13;
+const TICK_MS = 26;
 
 export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
   initialAnswers,
@@ -231,14 +235,19 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
     if (!samples || page >= REFLECTION_QUESTIONS.length) return;
     const q = REFLECTION_QUESTIONS[page];
     const now = latestAnswers.current;
-    let steps: (() => boolean)[] = [];
+    let steps: ((at: number) => boolean)[] = [];
     // A `[[reference]]` lands whole, as the @ picker would insert it, never bracket by bracket.
     const typeText = (text: string, put: (t: string) => void) => {
       let pos = 0;
-      return () => {
-        for (let n = 0; n < LETTERS_PER_TICK && pos < text.length; n++) {
+      let typed = 0;
+      let began = 0;
+      return (at: number) => {
+        began ||= at;
+        const due = Math.floor((at - began) / LETTER_MS) + 1;
+        while (typed < due && pos < text.length) {
           const close = text.startsWith('[[', pos) ? text.indexOf(']]', pos) : -1;
           pos = close >= 0 ? close + 2 : pos + 1;
+          typed += 1;
         }
         put(text.slice(0, pos));
         return pos >= text.length;
@@ -260,11 +269,11 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
     let step = 0;
     const start = setTimeout(() => {
       typing.current = setInterval(() => {
-        if (steps[step]()) {
+        if (steps[step](Date.now())) {
           step += 1;
           if (step >= steps.length) stopTyping();
         }
-      }, TYPE_MS);
+      }, TICK_MS);
     }, 900);
     return () => { clearTimeout(start); stopTyping(); };
   }, [page, samples]);

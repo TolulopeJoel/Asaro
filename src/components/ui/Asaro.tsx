@@ -18,8 +18,8 @@ import Svg, {
 } from 'react-native-svg';
 
 import {
-    ASARO_ACTIONS, ASARO_CAPS, ASARO_LOOKS, ASARO_REST, ASARO_RIG, ASARO_SINCERE_REST,
-    type AsaroAction, type AsaroLook, type AsaroMood, type HairShape,
+    ASARO_ACTIONS, ASARO_CAPS, ASARO_LOOKS, capCloth, ASARO_REST, ASARO_RIG, ASARO_SINCERE_REST,
+    type AsaroAction, type AsaroLook, type AsaroMood, type CapCloth, type HairShape,
 } from '../../theme/asaroRig';
 import { useAsaroLook } from '../../storage/asaroLook';
 import { useThinkingCap } from '../../storage/thinkingCap';
@@ -296,6 +296,19 @@ function lashTurn(l: number) {
 
 const lidLinePath = (cx: number) => `M${cx - 27} ${LID_EDGE} Q${cx} ${LID_EDGE + E.lid.bow} ${cx + 27} ${LID_EDGE}`;
 
+/** A cap's woven stripes: each a bold stripe with a fine pin beside it. */
+function capStripes(cloth: CapCloth, lines: string[] | undefined) {
+    return lines?.map((d) => (
+        <React.Fragment key={d}>
+            <Path d={d} fill="none" stroke={cloth.stripe} strokeWidth={R.cap.stripeW} />
+            <Path
+                d={d} translate={[R.cap.pinDx, 0]} fill="none" stroke={cloth.pin}
+                strokeWidth={R.cap.pinW} opacity={R.cap.pinOpacity}
+            />
+        </React.Fragment>
+    ));
+}
+
 function AsaroBase(
     { size = 96, look, action, hold = false, lookAt, mirror = false, bust, mood = 'knowing', label }: AsaroProps,
     ref: React.Ref<AsaroHandle>,
@@ -312,8 +325,11 @@ function AsaroBase(
     const cropped = bust ?? size < 48;
     const box = cropped ? R.bustBox : R.viewBox;
     // Only the chosen sibling wears it, and it goes with the hair.
-    const capOn = useThinkingCap() && resolved === chosen && !cropped;
+    const wearing = useThinkingCap();
+    const capOn = wearing !== null && resolved === chosen && !cropped;
     const cap = ASARO_CAPS[resolved] ?? ASARO_CAPS.male;
+    const cloth = capCloth(resolved, wearing);
+    const capHidesHair = !!cap.hidesHair;
     const [, , vw, vh] = box.split(' ').map(Number);
 
     /** Unique clip ids, so two faces on one screen do not collide. */
@@ -325,6 +341,8 @@ function AsaroBase(
     const lidRClip = `lidR${uid}`;
     const fadeFill = `fade${uid}`;
     const shadeFill = `shade${uid}`;
+    const capClip = `cap${uid}`;
+    const flapClip = `flap${uid}`;
 
     const [reduceMotion, setReduceMotion] = useState(false);
 
@@ -506,12 +524,13 @@ function AsaroBase(
 
     // ---- animated channels -------------------------------------------------
 
-    // 1 lifted off the head, 0 on it. Put on while he's watching, it drops in; otherwise it's just there.
+    // 1 lifted off the head, 0 on it. Put on or changed while he's watching, it drops in.
     const capDrop = useSharedValue(capOn ? 0 : 1);
-    const capWas = useRef(capOn);
+    const capWas = useRef(capOn ? wearing : null);
     useEffect(() => {
-        const dropIn = capOn && !capWas.current && !reduceMotion;
-        capWas.current = capOn;
+        const now = capOn ? wearing : null;
+        const dropIn = now !== null && now !== capWas.current && !reduceMotion;
+        capWas.current = now;
         cancelAnimation(capDrop);
         if (dropIn) {
             capDrop.value = 1;
@@ -519,9 +538,13 @@ function AsaroBase(
         } else {
             capDrop.value = capOn ? 0 : 1;
         }
-    }, [capOn, reduceMotion, capDrop]);
+    }, [capOn, wearing, reduceMotion, capDrop]);
 
     const capProps = useAnimatedProps(() => ({
+        ...mat(0, -R.cap.drop * capDrop.value),
+        opacity: Math.min(1, (1 - capDrop.value) * 3),
+    }));
+    const capBackProps = useAnimatedProps(() => ({
         ...mat(0, -R.cap.drop * capDrop.value),
         opacity: Math.min(1, (1 - capDrop.value) * 3),
     }));
@@ -550,14 +573,14 @@ function AsaroBase(
     const hairBackProps = useAnimatedProps(() => {
         const sway = Math.sin(breath.value * Math.PI * 2 * 0.37);
         const rot = (sway * 1.8 + ch(act.value, prog.value, C_CREST, REST.crest)) * swayBack;
-        return mat(0, 0, rot, 1, 1, hairPx, hairPy);
-    }, [swayBack, hairPx, hairPy]);
+        return { ...mat(0, 0, rot, 1, 1, hairPx, hairPy), opacity: capHidesHair ? capDrop.value : 1 };
+    }, [swayBack, hairPx, hairPy, capHidesHair]);
 
     const hairFrontProps = useAnimatedProps(() => {
         const sway = Math.sin(breath.value * Math.PI * 2 * 0.37);
         const rot = (sway * 1.8 + ch(act.value, prog.value, C_CREST, REST.crest)) * swayFront;
-        return mat(0, 0, rot, 1, 1, hairPx, hairPy);
-    }, [swayFront, hairPx, hairPy]);
+        return { ...mat(0, 0, rot, 1, 1, hairPx, hairPy), opacity: capHidesHair ? capDrop.value : 1 };
+    }, [swayFront, hairPx, hairPy, capHidesHair]);
 
     const browLProps = useAnimatedProps(() => mat(
         0,
@@ -825,6 +848,8 @@ function AsaroBase(
                     <Stop offset={0.55} stopColor={C.shade} stopOpacity={C.shadeOpacity} />
                     <Stop offset={1} stopColor={C.shade} stopOpacity={C.shadeOpacity} />
                 </LinearGradient>
+                {capOn && <ClipPath id={capClip}><Path d={cap.d} /></ClipPath>}
+                {capOn && cap.flap && <ClipPath id={flapClip}><Path d={cap.flap} /></ClipPath>}
                 {hair.fade && (
                     <LinearGradient id={fadeFill} x1="0" y1="0" x2="0" y2="1">
                         {hair.fade.stops.map(([offset, opacity]) => (
@@ -855,6 +880,32 @@ function AsaroBase(
                                 opacity={H.strandOpacity}
                             />
                         ))}
+                    </AG>
+                )}
+
+                {/* A cap's back layer, between the hair and the ears. */}
+                {capOn && cap.back && (
+                    <AG animatedProps={capBackProps}>
+                        <Path d={cap.back.d} fill={cloth.fill} />
+                        {cap.back.bands.map((d) => (
+                            <Path key={d} d={d} fill={cloth.dark} opacity={R.cap.bandOpacity} />
+                        ))}
+                        {cap.back.rings.map((d) => (
+                            <Path
+                                key={d} d={d} fill="none" stroke={cloth.dark}
+                                strokeWidth={R.cap.ringW} strokeLinecap="round" opacity={R.cap.ringOpacity}
+                            />
+                        ))}
+                        {cap.back.sheen.map((d) => (
+                            <Path
+                                key={d} d={d} fill="none" stroke={cloth.light}
+                                strokeWidth={R.cap.ringSheenW} strokeLinecap="round" opacity={R.cap.ringSheenOpacity}
+                            />
+                        ))}
+                        <Path
+                            d={cap.back.d} fill="none" stroke={C.rim}
+                            strokeWidth={H.rimW} strokeLinejoin="round"
+                        />
                     </AG>
                 )}
 
@@ -993,24 +1044,34 @@ function AsaroBase(
                 {/* The thinking cap, over the brows. */}
                 {capOn && (
                     <AG animatedProps={capProps}>
-                        <Path d={cap.d} fill={cap.fill} />
-                        {cap.panel && <Path d={cap.panel} fill={cap.dark} opacity={R.cap.panelOpacity} />}
-                        {cap.band && <Path d={cap.band} fill={cap.dark} opacity={R.cap.bandOpacity} />}
-                        {cap.folds?.map((d) => (
-                            <Path
-                                key={d} d={d} fill="none" stroke={cap.dark}
-                                strokeWidth={R.cap.foldW} strokeLinecap="round" opacity={R.cap.foldOpacity}
-                            />
+                        <G clipPath={`url(#${capClip})`}>
+                            <Path d={cap.d} fill={cloth.fill} />
+                            {capStripes(cloth, cap.stripes)}
+                        </G>
+                        {cap.shadow?.map((d) => (
+                            <Path key={d} d={d} fill={cloth.dark} opacity={R.cap.shadowOpacity} />
                         ))}
+                        {cap.flap && (
+                            <>
+                                <G clipPath={`url(#${flapClip})`}>
+                                    <Path d={cap.flap} fill={cloth.fill} />
+                                    {capStripes(cloth, cap.flapStripes)}
+                                </G>
+                                <Path
+                                    d={cap.flap} fill="none" stroke={C.rim}
+                                    strokeWidth={H.rimW} strokeLinejoin="round"
+                                />
+                            </>
+                        )}
                         {cap.creases.map((d) => (
                             <Path
-                                key={d} d={d} fill="none" stroke={cap.dark}
+                                key={d} d={d} fill="none" stroke={cloth.dark}
                                 strokeWidth={R.cap.creaseW} strokeLinecap="round" opacity={R.cap.creaseOpacity}
                             />
                         ))}
                         {cap.sheen.map((d) => (
                             <Path
-                                key={d} d={d} fill="none" stroke={cap.light}
+                                key={d} d={d} fill="none" stroke={cloth.light}
                                 strokeWidth={R.cap.sheenW} strokeLinecap="round" opacity={R.cap.sheenOpacity}
                             />
                         ))}
@@ -1018,12 +1079,6 @@ function AsaroBase(
                             d={cap.d} fill="none" stroke={C.rim}
                             strokeWidth={H.rimW} strokeLinejoin="round"
                         />
-                        {cap.knot && (
-                            <Path
-                                d={cap.knot} fill={cap.fill} stroke={C.rim}
-                                strokeWidth={H.rimW} strokeLinejoin="round"
-                            />
-                        )}
                     </AG>
                 )}
             </AG>

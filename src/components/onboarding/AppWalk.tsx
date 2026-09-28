@@ -1,15 +1,20 @@
 /**
  * The walk around the whole app after the practice entry. The user does the
- * using: the screen dims except one real element, the chosen sibling says what
- * to do with it, and the walk waits until they have (the screen they tapped
- * into has opened, the tree has opened, the tick is in). Where a real tap
- * would change something real, the element is only explained and the tap is
- * held. Screens show example content while it runs (src/onboarding/demo.ts).
+ * using: the screen dims except one real element, the ring lands on it, and
+ * then the chosen sibling's bubble opens beside it, pointing at it. A stop that
+ * explains moves on with Got it or a tap on the element; a stop that asks for
+ * something says so on the element and waits until it's done (the screen they
+ * tapped into has opened, the tree has opened, the tick is in). Where a real
+ * tap would change something real, it is only explained. Screens show example
+ * content while it runs (src/onboarding/demo.ts).
  * It ends back on Home, sending them off to do their real first reading. No
  * skip, by decision.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BackHandler, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import Animated, {
+    Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withSequence, withSpring, withTiming,
+} from 'react-native-reanimated';
 import { usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -25,7 +30,6 @@ import { endTour, setTourStop, useTour } from '../../onboarding/tour';
 import { setFirstRun } from '../../onboarding/firstRun';
 import { DEMO_GROUP_ID } from '../../onboarding/demo';
 import { PRACTICE_BOOK, PRACTICE_CHAPTERS } from '../../onboarding/practiceEntry';
-import { ScalePressable } from '../ScalePressable';
 import { Text, ThemedButton, type AsaroAction, type AsaroMood } from '../ui';
 import { CoachLine } from './CoachLine';
 
@@ -34,7 +38,8 @@ type Then =
     | { got: true }
     | { path: string }
     | { shows: CoachTarget }
-    | { event: CoachEvent }
+    /** `hint` goes on the element: what to do there, since it isn't only a tap. */
+    | { event: CoachEvent; hint: string }
     | { end: true };
 
 interface Stop { target: CoachTarget | null; action: AsaroAction; mood?: AsaroMood; line: string; then: Then; part?: string }
@@ -51,7 +56,7 @@ function stops(other: string, handle: string): Stop[] {
         ...part('Home', [
             { target: 'reading', action: 'point', then: { got: true }, line: 'Today’s reading, straight from the plan. Read it in your Bible first, not while scrolling your phone. Then Begin reflection.' },
             { target: 'add', action: 'nod', then: { got: true }, line: 'Read something that isn’t on the plan? The + writes about anything, any day.' },
-            { target: 'home-today', action: 'point', then: { event: 'today-kept' }, line: 'What you said you’d do waits here each day. Done it? Tap the box to tick it off. Go on.' },
+            { target: 'home-today', action: 'point', then: { event: 'today-kept', hint: 'Tap the box' }, line: 'What you said you’d do waits here each day. Done it? Tap the box to tick it off. Go on.' },
             { target: 'home-today', action: 'celebrate', then: { got: true }, line: 'Ticked. Look at you, keeping your word. Every tick waters its tree. Wrong one? Tap it again.' },
             { target: 'home-observation', action: 'think', then: { got: true }, line: 'Give me a few weeks of writing and I start noticing things across your entries. I’ll put them here. Not often. I don’t talk for the sake of talking.' },
         ]),
@@ -85,7 +90,7 @@ function stops(other: string, handle: string): Stop[] {
         ...part('Library', [
             { target: 'tab-library', action: 'point', then: { path: '/library' }, line: 'Everything you write ends up in your Library. Tap it.' },
             { target: 'library-entry', action: 'nod', then: { got: true }, line: 'These are examples. Your own go here, newest first. Tap one any time to read it again: the verses in orange open in JW Library.' },
-            { target: 'library-search', action: 'point', then: { event: 'library-searched' }, line: 'Wrote about something months ago and can’t find it? Search. Type dark.' },
+            { target: 'library-search', action: 'point', then: { event: 'library-searched', hint: 'Type dark' }, line: 'Wrote about something months ago and can’t find it? Search. Type dark.' },
             { target: 'library-search', action: 'smug', then: { got: true }, line: 'There it is. Every answer you’ve ever written, searchable. You’re welcome.' },
             { target: 'library-sub-books', action: 'nod', then: { shows: 'library-books' }, line: 'Or go book by book. Tap By book.' },
             { target: 'library-books', action: 'nod', then: { got: true }, line: 'Every book you’ve written about, with how many entries. Tap one any time to see them all.' },
@@ -112,7 +117,7 @@ function stops(other: string, handle: string): Stop[] {
         ...part('Groups', [
             { target: 'tab-groups', action: 'sheepish', then: { path: '/groups' }, line: 'Last part, I promise. Your people. Tap Groups.' },
             { target: 'groups-row', action: 'nod', then: { path: `/groups/${DEMO_GROUP_ID}` }, line: 'Your groups live here. This one is made up, so you can see inside. Tap it.' },
-            { target: 'group-share', action: 'point', then: { event: 'group-brought' }, line: 'On Sunday the group opens, and you bring one answer from your week. Tap Choose, pick one, then Bring.' },
+            { target: 'group-share', action: 'point', then: { event: 'group-brought', hint: 'Choose, then Bring' }, line: 'On Sunday the group opens, and you bring one answer from your week. Tap Choose, pick one, then Bring.' },
             { target: 'group-privacy', action: 'nod', mood: 'sincere', then: { got: true }, line: 'That’s a good one to bring. Only this group sees it, and you can take it back any time. Everything else you write stays on your phone: the group sees the chapters you read and how many questions you answered, never your answers, except the one you bring.' },
             { target: 'group-practice', action: 'smug', then: { got: true }, line: 'Share a practice if you want people keeping you honest. It helps. Trust me.' },
             { target: 'group-members', action: 'sideEye', then: { got: true }, line: 'Members shows who read this week. Anyone who didn’t, you can nudge. Gently.' },
@@ -150,32 +155,85 @@ const pause = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 interface Viewport { H: number; top: number; bottom: number }
 interface Box { x: number; y: number; w: number; h: number }
 
-/** Where a target has to sit to be seen whole under a bubble of this height at the top. */
+/** The bubble's tail, pointing at the element. */
+const TAIL = 14;
+/** The ring lands before the bubble opens, so the eye goes to the element first. */
+const RING_MS = 380;
+
+/**
+ * Where a target has to sit to be seen whole with the bubble above it. Room
+ * above is always kept, so whichever side the bubble takes, it fits.
+ */
 const roomUnder = (bubbleH: number, s: Viewport): Room => ({
-    top: s.top + GAP + bubbleH + GAP + PAD,
+    top: s.top + GAP + bubbleH + TAIL / 2 + GAP + PAD,
     bottom: s.H - s.bottom - PAD,
 });
 
+type Side = 'above' | 'below';
+
 /**
- * The bubble never covers what it is about. It sits at the top, where it's
- * easy to read, or just below the element when the element is up there. Only
- * something taller than the screen can hold beside it (the land) is lit in
- * part: the bubble takes whichever end hides less, and the spotlight is the rest.
+ * The bubble sits right beside what it is about and never covers it: below an
+ * element in the top half of the screen, above one in the bottom half, or
+ * whichever side has room. Only something taller than the screen can hold
+ * beside it (the land) is lit in part: the bubble takes whichever end hides
+ * less, and the spotlight is the rest.
  */
-function place(box: Box | null, bubbleH: number, s: Viewport): { bubbleTop: number; hole: Box | null } {
+function place(box: Box | null, bubbleH: number, s: Viewport): { bubbleTop: number; hole: Box | null; side: Side | null } {
     const topSlot = s.top + GAP;
     const floor = s.H - s.bottom - GAP;
-    if (!box || box.y >= topSlot + bubbleH + GAP) return { bubbleTop: topSlot, hole: box };
-    if (box.y + box.h + GAP + bubbleH <= floor) return { bubbleTop: box.y + box.h + GAP, hole: box };
-    const up = { top: topSlot + bubbleH + GAP, bottom: s.H };
-    const down = { top: 0, bottom: floor - bubbleH - GAP };
+    if (!box) return { bubbleTop: topSlot, hole: null, side: null };
+    const need = bubbleH + TAIL / 2 + GAP;
+    const fitsAbove = box.y - topSlot >= need;
+    const fitsBelow = floor - (box.y + box.h) >= need;
+    const upper = box.y + box.h / 2 < s.H / 2;
+    if (fitsBelow && (upper || !fitsAbove)) return { bubbleTop: box.y + box.h + TAIL / 2 + GAP, hole: box, side: 'below' };
+    if (fitsAbove) return { bubbleTop: box.y - need, hole: box, side: 'above' };
+    const up = { top: topSlot + need, bottom: s.H };
+    const down = { top: 0, bottom: floor - need };
     const seen = (band: Room) => Math.min(box.y + box.h, band.bottom) - Math.max(box.y, band.top);
     const band = seen(up) >= seen(down) ? up : down;
     const top = Math.max(box.y, band.top);
     return {
         bubbleTop: band === up ? topSlot : floor - bubbleH,
         hole: { ...box, y: top, h: Math.max(0, Math.min(box.y + box.h, band.bottom) - top) },
+        side: band === up ? 'above' : 'below',
     };
+}
+
+/**
+ * The spotlight's ring. It lands with a spring and one ripple; on a stop that
+ * waits for the user, the ripple keeps going, so the element reads as the thing to use.
+ */
+function Ring({ hole, color, waiting }: { hole: Box; color: string; waiting: boolean }) {
+    const reduceMotion = useReducedMotion();
+    const land = useSharedValue(reduceMotion ? 1 : 0);
+    const ripple = useSharedValue(0);
+
+    useEffect(() => {
+        if (reduceMotion) return;
+        land.value = withSpring(1, { damping: 11, stiffness: 190 });
+        const once = withTiming(1, { duration: 900, easing: Easing.out(Easing.quad) });
+        ripple.value = waiting
+            ? withRepeat(withSequence(withTiming(0, { duration: 0 }), once, withTiming(1, { duration: 500 })), -1)
+            : once;
+    }, [reduceMotion, waiting, land, ripple]);
+
+    const ringStyle = useAnimatedStyle(() => ({
+        opacity: Math.min(1, land.value * 1.5),
+        transform: [{ scale: 1.18 - 0.18 * land.value }],
+    }));
+    const rippleStyle = useAnimatedStyle(() => ({
+        opacity: ripple.value <= 0 || ripple.value >= 1 ? 0 : 0.7 * (1 - ripple.value),
+        transform: [{ scale: 1 + 0.12 * ripple.value }],
+    }));
+    const at = { top: hole.y, left: hole.x, width: hole.w, height: hole.h };
+
+    return (
+        <>
+            <Animated.View pointerEvents="none" style={[styles.ring, at, { borderColor: color }, rippleStyle]} />
+            <Animated.View pointerEvents="none" style={[styles.ring, at, { borderColor: color }, ringStyle]} />
+        </>
+    );
 }
 
 const sameRect = (a: Rect, b: Rect) =>
@@ -198,6 +256,8 @@ export function AppWalk() {
     screen.current = { H, top: insets.top, bottom: insets.bottom };
     const stop = all[index];
     const then = stop.then;
+    /** The stop whose ring has landed, so its bubble can open. */
+    const [shownFor, setShownFor] = useState(-1);
 
     useEffect(() => {
         if (!tour.active) {
@@ -287,6 +347,14 @@ export function AppWalk() {
         return () => sub.remove();
     }, [tour.active]);
 
+    // The ring lands first; the bubble opens once it has.
+    const lit = rect !== null;
+    useEffect(() => {
+        if (!lit || shownFor === index) return;
+        const id = setTimeout(() => setShownFor(index), RING_MS);
+        return () => clearTimeout(id);
+    }, [lit, index, shownFor]);
+
     if (!tour.active) return null;
 
     const box = rect && (() => {
@@ -295,15 +363,30 @@ export function AppWalk() {
         const x = Math.max(0, rect.x - PAD);
         return { x, y: top, w: Math.min(W - x, rect.width + PAD * 2), h: Math.max(0, bottom - top) };
     })();
-    const { bubbleTop, hole } = place(box, bubbleH, screen.current);
+    const { bubbleTop, hole, side } = place(box, bubbleH, screen.current);
+    const shown = !stop.target || shownFor === index;
 
     const inPart = all.filter(s => s.part === stop.part);
     const where = !stop.part ? null
         : inPart.length > 1 ? `${stop.part} · ${inPart.indexOf(stop) + 1} of ${inPart.length}` : stop.part;
 
-    // An explanation holds the tap; a doing stop lets it through to the real element.
+    // An explanation moves on with a tap on the element, same as Got it; a doing stop lets the tap
+    // through to the real element, and says so on it.
     const explains = 'got' in then || 'end' in then;
+    const hint = 'event' in then ? then.hint : 'path' in then || 'shows' in then ? 'Tap it' : null;
     const block = () => true;
+
+    const bubbleLeft = Spacing.layout.screenPadding;
+    const bubbleW = W - bubbleLeft * 2;
+    // The tail and the face both point at the element.
+    const aimX = hole ? hole.x + hole.w / 2 : W / 2;
+    const tailX = Math.min(Math.max(aimX - bubbleLeft, TAIL * 2), bubbleW - TAIL * 2);
+    const faceX = bubbleLeft + Spacing.lg + 24;
+    const faceY = bubbleTop + bubbleH / 2;
+    const clamp = (v: number) => Math.max(-1, Math.min(1, v));
+    const gaze = hole
+        ? { x: clamp((aimX - faceX) / 140), y: clamp((hole.y + hole.h / 2 - faceY) / 140) }
+        : undefined;
 
     return (
         <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
@@ -313,11 +396,32 @@ export function AppWalk() {
                     <View onStartShouldSetResponder={block} style={[styles.dim, { top: hole.y + hole.h, left: 0, right: 0, bottom: 0 }]} />
                     <View onStartShouldSetResponder={block} style={[styles.dim, { top: hole.y, left: 0, width: hole.x, height: hole.h }]} />
                     <View onStartShouldSetResponder={block} style={[styles.dim, { top: hole.y, left: hole.x + hole.w, right: 0, height: hole.h }]} />
-                    {explains && <Pressable style={[styles.hole, { top: hole.y, left: hole.x, width: hole.w, height: hole.h }]} />}
-                    <View
-                        pointerEvents="none"
-                        style={[styles.ring, { top: hole.y, left: hole.x, width: hole.w, height: hole.h, borderColor: colors.accent }]}
-                    />
+                    {explains && (
+                        <Pressable
+                            onPress={shown && 'got' in then ? next : undefined}
+                            accessibilityRole="button"
+                            accessibilityLabel="Got it"
+                            style={[styles.hole, { top: hole.y, left: hole.x, width: hole.w, height: hole.h }]}
+                        />
+                    )}
+                    <Ring key={index} hole={hole} color={colors.accent} waiting={!explains} />
+                    {hint && shown && (
+                        // On the edge away from the bubble, so it never sits under the tail.
+                        <View
+                            pointerEvents="none"
+                            style={[
+                                styles.hintRow,
+                                { left: Math.min(Math.max(aimX - HINT_W / 2, GAP), W - HINT_W - GAP) },
+                                side === 'below'
+                                    ? { top: Math.max(0, hole.y - HINT_H / 2) }
+                                    : { top: Math.min(H - HINT_H, hole.y + hole.h - HINT_H / 2) },
+                            ]}
+                        >
+                            <View style={[styles.hint, { backgroundColor: colors.accent }]}>
+                                <Text variant="label" style={{ color: colors.background }} numberOfLines={1}>{hint}</Text>
+                            </View>
+                        </View>
+                    )}
                 </>
             ) : (
                 <View onStartShouldSetResponder={block} style={[styles.dim, StyleSheet.absoluteFill]} />
@@ -325,21 +429,30 @@ export function AppWalk() {
 
             <View
                 key={index}
+                pointerEvents={shown ? 'auto' : 'none'}
                 onLayout={e => {
                     laidOut.current = { index, height: e.nativeEvent.layout.height };
                     setBubbleH(e.nativeEvent.layout.height);
                 }}
-                style={[styles.bubble, { backgroundColor: colors.background, top: bubbleTop }]}
+                style={[
+                    styles.bubble,
+                    { backgroundColor: colors.background, top: bubbleTop, left: bubbleLeft, right: bubbleLeft },
+                    !shown && styles.waiting,
+                ]}
             >
+                {side && (
+                    <View style={[
+                        styles.tail,
+                        { backgroundColor: colors.background, left: tailX - TAIL / 2 },
+                        side === 'below' ? { top: -TAIL / 2 } : { bottom: -TAIL / 2 },
+                    ]} />
+                )}
                 {where && <Text variant="label">{where}</Text>}
-                <CoachLine line={stop.line} action={stop.action} mood={stop.mood}>
+                {/* Remounted when it opens, so the line flips in and the face acts while they're looking. */}
+                <CoachLine key={shown ? 'open' : 'held'} line={stop.line} action={stop.action} mood={stop.mood} lookAt={gaze}>
                     {'got' in then && (
-                        // Held, but kept in the layout, until what it explains is lit. The
-                        // wrapper hides it: the pressable animates its own opacity.
-                        <View style={[styles.gotIt, !hole && styles.waiting]} pointerEvents={hole ? 'auto' : 'none'}>
-                            <ScalePressable onPress={next} disabled={!hole} accessibilityRole="button" hitSlop={8}>
-                                <Text variant="label" tone="accent">Got it</Text>
-                            </ScalePressable>
+                        <View style={styles.gotIt}>
+                            <ThemedButton label="Got it" onPress={next} disabled={!shown} />
                         </View>
                     )}
                 </CoachLine>
@@ -349,17 +462,27 @@ export function AppWalk() {
     );
 }
 
+/** The hint's row; the pill inside is as wide as its words, centred on the element. */
+const HINT_W = 220;
+const HINT_H = 26;
+
 const styles = StyleSheet.create({
     dim: { position: 'absolute', backgroundColor: DIM },
     hole: { position: 'absolute' },
-    ring: { position: 'absolute', borderWidth: 2 },
+    ring: { position: 'absolute', borderWidth: Spacing.border.marker },
     bubble: {
         position: 'absolute',
-        left: Spacing.layout.screenPadding,
-        right: Spacing.layout.screenPadding,
         padding: Spacing.lg,
         gap: Spacing.md,
     },
+    tail: {
+        position: 'absolute',
+        width: TAIL,
+        height: TAIL,
+        transform: [{ rotate: '45deg' }],
+    },
+    hintRow: { position: 'absolute', width: HINT_W, height: HINT_H, alignItems: 'center' },
+    hint: { height: HINT_H, paddingHorizontal: Spacing.md, justifyContent: 'center' },
     gotIt: { alignSelf: 'flex-end' },
     waiting: { opacity: 0 },
 });

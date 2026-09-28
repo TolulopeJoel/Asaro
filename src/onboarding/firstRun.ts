@@ -1,12 +1,13 @@
 /**
- * A new user's first run: a practice entry with the chosen sibling, then a walk
- * around Home. Onboarding starts it; users who never onboarded never see it.
+ * A new user's first run: the chosen sibling's thinking cap, a practice entry
+ * with them, then a walk around Home. Onboarding starts it; users who never
+ * onboarded never see it.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { STORAGE_KEYS } from '../storage/storageKeys';
 
-export type FirstRun = 'practice' | 'walk' | 'done';
+export type FirstRun = 'cap' | 'practice' | 'walk' | 'done';
 
 export async function getFirstRun(): Promise<FirstRun | null> {
     try {
