@@ -331,12 +331,11 @@ export default function GroupScreen() {
     const feed = week.open && week.weekKey ? feedByMember(g.members, week, week.weekKey) : [];
     const shown = feed.filter(p => p.readings.length || p.share || p.practices.length || p.milestones.length);
     const myShare = week.shares.find(s => s.userId === uid) ?? null;
-    // The walk points at the row under the reader's (what the group sees of someone) and the first shared practice.
-    const mineAt = shown.findIndex(p => p.member.uid === uid);
-    const neighbour = mineAt >= 0 ? shown[mineAt + 1]?.member.uid : undefined;
+    // The walk lights every row, the reader's first to the last (what the group sees of each), then the first shared practice.
+    const last = shown.length > 1 ? shown[shown.length - 1].member.uid : undefined;
     const practiser = shown.find(p => p.practices.length)?.member.uid;
     const personTarget = (member: Member): CoachTarget | null =>
-        !demo ? null : member.uid === uid ? 'group-mine' : member.uid === neighbour ? 'group-days' : null;
+        !demo ? null : member.uid === uid ? 'group-mine' : member.uid === last ? 'group-days' : null;
 
     if (g.missing) {
         return (

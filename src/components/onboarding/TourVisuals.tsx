@@ -119,7 +119,7 @@ function Trees() {
 
 /** Example members, as the group reads on a Sunday. */
 const SUNDAY = [
-    { name: 'Tomiwa', read: 'Romans 8', answered: 4 },
+    { name: 'Tomiwa Labule', read: 'Romans 8', answered: 4 },
     { name: 'You', read: 'Genesis 1–3', answered: 3 },
     { name: 'Tomi Precious', read: 'Psalm 23', answered: 5 },
 ];
