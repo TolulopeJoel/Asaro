@@ -208,7 +208,7 @@ const ReadingCard = React.memo(({
                 <UIText variant="bodySmall" tone={isCompleted ? 'muted' : 'secondary'} style={styles.clothPlanSub}>
                     {item.chapters
                         ? `${formatRange(item.chapters)}${schedule?.urgent ? ' · today' : ''}`
-                        : 'Full Book'}
+                        : 'Full book'}
                 </UIText>
             </View>
             {/* `.cl-panel`'s 19px box: filled indigo with an ecru tick when done. */}
@@ -404,12 +404,12 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: PlanProgress)
                 const book = item.book;
                 const chapters = item.chapters;
                 showAlert({
-                    title: 'Entry Required',
-                    message: `To mark ${book}${chapters ? ` ${chapters}` : ''} as complete, you need an entry covering this reading.`,
+                    title: 'Write about it first',
+                    message: `${book}${chapters ? ` ${chapters}` : ''} ticks itself off once you’ve reflected on it.`,
                     icon: Notebook,
                     buttons: [
                         {
-                            text: 'Add Entry',
+                            text: 'Write it',
                             icon: Plus,
                             onPress: () => router.push({
                                 pathname: '/addEntry',

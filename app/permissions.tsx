@@ -62,7 +62,7 @@ export default function PermissionsScreen() {
     /** What a reminder will and won't be — the mockup's three rows. */
     const PROMISES = [
         'A reminder for the day\u2019s reading',
-        'Follow-ups for actions you set yourself',
+        'Reminders for questions you set yourself',
         'Nothing else. No marketing, ever.',
     ];
 

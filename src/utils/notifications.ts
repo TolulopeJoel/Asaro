@@ -18,10 +18,12 @@ const DATE_HORIZON_DAYS = 28;
 
 const DAILY_ID_PREFIX = 'daily-';
 const STUDY_ID_PREFIX = 'study-';
-const STUDY_TITLE = '📖 Study Reminder';
+const STUDY_TITLE = 'Remember this one?';
+/** What study reminders were titled before; ones already scheduled still carry it. */
+const OLD_STUDY_TITLE = '📖 Study Reminder';
 
 const studyReminderId = (entryId: number) => `${STUDY_ID_PREFIX}${entryId}`;
-const studyReminderBody = (topic?: string | null) => `Time to study further: ${topic || 'your topic'}`;
+export const studyReminderBody = (topic?: string | null) => `You said you’d study it: ${topic || 'your question'}. Today’s the day.`;
 
 // Every schedule change runs through this chain, one at a time, so none is dropped or interleaved.
 let scheduleQueue: Promise<unknown> = Promise.resolve();
@@ -435,7 +437,8 @@ function isDailyRequest(request: Notifications.NotificationRequest): boolean {
 /** A study reminder, including ones scheduled under a random identifier before they were keyed by entry. */
 function isStudyRequest(request: Notifications.NotificationRequest): boolean {
   if (request.identifier.startsWith(STUDY_ID_PREFIX)) return true;
-  return !isDailyRequest(request) && request.content.title === STUDY_TITLE;
+  const title = request.content.title;
+  return !isDailyRequest(request) && (title === STUDY_TITLE || title === OLD_STUDY_TITLE);
 }
 
 /** Future study reminders the journal still asks for, or null if it can't be read. */

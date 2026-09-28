@@ -627,8 +627,8 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
         let face: AsaroAction = 'point';
         // Held where the resting smile would contradict the line.
         let hold = false;
-        let title = "It's awful quiet in here...";
-        let subtext = "Don't just stare at the screen. Read your Bible and tell me about it!";
+        let title = "Nothing here yet.";
+        let subtext = "Go and read, then come and tell me about it.";
 
         if (viewMode === 'books') {
             face = 'shrug';
@@ -637,21 +637,21 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
         } else if (viewMode === 'actions') {
             face = 'deadpan';
             hold = true;
-            title = "No actions recorded";
-            subtext = "You didn't learn anything practical today? Write an action step";
+            title = "Nothing you're working on yet";
+            subtext = "When you write down something you'll do, it comes and waits here.";
         } else if (viewMode === 'topics') {
             face = 'sideEye';
             hold = true;
-            title = "No follow-ups";
-            subtext = "Is there really nothing more you want to study? Add one to an entry.";
+            title = "No questions yet";
+            subtext = "Something to dig into later? Write it under question 5, and it waits here.";
         } else if (debouncedSearchQuery) {
             face = 'sheepish';
-            title = "Nothing to see here";
-            subtext = "I couldn't find what you're looking for. Try another search.";
+            title = "Nothing like that";
+            subtext = "I looked everywhere. Try another word.";
         } else if (viewMode === 'bookDetail') {
             face = 'point';
             title = "Empty book";
-            subtext = "You haven't read this book yet. Go read it!";
+            subtext = "You haven't written about this book yet. Go and read it.";
         }
 
         return (

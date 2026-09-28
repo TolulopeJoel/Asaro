@@ -168,8 +168,8 @@ export function EchoesContent() {
                     Nothing noticed yet
                 </Text>
                 <Text variant="body" tone="secondary" style={styles.centred}>
-                    Àṣàrò watches for passages your entries keep circling without ever landing on.
-                    When it finds one, it will appear on Home — not here.
+                    I watch for passages your entries keep circling without landing on.
+                    When I find one, I’ll bring it to Home, not here.
                 </Text>
             </View>
         );

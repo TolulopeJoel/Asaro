@@ -44,7 +44,7 @@ export default function GroupsScreen() {
         return (
             <Screen edges={[]}>
                 <Hero ownsTopInset>
-                    <Text variant="display" tone="onBand">Better{'\n'}Together</Text>
+                    <Text variant="display" tone="onBand">Your{'\n'}people</Text>
                     <Text variant="sub" tone="onHero" style={styles.heroSub}>Read together. I am watching all of you. 👀</Text>
                 </Hero>
                 <ScrollView
@@ -58,13 +58,13 @@ export default function GroupsScreen() {
                                 <Users size={34} color={colors.accentSecondary} />
                             </View>
 
-                            <Text variant="display" style={styles.centre}>Better Together</Text>
+                            <Text variant="display" style={styles.centre}>Read with your people</Text>
                             <Text variant="body" tone="secondary" style={styles.authQuote}>
-                                {'“If you want to go fast, go alone. If you want to go far, go together”'}
+                                Join a group and every Sunday you’ll see what everyone read. Sign in first.
                             </Text>
 
                             <Button
-                                label="Sign in to Join Them"
+                                label="Sign in to join"
                                 variant="primary"
                                 size="lg"
                                 onPress={() => router.push('/(tabs)/groups/auth' as any)}
@@ -83,8 +83,8 @@ export default function GroupsScreen() {
     return (
         <Screen edges={[]}>
             <Hero ownsTopInset>
-                <Text variant="display" tone="onBand">Better Together</Text>
-                <Text variant="sub" tone="onHero" style={styles.heroSub}>Consistency is key. Read together!</Text>
+                <Text variant="display" tone="onBand">Your people</Text>
+                <Text variant="sub" tone="onHero" style={styles.heroSub}>Every Sunday, you see what everyone read.</Text>
             </Hero>
 
             <ScrollView
@@ -163,7 +163,7 @@ export default function GroupsScreen() {
                 {!isLoading && rows.length === 0 && (
                     <View>
                         <Text variant="label" style={styles.label}>Join a group</Text>
-                        <ThemedButton label="Enter Group Code" block onPress={() => router.push('/(tabs)/groups/join' as any)} />
+                        <ThemedButton label="Enter group code" block onPress={() => router.push('/(tabs)/groups/join' as any)} />
                         {/* Quiet on purpose: most readers can't start one yet, and joining is the ask. */}
                         <ScalePressable
                             onPress={() => router.push('/(tabs)/groups/create' as any)}

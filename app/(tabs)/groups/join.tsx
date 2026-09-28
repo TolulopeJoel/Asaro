@@ -37,7 +37,7 @@ export default function JoinGroupScreen() {
             const result = await joinGroup(code);
             switch (result.status) {
                 case 'invalid':
-                    showAlert({ title: 'Invalid Code', message: 'No group found with this access code. Please check and try again.' });
+                    showAlert({ title: 'That code didn’t work', message: 'No group has that code. Check it with whoever sent it, and try again.' });
                     break;
                 case 'offline':
                     showAlert({ title: "You're offline", message: 'Joining a group needs a connection. Try again once you are back online.' });
@@ -46,7 +46,7 @@ export default function JoinGroupScreen() {
                     router.push('/(tabs)/groups/auth' as any);
                     break;
                 case 'already':
-                    showAlert({ title: 'Already a Member', message: `You are already part of "${result.name}".` });
+                    showAlert({ title: 'Already in', message: `You are already part of "${result.name}".` });
                     router.replace(`/(tabs)/groups/${result.groupId}` as any);
                     break;
                 case 'joined':
@@ -86,7 +86,7 @@ export default function JoinGroupScreen() {
                     </ScalePressable>
                 </View>
                 <Text variant="display" tone="onBand" style={styles.clothHeroTitle}>
-                    Enter{'\n'}Group Code
+                    Enter{'\n'}group code
                 </Text>
             </Hero>
 
@@ -94,7 +94,7 @@ export default function JoinGroupScreen() {
             <KeyboardSafe style={{ flex: 1 }}>
                 <ScrollView contentContainerStyle={styles.clothBody} keyboardShouldPersistTaps="handled">
                     <Text variant="sub">
-                        Ask whoever set up the circle for its six-character code.
+                        Ask whoever started the group for its six-character code.
                     </Text>
 
                     <View>
@@ -117,7 +117,7 @@ export default function JoinGroupScreen() {
                     </View>
 
                     <ThemedButton
-                        label={loading ? 'Joining…' : 'Join this circle'}
+                        label={loading ? 'Joining…' : 'Join this group'}
                         block
                         loading={loading}
                         disabled={loading || !code.trim()}
@@ -138,7 +138,7 @@ export default function JoinGroupScreen() {
                                     joining one.
                                 </Text>
                                 <ThemedButton
-                                    label="Sign in to Join Them"
+                                    label="Sign in to join"
                                     variant="secondary"
                                     style={styles.clothSignIn}
                                     onPress={() => router.push('/(tabs)/groups/auth' as any)}

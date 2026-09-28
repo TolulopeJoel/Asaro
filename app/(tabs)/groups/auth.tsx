@@ -121,7 +121,7 @@ export default function AuthScreen() {
             router.back();
         } catch (error: any) {
             console.error(error);
-            showAlert({ title: 'Auth Error', message: error.message || 'An error occurred during authentication' });
+            showAlert({ title: 'Couldn’t sign you in', message: error.message || 'Something went wrong. Check your details and try again.' });
         } finally {
             setLoading(false);
         }
@@ -159,7 +159,7 @@ export default function AuthScreen() {
                                 <Mail size={20} color={colors.textPrimary} style={styles.inputIcon} />
                                 <TextInput
                                     style={[styles.input, { color: colors.textPrimary }]}
-                                    placeholder="Email Address"
+                                    placeholder="Email address"
                                     placeholderTextColor={colors.textMuted}
                                     value={email}
                                     onChangeText={setEmail}
@@ -201,7 +201,7 @@ export default function AuthScreen() {
                                         <Lock size={20} color={colors.textPrimary} style={styles.inputIcon} />
                                         <TextInput
                                             style={[styles.input, { color: colors.textPrimary }]}
-                                            placeholder="Confirm Password"
+                                            placeholder="Confirm password"
                                             placeholderTextColor={colors.textMuted}
                                             value={confirmPassword}
                                             onChangeText={setConfirmPassword}
@@ -217,7 +217,7 @@ export default function AuthScreen() {
                             )}
 
                             <ThemedButton
-                                label={isSignUp ? 'Create Account' : 'Sign In'}
+                                label={isSignUp ? 'Create account' : 'Sign in'}
                                 block
                                 loading={loading}
                                 onPress={handleAuth}
@@ -230,7 +230,7 @@ export default function AuthScreen() {
                                 style={styles.switchMode}
                             >
                                 <Text variant="button" tone="tertiary">
-                                    {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Create One"}
+                                    {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Create one"}
                                 </Text>
                             </ScalePressable>
                         </View>

@@ -92,7 +92,7 @@ export default function BatteryOptimizationScreen() {
     /** Why the OS should leave the app alone — the mockup's row of reasons. */
     const REASONS = [
         'Your daily reading reminder, on time',
-        'Follow-up nudges for the actions you set',
+        'Reminders for the questions you set',
         'Nothing else runs in the background',
         ...(showAutoStart
             ? [`Auto-start in ${oemAutoStartLabel()}, or your phone will close Àṣàrò and the reminders stop`]

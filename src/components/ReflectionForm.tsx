@@ -190,8 +190,8 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
     );
     if (incompleteItem) {
       showAlert({
-        title: 'Missing Action',
-        message: 'You\'ve added a "Motivated by" note but haven\'t written the action you want to take. Please add the action, or clear the motivation.'
+        title: 'What will you do?',
+        message: 'You wrote why, but not what. Add what you\'ll do, or clear the reason.'
       });
       return;
     }

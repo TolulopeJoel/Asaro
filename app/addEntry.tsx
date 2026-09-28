@@ -8,7 +8,7 @@ import { Animated, BackHandler, Share, StyleSheet, View } from 'react-native';
 import { ReflectionAnswers } from '../src/components/ReflectionForm';
 import { LoadingView } from '../src/components/LoadingView';
 import { BibleBook, getBookByName } from '../src/data/bibleBooks';
-import { cancelStudyReminder, setupDailyNotifications, scheduleReminderNotification } from '../src/utils/notifications';
+import { cancelStudyReminder, setupDailyNotifications, scheduleReminderNotification, studyReminderBody } from '../src/utils/notifications';
 import { emitMilestones, publishReading } from '@/src/groups/publish';
 import { useAlert } from '@/src/context/AlertContext';
 import { firstWithoutReason, isBlank } from '@/src/data/actionValidation';
@@ -272,8 +272,8 @@ export default function MeditationSessionScreen() {
                 await scheduleReminderNotification(
                     savedId,
                     new Date(studyFurtherReminder),
-                    '📖 Study Reminder',
-                    `Time to study further: ${studyFurther || 'your topic'}`,
+                    undefined,
+                    studyReminderBody(studyFurther),
                 );
             } else {
                 await cancelStudyReminder(savedId);
@@ -300,7 +300,7 @@ export default function MeditationSessionScreen() {
 
     const handleContinueToReflection = useCallback(() => {
         if (!selectedChapters || selectedChapters.start === 0) {
-            showAlert({ title: 'Please select a chapter', message: 'You need to select at least one chapter to continue.' });
+            showAlert({ title: 'Which chapter?', message: 'Pick at least one first.' });
             return;
         }
         setCurrentStep('reflection');
@@ -308,7 +308,7 @@ export default function MeditationSessionScreen() {
 
     const handleSaveReflection = useCallback(async (answers: ReflectionAnswers) => {
         if (!selectedBook || !selectedChapters || selectedChapters.start === 0) {
-            showAlert({ title: 'Incomplete', message: 'Please select a book and chapter first.' });
+            showAlert({ title: 'Which chapter?', message: 'Pick a book and a chapter first.' });
             return;
         }
         /*
@@ -428,10 +428,10 @@ export default function MeditationSessionScreen() {
 
     const handleDiscardDraft = useCallback(() => {
         showAlert({
-            title: 'Discard Draft?',
+            title: 'Discard draft?',
             message: 'Are you sure you want to discard your draft and start fresh?',
             buttons: [
-                { text: 'Keep Writing', style: 'cancel' },
+                { text: 'Keep writing', style: 'cancel' },
                 {
                     text: 'Discard',
                     style: 'destructive',

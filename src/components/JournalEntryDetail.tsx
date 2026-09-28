@@ -56,7 +56,7 @@ const REFLECTION_QUESTIONS = [
     'How can I realistically apply this in my life?',
     'How can I use these verses to help others?',
     'What would I like to study further?',
-    'Additional Thoughts',
+    'Additional thoughts',
 ];
 
 /** The question each block answers; notes are not one, so they can't be brought. */

@@ -480,8 +480,8 @@ export default function Settings() {
         function pickHour() {
             showAlert({
                 face: { action: 'smug' },
-                title: 'Select Sleep Hour',
-                message: 'I only allow sleep after 8:00 PM. Anything earlier is just laziness! Choose well: it stays for 30 days.',
+                title: 'Select sleep hour',
+                message: 'I only allow sleep after 8:00 PM. Before that, the day is still going o. Choose well: it stays for 30 days.',
                 buttons: [
                     { text: '08 PM', onPress: () => pickMinute(20, '08:00 PM') },
                     { text: '09 PM', onPress: () => pickMinute(21, '09:00 PM') },
