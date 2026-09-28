@@ -565,28 +565,31 @@ export default function Settings() {
                                 <ChevronLeft size={20} color={colors.accent} strokeWidth={1.9} />
                             </View>
                         </ScalePressable>
-                        <ScalePressable
-                            onPress={() => setShowProfileEditor(v => !v)}
-                            accessibilityRole="button"
-                            accessibilityLabel={`${name}. Edit your name and photo`}
-                            style={styles.clothProfile}
-                        >
-                            <Avatar
-                                id={user?.uid}
-                                name={name}
-                                url={photo}
-                                size={52}
-                                radius={26}
-                            />
-                            <View style={styles.clothProfileText}>
-                                <UIText variant="title" tone="onBand">{name}</UIText>
-                                {readingSince && (
-                                    <UIText variant="sub" tone="onHero" style={styles.clothProfileSub}>
-                                        {`Reading since ${readingSince}`}
-                                    </UIText>
-                                )}
-                            </View>
-                        </ScalePressable>
+                        {/* The app walk points here to say where the name is changed. */}
+                        <View ref={coachTarget('settings-profile')} collapsable={false}>
+                            <ScalePressable
+                                onPress={() => setShowProfileEditor(v => !v)}
+                                accessibilityRole="button"
+                                accessibilityLabel={`${name}. Edit your name and photo`}
+                                style={styles.clothProfile}
+                            >
+                                <Avatar
+                                    id={user?.uid}
+                                    name={name}
+                                    url={photo}
+                                    size={52}
+                                    radius={26}
+                                />
+                                <View style={styles.clothProfileText}>
+                                    <UIText variant="title" tone="onBand">{name}</UIText>
+                                    {readingSince && (
+                                        <UIText variant="sub" tone="onHero" style={styles.clothProfileSub}>
+                                            {`Reading since ${readingSince}`}
+                                        </UIText>
+                                    )}
+                                </View>
+                            </ScalePressable>
+                        </View>
                 </Hero>
 
                 {/* design/all-screens.html #settings: labelled runs of plain

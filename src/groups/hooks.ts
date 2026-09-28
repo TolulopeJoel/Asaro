@@ -19,8 +19,8 @@ import { Eligibility } from './eligibility';
 import { errorCode } from './session';
 import { weekKey } from './week';
 import { GroupWindow, groupWindow, nextWindowChange } from './window';
-import { useTour } from '../onboarding/tour';
-import { DEMO_GROUP_ID, demoGroup, demoGroupWeek, demoMembers, demoWindow } from '../onboarding/demo';
+import { useDemoBrought, useTour } from '../onboarding/tour';
+import { DEMO_GROUP_ID, DEMO_UID, demoGroup, demoGroupWeek, demoMembers, demoWindow } from '../onboarding/demo';
 
 type Data = Record<string, any>;
 type Docs = { id: string; data: Data }[];
@@ -159,7 +159,7 @@ interface HubData {
 
 /** Signed out or not, the walk shows its example group as your one group. */
 const DEMO_READS = 14;
-const TOUR_UID = 'tour-you';
+const TOUR_UID = DEMO_UID;
 
 /** One row per group the reader is in, in `groupIds` order. */
 export function useMyGroups(): { rows: HubRow[]; loading: boolean; error: boolean } {
@@ -385,11 +385,15 @@ export function useGroupWeek(group: Group | null): GroupWeekState {
     const demo = group?.id === DEMO_GROUP_ID;
     const live = useLiveGroupWeek(demo ? null : group);
     const uid = useAuth().user?.uid ?? TOUR_UID;
+    const brought = useDemoBrought();
     return useMemo(() => {
         if (!demo) return live;
         const window = demoWindow();
-        return { ...demoGroupWeek(uid), open: true, label: window.label, weekKey: window.reviewKey, loading: false, error: false };
-    }, [demo, live, uid]);
+        const base = demoGroupWeek(uid);
+        // What the reader brought during the walk, as theirs.
+        const shares = brought ? [...base.shares, { ...brought, userId: uid }] : base.shares;
+        return { ...base, shares, open: true, label: window.label, weekKey: window.reviewKey, loading: false, error: false };
+    }, [demo, live, uid, brought]);
 }
 
 function useLiveGroupWeek(group: Group | null): GroupWeekState {

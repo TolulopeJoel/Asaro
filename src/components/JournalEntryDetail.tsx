@@ -247,6 +247,10 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
         </View>
     );
 
+    // The first answer that quotes a verse: where the app walk shows that verses open in JW Library.
+    const verseAt = [entry.reflection_1, entry.reflection_2, entry.reflection_3, entry.reflection_4, entry.study_further, entry.notes]
+        .findIndex(text => text?.includes('[['));
+
     const renderReflection = (reflection: string | undefined, questionIndex: number) => {
         const rule = { borderLeftColor: colors.accentSecondary };
 
@@ -303,7 +307,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
             return (
                 <View key={questionIndex} style={[styles.block, rule]}>
                     {blockHead(questionIndex, () => handleShareReflection(entry.study_further ?? '', questionIndex))}
-                    <View style={styles.answer}>
+                    <View ref={questionIndex === verseAt ? coachTarget('entry-verse') : undefined} collapsable={false} style={styles.answer}>
                         {paragraphs.map((paragraph, pIndex) => (
                             <HyperlinkedText key={pIndex} style={bodyFace} text={paragraph.trim()} />
                         ))}
@@ -333,7 +337,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
         return (
             <View key={questionIndex} style={[styles.block, rule]}>
                 {blockHead(questionIndex, QUESTION_AT[questionIndex] ? () => handleShareReflection(actualReflection, questionIndex) : undefined)}
-                <View style={styles.answer}>
+                <View ref={questionIndex === verseAt ? coachTarget('entry-verse') : undefined} collapsable={false} style={styles.answer}>
                     {paragraphs.map((paragraph, pIndex) => (
                         <HyperlinkedText key={pIndex} style={bodyFace} text={paragraph.trim()} />
                     ))}

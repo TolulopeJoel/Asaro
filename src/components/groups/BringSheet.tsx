@@ -10,6 +10,11 @@ import { useFootPadding } from '../../hooks/useScreenInsets';
 import { QUESTION_LABELS, isQuestionId } from '../../data/questions';
 import { removeShare, shareAnswer, weekAnswers } from '../../groups/publish';
 import { Share, WeekAnswer } from '../../groups/model';
+import { DEMO_GROUP_ID, DEMO_UID, demoWeekAnswers } from '../../onboarding/demo';
+import { setDemoBrought } from '../../onboarding/tour';
+import { coachEvent } from '../../onboarding/coachTargets';
+import { REFLECTION_QUESTIONS } from '../../data/questions';
+import { unwrapReferences } from '../../utils/reference';
 import { ScalePressable } from '../ScalePressable';
 import { Hero, Screen, Text, ThemedButton } from '../ui';
 
@@ -31,18 +36,34 @@ export function BringSheet({ visible, groupId, groupName, weekKey, current, onCl
     const [answers, setAnswers] = useState<WeekAnswer[] | null>(null);
     const [picked, setPicked] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
+    // The walk's example group: example answers, and bringing stays on this phone.
+    const demo = groupId === DEMO_GROUP_ID;
 
     useEffect(() => {
         if (!visible) return;
         setPicked(null);
         setAnswers(null);
+        if (demo) {
+            setAnswers(demoWeekAnswers());
+            return;
+        }
         weekAnswers(weekKey).then(setAnswers).catch(() => setAnswers([]));
-    }, [visible, weekKey]);
+    }, [visible, weekKey, demo]);
 
     const chosen = answers?.find(a => keyOf(a) === picked) ?? null;
 
     const bring = async () => {
         if (!chosen || busy) return;
+        if (demo) {
+            setDemoBrought({
+                id: `${DEMO_UID}_${weekKey}`, userId: DEMO_UID, entryId: chosen.entryId, questionId: chosen.questionId,
+                question: REFLECTION_QUESTIONS.find(q => q.id === chosen.questionId)?.question ?? chosen.label,
+                text: chosen.text, passage: chosen.passage, weekKey, createdAt: Date.now(),
+            });
+            coachEvent('group-brought');
+            onClose();
+            return;
+        }
         setBusy(true);
         try {
             const id = await shareAnswer(chosen.entryId, chosen.questionId, chosen.text, { target: groupId, weekKey });
@@ -55,6 +76,11 @@ export function BringSheet({ visible, groupId, groupName, weekKey, current, onCl
 
     const takeBack = async () => {
         if (!current || busy) return;
+        if (demo) {
+            setDemoBrought(null);
+            onClose();
+            return;
+        }
         setBusy(true);
         try {
             await removeShare(groupId, current.id);
@@ -85,7 +111,7 @@ export function BringSheet({ visible, groupId, groupName, weekKey, current, onCl
                         <View style={[styles.panel, { backgroundColor: colors.backgroundSubtle }]}>
                             <Text variant="label">You brought</Text>
                             <Text variant="meta" tone="secondary">{[currentLabel, current.passage].filter(Boolean).join(' · ')}</Text>
-                            <Text variant="quote">{current.text}</Text>
+                            <Text variant="quote">{unwrapReferences(current.text)}</Text>
                             <ThemedButton label="Take it back" variant="secondary" onPress={takeBack} disabled={busy} style={styles.takeBack} />
                         </View>
                     )}
@@ -110,7 +136,7 @@ export function BringSheet({ visible, groupId, groupName, weekKey, current, onCl
                                         ]}
                                     >
                                         <Text variant="meta" tone="secondary" style={styles.tag}>{`${answer.label} · ${answer.passage}`}</Text>
-                                        <Text variant="quote" numberOfLines={6}>{answer.text}</Text>
+                                        <Text variant="quote" numberOfLines={6}>{unwrapReferences(answer.text)}</Text>
                                     </ScalePressable>
                                 );
                             })}

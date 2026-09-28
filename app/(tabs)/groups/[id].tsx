@@ -22,7 +22,8 @@ import { formatRange } from '@/src/utils/reference';
 import { QUESTION_LABELS, QUESTION_COUNT, isQuestionId } from '@/src/data/questions';
 import { daysRead, feedByMember, parseLocalDateTime } from '@/src/groups/derive';
 import { useGroup, useGroupWeek } from '@/src/groups/hooks';
-import { DEMO_GROUP_ID } from '@/src/onboarding/demo';
+import { DEMO_GROUP_ID, DEMO_UID } from '@/src/onboarding/demo';
+import { unwrapReferences } from '@/src/utils/reference';
 import { CoachTarget, coachTarget } from '@/src/onboarding/coachTargets';
 import { useCoachScroller } from '@/src/onboarding/useCoachScroller';
 import { Group, Member, Reading, Role } from '@/src/groups/model';
@@ -131,7 +132,8 @@ export default function GroupScreen() {
     const { colors } = useTheme();
     const { showAlert } = useAlert();
     const { user } = useAuth();
-    const uid = user?.uid;
+    // In the walk's example group the reader is its example member, signed in or not.
+    const uid = user?.uid ?? (gid === DEMO_GROUP_ID ? DEMO_UID : undefined);
     const footPadding = useFootPadding();
     const day = useLocalDay();
     const today = weekdayIndex(parseLocalDateTime(day) ?? new Date());
@@ -330,10 +332,10 @@ export default function GroupScreen() {
     const shown = feed.filter(p => p.readings.length || p.share || p.practices.length || p.milestones.length);
     const myShare = week.shares.find(s => s.userId === uid) ?? null;
     // The walk points at the first person who brought something and the first who shared a practice.
-    const sharer = shown.find(p => p.share)?.member.uid;
+    const sharer = shown.find(p => p.share && p.member.uid !== uid)?.member.uid;
     const practiser = shown.find(p => p.practices.length && p.member.uid !== sharer)?.member.uid;
     const personTarget = (member: Member): CoachTarget | null =>
-        !demo ? null : member.uid === sharer ? 'group-days' : null;
+        !demo ? null : member.uid === uid ? 'group-mine' : member.uid === sharer ? 'group-days' : null;
 
     if (g.missing) {
         return (
@@ -473,7 +475,7 @@ export default function GroupScreen() {
                                             {[isQuestionId(person.share.questionId) ? QUESTION_LABELS[person.share.questionId] : '', person.share.passage]
                                                 .filter(Boolean).join(' · ')}
                                         </Text>
-                                        <Text variant="quote">{person.share.text}</Text>
+                                        <Text variant="quote">{unwrapReferences(person.share.text)}</Text>
                                         {person.member.uid === uid && (
                                             <ScalePressable onPress={() => setBringing(true)} accessibilityRole="button" hitSlop={Spacing.sm} style={styles.change}>
                                                 <Text variant="meta" tone="accent">Change or take back</Text>

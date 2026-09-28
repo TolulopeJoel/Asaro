@@ -5,6 +5,7 @@
  * reminder can act on an entry that doesn't exist.
  */
 import { useSyncExternalStore } from 'react';
+import type { Share } from '../groups/model';
 
 export interface TourState {
     active: boolean;
@@ -43,8 +44,22 @@ export function useDemoKept(): ReadonlySet<number> {
     );
 }
 
-export const startTour = () => { setKept(new Set()); set({ active: true, stop: null }); };
-export const endTour = () => { setKept(new Set()); set({ active: false, stop: null }); };
+/** What the reader brought to the example group during the walk. Never sent anywhere. */
+let brought: Share | null = null;
+const broughtListeners = new Set<() => void>();
+export function setDemoBrought(next: Share | null) {
+    brought = next;
+    broughtListeners.forEach(l => l());
+}
+export function useDemoBrought(): Share | null {
+    return useSyncExternalStore(
+        listener => { broughtListeners.add(listener); return () => { broughtListeners.delete(listener); }; },
+        () => brought,
+    );
+}
+
+export const startTour = () => { setKept(new Set()); setDemoBrought(null); set({ active: true, stop: null }); };
+export const endTour = () => { setKept(new Set()); setDemoBrought(null); set({ active: false, stop: null }); };
 export const setTourStop = (stop: string | null) => set({ ...state, stop });
 export const getTour = () => state;
 

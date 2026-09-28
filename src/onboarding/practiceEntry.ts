@@ -14,12 +14,12 @@ export const PRACTICE_ANSWERS: ReflectionAnswers = {
     reflection2: 'It starts the whole story: a good creation, then the first rebellion, and the first promise to fix it, [[Genesis 3:15]].',
     actionItems: [{
         action: 'Thank Jehovah for one thing he made, every morning',
-        motivation: 'Genesis 1 says it was all good, and I hardly ever say thank you',
+        motivation: '[[Genesis 1:31]] says it was all good, and I hardly ever say thank you',
         // Left for them to tap: see the task on page 3.
         cadence: null,
     }],
-    reflection4: 'My sister worries about the state of the world. Genesis 3:15 shows it was always going to be fixed.',
-    studyFurther: 'What “the deep” means in Genesis 1:2',
+    reflection4: 'My sister worries about the state of the world. [[Genesis 3:15]] shows it was always going to be fixed.',
+    studyFurther: 'What “the deep” means in [[Genesis 1:2]]',
     studyFurtherReminder: undefined,
     notes: '',
 };
@@ -64,7 +64,7 @@ export const COACH = {
                 kind: 'do', action: 'point', line: 'You can quote one in any answer. At the end, type @ and start typing a book, like John. Then pick the chapter and the verse.',
                 done: (a) => refs(a.reflection2) > refs(PRACTICE_ANSWERS.reflection2),
             },
-            { kind: 'end', action: 'celebrate', line: 'That’s it! Later, tap a verse like that and it opens in your Bible.' },
+            { kind: 'end', action: 'celebrate', line: 'That’s it! Later, tap a verse like that and it opens in JW Library. Every verse you quote also helps me find what connects your entries.' },
         ],
         [
             { kind: 'tell', action: 'point', line: 'This is where it becomes real: something you’ll actually do because of what you read.' },

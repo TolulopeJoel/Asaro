@@ -10,13 +10,16 @@ import { streakOf } from '../data/practiceStreak';
 import { growthOf, rootedSeries } from '../grove/grove';
 import type { GroveTree } from '../grove/loadGrove';
 import type { TodayItem } from '../hooks/useToday';
-import type { Group, GroupWeek, Member } from '../groups/model';
+import type { Group, GroupWeek, Member, WeekAnswer } from '../groups/model';
+import { QUESTION_LABELS } from '../data/questions';
 import type { GroupWindow } from '../groups/window';
 import type { CoverageRow } from '../land/cloth';
 import type { RenderedObservation } from '../insight/render';
 import { PRACTICE_ANSWERS } from './practiceEntry';
 
 export const DEMO_GROUP_ID = 'tour-demo-group';
+/** The reader, inside the example group. */
+export const DEMO_UID = 'tour-you';
 
 const DAY = 86_400_000;
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -36,16 +39,16 @@ const WRITTEN = [0, 1, 2, 4, 5, 6, 7, 9, 10, 11, 12, 13, 15, 16, 18, 19, 20, 21,
 const ENTRY_SPECS: { book: string; start: number; end?: number; ago: number; r1: string; r2: string; r4: string; study?: string }[] = [
     {
         book: 'Psalms', start: 23, ago: 0,
-        r1: 'He leads, he restores, and he stays with me even in the dark valley.',
+        r1: 'He leads, he restores, and he stays with me even in the dark valley, [[Psalms 23:4]].',
         r2: 'David had been a shepherd. He knew what Jehovah was doing for him.',
-        r4: 'My friend who just lost her job. Verse 4 is for her.',
+        r4: 'My friend who just lost her job. [[Psalms 23:1]] is for her.',
     },
     {
         book: 'Matthew', start: 6, ago: 2,
-        r1: 'He sees what is done in secret, and that is enough for him.',
+        r1: 'He sees what is done in secret, and that is enough for him, [[Matthew 6:6]].',
         r2: 'The model prayer puts his name and Kingdom first, before anything I need.',
-        r4: 'My brother, who worries about money all the time. Verse 33.',
-        study: 'What “daily bread” meant to the people listening',
+        r4: 'My brother, who worries about money all the time. [[Matthew 6:33]].',
+        study: 'What “daily bread” meant to the people listening, [[Matthew 6:11]]',
     },
     {
         book: 'Genesis', start: 1, end: 3, ago: 24,
@@ -247,4 +250,18 @@ export function demoGroupWeek(me: string): GroupWeek {
         ],
         milestones: [],
     };
+}
+
+/** What the bring sheet offers during the walk: answers from the example entries of this week. */
+export function demoWeekAnswers(): WeekAnswer[] {
+    return DEMO_ENTRIES.slice(0, 2).flatMap(entry => ([
+        ['reflection1', entry.reflection_1],
+        ['reflection4', entry.reflection_4],
+    ] as const).flatMap(([questionId, text]) => text ? [{
+        entryId: entry.id!,
+        questionId,
+        label: QUESTION_LABELS[questionId],
+        text: text.trim(),
+        passage: `${entry.book_name} ${entry.chapter_start}`,
+    }] : []));
 }

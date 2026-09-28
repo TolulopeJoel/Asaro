@@ -12,15 +12,15 @@ export type CoachTarget =
     | 'library-themes'
     | 'stats-tiles' | 'stats-calendar' | 'stats-grove' | 'stats-rooted'
     | 'land-field' | 'land-tree' | 'land-card'
-    | 'groups-row' | 'group-days' | 'group-share' | 'group-practice' | 'group-members'
+    | 'groups-row' | 'group-days' | 'group-share' | 'group-practice' | 'group-members' | 'group-mine'
     | 'tab-home'
     | 'back-stats' | 'back-land' | 'back-settings' | 'back-entry' | 'back-group'
-    | 'settings-sleep' | 'settings-look' | 'settings-backup'
+    | 'settings-sleep' | 'settings-look' | 'settings-backup' | 'settings-profile' | 'entry-verse'
     | 'library-section-unfinished' | 'library-section-echoes' | 'library-section-plan'
     | 'library-sub-books' | 'library-sub-topics';
 
 /** Things the user can do that a walk stop waits for. */
-export type CoachEvent = 'today-kept' | 'library-searched';
+export type CoachEvent = 'today-kept' | 'library-searched' | 'group-brought';
 
 const EVENT = 'coach-event';
 

@@ -64,6 +64,7 @@ function stops(other: string): Stop[] {
 
         // Settings: every row here does real work, so they are shown, not tapped.
         { target: 'settings', action: 'point', then: { path: '/settings' }, line: 'Your settings. Tap it.' },
+        { target: 'settings-profile', action: 'nod', then: { got: true }, line: 'Your name lives up here. Tap it any time to change it, or to add a photo.' },
         { target: 'settings-sleep', action: 'nod', then: { got: true }, line: 'Your sleep time. My last reminder comes an hour before it. You can change it once a month.' },
         { target: 'settings-look', action: 'sideEye', then: { got: true }, line: `And this is me. If you ever want my ${other} instead… it’s here. Don’t try it.` },
         { target: 'settings-backup', action: 'think', then: { got: true }, line: 'Your entries live on this phone. Share a backup now and then, so a lost phone never takes them.' },
@@ -72,9 +73,11 @@ function stops(other: string): Stop[] {
         // Library
         { target: 'tab-library', action: 'point', then: { path: '/library' }, line: 'Everything you write ends up in your Library. Tap it.' },
         { target: 'library-entry', action: 'nod', then: { path: '/library/-1' }, line: 'These are examples. Your own go here, newest first. Tap one to read it again.' },
-        { target: 'back-entry', action: 'smug', then: { path: '/library' }, line: 'That’s how an entry reads back. Tap the X to go back.' },
+        { target: 'entry-verse', action: 'point', then: { got: true }, line: 'That’s how an entry reads back. See the verse in orange? Tap one any time and it opens in JW Library.' },
+        { target: 'entry-verse', action: 'think', then: { got: true }, line: 'Every verse you quote also helps me find what connects your entries. When I do, it shows up in Echoes.' },
+        { target: 'back-entry', action: 'smug', then: { path: '/library' }, line: 'Tap the X to go back.' },
         { target: 'library-search', action: 'point', then: { event: 'library-searched' }, line: 'Wrote about something months ago and can’t find it? Search. Type dark.' },
-        { target: 'library-entry', action: 'smug', then: { got: true }, line: 'There it is. Search looks through every answer you’ve ever written.' },
+        { target: 'library-search', action: 'smug', then: { got: true }, line: 'There it is. Search looks through every answer you’ve ever written.' },
         { target: 'library-sub-books', action: 'nod', then: { shows: 'library-books' }, line: 'Or go book by book. Tap By book.' },
         { target: 'library-books', action: 'nod', then: { got: true }, line: 'Every book you’ve written about, with how many entries. Tap one any time to see them all.' },
         { target: 'library-section-unfinished', action: 'point', then: { shows: 'library-practice' }, line: 'What you said you’d do lives under Working on. Tap it.' },
@@ -87,8 +90,9 @@ function stops(other: string): Stop[] {
         // Groups
         { target: 'tab-groups', action: 'smug', then: { path: '/groups' }, line: 'And when you’re ready, bring your people. Tap Groups.' },
         { target: 'groups-row', action: 'nod', then: { path: `/groups/${DEMO_GROUP_ID}` }, line: 'Your groups live here. This one is made up, so you can see inside. Tap it.' },
-        { target: 'group-share', action: 'point', then: { got: true }, line: 'On Sunday the group opens. You bring one answer from your week, the one you choose. The rest stays yours.' },
-        { target: 'group-days', action: 'nod', then: { got: true }, line: 'Everyone sees what the others read that week, and the one thing each person brought.' },
+        { target: 'group-share', action: 'point', then: { event: 'group-brought' }, line: 'On Sunday the group opens, and you bring one answer from your week. Tap Choose, pick one, then Bring.' },
+        { target: 'group-mine', action: 'celebrate', then: { got: true }, line: 'There it is, in the group. Only this group sees it, and you can take it back any time.' },
+        { target: 'group-days', action: 'nod', then: { got: true }, line: 'Everything else you write stays on your phone. The group sees what you read and how many questions you answered, never your answers, unless you bring one.' },
         { target: 'group-practice', action: 'smug', then: { got: true }, line: 'Share a practice if you want people watching you keep it. I already am.' },
         { target: 'group-members', action: 'sideEye', then: { got: true }, line: 'Members shows who read this week. Anyone who didn’t, you can nudge. Gently.' },
         { target: 'back-group', action: 'nod', then: { path: '/groups' }, line: 'Back to your groups. Tap the arrow.' },
@@ -98,7 +102,7 @@ function stops(other: string): Stop[] {
             target: null,
             action: 'wave',
             then: { end: true },
-            line: `Now it’s your turn. Go and read ${PRACTICE_BOOK} ${PRACTICE_CHAPTERS.start}–${PRACTICE_CHAPTERS.end}. I’ll be here.`,
+            line: `Now it’s your turn: go and read ${PRACTICE_BOOK} ${PRACTICE_CHAPTERS.start}–${PRACTICE_CHAPTERS.end}. You won’t see me like this again, unless you’re doing something right… or something wrong. Either way, I’ll know.`,
         },
     ];
 }
