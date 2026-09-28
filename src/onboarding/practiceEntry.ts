@@ -56,12 +56,12 @@ export const COACH = {
             { kind: 'end', action: 'thumbsUp', line: 'Ehen! Day one and you’re already writing about Jehovah. I like this one. In a real entry, stopping halfway is fine: it waits for you on Home.' },
         ],
         [
-            { kind: 'tell', action: 'think', line: 'How does it fit the Bible’s big story? Watch the end of mine: I’m quoting a verse.' },
+            { kind: 'tell', action: 'think', line: 'How does it fit the Bible’s big story? Watch the end of mine: I’m referencing a verse.' },
             {
-                kind: 'do', action: 'point', line: 'You can quote one in any answer. At the end, type @ and start typing a book, like John. Then pick the chapter and the verse.',
+                kind: 'do', action: 'point', line: 'You can reference one in any answer. At the end, type @ and start typing a book, like John. Then pick the chapter and the verse.',
                 done: (a) => refs(a.reflection2) > refs(PRACTICE_ANSWERS.reflection2),
             },
-            { kind: 'end', action: 'celebrate', line: 'Look at you, quoting scripture. Later, tap a verse like that and it opens in JW Library. Every verse you quote also helps me find what connects your entries.' },
+            { kind: 'end', action: 'celebrate', line: 'Look at you, referencing scripture. Later, tap a verse like that and it opens in JW Library. Every verse you reference also helps me find what connects your entries.' },
         ],
         [
             { kind: 'tell', action: 'point', line: 'This is the one I care about most: something you’ll actually do because of what you read. Action is what you’ll do, Motivated by is why. The why is the part you forget in a month, so I make you write it.' },

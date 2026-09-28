@@ -50,4 +50,4 @@ __pycache__/
 # it must never be committed.
 asaro-backup.json
 *-backup.json
-*Plan.md
+*.md

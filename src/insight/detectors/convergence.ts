@@ -256,7 +256,7 @@ export function findConvergence(
         // chapter already assigned, so it carries no more than the chapter seed
         // while making the citation gate trivial to clear.
         //
-        // Budget splits per citation, not per verse, so quoting sixteen verses
+        // Budget splits per citation, not per verse, so referencing sixteen verses
         // is one act of pointing and a generous citer cannot drown out a
         // precise one.
         const pointed = entry.citations.filter(cited => verseOf(cited.start) !== 0);
@@ -297,7 +297,7 @@ export function findConvergence(
             if (viaCitation) {
                 carry(reachEntries, target, viaCitation);
                 // Kept separately: reaching a passage from a verse someone
-                // chose to quote is different evidence from reaching it
+                // chose to reference is different evidence from reaching it
                 // because the schedule opened a chapter nearby.
                 carry(reachCiting, target, viaCitation);
             }

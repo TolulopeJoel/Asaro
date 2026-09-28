@@ -283,6 +283,9 @@ function JournalContent({
 
 // ─── Plan Content ─────────────────────────────────────────────────────────────
 
+/** The plan's reading groups, in order. */
+const PLAN_SECTIONS = Array.from(new Set(READING_PLAN_DATA.map(i => i.section)));
+
 export interface PlanProgress {
     completed: number;
     total: number;
@@ -299,11 +302,17 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: PlanProgress)
     const { showAlert } = useAlert();
     const flatListRef = useRef<FlatList>(null);
     // The footnote sits under 364 readings; the app walk scrolls there rather than asking the reader to.
+    // It shuts the open group first, so the end is a few headers away and the list knows its real length:
+    // the scroll waits for the list to settle at that size.
     const tour = useTour();
+    const toFootnote = useRef(false);
     useEffect(() => {
+        toFootnote.current = tour.active && tour.stop === 'plan-footnote';
         if (!tour.active) return;
-        if (tour.stop === 'plan-footnote') flatListRef.current?.scrollToEnd({ animated: true });
-        else if (tour.stop === 'plan-legend') flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
+        if (tour.stop === 'plan-footnote') {
+            setCollapsedSections(new Set(PLAN_SECTIONS));
+            flatListRef.current?.scrollToEnd({ animated: true });
+        } else if (tour.stop === 'plan-legend') flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
     }, [tour.active, tour.stop]);
 
     /**
@@ -347,8 +356,7 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: PlanProgress)
         if (isInitialLoad) {
             const nextItem = READING_PLAN_DATA.find(item => !completedSet.has(item.id));
             if (nextItem) {
-                const allSections = Array.from(new Set(READING_PLAN_DATA.map(i => i.section)));
-                const collapsed = new Set(allSections.filter(s => s !== nextItem.section));
+                const collapsed = new Set(PLAN_SECTIONS.filter(s => s !== nextItem.section));
                 setCollapsedSections(collapsed);
             }
             setIsInitialLoad(false);
@@ -558,6 +566,9 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: PlanProgress)
                     maxToRenderPerBatch={15}
                     windowSize={7}
                     removeClippedSubviews={Platform.OS === 'android'}
+                    onContentSizeChange={() => {
+                        if (toFootnote.current) flatListRef.current?.scrollToEnd({ animated: true });
+                    }}
                 />
             )}
         </View>
