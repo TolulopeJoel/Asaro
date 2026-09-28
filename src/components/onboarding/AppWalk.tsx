@@ -92,7 +92,7 @@ function stops(other: string): Stop[] {
         { target: 'groups-row', action: 'nod', then: { path: `/groups/${DEMO_GROUP_ID}` }, line: 'Your groups live here. This one is made up, so you can see inside. Tap it.' },
         { target: 'group-share', action: 'point', then: { event: 'group-brought' }, line: 'On Sunday the group opens, and you bring one answer from your week. Tap Choose, pick one, then Bring.' },
         { target: 'group-mine', action: 'celebrate', then: { got: true }, line: 'There it is, in the group. Only this group sees it, and you can take it back any time.' },
-        { target: 'group-days', action: 'nod', then: { got: true }, line: 'Everything else you write stays on your phone. The group sees what you read and how many questions you answered, never your answers, unless you bring one.' },
+        { target: 'group-days', action: 'nod', then: { got: true }, line: 'Everything else you write stays on your phone. The group sees only the chapters you read and how many questions you answered, never your answers, unless you bring one.' },
         { target: 'group-practice', action: 'smug', then: { got: true }, line: 'Share a practice if you want people watching you keep it. I already am.' },
         { target: 'group-members', action: 'sideEye', then: { got: true }, line: 'Members shows who read this week. Anyone who didn’t, you can nudge. Gently.' },
         { target: 'back-group', action: 'nod', then: { path: '/groups' }, line: 'Back to your groups. Tap the arrow.' },

@@ -37,9 +37,15 @@ export interface Rect { x: number; y: number; width: number; height: number }
 
 const nodes = new Map<CoachTarget, View>();
 const refs = new Map<CoachTarget, (node: View | null) => void>();
+/** Margin inside a wrapper that isn't part of the element the reader sees, taken off its box. */
+const trims = new Map<CoachTarget, { top: number; bottom: number }>();
 
-/** A stable callback ref per name, so re-renders don't unregister and re-register. */
-export function coachTarget(name: CoachTarget) {
+/**
+ * A stable callback ref per name, so re-renders don't unregister and re-register.
+ * `trim` names margin the wrapped element carries, e.g. a card's bottom margin.
+ */
+export function coachTarget(name: CoachTarget, trim?: { top?: number; bottom?: number }) {
+    if (trim) trims.set(name, { top: trim.top ?? 0, bottom: trim.bottom ?? 0 });
     let ref = refs.get(name);
     if (!ref) {
         ref = (node: View | null) => {
@@ -74,7 +80,8 @@ export async function measureTarget(name: CoachTarget): Promise<Rect | null> {
     if (!node || !root) return null;
     const [el, base] = await Promise.all([inWindow(node), inWindow(root)]);
     if (!(el.width > 0 && el.height > 0)) return null;
-    return { x: el.x - base.x, y: el.y - base.y, width: el.width, height: el.height };
+    const trim = trims.get(name) ?? { top: 0, bottom: 0 };
+    return { x: el.x - base.x, y: el.y - base.y + trim.top, width: el.width, height: el.height - trim.top - trim.bottom };
 }
 
 /**

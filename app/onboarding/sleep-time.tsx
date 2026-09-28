@@ -18,6 +18,7 @@ import { Flip } from '@/src/components/onboarding/Flip';
 import { onboardingStepLabel } from '@/src/utils/onboardingSteps';
 import { useFootPadding } from '@/src/hooks/useScreenInsets';
 import { clockLabel, reminderTimesFor, saveSleepTime, setupDailyNotifications } from '@/src/utils/notifications';
+import { KeyboardSafe } from '@/src/components/KeyboardSafe';
 
 // The same window Settings offers: 8 PM to midnight.
 const EARLIEST_HOUR = 8;
@@ -176,92 +177,95 @@ export default function SleepTimeScreen() {
             {/* The band scrolls with the fields so a short screen with the
               * keyboard up still has room for them. `handled` lets a tap on
               * empty ground dismiss the keyboard while buttons still work. */}
-            <ScrollView
-                style={styles.keyboardView}
-                contentContainerStyle={styles.scrollContent}
-                keyboardShouldPersistTaps="handled"
-                keyboardDismissMode="on-drag"
-            >
-                <Hero ownsTopInset topPadding={64}>
-                    <Text variant="label" tone="onHero" style={styles.heroStep}>{onboardingStepLabel('sleep-time')}</Text>
-                    <Text variant="display" tone="onBand">What time{'\n'}do you sleep?</Text>
-                </Hero>
-                <View style={[styles.clothBody, { paddingBottom: footPadding }]}>
-                    <View style={styles.speech}>
-                        <Asaro ref={face} size={74} />
-                        <Text variant="body" style={styles.speechText} accessibilityLiveRegion="polite">
-                            {reaction.line}
-                        </Text>
-                    </View>
+            {/* The keyboard never shrinks an edge-to-edge window; this lifts the page so the field stays in view. */}
+            <KeyboardSafe style={{ flex: 1 }}>
+                <ScrollView
+                    style={styles.keyboardView}
+                    contentContainerStyle={styles.scrollContent}
+                    keyboardShouldPersistTaps="handled"
+                    keyboardDismissMode="on-drag"
+                >
+                    <Hero ownsTopInset topPadding={64}>
+                        <Text variant="label" tone="onHero" style={styles.heroStep}>{onboardingStepLabel('sleep-time')}</Text>
+                        <Text variant="display" tone="onBand">What time{'\n'}do you sleep?</Text>
+                    </Hero>
+                    <View style={[styles.clothBody, { paddingBottom: footPadding }]}>
+                        <View style={styles.speech}>
+                            <Asaro ref={face} size={74} />
+                            <Text variant="body" style={styles.speechText} accessibilityLiveRegion="polite">
+                                {reaction.line}
+                            </Text>
+                        </View>
 
-                    <View style={[styles.clothPanel, { backgroundColor: colors.backgroundSubtle }]}>
-                        <TextInput
-                            style={[
-                                styles.clothTimeInput,
-                                textStyle(themeStyle, 'display'),
-                                { backgroundColor: colors.background, color: error ? colors.danger : colors.textPrimary },
-                            ]}
-                            placeholder="10"
-                            placeholderTextColor={colors.textMuted}
-                            value={hour}
-                            onChangeText={handleHourChange}
-                            keyboardType="number-pad"
-                            selectTextOnFocus
-                            returnKeyType="next"
-                            maxLength={2}
-                            onSubmitEditing={() => minuteInputRef.current?.focus()}
-                            accessibilityLabel="Hour"
-                        />
-                        <Text variant="display" tone="accent">:</Text>
-                        <TextInput
-                            ref={minuteInputRef}
-                            style={[
-                                styles.clothTimeInput,
-                                textStyle(themeStyle, 'display'),
-                                { backgroundColor: colors.background, color: error ? colors.danger : colors.textPrimary },
-                            ]}
-                            placeholder="00"
-                            placeholderTextColor={colors.textMuted}
-                            value={minute}
-                            onChangeText={handleMinuteChange}
-                            onBlur={handleBlurMinute}
-                            keyboardType="number-pad"
-                            selectTextOnFocus
-                            returnKeyType="done"
-                            maxLength={2}
-                            accessibilityLabel="Minute"
-                        />
-                        <Text variant="tab" tone="secondary">PM</Text>
-                    </View>
+                        <View style={[styles.clothPanel, { backgroundColor: colors.backgroundSubtle }]}>
+                            <TextInput
+                                style={[
+                                    styles.clothTimeInput,
+                                    textStyle(themeStyle, 'display'),
+                                    { backgroundColor: colors.background, color: error ? colors.danger : colors.textPrimary },
+                                ]}
+                                placeholder="10"
+                                placeholderTextColor={colors.textMuted}
+                                value={hour}
+                                onChangeText={handleHourChange}
+                                keyboardType="number-pad"
+                                selectTextOnFocus
+                                returnKeyType="next"
+                                maxLength={2}
+                                onSubmitEditing={() => minuteInputRef.current?.focus()}
+                                accessibilityLabel="Hour"
+                            />
+                            <Text variant="display" tone="accent">:</Text>
+                            <TextInput
+                                ref={minuteInputRef}
+                                style={[
+                                    styles.clothTimeInput,
+                                    textStyle(themeStyle, 'display'),
+                                    { backgroundColor: colors.background, color: error ? colors.danger : colors.textPrimary },
+                                ]}
+                                placeholder="00"
+                                placeholderTextColor={colors.textMuted}
+                                value={minute}
+                                onChangeText={handleMinuteChange}
+                                onBlur={handleBlurMinute}
+                                keyboardType="number-pad"
+                                selectTextOnFocus
+                                returnKeyType="done"
+                                maxLength={2}
+                                accessibilityLabel="Minute"
+                            />
+                            <Text variant="tab" tone="secondary">PM</Text>
+                        </View>
 
-                    {error && <Text variant="bodySmall" tone="danger">{error}</Text>}
+                        {error && <Text variant="bodySmall" tone="danger">{error}</Text>}
 
-                    {/* The real schedule for this time: each row flips when its time changes. */}
-                    <View style={[styles.planPanel, { backgroundColor: colors.backgroundSubtle }]}>
-                        <Text variant="label" style={styles.planLabel}>This is when I&apos;ll come</Text>
-                        {plan.map((row, i) => (
-                            <Flip key={row.gist} flipKey={row.at} delay={i * 120} stretch puff={false}>
-                                <View style={[
-                                    styles.planRow,
-                                    i > 0 && { borderTopColor: colors.border, borderTopWidth: Spacing.border.hairline },
-                                ]}>
-                                    <Text variant="reference" style={styles.planTime}>{row.at}</Text>
-                                    <Text variant="meta" tone="secondary">{row.gist}</Text>
-                                </View>
-                            </Flip>
-                        ))}
-                    </View>
+                        {/* The real schedule for this time: each row flips when its time changes. */}
+                        <View style={[styles.planPanel, { backgroundColor: colors.backgroundSubtle }]}>
+                            <Text variant="label" style={styles.planLabel}>This is when I&apos;ll come</Text>
+                            {plan.map((row, i) => (
+                                <Flip key={row.gist} flipKey={row.at} delay={i * 120} stretch puff={false}>
+                                    <View style={[
+                                        styles.planRow,
+                                        i > 0 && { borderTopColor: colors.border, borderTopWidth: Spacing.border.hairline },
+                                    ]}>
+                                        <Text variant="reference" style={styles.planTime}>{row.at}</Text>
+                                        <Text variant="meta" tone="secondary">{row.gist}</Text>
+                                    </View>
+                                </Flip>
+                            ))}
+                        </View>
 
-                    <View style={styles.foot}>
-                        <ThemedButton
-                            label="Continue"
-                            block
-                            disabled={!isFormValid}
-                            onPress={handleContinue}
-                        />
+                        <View style={styles.foot}>
+                            <ThemedButton
+                                label="Continue"
+                                block
+                                disabled={!isFormValid}
+                                onPress={handleContinue}
+                            />
+                        </View>
                     </View>
-                </View>
-            </ScrollView>
+                </ScrollView>
+            </KeyboardSafe>
         </Screen>
     );
 }

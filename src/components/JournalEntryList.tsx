@@ -78,6 +78,8 @@ interface JournalEntryListProps {
     onBookEntryCountChange?: (count: number) => void;
 }
 
+/** The bottom margin each walk card's root carries (BookCard, ActionCard, TopicCard), kept out of its box. */
+const CARD_MARGIN: Partial<Record<CoachTarget, number>> = { 'library-books': 12, 'library-practice': 10, 'library-question': 10 };
 
 export const JournalEntryList: React.FC<JournalEntryListProps> = ({
     onEntryPress,
@@ -765,7 +767,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
     const renderListItem = useCallback(({ item }: { item: ListItem }) => {
         const target = demo ? walkTargets.get(item.id) : undefined;
         const card = renderListCard(item);
-        return target ? <View ref={coachTarget(target)} collapsable={false}>{card}</View> : card;
+        return target ? <View ref={coachTarget(target, { bottom: CARD_MARGIN[target] })} collapsable={false}>{card}</View> : card;
     }, [demo, walkTargets, renderListCard]);
 
 

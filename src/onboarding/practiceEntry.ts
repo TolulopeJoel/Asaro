@@ -11,7 +11,7 @@ export const PRACTICE_CHAPTERS = { start: 1, end: 3 };
 /** Typed in, letter by letter, when a page opens empty. */
 export const PRACTICE_ANSWERS: ReflectionAnswers = {
     reflection1: 'He made everything with order and care, and he called it good.',
-    reflection2: 'It starts the whole story: a good creation, then the first rebellion, and the first promise to fix it, [[Genesis 3:15]].',
+    reflection2: 'It starts the whole story: a good creation, then the first rebellion, and the first promise to fix it, [[Genesis 3:15]]. ',
     actionItems: [{
         action: 'Thank Jehovah for one thing he made, every morning',
         motivation: '[[Genesis 1:31]] says it was all good, and I hardly ever say thank you',
@@ -19,7 +19,7 @@ export const PRACTICE_ANSWERS: ReflectionAnswers = {
         cadence: null,
     }],
     reflection4: 'My sister worries about the state of the world. [[Genesis 3:15]] shows it was always going to be fixed.',
-    studyFurther: 'What “the deep” means in [[Genesis 1:2]]',
+    studyFurther: 'What “watery deep” means in [[Genesis 1:2]]',
     studyFurtherReminder: undefined,
     notes: '',
 };
@@ -91,7 +91,7 @@ export const COACH = {
             { kind: 'end', action: 'smug', line: 'Noted. In a real entry, I’d remind you then. Your questions wait in Library until you’ve studied them.' },
         ],
         [
-            { kind: 'tell', action: 'nod', line: 'Anything else: a thought, a prayer, something you noticed. Or nothing.' },
+            { kind: 'tell', action: 'nod', line: 'Anything else: a thought, something you noticed. Or nothing.' },
             { kind: 'end', action: 'smug', line: 'Then tap Record it. It’s practice, so nothing counts.' },
         ],
     ] as Beat[][],

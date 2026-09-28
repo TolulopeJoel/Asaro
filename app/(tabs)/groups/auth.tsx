@@ -13,6 +13,7 @@ import { ScalePressable } from '@/src/components/ScalePressable';
 import { ClothMark, Hero, Screen, Text, ThemedButton } from '@/src/components/ui';
 import { useFootPadding } from '@/src/hooks/useScreenInsets';
 import { getAsaroLook } from '@/src/storage/asaroLook';
+import { KeyboardSafe } from '@/src/components/KeyboardSafe';
 
 /**
  * Which of the two the reader is, as a cell.
@@ -137,102 +138,105 @@ export default function AuthScreen() {
             {/* Scrolls, band and all: sign-up is taller than a small phone
               * with the keyboard up, and Android keeps the focused field in
               * view only inside a ScrollView. */}
-            <ScrollView
-                style={styles.container}
-                keyboardShouldPersistTaps="handled"
-            >
-                <Hero ownsTopInset>
-                    <Text variant="display" tone="onBand">
-                        {isSignUp ? 'Create\nAccount' : 'Welcome\nBack'}
-                    </Text>
-                </Hero>
-                <View style={[styles.content, { paddingBottom: footPadding }]}>
-                    <Text variant="body" tone="secondary" style={styles.subtitle}>
-                        {isSignUp ? 'Ready to get serious? No more hiding.' : "Welcome back. Let's see what you've been up to."}
-                    </Text>
+            {/* The keyboard never shrinks an edge-to-edge window; this lifts the page so the field stays in view. */}
+            <KeyboardSafe style={{ flex: 1 }}>
+                <ScrollView
+                    style={styles.container}
+                    keyboardShouldPersistTaps="handled"
+                >
+                    <Hero ownsTopInset>
+                        <Text variant="display" tone="onBand">
+                            {isSignUp ? 'Create\nAccount' : 'Welcome\nBack'}
+                        </Text>
+                    </Hero>
+                    <View style={[styles.content, { paddingBottom: footPadding }]}>
+                        <Text variant="body" tone="secondary" style={styles.subtitle}>
+                            {isSignUp ? 'Ready to get serious? No more hiding.' : "Welcome back. Let's see what you've been up to."}
+                        </Text>
 
-                    <View style={styles.form}>
-                        <View style={[styles.inputContainer, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
-                            <Mail size={20} color={colors.textPrimary} style={styles.inputIcon} />
-                            <TextInput
-                                style={[styles.input, { color: colors.textPrimary }]}
-                                placeholder="Email Address"
-                                placeholderTextColor={colors.textMuted}
-                                value={email}
-                                onChangeText={setEmail}
-                                keyboardType="email-address"
-                                autoCapitalize="none"
-                            />
-                        </View>
+                        <View style={styles.form}>
+                            <View style={[styles.inputContainer, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
+                                <Mail size={20} color={colors.textPrimary} style={styles.inputIcon} />
+                                <TextInput
+                                    style={[styles.input, { color: colors.textPrimary }]}
+                                    placeholder="Email Address"
+                                    placeholderTextColor={colors.textMuted}
+                                    value={email}
+                                    onChangeText={setEmail}
+                                    keyboardType="email-address"
+                                    autoCapitalize="none"
+                                />
+                            </View>
 
-                        <View style={[styles.inputContainer, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
-                            <Lock size={20} color={colors.textPrimary} style={styles.inputIcon} />
-                            <TextInput
-                                style={[styles.input, { color: colors.textPrimary }]}
-                                placeholder="Password"
-                                placeholderTextColor={colors.textMuted}
-                                value={password}
-                                onChangeText={setPassword}
-                                secureTextEntry={!showPassword}
+                            <View style={[styles.inputContainer, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
+                                <Lock size={20} color={colors.textPrimary} style={styles.inputIcon} />
+                                <TextInput
+                                    style={[styles.input, { color: colors.textPrimary }]}
+                                    placeholder="Password"
+                                    placeholderTextColor={colors.textMuted}
+                                    value={password}
+                                    onChangeText={setPassword}
+                                    secureTextEntry={!showPassword}
+                                />
+                                {/*
+                                  * A word, not an eye. An eye glyph has to be drawn
+                                  * twice — open and struck through — and still reads
+                                  * as a toggle you have to guess at; the word names
+                                  * the state a tap produces.
+                                  */}
+                                <ScalePressable
+                                    onPress={() => setShowPassword(!showPassword)}
+                                    hitSlop={Spacing.md}
+                                    accessibilityRole="button"
+                                >
+                                    <Text variant="label" tone="secondary">
+                                        {showPassword ? 'Hide' : 'Show'}
+                                    </Text>
+                                </ScalePressable>
+                            </View>
+
+                            {isSignUp && (
+                                <>
+                                    <View style={[styles.inputContainer, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
+                                        <Lock size={20} color={colors.textPrimary} style={styles.inputIcon} />
+                                        <TextInput
+                                            style={[styles.input, { color: colors.textPrimary }]}
+                                            placeholder="Confirm Password"
+                                            placeholderTextColor={colors.textMuted}
+                                            value={confirmPassword}
+                                            onChangeText={setConfirmPassword}
+                                            secureTextEntry={!showPassword}
+                                        />
+                                    </View>
+
+                                    <View style={styles.roleRow}>
+                                        <RoleCell selected={gender === 'm'} onPress={() => setGender('m')} label="Gentleman" />
+                                        <RoleCell selected={gender === 'f'} onPress={() => setGender('f')} label="Lady" />
+                                    </View>
+                                </>
+                            )}
+
+                            <ThemedButton
+                                label={isSignUp ? 'Create Account' : 'Sign In'}
+                                block
+                                loading={loading}
+                                onPress={handleAuth}
+                                style={styles.submit}
                             />
-                            {/*
-                              * A word, not an eye. An eye glyph has to be drawn
-                              * twice — open and struck through — and still reads
-                              * as a toggle you have to guess at; the word names
-                              * the state a tap produces.
-                              */}
+
                             <ScalePressable
-                                onPress={() => setShowPassword(!showPassword)}
-                                hitSlop={Spacing.md}
+                                onPress={() => setIsSignUp(!isSignUp)}
                                 accessibilityRole="button"
+                                style={styles.switchMode}
                             >
-                                <Text variant="label" tone="secondary">
-                                    {showPassword ? 'Hide' : 'Show'}
+                                <Text variant="button" tone="tertiary">
+                                    {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Create One"}
                                 </Text>
                             </ScalePressable>
                         </View>
-
-                        {isSignUp && (
-                            <>
-                                <View style={[styles.inputContainer, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
-                                    <Lock size={20} color={colors.textPrimary} style={styles.inputIcon} />
-                                    <TextInput
-                                        style={[styles.input, { color: colors.textPrimary }]}
-                                        placeholder="Confirm Password"
-                                        placeholderTextColor={colors.textMuted}
-                                        value={confirmPassword}
-                                        onChangeText={setConfirmPassword}
-                                        secureTextEntry={!showPassword}
-                                    />
-                                </View>
-
-                                <View style={styles.roleRow}>
-                                    <RoleCell selected={gender === 'm'} onPress={() => setGender('m')} label="Gentleman" />
-                                    <RoleCell selected={gender === 'f'} onPress={() => setGender('f')} label="Lady" />
-                                </View>
-                            </>
-                        )}
-
-                        <ThemedButton
-                            label={isSignUp ? 'Create Account' : 'Sign In'}
-                            block
-                            loading={loading}
-                            onPress={handleAuth}
-                            style={styles.submit}
-                        />
-
-                        <ScalePressable
-                            onPress={() => setIsSignUp(!isSignUp)}
-                            accessibilityRole="button"
-                            style={styles.switchMode}
-                        >
-                            <Text variant="button" tone="tertiary">
-                                {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Create One"}
-                            </Text>
-                        </ScalePressable>
                     </View>
-                </View>
-            </ScrollView>
+                </ScrollView>
+            </KeyboardSafe>
         </Screen>
     );
 }

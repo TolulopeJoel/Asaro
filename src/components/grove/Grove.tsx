@@ -128,7 +128,7 @@ export function Grove({ trees, openTreeId }: {
                             })}
                         </View>
                         {opened && (
-                            <View ref={coachTarget('stats-rooted')} collapsable={false}>
+                            <View ref={coachTarget('stats-rooted', { top: Spacing.sm, bottom: Spacing.sm })} collapsable={false}>
                                 <TreeDetail tree={opened} />
                             </View>
                         )}

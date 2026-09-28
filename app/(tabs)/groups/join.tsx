@@ -14,6 +14,7 @@ import { ChevronLeft } from 'lucide-react-native';
 import { Hero, Screen, Text, ThemedButton, textStyle } from '@/src/components/ui';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { joinGroup } from '@/src/groups/repository';
+import { KeyboardSafe } from '@/src/components/KeyboardSafe';
 
 export default function JoinGroupScreen() {
     const [code, setCode] = useState('');
@@ -89,61 +90,64 @@ export default function JoinGroupScreen() {
                 </Text>
             </Hero>
 
-            <ScrollView contentContainerStyle={styles.clothBody} keyboardShouldPersistTaps="handled">
-                <Text variant="sub">
-                    Ask whoever set up the circle for its six-character code.
-                </Text>
+            {/* The keyboard never shrinks an edge-to-edge window; this lifts the page so the field stays in view. */}
+            <KeyboardSafe style={{ flex: 1 }}>
+                <ScrollView contentContainerStyle={styles.clothBody} keyboardShouldPersistTaps="handled">
+                    <Text variant="sub">
+                        Ask whoever set up the circle for its six-character code.
+                    </Text>
 
-                <View>
-                    <Text variant="label" style={styles.clothFieldLabel}>Group code</Text>
-                    <TextInput
-                        style={[
-                            styles.clothInput,
-                            textStyle(themeStyle, 'headline'),
-                            { color: colors.textPrimary, backgroundColor: colors.backgroundSubtle, letterSpacing: 6.6 },
-                        ]}
-                        placeholder="XXXXXX"
-                        placeholderTextColor={colors.textMuted}
-                        value={code}
-                        onChangeText={setCode}
-                        autoCapitalize="characters"
-                        autoCorrect={false}
-                        maxLength={10}
-                        accessibilityLabel="Group code"
+                    <View>
+                        <Text variant="label" style={styles.clothFieldLabel}>Group code</Text>
+                        <TextInput
+                            style={[
+                                styles.clothInput,
+                                textStyle(themeStyle, 'headline'),
+                                { color: colors.textPrimary, backgroundColor: colors.backgroundSubtle, letterSpacing: 6.6 },
+                            ]}
+                            placeholder="XXXXXX"
+                            placeholderTextColor={colors.textMuted}
+                            value={code}
+                            onChangeText={setCode}
+                            autoCapitalize="characters"
+                            autoCorrect={false}
+                            maxLength={10}
+                            accessibilityLabel="Group code"
+                        />
+                    </View>
+
+                    <ThemedButton
+                        label={loading ? 'Joining…' : 'Join this circle'}
+                        block
+                        loading={loading}
+                        disabled={loading || !code.trim()}
+                        onPress={handleJoin}
                     />
-                </View>
 
-                <ThemedButton
-                    label={loading ? 'Joining…' : 'Join this circle'}
-                    block
-                    loading={loading}
-                    disabled={loading || !code.trim()}
-                    onPress={handleJoin}
-                />
-
-                <View style={[styles.clothPanel, { backgroundColor: colors.backgroundSubtle }]}>
-                    <Text variant="label" style={styles.clothPanelLabel}>No code?</Text>
-                    {user ? (
-                        <Text variant="body" tone="secondary">
-                            Ask anyone in the group to share it with you. It&apos;s six letters
-                            and numbers.
-                        </Text>
-                    ) : (
-                        <>
+                    <View style={[styles.clothPanel, { backgroundColor: colors.backgroundSubtle }]}>
+                        <Text variant="label" style={styles.clothPanelLabel}>No code?</Text>
+                        {user ? (
                             <Text variant="body" tone="secondary">
-                                Groups sync through your account, so you&apos;ll need to sign in before
-                                joining one.
+                                Ask anyone in the group to share it with you. It&apos;s six letters
+                                and numbers.
                             </Text>
-                            <ThemedButton
-                                label="Sign in to Join Them"
-                                variant="secondary"
-                                style={styles.clothSignIn}
-                                onPress={() => router.push('/(tabs)/groups/auth' as any)}
-                            />
-                        </>
-                    )}
-                </View>
-            </ScrollView>
+                        ) : (
+                            <>
+                                <Text variant="body" tone="secondary">
+                                    Groups sync through your account, so you&apos;ll need to sign in before
+                                    joining one.
+                                </Text>
+                                <ThemedButton
+                                    label="Sign in to Join Them"
+                                    variant="secondary"
+                                    style={styles.clothSignIn}
+                                    onPress={() => router.push('/(tabs)/groups/auth' as any)}
+                                />
+                            </>
+                        )}
+                    </View>
+                </ScrollView>
+            </KeyboardSafe>
         </Screen>
     );
 }

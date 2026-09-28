@@ -15,6 +15,7 @@ import { onboardingStepLabel } from '@/src/utils/onboardingSteps';
 import { useAsaroLook } from '@/src/storage/asaroLook';
 import { useAuth } from '@/src/context/AuthContext';
 import { useFootPadding } from '@/src/hooks/useScreenInsets';
+import { KeyboardSafe } from '@/src/components/KeyboardSafe';
 
 export default function NameScreen() {
     const router = useRouter();
@@ -46,48 +47,51 @@ export default function NameScreen() {
             {/* Scrolls so the keyboard can never cover the field: Android's
               * ScrollView keeps the focused input on screen as the window
               * shrinks for the keyboard. */}
-            <ScrollView
-                style={styles.keyboardView}
-                contentContainerStyle={styles.scrollContent}
-                keyboardShouldPersistTaps="handled"
-            >
-                <Hero ownsTopInset topPadding={64}>
-                    <Text variant="label" tone="onHero" style={styles.heroStep}>{onboardingStepLabel('name')}</Text>
-                    <Text variant="display" tone="onBand">Hello.</Text>
-                </Hero>
+            {/* The keyboard never shrinks an edge-to-edge window; this lifts the page so the field stays in view. */}
+            <KeyboardSafe style={{ flex: 1 }}>
+                <ScrollView
+                    style={styles.keyboardView}
+                    contentContainerStyle={styles.scrollContent}
+                    keyboardShouldPersistTaps="handled"
+                >
+                    <Hero ownsTopInset topPadding={64}>
+                        <Text variant="label" tone="onHero" style={styles.heroStep}>{onboardingStepLabel('name')}</Text>
+                        <Text variant="display" tone="onBand">Hello.</Text>
+                    </Hero>
 
-                {/* The field sits high, under the sibling's line, so a keyboard opening never covers it. */}
-                <View style={[styles.clothBody, { paddingBottom: footPadding }]}>
-                    <View style={styles.speech}>
-                        <Asaro size={74} look={look} action="wave" />
-                        <Text variant="body" style={styles.speechText}>
-                            I want to help you stay consistent with your reading.
-                            But I can&apos;t be friends with a stranger, can I? Let&apos;s make this official.
-                        </Text>
-                    </View>
+                    {/* The field sits high, under the sibling's line, so a keyboard opening never covers it. */}
+                    <View style={[styles.clothBody, { paddingBottom: footPadding }]}>
+                        <View style={styles.speech}>
+                            <Asaro size={74} look={look} action="wave" />
+                            <Text variant="body" style={styles.speechText}>
+                                I want to help you stay consistent with your reading.
+                                But I can&apos;t be friends with a stranger, can I? Let&apos;s make this official.
+                            </Text>
+                        </View>
 
-                    <View style={styles.nameSection}>
-                        <Text variant="label" tone="secondary">What do your friends call you?</Text>
-                        <View style={[styles.inputContainer, { backgroundColor: colors.backgroundSubtle }]}>
-                            <TextInput
-                                style={[styles.input, { color: colors.textPrimary }]}
-                                placeholder="Your name"
-                                placeholderTextColor={colors.textMuted}
-                                value={name}
-                                onChangeText={handleTextChange}
-                                autoCorrect={false}
-                                returnKeyType="done"
-                                onSubmitEditing={handleContinue}
-                                accessibilityLabel="Your name"
-                            />
+                        <View style={styles.nameSection}>
+                            <Text variant="label" tone="secondary">What do your friends call you?</Text>
+                            <View style={[styles.inputContainer, { backgroundColor: colors.backgroundSubtle }]}>
+                                <TextInput
+                                    style={[styles.input, { color: colors.textPrimary }]}
+                                    placeholder="Your name"
+                                    placeholderTextColor={colors.textMuted}
+                                    value={name}
+                                    onChangeText={handleTextChange}
+                                    autoCorrect={false}
+                                    returnKeyType="done"
+                                    onSubmitEditing={handleContinue}
+                                    accessibilityLabel="Your name"
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.foot}>
+                            <ThemedButton label="Continue" block disabled={!isValid} onPress={handleContinue} />
                         </View>
                     </View>
-
-                    <View style={styles.foot}>
-                        <ThemedButton label="Continue" block disabled={!isValid} onPress={handleContinue} />
-                    </View>
-                </View>
-            </ScrollView>
+                </ScrollView>
+            </KeyboardSafe>
         </Screen>
     );
 }

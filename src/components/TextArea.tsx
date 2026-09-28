@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
     Animated,
-    KeyboardAvoidingView,
     Modal,
     StatusBar,
     StyleSheet,
@@ -19,7 +18,7 @@ import { ScalePressable } from './ScalePressable';
 import { Spacing } from '../theme/spacing';
 import { Screen, textStyle } from './ui';
 import Svg, { Defs, Line, Pattern, Rect } from 'react-native-svg';
-import { KEYBOARD_BEHAVIOR } from '../utils/keyboard';
+import { KeyboardSafe } from './KeyboardSafe';
 
 const RULE_STEP = 28;
 
@@ -208,10 +207,8 @@ const TextArea: React.FC<{
                 >
                     <StatusBar hidden={true} />
                     <Screen edges={['top', 'bottom', 'left', 'right']} style={fullScreenStyles.container}>
-                        <KeyboardAvoidingView
-                            style={fullScreenStyles.keyboardView}
-                            behavior={KEYBOARD_BEHAVIOR}
-                        >
+                        <KeyboardSafe
+                            style={fullScreenStyles.keyboardView}>
                             {/* ── Header ── */}
                             <View style={[fullScreenStyles.header, { borderBottomColor: colors.border }]}>
                                 <View style={fullScreenStyles.headerLeft}>
@@ -280,7 +277,7 @@ const TextArea: React.FC<{
                             </View>
 
                             <BibleReferencePicker {...modalPicker.pickerProps} />
-                        </KeyboardAvoidingView>
+                        </KeyboardSafe>
                     </Screen>
                 </Modal>
             </>

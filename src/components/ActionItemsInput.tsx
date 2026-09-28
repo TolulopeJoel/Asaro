@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Modal, ScrollView, StatusBar, StyleSheet, TextInput, View } from 'react-native';
+import { Modal, ScrollView, StatusBar, StyleSheet, TextInput, View } from 'react-native';
 import { Button } from './Button';
 import { ScalePressable } from './ScalePressable';
 import { XCircle, X, Plus, Maximize } from 'lucide-react-native';
@@ -12,7 +12,7 @@ import { useRefPicker } from '../context/RefPickerContext';
 import { Screen, Text } from './ui';
 import { KindChips } from './journal/KindChips';
 import { hasReason, isBlank } from '../data/actionValidation';
-import { KEYBOARD_BEHAVIOR } from '../utils/keyboard';
+import { KeyboardSafe } from './KeyboardSafe';
 
 export interface ActionItemPair {
     /** The saved row this edits, so an entry edit keeps its history. */
@@ -474,10 +474,8 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
             >
                 <StatusBar hidden={true} />
                 <Screen edges={['top', 'bottom', 'left', 'right']} style={fullScreenStyles.container}>
-                    <KeyboardAvoidingView
-                        style={fullScreenStyles.keyboardView}
-                        behavior={KEYBOARD_BEHAVIOR}
-                    >
+                    <KeyboardSafe
+                        style={fullScreenStyles.keyboardView}>
                         <View style={[fullScreenStyles.header, { borderBottomColor: colors.border }]}>
                             <View style={fullScreenStyles.headerLeft}>
                                 {label && (
@@ -531,7 +529,7 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                             onDismiss={handleReferenceDismiss}
                             onInteraction={handlePickerInteraction}
                         />
-                    </KeyboardAvoidingView>
+                    </KeyboardSafe>
                 </Screen>
             </Modal>
 

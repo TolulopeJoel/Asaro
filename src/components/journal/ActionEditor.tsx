@@ -12,7 +12,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { Archive, ArchiveRestore, Users, X } from 'lucide-react-native';
 
 import { useTheme } from '../../theme/ThemeContext';
@@ -24,7 +24,7 @@ import { KindChips } from './KindChips';
 import { ActionKind, actionKindOf, isCadence } from '../../data/actionKind';
 import { EnhancedActionItem } from '../../data/database';
 import { hasReason } from '../../data/actionValidation';
-import { KEYBOARD_BEHAVIOR } from '../../utils/keyboard';
+import { KeyboardSafe } from '../KeyboardSafe';
 import { useMyGroupIds } from '../../groups/hooks';
 import { mySharedPracticeIds, sharePractice, unsharePractice } from '../../groups/publish';
 
@@ -190,10 +190,8 @@ export function ActionEditor({ item, onClose, onSave, onArchive }: Props) {
                 </ScalePressable>
             </View>
 
-            <KeyboardAvoidingView
-                style={styles.fill}
-                behavior={KEYBOARD_BEHAVIOR}
-            >
+            <KeyboardSafe
+                style={styles.fill}>
                 <ScrollView
                     contentContainerStyle={[
                         styles.content,
@@ -268,7 +266,7 @@ export function ActionEditor({ item, onClose, onSave, onArchive }: Props) {
                         </ScalePressable>
                     </View>
                 </ScrollView>
-            </KeyboardAvoidingView>
+            </KeyboardSafe>
         </Screen>
     );
 }

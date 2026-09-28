@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '@/src/storage/storageKeys';
 import { useLocalSearchParams, useNavigation, useRouter, Stack } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, BackHandler, KeyboardAvoidingView, Share, StyleSheet, View } from 'react-native';
+import { Animated, BackHandler, Share, StyleSheet, View } from 'react-native';
 import { ReflectionAnswers } from '../src/components/ReflectionForm';
 import { LoadingView } from '../src/components/LoadingView';
 import { BibleBook, getBookByName } from '../src/data/bibleBooks';
@@ -25,7 +25,7 @@ import { PracticeAftermath } from '@/src/components/onboarding/PracticeAftermath
 import { beatsFinished, COACH, PRACTICE_ANSWERS, PRACTICE_BOOK, PRACTICE_CHAPTERS } from '@/src/onboarding/practiceEntry';
 import { CoachSequence } from '@/src/components/onboarding/CoachSequence';
 import { setFirstRun } from '@/src/onboarding/firstRun';
-import { KEYBOARD_BEHAVIOR } from '../src/utils/keyboard';
+import { KeyboardSafe } from '../src/components/KeyboardSafe';
 
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -566,11 +566,11 @@ export default function MeditationSessionScreen() {
     return (
         <Screen edges={bandOwnsTop ? [] : ['top']}>
             <Stack.Screen options={{ headerShown: false }} />
-            <KeyboardAvoidingView style={{ flex: 1 }} behavior={KEYBOARD_BEHAVIOR}>
+            <KeyboardSafe style={{ flex: 1 }}>
                 <Animated.View style={[{ flex: 1 }, { opacity }]}>
                     {renderCurrentStep()}
                 </Animated.View>
-            </KeyboardAvoidingView>
+            </KeyboardSafe>
 
             {/* The receipts behind "show me why", over the summary rather than
               * pushing a route — closing puts the reader back where they were. */}
