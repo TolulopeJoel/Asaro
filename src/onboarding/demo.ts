@@ -212,8 +212,8 @@ export function demoGroup(): Group {
 export function demoMembers(me: string, myName: string): Member[] {
     return [
         { uid: me, displayName: myName || 'You', role: 'member', joinedAt: daysAgo(20).getTime(), photoAt: null },
-        { uid: 'tour-fisayo', displayName: 'Fisayo', role: 'creator', joinedAt: daysAgo(60).getTime(), photoAt: null },
         { uid: 'tour-tomi', displayName: 'Moyosore', role: 'admin', joinedAt: daysAgo(45).getTime(), photoAt: null },
+        { uid: 'tour-fisayo', displayName: 'Fisayo', role: 'creator', joinedAt: daysAgo(60).getTime(), photoAt: null },
         { uid: 'tour-tunde', displayName: 'Tunde', role: 'member', joinedAt: daysAgo(30).getTime(), photoAt: null },
     ];
 }

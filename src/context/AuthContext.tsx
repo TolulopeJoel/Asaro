@@ -64,7 +64,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     if (localName) setDisplayName(localName);
                 }
             } else {
-                setDisplayName(null);
+                // Signed out is most readers: the name they gave in onboarding still stands.
+                setDisplayName(await AsyncStorage.getItem(STORAGE_KEYS.USER_NAME));
             }
         });
 
