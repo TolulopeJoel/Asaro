@@ -44,8 +44,7 @@ export const COACH = {
     chapter: [
         { kind: 'tell', action: 'wave', line: 'Before you start, let’s do one together. It’s practice: nothing here is saved.' },
         { kind: 'tell', action: 'point', line: 'We start with today’s reading, Genesis 1–3. It’s Reading 1 of the plan, so I picked it for you.' },
-        { kind: 'tell', action: 'nod', line: 'Read something else? Tap a chapter to start there, or drag across a few to make a range.' },
-        { kind: 'tell', action: 'think', line: 'Only read some verses? Under the chapters, turn on I read verses and put in where you started and stopped.' },
+        { kind: 'tell', action: 'think', line: 'Read something else? Tap a chapter to start there, or drag across a few to make a range. Only read some verses? Turn on I read verses, under the chapters, and put in where you started and stopped.' },
         { kind: 'end', action: 'smug', line: 'For now, leave it on Genesis 1–3 and tap the button.' },
     ] as Beat[],
     /** One sequence per reflection page: the five questions, then notes. */
@@ -67,8 +66,7 @@ export const COACH = {
             { kind: 'end', action: 'celebrate', line: 'That’s it! Later, tap a verse like that and it opens in JW Library. Every verse you quote also helps me find what connects your entries.' },
         ],
         [
-            { kind: 'tell', action: 'point', line: 'This is where it becomes real: something you’ll actually do because of what you read.' },
-            { kind: 'tell', action: 'nod', line: 'Action is what you’ll do. Motivated by is why. The why is the part you forget in a month, so I make you write it.' },
+            { kind: 'tell', action: 'point', line: 'This is where it becomes real: something you’ll actually do because of what you read. Action is what you’ll do, Motivated by is why. The why is the part you forget in a month, so I make you write it.' },
             { kind: 'tell', action: 'smug', line: 'Now, how often. Every day is for small habits, like thanking Jehovah each morning.' },
             { kind: 'tell', action: 'think', line: 'Every week is for bigger things, like calling someone who’s struggling every Sunday.' },
             { kind: 'tell', action: 'point', line: 'By a date is for a one-off with a deadline, like talking to your brother before Friday. It doesn’t repeat.' },

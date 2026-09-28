@@ -36,70 +36,85 @@ type Then =
     | { event: CoachEvent }
     | { end: true };
 
-interface Stop { target: CoachTarget | null; action: AsaroAction; line: string; then: Then }
+interface Stop { target: CoachTarget | null; action: AsaroAction; line: string; then: Then; part?: string }
+
+/** A stretch of the walk, named in the bubble with how far into it the reader is. */
+const part = (name: string, list: Stop[]): Stop[] => list.map(s => ({ ...s, part: name }));
 
 function stops(other: string): Stop[] {
     return [
-        // Home
-        { target: 'reading', action: 'point', then: { got: true }, line: 'This is today’s reading, straight from the plan. Read it in your Bible first. Then Begin reflection, and we do what we just practised.' },
-        { target: 'add', action: 'nod', then: { got: true }, line: 'Read something that isn’t on the plan? The + writes about anything, any day.' },
-        { target: 'home-today', action: 'point', then: { event: 'today-kept' }, line: 'What you said you’d do waits here each day. Done it? Tap the box to tick it off. Go on.' },
-        { target: 'home-today', action: 'celebrate', then: { got: true }, line: 'Ticked. Got it wrong? Tap it again to undo. Every tick waters its tree.' },
-        { target: 'home-observation', action: 'think', then: { got: true }, line: 'After a few weeks I start noticing things across your entries. When I do, it shows up here. Not often.' },
-        { target: 'week', action: 'smug', then: { path: '/stats' }, line: 'Your week. Every day you reflect fills one. Tap it.' },
+        ...part('Home', [
+            { target: 'reading', action: 'point', then: { got: true }, line: 'This is today’s reading, straight from the plan. Read it in your Bible first. Then Begin reflection, and we do what we just practised.' },
+            { target: 'add', action: 'nod', then: { got: true }, line: 'Read something that isn’t on the plan? The + writes about anything, any day.' },
+            { target: 'home-today', action: 'point', then: { event: 'today-kept' }, line: 'What you said you’d do waits here each day. Done it? Tap the box to tick it off. Go on.' },
+            { target: 'home-today', action: 'celebrate', then: { got: true }, line: 'Ticked. Got it wrong? Tap it again to undo. Every tick waters its tree.' },
+            { target: 'home-observation', action: 'think', then: { got: true }, line: 'After a few weeks I start noticing things across your entries. When I do, it shows up here. Not often.' },
+        ]),
 
-        // Stats
-        { target: 'stats-tiles', action: 'nod', then: { got: true }, line: 'Your record. This one is an example so you can see it full. Yours starts today.' },
-        { target: 'stats-calendar', action: 'point', then: { got: true }, line: 'Every day you wrote, month by month. The gaps show too. I don’t hide them.' },
-        { target: 'stats-grove', action: 'smug', then: { shows: 'stats-rooted' }, line: 'Every practice you keep grows a tree. Tap one.' },
-        { target: 'stats-rooted', action: 'think', then: { got: true }, line: 'This is how rooted it is: how much it has become part of you. Keep it and it roots deeper. Miss it and it goes thirsty, but it waits.' },
-        { target: 'back-stats', action: 'nod', then: { path: '/' }, line: 'Now back. Tap the arrow.' },
+        ...part('Stats', [
+            { target: 'week', action: 'smug', then: { path: '/stats' }, line: 'Your week. Every day you reflect fills one. Tap it.' },
+            { target: 'stats-record', action: 'nod', then: { got: true }, line: 'Your record. This one is an example so you can see it full. Yours starts today. Below it, every day you wrote, month by month. The gaps show too. I don’t hide them.' },
+            { target: 'stats-grove', action: 'smug', then: { shows: 'stats-rooted' }, line: 'Every practice you keep grows a tree. Tap one.' },
+            { target: 'stats-rooted', action: 'think', then: { got: true }, line: 'This is how rooted it is: how much it has become part of you. Keep it and it roots deeper. Miss it and it goes thirsty, but it waits.' },
+            { target: 'back-stats', action: 'nod', then: { path: '/' }, line: 'Now back. Tap the arrow.' },
+        ]),
 
-        // The land
-        { target: 'progress', action: 'point', then: { path: '/land' }, line: 'How far you’ve gone through the whole Bible. Tap it.' },
-        { target: 'land-field', action: 'nod', then: { got: true }, line: 'Your land, Genesis to Revelation. Every chapter you write about gets worked. Leave it and it goes quiet, but it’s never taken away.' },
-        { target: 'land-tree', action: 'point', then: { shows: 'land-card' }, line: 'Your trees are planted on the chapter they came from. Tap that one.' },
-        { target: 'land-card', action: 'smug', then: { got: true }, line: 'This one grew out of Genesis 1. Tap any tree, any time, to see how it’s doing.' },
-        { target: 'back-land', action: 'nod', then: { path: '/' }, line: 'Back to Home. Tap the arrow.' },
+        ...part('Your land', [
+            { target: 'progress', action: 'point', then: { path: '/land' }, line: 'How far you’ve gone through the whole Bible. Tap it.' },
+            { target: 'land-field', action: 'nod', then: { got: true }, line: 'Your land, Genesis to Revelation. Every chapter you write about gets worked. Leave it and it goes quiet, but it’s never taken away.' },
+            { target: 'land-tree', action: 'point', then: { shows: 'land-card' }, line: 'Your trees are planted on the chapter they came from. Tap that one.' },
+            { target: 'land-card', action: 'smug', then: { got: true }, line: 'This one grew out of Genesis 1. Tap any tree, any time, to see how it’s doing.' },
+            { target: 'back-land', action: 'nod', then: { path: '/' }, line: 'Back to Home. Tap the arrow.' },
+        ]),
 
-        // Settings: every row here does real work, so they are shown, not tapped.
-        { target: 'settings', action: 'point', then: { path: '/settings' }, line: 'Your settings. Tap it.' },
-        { target: 'settings-profile', action: 'nod', then: { got: true }, line: 'Your name lives up here. Tap it any time to change it, or to add a photo.' },
-        { target: 'settings-sleep', action: 'nod', then: { got: true }, line: 'Your sleep time. My last reminder comes an hour before it. You can change it once a month.' },
-        { target: 'settings-look', action: 'sideEye', then: { got: true }, line: `And this is me. If you ever want my ${other} instead… it’s here. Don’t try it.` },
-        { target: 'settings-backup', action: 'think', then: { got: true }, line: 'Your entries live on this phone. Share a backup now and then, so a lost phone never takes them.' },
-        { target: 'back-settings', action: 'nod', then: { path: '/' }, line: 'Done here. Tap the arrow to go back.' },
+        // Every Settings row does real work, so they are shown, not tapped.
+        ...part('Settings', [
+            { target: 'settings', action: 'point', then: { path: '/settings' }, line: 'Your settings. Tap it.' },
+            { target: 'settings-profile', action: 'nod', then: { got: true }, line: 'Your name lives up here. Tap it any time to change it, or to add a photo.' },
+            { target: 'settings-you', action: 'sideEye', then: { got: true }, line: `Your sleep time: my last reminder comes an hour before it, and you can change it once a month. Above it, me. If you ever want my ${other} instead… it’s here. Don’t try it.` },
+            { target: 'settings-backup', action: 'think', then: { got: true }, line: 'Your entries live on this phone. Share a backup now and then, so a lost phone never takes them.' },
+            { target: 'back-settings', action: 'nod', then: { path: '/' }, line: 'Done here. Tap the arrow to go back.' },
+        ]),
 
-        // Library
-        { target: 'tab-library', action: 'point', then: { path: '/library' }, line: 'Everything you write ends up in your Library. Tap it.' },
-        { target: 'library-entry', action: 'nod', then: { path: '/library/-1' }, line: 'These are examples. Your own go here, newest first. Tap one to read it again.' },
-        { target: 'entry-verse', action: 'point', then: { got: true }, line: 'That’s how an entry reads back. See the verse in orange? Tap one any time and it opens in JW Library.' },
-        { target: 'entry-verse', action: 'think', then: { got: true }, line: 'Every verse you quote also helps me find what connects your entries. When I do, it shows up in Echoes.' },
-        { target: 'back-entry', action: 'smug', then: { path: '/library' }, line: 'Tap the X to go back.' },
-        { target: 'library-search', action: 'point', then: { event: 'library-searched' }, line: 'Wrote about something months ago and can’t find it? Search. Type dark.' },
-        { target: 'library-search', action: 'smug', then: { got: true }, line: 'There it is. Search looks through every answer you’ve ever written.' },
-        { target: 'library-sub-books', action: 'nod', then: { shows: 'library-books' }, line: 'Or go book by book. Tap By book.' },
-        { target: 'library-books', action: 'nod', then: { got: true }, line: 'Every book you’ve written about, with how many entries. Tap one any time to see them all.' },
-        { target: 'library-section-unfinished', action: 'point', then: { shows: 'library-practice' }, line: 'What you said you’d do lives under Working on. Tap it.' },
-        { target: 'library-practice', action: 'smug', then: { got: true }, line: 'Each one with its reason, and how you’re keeping it. Tick it here or on Home, same thing.' },
-        { target: 'library-sub-topics', action: 'think', then: { shows: 'library-question' }, line: 'Now tap Questions.' },
-        { target: 'library-question', action: 'nod', then: { got: true }, line: 'What you wanted to study further, waiting until you have. Tick it once you’ve dug in.' },
-        { target: 'library-section-echoes', action: 'think', then: { got: true }, line: 'And Echoes: what I’ve noticed across your entries, and the themes that run through them. Those take a few weeks of writing.' },
-        { target: 'library-section-plan', action: 'point', then: { shows: 'plan-legend' }, line: 'Want to read the whole Bible in a year? That’s what the plan is for. Tap Plan.' },
-        { target: 'plan-legend', action: 'nod', then: { got: true }, line: 'Genesis to Revelation, one reading a day. The diamonds take you through the Hebrew Scriptures, the dots through the Christian Greek Scriptures.' },
-        { target: 'plan-next', action: 'point', then: { got: true }, line: 'This is where Home gets today’s reading. Reflect on it and it ticks itself off here, so come back any time to see how far you’ve got.' },
-        { target: 'plan-footnote', action: 'smug', then: { got: true }, line: 'It comes from the Bible reading plan on jw.org. Tap jw.org any time to read more about it.' },
+        ...part('Library', [
+            { target: 'tab-library', action: 'point', then: { path: '/library' }, line: 'Everything you write ends up in your Library. Tap it.' },
+            { target: 'library-entry', action: 'nod', then: { path: '/library/-1' }, line: 'These are examples. Your own go here, newest first. Tap one to read it again.' },
+            { target: 'entry-verse', action: 'point', then: { got: true }, line: 'That’s how an entry reads back. See the verse in orange? Tap one any time and it opens in JW Library. Every verse you quote also helps me find what connects your entries. When I do, it shows up in Echoes.' },
+            { target: 'back-entry', action: 'smug', then: { path: '/library' }, line: 'Tap the X to go back.' },
+            { target: 'library-search', action: 'point', then: { event: 'library-searched' }, line: 'Wrote about something months ago and can’t find it? Search. Type dark.' },
+            { target: 'library-search', action: 'smug', then: { got: true }, line: 'There it is. Search looks through every answer you’ve ever written.' },
+            { target: 'library-sub-books', action: 'nod', then: { shows: 'library-books' }, line: 'Or go book by book. Tap By book.' },
+            { target: 'library-books', action: 'nod', then: { got: true }, line: 'Every book you’ve written about, with how many entries. Tap one any time to see them all.' },
+        ]),
 
-        // Groups
-        { target: 'tab-groups', action: 'smug', then: { path: '/groups' }, line: 'And when you’re ready, bring your people. Tap Groups.' },
-        { target: 'groups-row', action: 'nod', then: { path: `/groups/${DEMO_GROUP_ID}` }, line: 'Your groups live here. This one is made up, so you can see inside. Tap it.' },
-        { target: 'group-share', action: 'point', then: { event: 'group-brought' }, line: 'On Sunday the group opens, and you bring one answer from your week. Tap Choose, pick one, then Bring.' },
-        { target: 'group-mine', action: 'celebrate', then: { got: true }, line: 'There it is, in the group. Only this group sees it, and you can take it back any time.' },
-        { target: 'group-days', action: 'nod', then: { got: true }, line: 'Everything else you write stays on your phone. The group sees only the chapters you read and how many questions you answered, never your answers, unless you bring one.' },
-        { target: 'group-practice', action: 'smug', then: { got: true }, line: 'Share a practice if you want people watching you keep it. I already am.' },
-        { target: 'group-members', action: 'sideEye', then: { got: true }, line: 'Members shows who read this week. Anyone who didn’t, you can nudge. Gently.' },
-        { target: 'back-group', action: 'nod', then: { path: '/groups' }, line: 'Back to your groups. Tap the arrow.' },
-        { target: 'tab-home', action: 'wave', then: { path: '/' }, line: 'That’s everything. Tap Home.' },
+        ...part('Working on', [
+            { target: 'library-section-unfinished', action: 'point', then: { shows: 'library-practice' }, line: 'What you said you’d do lives under Working on. Tap it.' },
+            { target: 'library-practice', action: 'smug', then: { got: true }, line: 'Each one with its reason, and how you’re keeping it. Tick it here or on Home, same thing.' },
+            { target: 'library-sub-topics', action: 'think', then: { shows: 'library-question' }, line: 'Now tap Questions.' },
+            { target: 'library-question', action: 'nod', then: { got: true }, line: 'What you wanted to study further, waiting until you have. Tick it once you’ve dug in.' },
+        ]),
+
+        ...part('Echoes', [
+            { target: 'library-section-echoes', action: 'think', then: { got: true }, line: 'And Echoes: what I’ve noticed across your entries, and the themes that run through them. Those take a few weeks of writing.' },
+        ]),
+
+        ...part('Plan', [
+            { target: 'library-section-plan', action: 'point', then: { shows: 'plan-legend' }, line: 'Want to read the whole Bible in a year? That’s what the plan is for. Tap Plan.' },
+            { target: 'plan-legend', action: 'nod', then: { got: true }, line: 'Genesis to Revelation, one reading a day. The diamonds take you through the Hebrew Scriptures, the dots through the Christian Greek Scriptures.' },
+            { target: 'plan-next', action: 'point', then: { got: true }, line: 'This is where Home gets today’s reading. Reflect on it and it ticks itself off here, so come back any time to see how far you’ve got.' },
+            { target: 'plan-footnote', action: 'smug', then: { got: true }, line: 'It comes from the Bible reading plan on jw.org. Tap jw.org any time to read more about it.' },
+        ]),
+
+        ...part('Groups', [
+            { target: 'tab-groups', action: 'smug', then: { path: '/groups' }, line: 'And when you’re ready, bring your people. Tap Groups.' },
+            { target: 'groups-row', action: 'nod', then: { path: `/groups/${DEMO_GROUP_ID}` }, line: 'Your groups live here. This one is made up, so you can see inside. Tap it.' },
+            { target: 'group-share', action: 'point', then: { event: 'group-brought' }, line: 'On Sunday the group opens, and you bring one answer from your week. Tap Choose, pick one, then Bring.' },
+            { target: 'group-privacy', action: 'celebrate', then: { got: true }, line: 'There it is, in the group. Only this group sees it, and you can take it back any time. Everything else you write stays on your phone: the group sees the chapters you read and how many questions you answered, never your answers, except the one you bring.' },
+            { target: 'group-practice', action: 'smug', then: { got: true }, line: 'Share a practice if you want people watching you keep it. I already am.' },
+            { target: 'group-members', action: 'sideEye', then: { got: true }, line: 'Members shows who read this week. Anyone who didn’t, you can nudge. Gently.' },
+            { target: 'back-group', action: 'nod', then: { path: '/groups' }, line: 'Back to your groups. Tap the arrow.' },
+            { target: 'tab-home', action: 'wave', then: { path: '/' }, line: 'That’s everything. Tap Home.' },
+        ]),
 
         {
             target: null,
@@ -230,6 +245,10 @@ export function AppWalk() {
         ? topSlot
         : Math.min(hole.y + hole.h + GAP, H - bubbleH - insets.bottom - GAP);
 
+    const inPart = all.filter(s => s.part === stop.part);
+    const where = !stop.part ? null
+        : inPart.length > 1 ? `${stop.part} · ${inPart.indexOf(stop) + 1} of ${inPart.length}` : stop.part;
+
     // An explanation holds the tap; a doing stop lets it through to the real element.
     const explains = 'got' in then || 'end' in then;
     const block = () => true;
@@ -257,6 +276,7 @@ export function AppWalk() {
                     onLayout={e => setBubbleH(e.nativeEvent.layout.height)}
                     style={[styles.bubble, { backgroundColor: colors.background, top: bubbleTop }]}
                 >
+                    {where && <Text variant="label">{where}</Text>}
                     <CoachLine key={index} line={stop.line} action={stop.action}>
                         {'got' in then && (
                             <ScalePressable onPress={next} accessibilityRole="button" style={styles.gotIt} hitSlop={8}>

@@ -18,7 +18,15 @@ export type CoachTarget =
     | 'settings-sleep' | 'settings-look' | 'settings-backup' | 'settings-profile' | 'entry-verse'
     | 'library-section-unfinished' | 'library-section-echoes' | 'library-section-plan'
     | 'library-sub-books' | 'library-sub-topics'
-    | 'plan-legend' | 'plan-next' | 'plan-footnote';
+    | 'plan-legend' | 'plan-next' | 'plan-footnote'
+    | 'stats-record' | 'settings-you' | 'group-privacy';
+
+/** One stop explaining neighbours together spotlights all of them: the box round every part. */
+const SPANS: Partial<Record<CoachTarget, readonly CoachTarget[]>> = {
+    'stats-record': ['stats-tiles', 'stats-calendar'],
+    'settings-you': ['settings-look', 'settings-sleep'],
+    'group-privacy': ['group-mine', 'group-days'],
+};
 
 /** Things the user can do that a walk stop waits for. */
 export type CoachEvent = 'today-kept' | 'library-searched' | 'group-brought';
@@ -77,6 +85,20 @@ const inWindow = (node: View) => new Promise<Rect>((resolve) => {
 
 /** Where the element is in the walk's overlay, or null if it isn't on screen now. */
 export async function measureTarget(name: CoachTarget): Promise<Rect | null> {
+    const parts = SPANS[name];
+    if (!parts) return measureOne(name);
+    const rects = await Promise.all(parts.map(measureOne));
+    if (rects.some(r => !r)) return null;
+    const x = Math.min(...rects.map(r => r!.x));
+    const y = Math.min(...rects.map(r => r!.y));
+    return {
+        x, y,
+        width: Math.max(...rects.map(r => r!.x + r!.width)) - x,
+        height: Math.max(...rects.map(r => r!.y + r!.height)) - y,
+    };
+}
+
+async function measureOne(name: CoachTarget): Promise<Rect | null> {
     const node = nodes.get(name);
     if (!node || !root) return null;
     const [el, base] = await Promise.all([inWindow(node), inWindow(root)]);
