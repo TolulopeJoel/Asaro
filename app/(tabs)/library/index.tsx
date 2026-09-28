@@ -924,8 +924,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     // .co-input — a uniform 14px box; size and face come from textStyle('body').
+    // No flex: its walk wrapper is a column, where flex would collapse its height.
     searchInput: {
-        flex: 1,
         padding: Spacing.md + 2,
         borderWidth: Spacing.border.hairline,
     },
