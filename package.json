@@ -20,6 +20,7 @@
     "verify:ml": "node scripts/verify-tokenizer.mjs && node scripts/verify-theme-matching.mjs && node scripts/verify-theme-quality.mjs",
     "check:glyphs": "node scripts/check-glyphs.mjs",
     "check:design": "node scripts/check-design.mjs",
+    "render:icons": "node scripts/render-icons.mjs",
     "verify:practice": "node scripts/verify-practice.mjs",
     "verify:week": "node scripts/verify-week.mjs",
     "verify:groups": "node --disable-warning=ExperimentalWarning scripts/verify-groups.mjs",

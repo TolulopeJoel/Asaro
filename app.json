@@ -5,7 +5,7 @@
     "version": "2026.SEPTEMBER",
     "runtimeVersion": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/foregroundImage.png",
+    "icon": "./assets/images/icon.png",
     "scheme": "asaro",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -27,8 +27,9 @@
       "useNextNotificationsApi": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/foregroundImage.png",
+        "backgroundImage": "./assets/images/backgroundImage.png",
         "monochromeImage": "./assets/images/monochrome.png",
-        "backgroundColor": "#E18F43"
+        "backgroundColor": "#17263F"
       },
       "package": "com.asaro.meditation"
     },
@@ -39,7 +40,7 @@
           "image": "./assets/images/foregroundImage.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#E18F43"
+          "backgroundColor": "#17263F"
         }
       ],
       "expo-router",
@@ -47,8 +48,8 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/foregroundImage.png",
-          "color": "#E18F43",
+          "icon": "./assets/images/notificationIcon.png",
+          "color": "#C9762C",
           "sounds": [],
           "androidMode": "default",
           "androidCollapsedTitle": "Àṣàrò Reminder"
