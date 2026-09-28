@@ -81,7 +81,8 @@ interface ChapterStepProps {
     /** The verses already chosen, so coming back to this step keeps them. */
     verseRange?: VerseRange | null;
     onVerseRangeChange: (verses: VerseRange | null) => void;
-    onBack: () => void;
+    /** Back to the books. Absent hides it: the practice entry's passage is fixed. */
+    onBack?: () => void;
     /** Leave the entry entirely — Cloth's `.cl-top` close button. Absent hides it. */
     onExit?: () => void;
     onContinue: () => void;
@@ -121,27 +122,31 @@ export const ChapterStep = React.memo(({
     return (
         <View style={styles.stepContainer}>
             <Hero ownsTopInset>
-                <View style={styles.clothChapterTop}>
-                    <ScalePressable
-                        onPress={onBack}
-                        accessibilityRole="button"
-                        accessibilityLabel="Back to books"
-                        hitSlop={Spacing.md}
-                        style={styles.backArrow}
-                    >
-                        <ChevronLeft size={20} color={colors.accent} strokeWidth={1.9} />
-                    </ScalePressable>
-                    {onExit && (
-                        <ScalePressable
-                            onPress={onExit}
-                            accessibilityRole="button"
-                            accessibilityLabel="Close"
-                            hitSlop={Spacing.md}
-                        >
-                            <X size={19} color={colors.accent} strokeWidth={1.9} />
-                        </ScalePressable>
-                    )}
-                </View>
+                {(onBack || onExit) && (
+                    <View style={styles.clothChapterTop}>
+                        {onBack ? (
+                            <ScalePressable
+                                onPress={onBack}
+                                accessibilityRole="button"
+                                accessibilityLabel="Back to books"
+                                hitSlop={Spacing.md}
+                                style={styles.backArrow}
+                            >
+                                <ChevronLeft size={20} color={colors.accent} strokeWidth={1.9} />
+                            </ScalePressable>
+                        ) : <View />}
+                        {onExit && (
+                            <ScalePressable
+                                onPress={onExit}
+                                accessibilityRole="button"
+                                accessibilityLabel="Close"
+                                hitSlop={Spacing.md}
+                            >
+                                <X size={19} color={colors.accent} strokeWidth={1.9} />
+                            </ScalePressable>
+                        )}
+                    </View>
+                )}
                 <Text variant="display" tone="onBand" style={styles.clothHeroTitle}>
                     {selectedBook?.name ?? 'Chapters'}
                 </Text>

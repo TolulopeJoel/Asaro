@@ -485,7 +485,7 @@ export default function MeditationSessionScreen() {
     const renderCurrentStep = () => {
         switch (currentStep) {
             case 'book':
-                return <BookStep selectedBook={selectedBook} onBookSelect={handleBookSelect} onExit={practice ? () => setCurrentStep('chapter') : () => router.back()} />;
+                return <BookStep selectedBook={selectedBook} onBookSelect={handleBookSelect} onExit={() => router.back()} />;
             case 'chapter':
                 return (
                     <ChapterStep
@@ -494,7 +494,7 @@ export default function MeditationSessionScreen() {
                         verseRange={verseRange}
                         onChapterSelect={handleChapterSelect}
                         onVerseRangeChange={handleVerseRangeChange}
-                        onBack={() => setCurrentStep('book')}
+                        onBack={practice ? undefined : () => setCurrentStep('book')}
                         onExit={practice ? undefined : () => router.back()}
                         onContinue={handleContinueToReflection}
                         canContinue={!!(selectedChapters && selectedChapters.start > 0) && (!practice || beatsFinished(COACH.chapter, beatAt.chapter ?? 0))}
