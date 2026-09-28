@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Animated } from 'react-native';
+import { Animated, AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '../storage/storageKeys';
 import { BibleBook } from '../data/bibleBooks';
@@ -138,6 +138,12 @@ export function useAutoSave(
         if (intervalRef.current) clearInterval(intervalRef.current);
     }, []);
 
+    // Timers stop in the background, where the phone may kill the app: a waiting save goes now.
+    useEffect(() => {
+        const sub = AppState.addEventListener('change', state => { if (state === 'background') flushPending(); });
+        return () => sub.remove();
+    }, []);
+
     // The chapter step keeps saving once answers exist, so going back to check the passage loses nothing.
     const writing = currentStep === 'reflection' || (currentStep === 'chapter' && !!reflectionAnswers);
 
@@ -154,7 +160,7 @@ export function useAutoSave(
             intervalRef.current = setInterval(saveDraft, 20000);
         }
 
-        if (Date.now() - lastSaveTime.current >= 20000) { saveDraft(); return; }
+        if (AppState.currentState === 'background' || Date.now() - lastSaveTime.current >= 20000) { saveDraft(); return; }
 
         if (debounceTimer.current) clearTimeout(debounceTimer.current);
         debounceTimer.current = setTimeout(() => {

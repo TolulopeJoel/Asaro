@@ -8,7 +8,7 @@
  * itself carries the page.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { BackHandler, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { AppState, BackHandler, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { X } from 'lucide-react-native';
 
@@ -113,6 +113,12 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
 
   useEffect(() => {
     if (onAnswersChange) {
+      // In the background the timer would wait until the app came back.
+      if (AppState.currentState === 'background') {
+        pending.current = false;
+        onAnswersChange(answers);
+        return;
+      }
       // Debounce the callback to avoid excessive parent re-renders
       if (debounceTimer.current) {
         clearTimeout(debounceTimer.current);
@@ -138,8 +144,12 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
     onAnswersChangeRef.current?.(latestAnswers.current);
   }, []);
 
-  // Typing still inside the debounce reaches the parent when the form closes.
+  // Typing still inside the debounce reaches the parent when the form closes, or the app is left.
   useEffect(() => flushAnswers, [flushAnswers]);
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', state => { if (state === 'background') flushAnswers(); });
+    return () => sub.remove();
+  }, [flushAnswers]);
 
   const typing = useRef<ReturnType<typeof setInterval> | null>(null);
   const stopTyping = () => {

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
     Animated,
+    AppState,
     Modal,
     StatusBar,
     StyleSheet,
@@ -106,6 +107,15 @@ const TextArea: React.FC<{
                 setTempValue(value);
             }
         }, [isExpanded, value]);
+
+        // The big editor's text isn't the answer until it closes, so leaving the app hands it over.
+        useEffect(() => {
+            if (!isExpanded) return;
+            const sub = AppState.addEventListener('change', state => {
+                if (state === 'background') onChange(tempValueRef.current);
+            });
+            return () => sub.remove();
+        }, [isExpanded, onChange]);
 
         const handleExpand = () => {
             if (!disabled) {

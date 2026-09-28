@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Modal, ScrollView, StatusBar, StyleSheet, TextInput, View } from 'react-native';
+import { AppState, Modal, ScrollView, StatusBar, StyleSheet, TextInput, View } from 'react-native';
 import { Button } from './Button';
 import { ScalePressable } from './ScalePressable';
 import { XCircle, X, Plus, Maximize } from 'lucide-react-native';
@@ -88,6 +88,15 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
     itemsRef.current = items;
     const tempItemsRef = useRef(tempItems);
     tempItemsRef.current = tempItems;
+
+    // The big editor's actions aren't the answer until it closes, so leaving the app hands them over.
+    useEffect(() => {
+        if (!isExpanded) return;
+        const sub = AppState.addEventListener('change', state => {
+            if (state === 'background') onChange(tempItemsRef.current);
+        });
+        return () => sub.remove();
+    }, [isExpanded, onChange]);
 
     // ─── @ trigger detection ──────────────────────────────────────────────────
 
