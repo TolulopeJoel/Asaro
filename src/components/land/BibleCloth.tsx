@@ -26,7 +26,7 @@ import Svg, { ClipPath, Defs, G, Path } from 'react-native-svg';
 import { BookCloth, ChapterRef, Tier } from '../../land/cloth';
 import { Cell, layoutCells } from '../../land/plots';
 import { useTheme } from '../../theme/ThemeContext';
-import { Asaro, Text } from '../ui';
+import { Text } from '../ui';
 import { Tree, boxOf } from '../grove/Tree';
 import { coachTarget } from '../../onboarding/coachTargets';
 import { TERRAIN, mudFor } from './terrain';
@@ -152,12 +152,6 @@ const FRINGE_BITE = 9;
 const FRINGE_STEP = 11;
 
 /**
- * Àṣàrò standing where the reader picks up. 48 is the smallest size that keeps
- * his hair, and without the hair the two looks are the same face.
- */
-const MARKER_SIZE = 48;
-
-/**
  * A tree's width in chapters, by stage: a seedling about its own chapter, a
  * tree bearing fruit spread over its neighbours as a real one would.
  * Seedlings are measured on their fitted box (see `boxOf`), trees on the whole.
@@ -241,8 +235,8 @@ export function BibleCloth({
     books,
     selected,
     onBookPress,
-    marker,
-    onMarkerLayout,
+    next,
+    onNextLayout,
     trees,
     onTreePress,
 }: {
@@ -250,10 +244,10 @@ export function BibleCloth({
     /** Name of the holding currently identified, if any. */
     selected?: string | null;
     onBookPress?: (book: BookCloth) => void;
-    /** The chapter Àṣàrò stands on. */
-    marker?: ChapterRef | null;
-    /** His offset from the top of the land, once placed. */
-    onMarkerLayout?: (y: number) => void;
+    /** The chapter the reader picks up at. Nothing is drawn there; the land opens scrolled to it. */
+    next?: ChapterRef | null;
+    /** That chapter's offset from the top of the land, once laid out. */
+    onNextLayout?: (y: number) => void;
     trees?: LandTree[];
     onTreePress?: (id: number) => void;
 }) {
@@ -376,11 +370,11 @@ export function BibleCloth({
         [cells, books, size, selected],
     );
 
-    const markerCell = useMemo(() => {
-        if (!marker) return undefined;
-        const book = books.findIndex(b => b.name === marker.bookName);
-        return cells.find(cell => cell.book === book && cell.chapter === marker.chapter);
-    }, [marker, books, cells]);
+    const nextCell = useMemo(() => {
+        if (!next) return undefined;
+        const book = books.findIndex(b => b.name === next.bookName);
+        return cells.find(cell => cell.book === book && cell.chapter === next.chapter);
+    }, [next, books, cells]);
 
     // Lower rows last, so a tree nearer the reader stands in front of one behind it.
     const planted = useMemo(() => {
@@ -608,22 +602,13 @@ export function BibleCloth({
                 );
             })}
 
-            {/* Last, so the verge cannot grow over him on an edge chapter. He
-              * stands on the chapter's middle, leaving its lower half showing. */}
-            {markerCell && size > 0 && (
+            {/* An empty point on the next chapter, only so the screen knows where to open. */}
+            {nextCell && size > 0 && (
                 <View
                     pointerEvents="none"
-                    onLayout={event => onMarkerLayout?.(event.nativeEvent.layout.y)}
-                    style={[
-                        styles.marker,
-                        {
-                            left: VERGE_SIDE + (markerCell.column + 0.5) * size - MARKER_SIZE / 2,
-                            top: VERGE_DEPTH + (markerCell.row + 0.5) * size - MARKER_SIZE,
-                        },
-                    ]}
-                >
-                    <Asaro size={MARKER_SIZE} action="point" />
-                </View>
+                    onLayout={event => onNextLayout?.(event.nativeEvent.layout.y)}
+                    style={[styles.next, { left: VERGE_SIDE + nextCell.column * size, top: VERGE_DEPTH + nextCell.row * size }]}
+                />
             )}
         </View>
     );
@@ -633,7 +618,7 @@ const styles = StyleSheet.create({
     meadow: { paddingHorizontal: VERGE_SIDE, paddingVertical: VERGE_DEPTH },
     field: { position: 'relative' },
     nameBox: { position: 'absolute', justifyContent: 'center', alignItems: 'center' },
-    marker: { position: 'absolute' },
+    next: { position: 'absolute', width: 1, height: 1 },
     tree: { position: 'absolute' },
     treeHit: { position: 'absolute' },
     /* Opacity is set per book — see NAME_ON_BARE. */

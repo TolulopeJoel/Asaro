@@ -190,10 +190,9 @@ export default function LandScreen() {
                                 setSelected(null);
                                 setOpenTree(current => (current === id ? null : id));
                             }}
-                            marker={next}
-                            // A third of the way down, so the field he is walking
-                            // into shows below him.
-                            onMarkerLayout={y => scroll.current?.scrollTo({ y: Math.max(0, y - height / 3) })}
+                            next={next}
+                            // A third of the way down, so the field still to work shows below it.
+                            onNextLayout={y => scroll.current?.scrollTo({ y: Math.max(0, y - height / 3) })}
                         />
                     </View>
 
