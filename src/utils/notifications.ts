@@ -310,7 +310,10 @@ export function cancelStudyReminder(entryId: number): Promise<void> {
  * If a slot's time ever moves, EVERY line in its array has to move with it:
  * copy that greets the morning reads badly at lunchtime and nothing catches it.
  */
-const middayReminders = [
+/** A nag. `nth` marks a line that counts Àṣàrò's visits: it goes out only as that day's nth reminder. */
+type Reminder = { title: string; body: string; nth?: number };
+
+const middayReminders: Reminder[] = [
   { title: "Good afternoon o", body: "Àṣàrò here. You haven't read your Bible yet? Ehn ehn, we're starting like this?" },
   { title: "Afternoon check", body: "I'm not asking you, I'm telling you — open that Bible now" },
   { title: "Half the day gone", body: "So the whole morning passed and the Bible didn't enter? Interesting" },
@@ -321,7 +324,7 @@ const middayReminders = [
   { title: "First warning", body: "You think I forgot? I never forget. Go and read that Bible" },
 ];
 
-const eveningReminders = [
+const eveningReminders: Reminder[] = [
   { title: "Evening o", body: "The whole day has passed and you still haven't read? What's going on?" },
   { title: "Àṣàrò is asking", body: "So we're playing hide and seek with the Bible today? I don't have energy to hide o" },
   { title: "Serious question", body: "If you were asked what you read today, what would you say?" },
@@ -332,18 +335,18 @@ const eveningReminders = [
   { title: "Just so you know", body: "I'm keeping absolute record. Every single day you miss, I'm writing it down" },
 ];
 
-const lateReminders = [
+const lateReminders: Reminder[] = [
   { title: "Àṣàrò again", body: "You thought I was joking? Here I am again. Open that Bible right now" },
   { title: "Late warning", body: "Everybody has closed for the day. Me, I'm still here waiting for you o" },
   { title: "Not playing", body: "This your stubbornness ehn. Just 15 minutes of reading, is it too much?" },
-  { title: "Getting serious", body: "I've come three times today. Don't test me o 😂" },
+  { title: "Getting serious", body: "I've come three times today. Don't test me o 😂", nth: 3 },
   { title: "Persistence mode", body: "You think if you ignore me I'll disappear? You don't know me o 😂😂😂" },
   { title: "Accountability time", body: "So we made a commitment and now you're forming busy abi? Please open your Bible" },
   { title: "No excuses", body: "Tired? Busy? Stressed? Jehovah has time for you. Balance it out" },
   { title: "Late check", body: "The day is almost over and you want to sleep like this? Oh, wow" },
 ];
 
-const finalReminders = [
+const finalReminders: Reminder[] = [
   { title: "Final warning", body: "This is the last time I'm asking nicely. Tomorrow I'm coming earlier 😅" },
   { title: "Midnight call", body: "You really want to sleep without reading? You're a strong person o" },
   { title: "Last chance", body: "Àṣàrò doesn't give up. If you sleep now, just know I tried my best" },
@@ -354,14 +357,14 @@ const finalReminders = [
   { title: "Goodnight", body: "Okay, sleep. But know that tomorrow, I'm not taking it easy on you at all 😌" },
 ];
 
-function getRandomReminder(reminders: { title: string, body: string }[]) {
+function getRandomReminder(reminders: Reminder[]) {
   return reminders[Math.floor(Math.random() * reminders.length)];
 }
 
 interface Slot {
   /** Minutes after the reminder day's midnight; past 1440 for a slot after midnight. */
   totalMin: number;
-  reminders: { title: string, body: string }[];
+  reminders: Reminder[];
   name: string;
 }
 
@@ -536,13 +539,13 @@ async function rebuildSchedule(startFromTomorrow: boolean, options: SetupNotific
       const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + dayOffset);
       const daySlots = dayOffset < startOffset + FULL_DAYS ? slots : [SAFETY_NET_SLOT];
 
-      for (const slot of daySlots) {
+      for (const [index, slot] of daySlots.entries()) {
         const scheduledTime = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, slot.totalMin);
         if (scheduledTime <= now) {
           continue;
         }
 
-        const reminder = getRandomReminder(slot.reminders);
+        const reminder = getRandomReminder(slot.reminders.filter(r => r.nth === undefined || r.nth === index + 1));
 
         await Notifications.scheduleNotificationAsync({
           identifier: `${DAILY_ID_PREFIX}${localDayKey(date)}-${slot.name}`,

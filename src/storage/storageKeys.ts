@@ -25,6 +25,8 @@ export const STORAGE_KEYS = {
     GROUP_INTRO_SEEN: 'group_intro_seen',
     /** A new user's first run after onboarding: 'cap', 'practice', then 'walk', then 'done'. Absent for everyone else. */
     FIRST_RUN: 'first_run',
+    /** A new user's onboarding steps, from its start until it ends, so a restart midway is still onboarding. */
+    ONBOARDING_STEPS: 'onboarding_steps',
     /** The cloth of the thinking cap the chosen sibling wears, from its screen until the walk ends. */
     THINKING_CAP: 'thinking_cap',
 } as const;

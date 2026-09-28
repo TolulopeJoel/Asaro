@@ -114,13 +114,9 @@ const TextArea: React.FC<{
             }
         };
 
+        // Save, X and Back all keep what was written: this is the same answer, only bigger.
         const handleSave = () => {
             onChange(tempValue);
-            setIsExpanded(false);
-            setTimeout(() => { regularTextInputRef.current?.focus(); }, 300);
-        };
-
-        const handleCancel = () => {
             setIsExpanded(false);
             setTimeout(() => { regularTextInputRef.current?.focus(); }, 300);
         };
@@ -203,7 +199,7 @@ const TextArea: React.FC<{
                     animationType="slide"
                     presentationStyle="fullScreen"
                     statusBarTranslucent={true}
-                    onRequestClose={handleCancel}
+                    onRequestClose={handleSave}
                 >
                     <StatusBar hidden={true} />
                     <Screen edges={['top', 'bottom', 'left', 'right']} style={fullScreenStyles.container}>
@@ -219,7 +215,7 @@ const TextArea: React.FC<{
 
                                 <View style={fullScreenStyles.headerRight}>
                                     <ScalePressable
-                                        onPress={handleCancel}
+                                        onPress={handleSave}
                                         style={[fullScreenStyles.iconBtn, { backgroundColor: colors.backgroundSubtle }]}
                                     >
                                         <X size={20} color={colors.textSecondary} />

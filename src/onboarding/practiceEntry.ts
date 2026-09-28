@@ -59,7 +59,9 @@ export const COACH = {
             { kind: 'tell', action: 'think', line: 'How does it fit the Bible’s big story? Watch the end of mine: I’m referencing a verse.' },
             {
                 kind: 'do', action: 'point', line: 'You can reference one in any answer. At the end, type @ and start typing a book, like John. Then pick the chapter and the verse.',
-                done: (a) => refs(a.reflection2) > refs(PRACTICE_ANSWERS.reflection2),
+                // One added to mine, or their own answer with one in it, whatever verse. Mine still typing is a prefix of mine.
+                done: (a) => refs(a.reflection2) > refs(PRACTICE_ANSWERS.reflection2)
+                    || (refs(a.reflection2) > 0 && !PRACTICE_ANSWERS.reflection2.startsWith(a.reflection2)),
             },
             { kind: 'end', action: 'celebrate', line: 'Ehen, like that. Later, tap any verse you’ve referenced and it opens in JW Library. Every one also helps me find what connects your entries.' },
         ],

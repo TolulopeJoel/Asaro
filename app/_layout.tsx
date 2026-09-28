@@ -2,7 +2,7 @@ import { initializeDatabase } from '@/src/data/database';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '@/src/storage/storageKeys';
 import { loadAsaroLook } from '@/src/storage/asaroLook';
-import { isOnboardingRun, setOnboardingSteps } from '@/src/utils/onboardingSteps';
+import { endOnboardingRun, isOnboardingRun, resumeOnboardingSteps, setOnboardingSteps } from '@/src/utils/onboardingSteps';
 import { getFirstRun, setFirstRun } from '@/src/onboarding/firstRun';
 import {
   initializeNotificationChannel,
@@ -108,15 +108,17 @@ export default function RootLayout() {
         await initializeNotificationChannel();
 
         // Load all four requirement values in parallel — they're independent.
-        const [name, sleep, perms, batteryOk] = await Promise.all([
+        const [name, sleep, perms, batteryOk, resumed] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEYS.USER_NAME),
           AsyncStorage.getItem(STORAGE_KEYS.SLEEP_TIME),
           hasNotificationPermissions(),
           isBatteryOptimizationDisabled(),
+          resumeOnboardingSteps(),
         ]);
 
-        if (!name || !sleep) {
-          setOnboardingSteps([
+        // A restart midway keeps the steps it started with, even once the name and sleep time are in.
+        if (!resumed && (!name || !sleep)) {
+          await setOnboardingSteps([
             ...(name ? [] : ['character' as const]),
             'name',
             'sleep-time',
@@ -241,9 +243,12 @@ export default function RootLayout() {
       }
 
       // A new user goes on to the thinking cap, the practice entry and the walk; Home picks it up from the flag.
-      if (isOnboardingRun() && !(await getFirstRun())) {
-        await setFirstRun('cap');
-        DeviceEventEmitter.emit('first-run-changed');
+      if (isOnboardingRun()) {
+        if (!(await getFirstRun())) {
+          await setFirstRun('cap');
+          DeviceEventEmitter.emit('first-run-changed');
+        }
+        await endOnboardingRun();
       }
       if (cancelled) return;
 

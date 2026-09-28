@@ -8,17 +8,13 @@
  */
 
 /**
- * The one colour that exists outside the themes. Android notification lights,
- * the adaptive icon ground and the splash screen are painted by the OS before
- * any React code runs, so they cannot read a theme — set in app.json and
- * mirrored here.
- *
- * KNOWN MISMATCH: these platform surfaces are the vibrant orange, while Cloth's
- * accent is the deeper #c9762c that reads correctly on ecru. Reconciling means
- * regenerating the icon and splash assets — a brand decision, so it is flagged
- * rather than quietly changed.
+ * The one colour that exists outside the themes. Android paints the
+ * notification light and tint before any React code runs, so they cannot read
+ * a theme — Cloth's ochre, set in app.json and mirrored here. The icon and
+ * splash ground in app.json is Cloth's indigo; scripts/render-icons.mjs draws
+ * the icon itself.
  */
-export const BRAND_ACCENT = '#E18F43';
+export const BRAND_ACCENT = '#C9762C';
 
 /** Shape every palette must satisfy. Adding a key here forces the palette to answer for it. */
 export interface ThemeColors {

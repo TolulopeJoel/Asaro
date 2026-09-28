@@ -264,12 +264,9 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
         setIsExpanded(true);
     };
 
+    // Save, X and Back all keep what was written: these are the same actions, only bigger.
     const handleSaveExpansion = () => {
         onChange(tempItems);
-        setIsExpanded(false);
-    };
-
-    const handleCancelExpansion = () => {
         setIsExpanded(false);
     };
 
@@ -470,7 +467,7 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                 animationType="none"
                 presentationStyle="fullScreen"
                 statusBarTranslucent={true}
-                onRequestClose={handleCancelExpansion}
+                onRequestClose={handleSaveExpansion}
             >
                 <StatusBar hidden={true} />
                 <Screen edges={['top', 'bottom', 'left', 'right']} style={fullScreenStyles.container}>
@@ -485,7 +482,7 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
 
                             <View style={fullScreenStyles.headerRight}>
                                 <ScalePressable
-                                    onPress={handleCancelExpansion}
+                                    onPress={handleSaveExpansion}
                                     style={[fullScreenStyles.iconBtn, { backgroundColor: colors.backgroundSubtle }]}
                                 >
                                     <X size={20} color={colors.textSecondary} />

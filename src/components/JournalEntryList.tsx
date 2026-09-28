@@ -42,6 +42,7 @@ import Animated from 'react-native-reanimated';
 import { Spacing } from '../theme/spacing';
 import { Asaro, Text, type AsaroAction } from './ui';
 import { practiceChanged } from '../groups/publish';
+import { cancelStudyReminder, scheduleReminderNotification, studyReminderBody } from '../utils/notifications';
 
 type ViewMode = 'recent' | 'books' | 'bookDetail' | 'actions' | 'topics';
 
@@ -265,6 +266,16 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
         const answering = !item.study_completed;
         try {
             await toggleStudyTopicCompletion(id, answering);
+            // A topic ticked done stops reminding; undone, its reminder comes back if it's still ahead.
+            if (answering) void cancelStudyReminder(id).catch(() => { });
+            else if (item.study_further_reminder) {
+                void scheduleReminderNotification(
+                    id,
+                    new Date(item.study_further_reminder),
+                    undefined,
+                    studyReminderBody(item.study_further),
+                ).catch(() => { });
+            }
 
             const existing = lingerTimers.current.get(id);
             if (existing) {
