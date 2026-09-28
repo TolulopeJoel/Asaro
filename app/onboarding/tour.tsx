@@ -39,14 +39,14 @@ const PAGES: { title: string; action: AsaroAction; hold: boolean; visual: TourVi
         action: 'celebrate',
         hold: false,
         visual: 'trees',
-        body: () => 'Every chapter you reflect on becomes land. Every practice you keep grows a tree. Miss a few days and they go quiet. Quiet, not gone.',
+        body: () => 'Every chapter you reflect on becomes land, and every practice you keep grows a tree. If you miss a few days, they go quiet. Don’t worry, they’re not gone.',
     },
     {
         title: 'Read with your people',
         action: 'nod',
         hold: false,
         visual: 'sunday',
-        body: (_, other) => `Join a group and every Sunday it opens: what everyone read, and the one thing each person chose to bring. No rankings. It’s not a competition, whatever my ${other} says.`,
+        body: (_, other) => `Join a group, and every Sunday it opens. You’ll see what everybody read, and the one answer each person brought. Nobody is ranking anybody. It’s not a competition, whatever my ${other} says.`,
     },
 ];
 

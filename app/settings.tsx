@@ -32,6 +32,7 @@ import {
     Download,
 } from 'lucide-react-native';
 import { chooseAvatar, myPhotoAt, removeAvatar, useAvatar } from '@/src/profile/avatar';
+import { useMyGroupIds } from '@/src/groups/hooks';
 import { useAuth } from '@/src/context/AuthContext';
 import { useFootPadding } from '@/src/hooks/useScreenInsets';
 import { Avatar } from '@/src/components/Avatar';
@@ -41,26 +42,35 @@ import { useCoachScroller } from '@/src/onboarding/useCoachScroller';
 import React from 'react';
 
 // ─── Photo Card ──────────────────────────────────────────────────────────────
-// Anyone's own photo, shown beside their name in groups.
+// Anyone's own photo, shown beside their name in groups. Only groups show it,
+// so it can only be set once they're in one; removing it never needs a group.
 
-const PhotoCard = ({ uid, name, image, busy, onChoose, onRemove }: {
+const PhotoCard = ({ uid, name, image, busy, canChange, onChoose, onRemove }: {
     uid?: string;
     name: string;
     image?: string;
     busy: boolean;
+    /** In a group, so there is somewhere for the photo to show. */
+    canChange: boolean;
     onChoose: () => void;
     onRemove: () => void;
 }) => (
     <View style={styles.photoCard}>
         <Avatar id={uid} name={name} url={image} size={80} radius={40} />
         <View style={styles.photoActions}>
-            <ThemedButton
-                label={image ? 'Change photo' : 'Add a photo'}
-                variant="secondary"
-                onPress={onChoose}
-                disabled={busy}
-                loading={busy}
-            />
+            {canChange ? (
+                <ThemedButton
+                    label={image ? 'Change photo' : 'Add a photo'}
+                    variant="secondary"
+                    onPress={onChoose}
+                    disabled={busy}
+                    loading={busy}
+                />
+            ) : (
+                <UIText variant="bodySmall" tone="secondary">
+                    Your photo shows beside your name in a group. Join or start one, and you can add it here.
+                </UIText>
+            )}
             {image && !busy && (
                 <ScalePressable onPress={onRemove} accessibilityRole="button" hitSlop={Spacing.sm}>
                     <UIText variant="button" tone="tertiary">Remove photo</UIText>
@@ -241,7 +251,11 @@ export default function Settings() {
         }
     }, [updateName, showAlert]);
 
+    const { ids: groupIds, loading: groupsLoading } = useMyGroupIds();
+    const inGroup = groupIds.length > 0;
+
     const handleChoosePhoto = useCallback(async () => {
+        if (!inGroup) return;
         setSavingPhoto(true);
         try {
             const chosen = await chooseAvatar();
@@ -257,7 +271,7 @@ export default function Settings() {
         } finally {
             setSavingPhoto(false);
         }
-    }, [showAlert]);
+    }, [inGroup, showAlert]);
 
     const handleRemovePhoto = useCallback(() => {
         showAlert({
@@ -611,7 +625,8 @@ export default function Settings() {
                             uid={user?.uid}
                             name={name}
                             image={photo}
-                            busy={savingPhoto}
+                            busy={savingPhoto || groupsLoading}
+                            canChange={inGroup || groupsLoading}
                             onChoose={handleChoosePhoto}
                             onRemove={handleRemovePhoto}
                         />
