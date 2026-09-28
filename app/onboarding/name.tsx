@@ -42,11 +42,7 @@ export default function NameScreen() {
     };
 
     return (
-        <Screen>
-            <Hero>
-                <Text variant="label" tone="onHero" style={styles.heroStep}>{onboardingStepLabel('name')}</Text>
-                <Text variant="display" tone="onBand">Hello.</Text>
-            </Hero>
+        <Screen edges={[]}>
             {/* Scrolls so the keyboard can never cover the field: Android's
               * ScrollView keeps the focused input on screen as the window
               * shrinks for the keyboard. */}
@@ -55,48 +51,39 @@ export default function NameScreen() {
                 contentContainerStyle={styles.scrollContent}
                 keyboardShouldPersistTaps="handled"
             >
-                <View style={[styles.content, { paddingBottom: footPadding }]}>
-                    <View style={styles.textContainer}>
-                        <View style={styles.introBlock}>
-                            <View style={styles.asaro}>
-                                <Asaro size={104} look={look} action="wave" />
-                            </View>
+                <Hero ownsTopInset topPadding={64}>
+                    <Text variant="label" tone="onHero" style={styles.heroStep}>{onboardingStepLabel('name')}</Text>
+                    <Text variant="display" tone="onBand">Hello.</Text>
+                </Hero>
 
-                            <Text variant="body" style={styles.introText}>
-                                I want to help you stay consistent with your reading.
-                                But I can&apos;t be friends with a stranger, can I?
-                                {'\n\n'}
-                                <Text style={{ fontStyle: 'italic', opacity: 0.6 }}>Let&apos;s make this official.</Text>
-                            </Text>
-                        </View>
+                {/* The field sits high, under the sibling's line, so a keyboard opening never covers it. */}
+                <View style={[styles.clothBody, { paddingBottom: footPadding }]}>
+                    <View style={styles.speech}>
+                        <Asaro size={74} look={look} action="wave" />
+                        <Text variant="body" style={styles.speechText}>
+                            I want to help you stay consistent with your reading.
+                            But I can&apos;t be friends with a stranger, can I? Let&apos;s make this official.
+                        </Text>
+                    </View>
 
-                        <View style={styles.nameSection}>
-                            <Text variant="label" tone="secondary" style={styles.label}>
-                                What do your friends call you?
-                            </Text>
-
-                            <View style={[styles.inputContainer, { backgroundColor: colors.cardBackground }]}>
-                                <TextInput
-                                    style={[
-                                        styles.input,
-                                        {
-                                            color: colors.textPrimary,
-                                        }
-                                    ]}
-                                    placeholder=""
-                                    placeholderTextColor={colors.textMuted}
-                                    value={name}
-                                    onChangeText={handleTextChange}
-                                    autoCorrect={false}
-                                    returnKeyType="next"
-                                    autoFocus={true}
-                                    onSubmitEditing={handleContinue}
-                                />
-                            </View>
+                    <View style={styles.nameSection}>
+                        <Text variant="label" tone="secondary">What do your friends call you?</Text>
+                        <View style={[styles.inputContainer, { backgroundColor: colors.backgroundSubtle }]}>
+                            <TextInput
+                                style={[styles.input, { color: colors.textPrimary }]}
+                                placeholder="Your name"
+                                placeholderTextColor={colors.textMuted}
+                                value={name}
+                                onChangeText={handleTextChange}
+                                autoCorrect={false}
+                                returnKeyType="done"
+                                onSubmitEditing={handleContinue}
+                                accessibilityLabel="Your name"
+                            />
                         </View>
                     </View>
 
-                    <View style={styles.footer}>
+                    <View style={styles.foot}>
                         <ThemedButton label="Continue" block disabled={!isValid} onPress={handleContinue} />
                     </View>
                 </View>
@@ -106,39 +93,21 @@ export default function NameScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-
-    keyboardView: {
-        flex: 1,
-    },
+    keyboardView: { flex: 1 },
     scrollContent: { flexGrow: 1 },
-    content: {
+    /** The band's eyebrow: `margin:0 0 10px`. */
+    heroStep: { marginBottom: 10 },
+    /** `.cl-body{padding-top:30px; gap:18px}` */
+    clothBody: {
         flex: 1,
-        padding: Spacing.layout.screenPadding,
-        justifyContent: 'space-between',
-        paddingTop: Spacing.layout.screenPadding,
+        paddingTop: Spacing.xxl - 2,
+        paddingHorizontal: Spacing.layout.screenPadding,
+        gap: Spacing.layout.cardPadding,
     },
-    textContainer: {
-        flex: 1,
-        width: '100%',
-    },
-    introBlock: {
-        marginBottom: Spacing.xxxl,
-    },
-    asaro: { alignItems: 'center', marginBottom: Spacing.lg },
-    heroStep: { marginBottom: Spacing.sm },
-    introText: { opacity: 0.8 },
-    nameSection: {
-        gap: Spacing.md,
-        marginTop: Spacing.xl,
-    },
-    label: { opacity: 0.5 },
-    inputContainer: {
-        borderRadius: Spacing.borderRadius.md,
-        overflow: 'hidden',
-    },
+    speech: { flexDirection: 'row', alignItems: 'center', gap: Spacing.lg },
+    speechText: { flex: 1 },
+    nameSection: { gap: Spacing.sm, marginTop: Spacing.sm },
+    inputContainer: { overflow: 'hidden' },
     input: {
         fontSize: Typography.size.xxxl,
         fontWeight: Typography.weight.bold,
@@ -146,7 +115,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: Spacing.lg,
         letterSpacing: -0.5,
     },
-    footer: {
-        paddingTop: Spacing.xxl,
-    },
+    /** Continue sits at the foot, like every onboarding page's button. */
+    foot: { marginTop: 'auto', paddingTop: Spacing.xl },
 });

@@ -315,7 +315,9 @@ export const SummaryStep = React.memo(({
         return () => clearTimeout(timer);
     }, [observationSettled]);
     const slot = noteLocked ? 'note' : !observationSettled ? 'waiting' : observation ? 'card' : 'note';
-    const meta = `${spell(answerCount)} ${answerCount === 1 ? 'answer' : 'answers'} · ${formattedDate}`;
+    const count = spell(answerCount);
+    // It starts the line, so it takes a capital: "Five answers", as the mockup has it.
+    const meta = `${count.charAt(0).toUpperCase()}${count.slice(1)} ${answerCount === 1 ? 'answer' : 'answers'} · ${formattedDate}`;
 
     return (
         <View style={styles.stepContainer}>

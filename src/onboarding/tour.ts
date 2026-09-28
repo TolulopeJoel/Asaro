@@ -20,8 +20,31 @@ function set(next: TourState) {
     listeners.forEach(l => l());
 }
 
-export const startTour = () => set({ active: true, stop: null });
-export const endTour = () => set({ active: false, stop: null });
+/*
+ * The example practices the reader ticks during the walk, shared so Home and
+ * the Library agree. In memory only; cleared when the walk starts or ends.
+ */
+let kept: ReadonlySet<number> = new Set();
+const keptListeners = new Set<() => void>();
+function setKept(next: ReadonlySet<number>) {
+    kept = next;
+    keptListeners.forEach(l => l());
+}
+export const getDemoKept = () => kept;
+export function setDemoKept(id: number, on: boolean) {
+    const next = new Set(kept);
+    if (on) next.add(id); else next.delete(id);
+    setKept(next);
+}
+export function useDemoKept(): ReadonlySet<number> {
+    return useSyncExternalStore(
+        listener => { keptListeners.add(listener); return () => { keptListeners.delete(listener); }; },
+        () => kept,
+    );
+}
+
+export const startTour = () => { setKept(new Set()); set({ active: true, stop: null }); };
+export const endTour = () => { setKept(new Set()); set({ active: false, stop: null }); };
 export const setTourStop = (stop: string | null) => set({ ...state, stop });
 export const getTour = () => state;
 

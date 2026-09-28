@@ -42,9 +42,10 @@ const refs = (text: string) => (text.match(/\[\[.+?\]\]/g) ?? []).length;
 
 export const COACH = {
     chapter: [
+        { kind: 'tell', action: 'wave', line: 'Before you start, let’s do one together. It’s practice: nothing here is saved.' },
         { kind: 'tell', action: 'point', line: 'We start with today’s reading, Genesis 1–3. It’s Reading 1 of the plan, so I picked it for you.' },
         { kind: 'tell', action: 'nod', line: 'Read something else? Tap a chapter to start there, or drag across a few to make a range.' },
-        { kind: 'tell', action: 'think', line: 'Only read some verses? Turn on I read verses and put in where you started and stopped.' },
+        { kind: 'tell', action: 'think', line: 'Only read some verses? Under the chapters, turn on I read verses and put in where you started and stopped.' },
         { kind: 'end', action: 'smug', line: 'For now, leave it on Genesis 1–3 and tap the button.' },
     ] as Beat[],
     /** One sequence per reflection page: the five questions, then notes. */
@@ -55,19 +56,19 @@ export const COACH = {
                 kind: 'do', action: 'point', line: 'That’s mine. Now add a line of your own, anything.',
                 done: (a) => a.reflection1.trim() !== PRACTICE_ANSWERS.reflection1 && a.reflection1.trim().length >= 10,
             },
-            { kind: 'end', action: 'nod', line: 'Ehen. Answers save as you go, so if you stop halfway, it’s waiting on Home.' },
+            { kind: 'end', action: 'nod', line: 'Ehen. In a real entry, answers save as you go, so if you stop halfway, it’s waiting on Home.' },
         ],
         [
-            { kind: 'tell', action: 'think', line: 'How does it fit the Bible’s big story? See the verse at the end of mine?' },
+            { kind: 'tell', action: 'think', line: 'How does it fit the Bible’s big story? Watch the end of mine: I’m quoting a verse.' },
             {
-                kind: 'do', action: 'point', line: 'You can quote one in any answer. Type @ at the end, then pick the book, the chapter and the verse.',
+                kind: 'do', action: 'point', line: 'You can quote one in any answer. At the end, type @ and start typing a book, like John. Then pick the chapter and the verse.',
                 done: (a) => refs(a.reflection2) > refs(PRACTICE_ANSWERS.reflection2),
             },
             { kind: 'end', action: 'celebrate', line: 'That’s it! Later, tap a verse like that and it opens in your Bible.' },
         ],
         [
             { kind: 'tell', action: 'point', line: 'This is where it becomes real: something you’ll actually do because of what you read.' },
-            { kind: 'tell', action: 'nod', line: 'I will… is what you’ll do. Because… is why. The why is the part you forget in a month, so I make you write it.' },
+            { kind: 'tell', action: 'nod', line: 'Action is what you’ll do. Motivated by is why. The why is the part you forget in a month, so I make you write it.' },
             { kind: 'tell', action: 'smug', line: 'Now, how often. Every day is for small habits, like thanking Jehovah each morning.' },
             { kind: 'tell', action: 'think', line: 'Every week is for bigger things, like calling someone who’s struggling every Sunday.' },
             { kind: 'tell', action: 'point', line: 'By a date is for a one-off with a deadline, like talking to your brother before Friday. It doesn’t repeat.' },
@@ -79,7 +80,7 @@ export const COACH = {
         ],
         [
             { kind: 'tell', action: 'nod', line: 'Who could this help? Think of one person, and how you’d bring it up.' },
-            { kind: 'end', action: 'smug', line: 'Nothing to say on a question? Skip it. Honest beats full.' },
+            { kind: 'end', action: 'smug', line: 'Nothing to say on a question? Leave it empty and Next becomes Skip. Honest beats full.' },
         ],
         [
             { kind: 'tell', action: 'think', line: 'Something to dig into later. Write the question down before it’s gone.' },
@@ -87,7 +88,7 @@ export const COACH = {
                 kind: 'do', action: 'point', line: 'Want me to remind you? Tap Set Reminder and pick a day and a time.',
                 done: (a) => !!a.studyFurtherReminder,
             },
-            { kind: 'end', action: 'smug', line: 'Noted. I’ll remind you then. Your questions wait in Library until you’ve studied them.' },
+            { kind: 'end', action: 'smug', line: 'Noted. In a real entry, I’d remind you then. Your questions wait in Library until you’ve studied them.' },
         ],
         [
             { kind: 'tell', action: 'nod', line: 'Anything else: a thought, a prayer, something you noticed. Or nothing.' },

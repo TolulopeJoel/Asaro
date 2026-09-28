@@ -723,7 +723,8 @@ export default function LibraryScreen() {
                             value={section}
                             onChange={key => handleNavigate(DEFAULT_VIEW[key as Section])}
                             itemRef={key => key === 'unfinished' ? coachTarget('library-section-unfinished')
-                                : key === 'echoes' ? coachTarget('library-section-echoes') : undefined}
+                                : key === 'echoes' ? coachTarget('library-section-echoes')
+                                    : key === 'plan' ? coachTarget('library-section-plan') : undefined}
                         />
                         {subviews && (
                             <Segments

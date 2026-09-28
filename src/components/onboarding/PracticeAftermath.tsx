@@ -11,6 +11,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { Spacing } from '../../theme/spacing';
 import { PRACTICE_ANSWERS, PRACTICE_BOOK, PRACTICE_CHAPTERS, COACH } from '../../onboarding/practiceEntry';
 import { Tree } from '../grove/Tree';
+import type { ReflectionAnswers } from '../ReflectionForm';
 import { Text } from '../ui';
 import { CoachLine } from './CoachLine';
 import { Flip } from './Flip';
@@ -28,11 +29,13 @@ function Card({ label, children }: { label: string; children: React.ReactNode })
     );
 }
 
-export function PracticeAftermath() {
+export function PracticeAftermath({ answers }: { answers?: ReflectionAnswers }) {
     const { colors } = useTheme();
     const chapters = getBookByName(PRACTICE_BOOK)?.chapters ?? 50;
     const today = (new Date().getDay() + 6) % 7;
-    const practice = PRACTICE_ANSWERS.actionItems[0];
+    // What they actually wrote and chose; the example only if the page left nothing.
+    const practice = answers?.actionItems.find(item => item.action.trim()) ?? PRACTICE_ANSWERS.actionItems[0];
+    const cadence = practice.cadence === 'weekly' ? 'weekly' : practice.cadence === 'daily' ? 'daily' : null;
 
     const cards = [
         (
@@ -69,7 +72,7 @@ export function PracticeAftermath() {
             </Card>
         ),
         (
-            <Card key="tree" label={`A seed for your ${practice.cadence} practice`}>
+            <Card key="tree" label={cadence ? `A seed for your ${cadence} practice` : 'What you said you\u2019ll do'}>
                 <View style={styles.treeRow}>
                     <Tree stage={1} species={0} size={56} fit />
                     <Text variant="bodySmall" style={styles.treeText}>{practice.action}</Text>

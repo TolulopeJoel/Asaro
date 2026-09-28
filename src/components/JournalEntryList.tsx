@@ -18,7 +18,7 @@ import { AHEAD_AT_TOP, BookDetailHeader, StillAhead, coveredChapters } from './j
 import { READING_PLAN_DATA } from '../data/readingPlanData';
 import { planItemCoversBook } from '../data/journalRepository';
 import { getReadingProgress } from '../data/database';
-import { useTour } from '../onboarding/tour';
+import { getDemoKept, useTour } from '../onboarding/tour';
 import { coachEvent, coachTarget, type CoachTarget } from '../onboarding/coachTargets';
 import { DEMO_ACTIONS, DEMO_BOOK_COUNTS, DEMO_ENTRIES, DEMO_PROGRESS, DEMO_TOPICS } from '../onboarding/demo';
 import { formatRange } from '../utils/reference';
@@ -221,7 +221,9 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
     const loadActions = useCallback(async () => {
         if (demoRef.current) {
             setActionsList(DEMO_ACTIONS);
-            setPracticeProgress(DEMO_PROGRESS);
+            // Ticked here exactly as the reader ticked it on Home during the walk.
+            const kept = getDemoKept();
+            setPracticeProgress(new Map([...DEMO_PROGRESS].map(([id, p]) => [id, { ...p, doneNow: kept.has(id) }])));
             return;
         }
         try {

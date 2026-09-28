@@ -472,9 +472,10 @@ export default function MeditationSessionScreen() {
         return summary;
     }, [selectedBook, selectedChapters, verseRange]);
 
+    // The day it was recorded, worked out on the saved screen: an entry left open overnight is saved today.
     const formattedDate = useMemo(() => new Date().toLocaleDateString('en-US', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-    }), []);
+    }), [currentStep === 'summary']);
 
     // Questions actually answered, so a skipped one is never rounded up to five.
     const answerCount = useMemo(() => answeredCount(reflectionAnswers), [reflectionAnswers]);
@@ -536,7 +537,7 @@ export default function MeditationSessionScreen() {
                         answerCount={answerCount}
                         onDone={handleDone}
                         onShare={handleShare}
-                        practice={practice ? <PracticeAftermath /> : undefined}
+                        practice={practice ? <PracticeAftermath answers={reflectionAnswers} /> : undefined}
                         doneLabel={practice ? 'Show me around' : undefined}
                     />
                 );

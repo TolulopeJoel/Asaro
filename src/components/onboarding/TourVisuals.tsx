@@ -147,7 +147,7 @@ export type TourVisual = keyof typeof TOUR_VISUALS;
 
 const styles = StyleSheet.create({
     /** `.cl-panel{padding:18px}` */
-    card: { padding: Spacing.layout.cardPadding, gap: Spacing.xs, minHeight: 112 },
+    card: { padding: Spacing.layout.cardPadding, gap: Spacing.xs, minHeight: 112, alignSelf: 'stretch' },
     stack: { alignSelf: 'stretch' },
     stacked: { position: 'absolute' },
     stackCard: { height: STACK_CARD_H, borderWidth: Spacing.border.hairline },

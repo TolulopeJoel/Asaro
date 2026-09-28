@@ -16,7 +16,7 @@ export type CoachTarget =
     | 'tab-home'
     | 'back-stats' | 'back-land' | 'back-settings' | 'back-entry' | 'back-group'
     | 'settings-sleep' | 'settings-look' | 'settings-backup'
-    | 'library-section-unfinished' | 'library-section-echoes'
+    | 'library-section-unfinished' | 'library-section-echoes' | 'library-section-plan'
     | 'library-sub-books' | 'library-sub-topics';
 
 /** Things the user can do that a walk stop waits for. */

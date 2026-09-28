@@ -16,7 +16,7 @@ import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import { DeviceEventEmitter, ScrollView, StyleSheet, View } from "react-native";
 import { getFirstRun } from '@/src/onboarding/firstRun';
 import { coachEvent, coachTarget } from '@/src/onboarding/coachTargets';
-import { getTour, startTour, useTour } from '@/src/onboarding/tour';
+import { getTour, setDemoKept, startTour, useDemoKept, useTour } from '@/src/onboarding/tour';
 import { useCoachScroller } from '@/src/onboarding/useCoachScroller';
 import { DEMO_OBSERVATION, demoToday } from '@/src/onboarding/demo';
 import { JournalEntryDetail } from '@/src/components/JournalEntryDetail';
@@ -145,9 +145,8 @@ export default function Index() {
      * genuinely something to do in fifteen seconds.
      */
     const today = useToday(!isLoading);
-    // The walk's ticks are kept here, on screen only: nothing reaches the database.
-    const [demoKept, setDemoKept] = useState<ReadonlySet<number>>(new Set());
-    useEffect(() => { if (!tour.active) setDemoKept(new Set()); }, [tour.active]);
+    // The walk's ticks live in the tour, in memory only: nothing reaches the database.
+    const demoKept = useDemoKept();
     const demoItems = useMemo(
         () => demoToday().map(entry => ({ ...entry, kept: demoKept.has(entry.item.id!) })),
         [demoKept],
@@ -157,14 +156,10 @@ export default function Index() {
             <TodayStrip
                 items={demoItems}
                 onKeep={entry => {
-                    setDemoKept(prev => new Set(prev).add(entry.item.id!));
+                    setDemoKept(entry.item.id!, true);
                     coachEvent('today-kept');
                 }}
-                onUndo={entry => setDemoKept(prev => {
-                    const nextKept = new Set(prev);
-                    nextKept.delete(entry.item.id!);
-                    return nextKept;
-                })}
+                onUndo={entry => setDemoKept(entry.item.id!, false)}
                 onOpen={noop}
             />
         </View>

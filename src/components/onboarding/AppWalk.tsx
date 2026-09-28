@@ -43,7 +43,8 @@ function stops(other: string): Stop[] {
         // Home
         { target: 'reading', action: 'point', then: { got: true }, line: 'This is today’s reading. Read it in your Bible first. Then Begin reflection, and we do what we just practised.' },
         { target: 'add', action: 'nod', then: { got: true }, line: 'Read something that isn’t on the plan? The + writes about anything, any day.' },
-        { target: 'home-today', action: 'point', then: { event: 'today-kept' }, line: 'What you said you’d do waits here each day. Done it? Tap the circle to tick it off. Go on.' },
+        { target: 'home-today', action: 'point', then: { event: 'today-kept' }, line: 'What you said you’d do waits here each day. Done it? Tap the box to tick it off. Go on.' },
+        { target: 'home-today', action: 'celebrate', then: { got: true }, line: 'Ticked. Got it wrong? Tap it again to undo. Every tick waters its tree.' },
         { target: 'home-observation', action: 'think', then: { got: true }, line: 'After a few weeks I start noticing things across your entries. When I do, it shows up here. Not often.' },
         { target: 'week', action: 'smug', then: { path: '/stats' }, line: 'Your week. Every day you reflect fills one. Tap it.' },
 
@@ -59,26 +60,29 @@ function stops(other: string): Stop[] {
         { target: 'land-field', action: 'nod', then: { got: true }, line: 'Your land, Genesis to Revelation. Every chapter you write about gets worked. Leave it and it goes quiet, but it’s never taken away.' },
         { target: 'land-tree', action: 'point', then: { shows: 'land-card' }, line: 'Your trees are planted on the chapter they came from. Tap that one.' },
         { target: 'land-card', action: 'smug', then: { got: true }, line: 'This one grew out of Genesis 1. Tap any tree, any time, to see how it’s doing.' },
-        { target: 'back-land', action: 'nod', then: { path: '/' }, line: 'Back to Home.' },
+        { target: 'back-land', action: 'nod', then: { path: '/' }, line: 'Back to Home. Tap the arrow.' },
 
         // Settings: every row here does real work, so they are shown, not tapped.
         { target: 'settings', action: 'point', then: { path: '/settings' }, line: 'Your settings. Tap it.' },
         { target: 'settings-sleep', action: 'nod', then: { got: true }, line: 'Your sleep time. My last reminder comes an hour before it. You can change it once a month.' },
         { target: 'settings-look', action: 'sideEye', then: { got: true }, line: `And this is me. If you ever want my ${other} instead… it’s here. Don’t try it.` },
         { target: 'settings-backup', action: 'think', then: { got: true }, line: 'Your entries live on this phone. Share a backup now and then, so a lost phone never takes them.' },
-        { target: 'back-settings', action: 'nod', then: { path: '/' }, line: 'Back.' },
+        { target: 'back-settings', action: 'nod', then: { path: '/' }, line: 'Done here. Tap the arrow to go back.' },
 
         // Library
         { target: 'tab-library', action: 'point', then: { path: '/library' }, line: 'Everything you write ends up in your Library. Tap it.' },
         { target: 'library-entry', action: 'nod', then: { path: '/library/-1' }, line: 'These are examples. Your own go here, newest first. Tap one to read it again.' },
-        { target: 'back-entry', action: 'smug', then: { path: '/library' }, line: 'That’s how an entry reads back, verses and all. Tap the X to go back.' },
+        { target: 'back-entry', action: 'smug', then: { path: '/library' }, line: 'That’s how an entry reads back. Tap the X to go back.' },
         { target: 'library-search', action: 'point', then: { event: 'library-searched' }, line: 'Wrote about something months ago and can’t find it? Search. Type dark.' },
+        { target: 'library-entry', action: 'smug', then: { got: true }, line: 'There it is. Search looks through every answer you’ve ever written.' },
         { target: 'library-sub-books', action: 'nod', then: { shows: 'library-books' }, line: 'Or go book by book. Tap By book.' },
+        { target: 'library-books', action: 'nod', then: { got: true }, line: 'Every book you’ve written about, with how many entries. Tap one any time to see them all.' },
         { target: 'library-section-unfinished', action: 'point', then: { shows: 'library-practice' }, line: 'What you said you’d do lives under Working on. Tap it.' },
         { target: 'library-practice', action: 'smug', then: { got: true }, line: 'Each one with its reason, and how you’re keeping it. Tick it here or on Home, same thing.' },
         { target: 'library-sub-topics', action: 'think', then: { shows: 'library-question' }, line: 'Now tap Questions.' },
         { target: 'library-question', action: 'nod', then: { got: true }, line: 'What you wanted to study further, waiting until you have. Tick it once you’ve dug in.' },
         { target: 'library-section-echoes', action: 'think', then: { got: true }, line: 'And Echoes: what I’ve noticed across your entries, and the themes that run through them. Those take a few weeks of writing.' },
+        { target: 'library-section-plan', action: 'point', then: { got: true }, line: 'And Plan: the whole reading plan, Genesis to Revelation. Every reading you reflect on ticks itself off.' },
 
         // Groups
         { target: 'tab-groups', action: 'smug', then: { path: '/groups' }, line: 'And when you’re ready, bring your people. Tap Groups.' },
@@ -87,7 +91,7 @@ function stops(other: string): Stop[] {
         { target: 'group-days', action: 'nod', then: { got: true }, line: 'Everyone sees what the others read that week, and the one thing each person brought.' },
         { target: 'group-practice', action: 'smug', then: { got: true }, line: 'Share a practice if you want people watching you keep it. I already am.' },
         { target: 'group-members', action: 'sideEye', then: { got: true }, line: 'Members shows who read this week. Anyone who didn’t, you can nudge. Gently.' },
-        { target: 'back-group', action: 'nod', then: { path: '/groups' }, line: 'Back.' },
+        { target: 'back-group', action: 'nod', then: { path: '/groups' }, line: 'Back to your groups. Tap the arrow.' },
         { target: 'tab-home', action: 'wave', then: { path: '/' }, line: 'That’s everything. Tap Home.' },
 
         {

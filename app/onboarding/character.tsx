@@ -140,7 +140,7 @@ export default function CharacterScreen() {
                         <View style={styles.check}>
                             <Asaro ref={checkFace} size={124} look={picked} />
                             <Text variant="title" style={styles.checkText}>
-                                So you&apos;re a {picked === 'male' ? 'man' : 'woman'}?
+                                So you’re a {picked === 'male' ? 'man' : 'woman'}?
                             </Text>
                             <Text variant="sub" style={styles.checkText}>
                                 Don&apos;t lie, you know who is watching.
@@ -166,9 +166,10 @@ export default function CharacterScreen() {
                                         ]} />
                                     </View>
                                 ) : (
-                                    <Text variant="sub" style={styles.prompt}>
-                                        Are you a brother or a sister?
-                                    </Text>
+                                    <View style={styles.promptBlock}>
+                                        <Text variant="title" style={styles.prompt}>Are you a brother or a sister?</Text>
+                                        <Text variant="sub" tone="secondary" style={styles.prompt}>Tap one.</Text>
+                                    </View>
                                 )}
                             </View>
 
@@ -244,6 +245,7 @@ const styles = StyleSheet.create({
     tailLeft: { left: 64 },
     tailRight: { right: 64 },
     prompt: { textAlign: 'center' },
+    promptBlock: { gap: Spacing.xs },
     check: { alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.lg },
     checkText: { textAlign: 'center' },
     /** Buttons sit at the foot, well clear of the faces. */
@@ -254,9 +256,9 @@ const styles = StyleSheet.create({
         gap: Spacing.xl,
     },
     lookChoice: { alignItems: 'center', gap: Spacing.sm },
+    // Square, like the rest of Cloth; a circle cut through her hair.
     lookRing: {
         borderWidth: Spacing.border.strong,
-        borderRadius: Spacing.borderRadius.round,
-        padding: 3,
+        padding: 6,
     },
 });
