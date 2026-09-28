@@ -19,11 +19,10 @@ export type CoachTarget =
     | 'library-section-unfinished' | 'library-section-echoes' | 'library-section-plan'
     | 'library-sub-books' | 'library-sub-topics'
     | 'plan-legend' | 'plan-next' | 'plan-footnote'
-    | 'stats-record' | 'settings-you' | 'group-privacy';
+    | 'settings-you' | 'group-privacy';
 
 /** One stop explaining neighbours together spotlights all of them: the box round every part. */
 const SPANS: Partial<Record<CoachTarget, readonly CoachTarget[]>> = {
-    'stats-record': ['stats-tiles', 'stats-calendar'],
     'settings-you': ['settings-look', 'settings-sleep'],
     'group-privacy': ['group-mine', 'group-days'],
 };
@@ -43,6 +42,8 @@ export function onCoachEvent(listener: (name: CoachEvent) => void) {
 }
 
 export interface Rect { x: number; y: number; width: number; height: number }
+/** A band of the overlay, top to bottom: where the walk's bubble leaves the screen free. */
+export interface Room { top: number; bottom: number }
 
 const nodes = new Map<CoachTarget, View>();
 const refs = new Map<CoachTarget, (node: View | null) => void>();
@@ -79,9 +80,19 @@ export function coachRoot(node: View | null) {
     root = node;
 }
 
-const inWindow = (node: View) => new Promise<Rect>((resolve) => {
+type Measurable = Pick<View, 'measureInWindow'>;
+
+const inWindow = (node: Measurable) => new Promise<Rect>((resolve) => {
     node.measureInWindow((x, y, width, height) => resolve({ x, y, width, height }));
 });
+
+/** Any view's box in the walk's overlay, or null if it isn't laid out. */
+export async function measureView(node: Measurable | null | undefined): Promise<Rect | null> {
+    if (!node || !root) return null;
+    const [el, base] = await Promise.all([inWindow(node), inWindow(root)]);
+    if (!(el.width > 0 && el.height > 0)) return null;
+    return { x: el.x - base.x, y: el.y - base.y, width: el.width, height: el.height };
+}
 
 /** Where the element is in the walk's overlay, or null if it isn't on screen now. */
 export async function measureTarget(name: CoachTarget): Promise<Rect | null> {
@@ -99,19 +110,17 @@ export async function measureTarget(name: CoachTarget): Promise<Rect | null> {
 }
 
 async function measureOne(name: CoachTarget): Promise<Rect | null> {
-    const node = nodes.get(name);
-    if (!node || !root) return null;
-    const [el, base] = await Promise.all([inWindow(node), inWindow(root)]);
-    if (!(el.width > 0 && el.height > 0)) return null;
+    const el = await measureView(nodes.get(name));
+    if (!el) return null;
     const trim = trims.get(name) ?? { top: 0, bottom: 0 };
-    return { x: el.x - base.x, y: el.y - base.y + trim.top, width: el.width, height: el.height - trim.top - trim.bottom };
+    return { ...el, y: el.y + trim.top, height: el.height - trim.top - trim.bottom };
 }
 
 /**
  * The screen on show brings a target into view by scrolling its own list. Each
  * screen that has walk stops registers one while focused; the walk calls it.
  */
-type Scroller = (rect: Rect) => Promise<void>;
+type Scroller = (rect: Rect, room: Room) => Promise<void>;
 let scroller: Scroller | null = null;
 
 export function setCoachScroller(next: Scroller | null) {
@@ -123,8 +132,9 @@ export function clearCoachScroller(mine: Scroller) {
     if (scroller === mine) scroller = null;
 }
 
-export async function revealTarget(rect: Rect): Promise<void> {
-    if (scroller) await scroller(rect);
+/** Scrolls the screen on show until `rect` sits inside `room`, as far as its list allows. */
+export async function revealTarget(rect: Rect, room: Room): Promise<void> {
+    if (scroller) await scroller(rect, room);
 }
 
 /** Wait for a target to be laid out on a screen just navigated to. Null if it never shows. */

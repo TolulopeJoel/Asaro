@@ -8,7 +8,7 @@
  * It ends back on Home, sending them off to do their real first reading. No
  * skip, by decision.
  */
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BackHandler, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,7 +18,7 @@ import { Spacing } from '../../theme/spacing';
 import { useAsaroLook } from '../../storage/asaroLook';
 import {
     measureTarget, onCoachEvent, revealTarget, waitForTarget,
-    type CoachEvent, type CoachTarget, type Rect,
+    type CoachEvent, type CoachTarget, type Rect, type Room,
 } from '../../onboarding/coachTargets';
 import { endTour, setTourStop, useTour } from '../../onboarding/tour';
 import { setFirstRun } from '../../onboarding/firstRun';
@@ -53,7 +53,8 @@ function stops(other: string): Stop[] {
 
         ...part('Stats', [
             { target: 'week', action: 'smug', then: { path: '/stats' }, line: 'Your week. Every day you reflect fills one. Tap it.' },
-            { target: 'stats-record', action: 'nod', then: { got: true }, line: 'Your record. This one is an example so you can see it full. Yours starts today. Below it, every day you wrote, month by month. The gaps show too. I don’t hide them.' },
+            { target: 'stats-tiles', action: 'nod', then: { got: true }, line: 'Your record. This one is an example so you can see it full. Yours starts today.' },
+            { target: 'stats-calendar', action: 'point', then: { got: true }, line: 'Every day you wrote, month by month. The gaps show too. I don’t hide them.' },
             { target: 'stats-grove', action: 'smug', then: { shows: 'stats-rooted' }, line: 'Every practice you keep grows a tree. Tap one.' },
             { target: 'stats-rooted', action: 'think', then: { got: true }, line: 'This is how rooted it is: how much it has become part of you. Keep it and it roots deeper. Miss it and it goes thirsty, but it waits.' },
             { target: 'back-stats', action: 'nod', then: { path: '/' }, line: 'Now back. Tap the arrow.' },
@@ -132,9 +133,44 @@ const GAP = Spacing.md;
 /** Long enough for a screen the user just opened to lay out its element. */
 const FIND_MS = 8000;
 const POLL_MS = 300;
+/** Until the first bubble has laid out. */
+const BUBBLE_GUESS = 200;
 
 /** Only the tab bar is fixed; a hero's icons scroll with their page on Home and Settings. */
 const fixed = (t: CoachTarget) => t.startsWith('tab-');
+
+const pause = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+interface Viewport { H: number; top: number; bottom: number }
+interface Box { x: number; y: number; w: number; h: number }
+
+/** Where a target has to sit to be seen whole under a bubble of this height at the top. */
+const roomUnder = (bubbleH: number, s: Viewport): Room => ({
+    top: s.top + GAP + bubbleH + GAP + PAD,
+    bottom: s.H - s.bottom - PAD,
+});
+
+/**
+ * The bubble never covers what it is about. It sits at the top, where it's
+ * easy to read, or just below the element when the element is up there. Only
+ * something taller than the screen can hold beside it (the land) is lit in
+ * part: the bubble takes whichever end hides less, and the spotlight is the rest.
+ */
+function place(box: Box | null, bubbleH: number, s: Viewport): { bubbleTop: number; hole: Box | null } {
+    const topSlot = s.top + GAP;
+    const floor = s.H - s.bottom - GAP;
+    if (!box || box.y >= topSlot + bubbleH + GAP) return { bubbleTop: topSlot, hole: box };
+    if (box.y + box.h + GAP + bubbleH <= floor) return { bubbleTop: box.y + box.h + GAP, hole: box };
+    const up = { top: topSlot + bubbleH + GAP, bottom: s.H };
+    const down = { top: 0, bottom: floor - bubbleH - GAP };
+    const seen = (band: Room) => Math.min(box.y + box.h, band.bottom) - Math.max(box.y, band.top);
+    const band = seen(up) >= seen(down) ? up : down;
+    const top = Math.max(box.y, band.top);
+    return {
+        bubbleTop: band === up ? topSlot : floor - bubbleH,
+        hole: { ...box, y: top, h: Math.max(0, Math.min(box.y + box.h, band.bottom) - top) },
+    };
+}
 
 const sameRect = (a: Rect, b: Rect) =>
     Math.abs(a.x - b.x) < 1 && Math.abs(a.y - b.y) < 1 && Math.abs(a.width - b.width) < 1 && Math.abs(a.height - b.height) < 1;
@@ -149,7 +185,11 @@ export function AppWalk() {
     const all = useMemo(() => stops(look === 'female' ? 'brother' : 'sister'), [look]);
     const [index, setIndex] = useState(0);
     const [rect, setRect] = useState<Rect | null>(null);
-    const [bubbleH, setBubbleH] = useState(160);
+    const [bubbleH, setBubbleH] = useState(BUBBLE_GUESS);
+    /** The bubble's height and the stop it was laid out for, read while revealing. */
+    const laidOut = useRef({ index: -1, height: BUBBLE_GUESS });
+    const screen = useRef({ H, top: insets.top, bottom: insets.bottom });
+    screen.current = { H, top: insets.top, bottom: insets.bottom };
     const stop = all[index];
     const then = stop.then;
 
@@ -189,7 +229,13 @@ export function AppWalk() {
                 next();
                 return;
             }
-            if (!fixed(target)) await revealTarget(first);
+            if (!fixed(target)) {
+                // Scroll it clear of this stop's bubble, so wait for the bubble to have a height.
+                const until = Date.now() + 1000;
+                while (alive && laidOut.current.index !== index && Date.now() < until) await pause(50);
+                if (!alive) return;
+                await revealTarget(first, roomUnder(laidOut.current.height, screen.current));
+            }
             const settled = alive ? await measureTarget(target) : null;
             // The user may have moved the walk on while this was measuring; a late box would stick.
             if (!alive) return;
@@ -201,7 +247,7 @@ export function AppWalk() {
             }, POLL_MS * 2);
         })();
         return () => { alive = false; clearInterval(poll); };
-    }, [tour.active, stop, next]);
+    }, [tour.active, stop, index, next]);
 
     // What the user did: the screen they tapped into.
     useEffect(() => {
@@ -232,18 +278,13 @@ export function AppWalk() {
 
     if (!tour.active) return null;
 
-    const hole = rect && (() => {
+    const box = rect && (() => {
         const top = Math.max(0, rect.y - PAD);
         const bottom = Math.min(H, rect.y + rect.height + PAD);
         const x = Math.max(0, rect.x - PAD);
         return { x, y: top, w: Math.min(W - x, rect.width + PAD * 2), h: Math.max(0, bottom - top) };
     })();
-
-    // Up top, where it's easy to read; below the element only when the element is up there itself.
-    const topSlot = insets.top + GAP;
-    const bubbleTop = !hole || hole.y >= topSlot + bubbleH + GAP
-        ? topSlot
-        : Math.min(hole.y + hole.h + GAP, H - bubbleH - insets.bottom - GAP);
+    const { bubbleTop, hole } = place(box, bubbleH, screen.current);
 
     const inPart = all.filter(s => s.part === stop.part);
     const where = !stop.part ? null
@@ -271,22 +312,31 @@ export function AppWalk() {
                 <View onStartShouldSetResponder={block} style={[styles.dim, StyleSheet.absoluteFill]} />
             )}
 
-            {(rect || !stop.target) && (
-                <View
-                    onLayout={e => setBubbleH(e.nativeEvent.layout.height)}
-                    style={[styles.bubble, { backgroundColor: colors.background, top: bubbleTop }]}
-                >
-                    {where && <Text variant="label">{where}</Text>}
-                    <CoachLine key={index} line={stop.line} action={stop.action}>
-                        {'got' in then && (
-                            <ScalePressable onPress={next} accessibilityRole="button" style={styles.gotIt} hitSlop={8}>
-                                <Text variant="label" tone="accent">Got it</Text>
-                            </ScalePressable>
-                        )}
-                    </CoachLine>
-                    {last && <ThemedButton label="Okay, let me start" block onPress={finish} />}
-                </View>
-            )}
+            <View
+                key={index}
+                onLayout={e => {
+                    laidOut.current = { index, height: e.nativeEvent.layout.height };
+                    setBubbleH(e.nativeEvent.layout.height);
+                }}
+                style={[styles.bubble, { backgroundColor: colors.background, top: bubbleTop }]}
+            >
+                {where && <Text variant="label">{where}</Text>}
+                <CoachLine line={stop.line} action={stop.action}>
+                    {'got' in then && (
+                        // Held, but kept in the layout, until what it explains is lit.
+                        <ScalePressable
+                            onPress={next}
+                            disabled={!hole}
+                            accessibilityRole="button"
+                            style={[styles.gotIt, !hole && styles.waiting]}
+                            hitSlop={8}
+                        >
+                            <Text variant="label" tone="accent">Got it</Text>
+                        </ScalePressable>
+                    )}
+                </CoachLine>
+                {last && <ThemedButton label="Okay, let me start" block onPress={finish} />}
+            </View>
         </View>
     );
 }
@@ -303,4 +353,5 @@ const styles = StyleSheet.create({
         gap: Spacing.md,
     },
     gotIt: { alignSelf: 'flex-end' },
+    waiting: { opacity: 0 },
 });
