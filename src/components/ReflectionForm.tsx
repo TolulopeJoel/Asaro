@@ -56,8 +56,9 @@ interface ReflectionFormProps {
   samples?: ReflectionAnswers;
 }
 
-/** Per letter, when a sample answer types itself in. */
+/** When a sample answer types itself in: a tick, and the letters each tick adds. More letters, not faster ticks, so it never renders more often. */
 const TYPE_MS = 26;
+const LETTERS_PER_TICK = 2;
 
 export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
   initialAnswers,
@@ -235,8 +236,10 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
     const typeText = (text: string, put: (t: string) => void) => {
       let pos = 0;
       return () => {
-        const close = text.startsWith('[[', pos) ? text.indexOf(']]', pos) : -1;
-        pos = close >= 0 ? close + 2 : pos + 1;
+        for (let n = 0; n < LETTERS_PER_TICK && pos < text.length; n++) {
+          const close = text.startsWith('[[', pos) ? text.indexOf(']]', pos) : -1;
+          pos = close >= 0 ? close + 2 : pos + 1;
+        }
         put(text.slice(0, pos));
         return pos >= text.length;
       };
