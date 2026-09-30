@@ -2,7 +2,7 @@ import {
     getTotalEntryCount,
     JournalEntry,
     getReadingProgress,
-    getLastCompletedReadingItemId,
+    getPlanPosition,
     checkEntryCoversChapters,
     toggleReadingItem,
     getDaysSinceLastEntry,
@@ -256,26 +256,11 @@ export default function Index() {
         return { totalEntries, allTime };
     }, []);
 
+    // What's left of the reading they're in: after 1 John 1–3, "1 John 4-5". Begin reflection opens those chapters.
     const loadNextReading = useCallback(async () => {
-        const [completedIds, lastCompletedId] = await Promise.all([
-            getReadingProgress(),
-            getLastCompletedReadingItemId(),
-        ]);
-        const completedSet = new Set(completedIds);
-        let nextItem: ReadingItem | undefined;
-
-        if (lastCompletedId != null) {
-            const lastIndex = READING_PLAN_DATA.findIndex(item => item.id === lastCompletedId);
-            if (lastIndex >= 0) {
-                nextItem = READING_PLAN_DATA.slice(lastIndex + 1).find(item => !completedSet.has(item.id));
-            }
-        }
-
-        if (!nextItem) {
-            nextItem = READING_PLAN_DATA.find(item => !completedSet.has(item.id));
-        }
-
-        return { next: nextItem || null, completed: completedSet.size };
+        const [position, completedIds] = await Promise.all([getPlanPosition(), getReadingProgress()]);
+        const next: ReadingItem | null = position ? { ...position.item, chapters: position.chapters } : null;
+        return { next, completed: completedIds.length };
     }, []);
 
     const loadHomeData = useCallback(async () => {

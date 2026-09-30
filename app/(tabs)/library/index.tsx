@@ -37,7 +37,7 @@ import { EchoesContent } from '@/src/components/insight/EchoesContent';
 
 // Plan imports
 import { READING_PLAN_DATA, ReadingItem } from '@/src/data/readingPlanData';
-import { getReadingProgress, toggleReadingItem, checkEntryCoversChapters } from '@/src/data/database';
+import { getPlanPosition, getReadingProgress, toggleReadingItem, checkEntryCoversChapters } from '@/src/data/database';
 import { useAlert } from '@/src/context/AlertContext';
 import { getTour, useTour } from '@/src/onboarding/tour';
 import { coachTarget } from '@/src/onboarding/coachTargets';
@@ -300,6 +300,8 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: PlanProgress)
     const [progress, setProgress] = useState(0);
     const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
     const [isInitialLoad, setIsInitialLoad] = useState(true);
+    // The reading Home shows. The queue starts there, so "today" here is today there.
+    const [nextId, setNextId] = useState<number | null>(null);
     const { showAlert } = useAlert();
     const flatListRef = useRef<FlatList>(null);
     // The footnote sits under 364 readings; the app walk scrolls there rather than asking the reader to.
@@ -319,14 +321,17 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: PlanProgress)
     /**
      * Each outstanding reading's place in the queue — 0 is the next one up.
      * Rebuilt whenever a reading is ticked, so the dates shuffle forward with
-     * you rather than being pinned to when you started.
+     * you rather than being pinned to when you started. It runs from where
+     * the reader is, then comes round to the readings before it.
      */
     const queueIndexById = React.useMemo(() => {
         const queue = new Map<number, number>();
-        READING_PLAN_DATA.filter(item => !completedItems.has(item.id))
+        const from = Math.max(0, READING_PLAN_DATA.findIndex(item => item.id === nextId));
+        [...READING_PLAN_DATA.slice(from), ...READING_PLAN_DATA.slice(0, from)]
+            .filter(item => !completedItems.has(item.id))
             .forEach((item, index) => queue.set(item.id, index));
         return queue;
-    }, [completedItems]);
+    }, [completedItems, nextId]);
 
     const sectionData = React.useMemo(() => {
         const counts: Record<string, { completed: number; total: number }> = {};
@@ -349,13 +354,14 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: PlanProgress)
     }, [onProgressChange]);
 
     const loadProgress = useCallback(async () => {
-        const progressIds = await getReadingProgress();
+        const [progressIds, position] = await Promise.all([getReadingProgress(), getPlanPosition()]);
         const completedSet = new Set(progressIds);
         setCompletedItems(completedSet);
         updateProgress(completedSet);
+        setNextId(position?.item.id ?? null);
 
         if (isInitialLoad) {
-            const nextItem = READING_PLAN_DATA.find(item => !completedSet.has(item.id));
+            const nextItem = position?.item;
             if (nextItem) {
                 const collapsed = new Set(PLAN_SECTIONS.filter(s => s !== nextItem.section));
                 setCollapsedSections(collapsed);

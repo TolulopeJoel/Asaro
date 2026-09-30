@@ -2,7 +2,7 @@ import * as SQLite from 'expo-sqlite';
 import { withDatabase, withTransaction } from './db';
 import { ActionItem, JournalEntry, JournalEntryInput, EnhancedActionItem } from './types';
 import { formatDateToLocalString, getTodayDateString, parseLocalDateString } from '../utils/dateUtils';
-import { READING_PLAN_DATA } from './readingPlanData';
+import { READING_PLAN_DATA, type ReadingItem } from './readingPlanData';
 import { CoverageRow } from '../land/cloth';
 import { retractCiting, retractKeys } from '../insight/observation';
 
@@ -41,6 +41,73 @@ export function planItemCoversBook(planBook: string, bookName: string): boolean 
     const book = bookName.toLowerCase();
     // The plan pairs some books up: "Obadiah/Jonah", "2 John/3 John/Jude".
     return plan === book || plan.split('/').includes(book);
+}
+
+/** An entry's passage, as far as the plan is concerned. */
+export interface EntryRange { book: string; start: number; end: number }
+
+/**
+ * The plan reading that comes up next, and the chapters of it still to write about.
+ *
+ * It follows the newest entry that touches the plan, wherever that is: someone
+ * who wrote on 1 John 1–3 is in 1 John, not back at Genesis. While that reading
+ * isn't fully written about it stays up, narrowed to what's left (1 John 4–5);
+ * once it is, the next reading after it that isn't done comes up. With no entry
+ * in the plan, it's the first reading not done. Null when the plan is finished.
+ *
+ * `entries` newest first.
+ */
+export function planPosition(
+    plan: readonly ReadingItem[],
+    entries: readonly EntryRange[],
+    ticked: ReadonlySet<number>,
+): { item: ReadingItem; chapters: string } | null {
+    const written = new Map<string, Set<number>>();
+    for (const entry of entries) {
+        const chapters = written.get(entry.book) ?? new Set<number>();
+        for (let ch = entry.start; ch <= entry.end; ch++) chapters.add(ch);
+        written.set(entry.book, chapters);
+    }
+
+    // Chapters of a reading nobody has written about yet; null for one that names no chapters.
+    const unwritten = (item: ReadingItem) => {
+        const range = planItemChapters(item.chapters);
+        if (!range) return null;
+        const books = item.book.split('/').map(b => b.trim());
+        const left: number[] = [];
+        for (let ch = range.start; ch <= range.end; ch++) {
+            if (!books.some(book => written.get(book)?.has(ch))) left.push(ch);
+        }
+        return left;
+    };
+    const done = (item: ReadingItem) => ticked.has(item.id) || unwritten(item)?.length === 0;
+
+    const show = (item: ReadingItem) => {
+        const left = unwritten(item);
+        // "119:64-176" is part of a chapter: there is nothing smaller to narrow it to.
+        if (!left?.length || item.chapters.includes(':')) return { item, chapters: item.chapters };
+        const first = left[0];
+        const last = left[left.length - 1];
+        return { item, chapters: first === last ? `${first}` : `${first}-${last}` };
+    };
+
+    for (const entry of entries) {
+        const touched = plan.filter(item => {
+            if (!planItemCoversBook(item.book, entry.book)) return false;
+            const range = planItemChapters(item.chapters);
+            return !range || (entry.start <= range.end && entry.end >= range.start);
+        });
+        if (touched.length === 0) continue;
+
+        const at = touched[touched.length - 1];
+        if (!done(at)) return show(at);
+        const after = plan.slice(plan.indexOf(at) + 1).find(item => !done(item));
+        const next = after ?? plan.find(item => !done(item));
+        return next ? show(next) : null;
+    }
+
+    const first = plan.find(item => !done(item));
+    return first ? show(first) : null;
 }
 
 export const findMatchingReadingPlanItems = async (

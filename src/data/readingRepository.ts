@@ -1,5 +1,6 @@
 import { withDatabase } from './db';
-import { checkRangeCovered } from './journalRepository';
+import { checkRangeCovered, planPosition } from './journalRepository';
+import { READING_PLAN_DATA } from './readingPlanData';
 
 export const getReadingProgress = async (): Promise<number[]> => {
     return await withDatabase(async (database) => {
@@ -26,16 +27,20 @@ export const toggleReadingItem = async (itemId: number, completed: boolean): Pro
     });
 };
 
-/**
- * Returns the item_id of the most recently completed reading plan item,
- * or null if nothing has been completed yet.
- */
-export const getLastCompletedReadingItemId = async (): Promise<number | null> => {
+/** The reading that comes up next, narrowed to what's left of it: see `planPosition`. */
+export const getPlanPosition = async () => {
     return await withDatabase(async (database) => {
-        const result = await database.getFirstAsync<{ item_id: number }>(
-            `SELECT item_id FROM reading_progress ORDER BY completed_at DESC LIMIT 1`
+        const entries = await database.getAllAsync<{ book_name: string; chapter_start: number; chapter_end: number | null }>(
+            `SELECT book_name, chapter_start, chapter_end FROM journal_entries
+             WHERE chapter_start IS NOT NULL
+             ORDER BY created_at DESC, id DESC`
         );
-        return result?.item_id ?? null;
+        const ticked = await database.getAllAsync<{ item_id: number }>(`SELECT item_id FROM reading_progress`);
+        return planPosition(
+            READING_PLAN_DATA,
+            entries.map(e => ({ book: e.book_name, start: e.chapter_start, end: e.chapter_end ?? e.chapter_start })),
+            new Set(ticked.map(t => t.item_id)),
+        );
     });
 };
 
