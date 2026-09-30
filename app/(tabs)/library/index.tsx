@@ -550,6 +550,30 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: PlanProgress)
 
     const keyExtractor = useCallback((item: PlanListDataItem) => item.id, []);
 
+    /*
+     * Opening the plan lands on the reading Home shows, once. Rows vary in
+     * height, so a row not rendered yet can't be scrolled to directly: the
+     * list jumps near it by the average height, then tries again.
+     */
+    const landed = useRef(false);
+    const retries = useRef(0);
+    const nextIndex = useMemo(
+        () => flatListData.findIndex(entry => entry.id === `reading-${nextId}`),
+        [flatListData, nextId],
+    );
+    const landOnNext = useCallback(() => {
+        if (landed.current || nextIndex < 0) return;
+        landed.current = true;
+        // The app walk moves this list itself; opened during it, it stays put for good.
+        if (getTour().active) return;
+        flatListRef.current?.scrollToIndex({ index: nextIndex, viewPosition: 0.3, animated: false });
+    }, [nextIndex]);
+    const onScrollToIndexFailed = useCallback(({ index, averageItemLength }: { index: number; averageItemLength: number }) => {
+        if (retries.current++ >= 3) return;
+        flatListRef.current?.scrollToOffset({ offset: averageItemLength * index, animated: false });
+        setTimeout(() => flatListRef.current?.scrollToIndex({ index, viewPosition: 0.3, animated: false }), 80);
+    }, []);
+
     return (
         <View style={{ flex: 1 }}>
             {isInitialLoad ? (
@@ -575,7 +599,9 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: PlanProgress)
                     removeClippedSubviews={Platform.OS === 'android'}
                     onContentSizeChange={() => {
                         if (toFootnote.current) flatListRef.current?.scrollToEnd({ animated: true });
+                        else landOnNext();
                     }}
+                    onScrollToIndexFailed={onScrollToIndexFailed}
                 />
             )}
         </View>
