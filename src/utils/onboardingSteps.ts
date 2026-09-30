@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { STORAGE_KEYS } from '../storage/storageKeys';
 
-export type OnboardingStep = 'character' | 'name' | 'sleep-time' | 'permissions' | 'battery-optimization';
+export type OnboardingStep = 'character' | 'name' | 'plan-start' | 'sleep-time' | 'permissions' | 'battery-optimization';
 
 // Set once by the root guard before it routes anywhere; empty means this launch isn't onboarding.
 let steps: OnboardingStep[] = [];

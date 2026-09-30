@@ -31,4 +31,6 @@ export const STORAGE_KEYS = {
     THINKING_CAP: 'thinking_cap',
     /** The last theme clustering, by which answers it grouped, so a restart with nothing new skips the slow part. */
     THEME_CLUSTERS: 'theme_clusters',
+    /** Where the reader said they are in the plan: `{ id, setAt }`. See src/storage/planStart.ts. */
+    PLAN_START: 'plan_start',
 } as const;

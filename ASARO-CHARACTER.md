@@ -22,11 +22,11 @@ His constant traits:
    (§3, *Watching is rationed*).
 2. **He takes it personally.** Being ignored is a slight against *him*, and he
    says so. *"You've ignored me all day. Fine."*
-3. **He's on your side, and it shows.** When you do the thing, he says so, about
-   the thing you did: *"Ehen. Look at you."* for a quarter of the plan,
-   *"Okay o. Today is handled."* for a saved entry. The full admission, *"But remember I care,
-   that's why I disturb,"* is still saved for last: the end of a flow, the end
-   of a day.
+3. **He's on your side, with tough love.** When you do the thing, he gives you
+   the credit, then brings you back down before it goes to your head: *"Not bad
+   for day one. Don't let it enter your head."*, *"Five questions, and you
+   didn't run away."* The full admission, *"But remember I care, that's why I
+   disturb,"* is still saved for last: the end of a flow, the end of a day.
 4. **He knows he's a lot.** He can laugh at himself (😅, `sheepish`): *"This is the
    last time I'm asking nicely. Tomorrow I'm coming earlier 😅"* That self-awareness is what makes
    the teasing lovable rather than tiring.
@@ -53,7 +53,7 @@ Every existing line. Read these before writing a new one.
 | Sleep time, battery | [`app/onboarding/sleep-time.tsx`](app/onboarding/sleep-time.tsx), [`app/battery-optimization.tsx`](app/battery-optimization.tsx) | Reactions to the hour; dozing off while the phone restricts him |
 | Practice entry | [`src/onboarding/practiceEntry.ts`](src/onboarding/practiceEntry.ts) | The first entry, done with him, beat by beat |
 | App walk | [`src/components/onboarding/AppWalk.tsx`](src/components/onboarding/AppWalk.tsx) | Showing the whole app, one element at a time |
-| Saved screen | [`src/data/savedNotes.ts`](src/data/savedNotes.ts) | His dry everyday approval: *"Noted. As usual."*, and once in a while the chant with their name |
+| Saved screen | [`src/data/savedNotes.ts`](src/data/savedNotes.ts) | His dry everyday approval: *"Noted. As usual."* |
 | Home titles | [`src/data/homeTitles.ts`](src/data/homeTitles.ts) | Short, knowing greetings: *"You again. Good."* |
 | Stats | [`app/stats.tsx`](app/stats.tsx) | *"I keep receipts."* The one screen where watching is literal |
 | The land | [`src/land/landTone.ts`](src/land/landTone.ts), [`src/land/fallowTone.ts`](src/land/fallowTone.ts) | Understatement: *"All of it bush. We start somewhere."* |
@@ -68,6 +68,15 @@ Every existing line. Read these before writing a new one.
 o"*, *"A whole week o"*). `abi` (*"you're forming busy abi?"*). `Ehen` / `Ehn
 ehn`. `Okay o`. Constructions like *"Make it make sense"*, *"You're a strong
 person o"*, *"I don't have energy to hide o"*. Never glossed, never explained.
+
+**He talks, he doesn't write.** Full spoken sentences, the way the
+notifications go: *"Go and read that Bible"*, *"Me, I'm still here waiting
+for you o"*. Short is fine (*"Noted. As usual."*); a caption is not. No
+manual fragments (*"Your week."*, *"Genesis to Revelation, one reading a
+day."*), no British idiom (*"keeping you honest"*, *"now and then"*, *"once
+you've dug in"*), no neat aphorism (*"Not dead. Just thirsty."*). Nigerian
+English where it falls naturally: *"what you said you'll do"*, *"your own"*,
+*"I don't just talk anyhow"*, *"come and see"*, *"Oya"*.
 
 **He asks more than he tells.** Roughly half the corpus is interrogative, and
 the questions are rhetorical pressure, not enquiry: *"So we're playing hide and
@@ -96,11 +105,6 @@ short, knowing understatement: *"Noted. As usual."*, *"Lying fallow. Very
 restful"*, *"Fine. I have no complaints today."* Drama is for the few surfaces
 that earn it (§5); everywhere else he is an accent.
 
-**He lands on the last words.** The smoothness is rhythm: a line sets up, then
-turns in its final few words. *"Quiet, not gone."*, *"Not dead. Just
-thirsty."*, *"Honest beats full."* If the last words could be cut and nothing
-is lost, the line hasn't landed yet.
-
 ### Warmth
 
 The teasing is sweet only because it is obviously love. Five habits keep it so:
@@ -108,13 +112,15 @@ The teasing is sweet only because it is obviously love. Five habits keep it so:
 - **Tease the obstacle, not the person.** The phone, being busy, the excuses:
   *"You're scrolling on your phone but you can't read your Bible? Make it make
   sense."* The joke is never that you are lazy or bad.
-- **Praise what they did, specifically.** A quarter of the plan earns *"Ehen.
-  Look at you."*; a tick earns *"Look at you, keeping your word."*; a quoted
-  verse, *"Look at you, quoting scripture."* Praise that names the thing
-  lands; generic praise is filler (see *He never*).
-- **He knows he's a lot.** *"Tomorrow I'm coming earlier 😅"*, *"Settings.
-  Where people come to try and quiet me."*, *"Last part, I promise."* In a
-  long flow, saying the length out loud is also what keeps it bearable.
+- **Tough love, not hype.** Credit first, for what they actually did, then the
+  pull-back that keeps their feet on the ground: *"Ticked. Tomorrow, same
+  thing."*, *"Not bad for day one. Don't let it enter your head."* The
+  pull-back raises the bar; it never predicts they'll fail (*"you'll forget by
+  Friday"* is judging them). No gushing: if he is proud, it comes out sideways.
+  And only when they have done something, a few times in a flow.
+- **He knows he's a lot.** *"Tomorrow I'm coming earlier 😅"*, *"Last part, I
+  promise."* In a long flow, saying the length out loud is also what keeps it
+  bearable.
 - **Sincere, rarely, and it counts.** A teasing friend who is suddenly plain
   for one line is what people remember. Use it for promises (what a group
   can see), for something the reader gave (the answer they brought), and at
@@ -123,6 +129,26 @@ The teasing is sweet only because it is obviously love. Five habits keep it so:
   once, at the end of the first run, plainly: *"And I'm on your side o. That's
   why I disturb."* The relationship is something to come back to, not only
   something checking up.
+
+### Plain lines, and how often he jokes
+
+Most of what he says is plain: no joke, no tease. That is normal, and plain
+still sounds like him:
+
+- **He talks like family.** He tells you; he doesn't ask. *"Go and read it"*,
+  *"Come and tap"*. Never *"please feel free to"* or *"you can tap here to"*.
+- **Nigerian English is how he talks, not a costume.** *"These ones"*, *"tap
+  any one"*, *"it's the same thing"*, *"come and see"*. *Oya* and *ehen* are
+  ordinary words to him (come on, there you go), not punchlines.
+- **He's in it with you.** *"I'll bring it here"*, *"we clear it and farm
+  it"*, *"let me show you"*. His app and his record, not a feature list.
+- **He's sure.** *"It waits for you here"*, not *"you may find it here"*.
+- **He's short.** One thought a sentence.
+
+**A flourish now and then, never two in a row.** Nobody talks in jabs back to
+back. A jab, a tease or a bit of drama goes one to a line at most, and the
+next line is plain. Showing someone round the app, he is mostly plain, with a
+flourish every few stops where something prompts it.
 
 ### Watching is rationed
 
@@ -134,13 +160,6 @@ where they land hardest.** The first run has four: the quarrel's *"I'm the one
 who keeps receipts"*, the check's *"you know who is watching"*, Stats' *"I keep
 receipts"*, and the send-off's *"Either way, I'll know."* Everywhere else, use
 his other traits.
-
-**Applause doesn't count.** *"I see you"* said to someone who just did the
-thing is the praise sense, not the watching one: his signature turned into
-applause. The saved screen's *"A for Apple. T for Tolu! I see you."* is that,
-with the nursery-school chant every Nigerian child knows, jumping straight to
-their name. It is the one loud line in a dry rotation, and comes round about
-one save in eleven.
 
 ### He never
 - Uses corporate-cheerful filler — "Let's get started!", "You've got this!", "Great job!", "That's it!"
@@ -290,8 +309,8 @@ So the question to ask of a new surface is never "which feature is this", it is
 **"is the reader meeting this for the first time, or avoiding it?"**
 
 **The first run is all first meetings, so it is delight.** He is showing
-someone round what he keeps (*"Your record. This one is an example so you can
-see it full. Yours starts today."*), not holding them to it. The one pressure beat is the
+someone round what he keeps (*"This is your record. This one is just an example, so
+you can see it full. Your own starts today."*), not holding them to it. The one pressure beat is the
 permission ask, and even that ends on a wink.
 
 ### Where delight may not go
@@ -373,8 +392,11 @@ bubble in the practice entry and the walk (48). This is the one exception.
 **After that, keep it scarce.** The face is an event, and a face on every
 screen is a mascot, which is a different and worse product. The steady places
 are: the welcome-back card and the empty states (74), the Stats hero (64), his
-row in Settings (52), alerts that speak as him (96), Themes (74), and the
-marker on the land. A new place needs a reason as good as those.
+row in Settings (52), alerts that speak as him (96), and Themes (74). A new
+place needs a reason as good as those.
+
+The launcher icon carries his eyes alone, with no skin, lashes or mouth, so it
+belongs to neither sibling (`design/app-logo.html`).
 
 Sizes: **124** the check · **120** the siblings · **74** onboarding pages,
 welcome-back, empty states · **48** coach bubble · **24** floor (below 48px it
@@ -392,8 +414,10 @@ crops to the face and drops the hair, ears and nose, which would only be mud).
 6. Menace present, undercut absent? → **add the wink or drop the menace**
 7. Emoji outside 😌 😏 👀 😂 😅, or any emoji beside his face? → **drop it**
 8. Is the joke on the obstacle (the phone, being busy) or on the person? → **the obstacle**
-9. Is the praise about what they actually did? Generic → **rewrite**
+9. Is the praise tough love: real credit for what they did, then a pull-back? Hype or gushing → **rewrite**
 10. Has this flow already had its three or four watching moments? → **use another trait**
-11. Does the face appear with it? Reassurance → `mood="sincere"`; everything else → the knowing default (§7)
-12. Read it aloud. Does it sound like the same person as *"Evening o. The whole
+11. Was the line before it a flourish too? → **make one of them plain**
+12. A plain line: could any app have said it? → **say it like him** (§3, *Plain lines*)
+13. Does the face appear with it? Reassurance → `mood="sincere"`; everything else → the knowing default (§7)
+14. Read it aloud. Does it sound like the same person as *"Evening o. The whole
    day has passed and you still haven't read? What's going on?"*

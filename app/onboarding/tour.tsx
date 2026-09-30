@@ -65,7 +65,7 @@ export default function TourScreen() {
     const last = page === PAGES.length - 1;
     const current = PAGES[page];
     const Visual = TOUR_VISUALS[current.visual];
-    const done = () => router.push('/onboarding/sleep-time');
+    const done = () => router.push('/onboarding/plan-start');
     // The count resets with the page, in one update, so a new page never opens unlocked.
     const next = () => {
         if (page + 1 > unlocked) setLeft(WAIT_S);

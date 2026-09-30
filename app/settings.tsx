@@ -11,7 +11,8 @@ import {
 import { useAlert } from '@/src/context/AlertContext';
 import { Spacing } from '@/src/theme/spacing';
 import { setupDailyNotifications, hasNotificationPermissions, openBatteryOptimizationSettings, openNotificationSettings, getNotificationDiagnostics, readSleepTime, saveSleepTime, formatSleepTimeValue, parseSleepTime } from '@/src/utils/notifications';
-import { oemAutoStartLabel, openAutoStartSettings } from '@/src/utils/oemRestrictions';
+import { detectOemFamily, oemAutoStartLabel, openAutoStartSettings } from '@/src/utils/oemRestrictions';
+import { isPracticesWidgetPlaced, pinPracticesWidget } from '@/src/widget/refresh';
 import { exportJournalEntriesToJson, importJournalEntriesFromJson, getFirstEntryDate } from '@/src/data/database';
 import { STORAGE_KEYS } from '@/src/storage/storageKeys';
 import { setAsaroLook, useAsaroLook } from '@/src/storage/asaroLook';
@@ -22,7 +23,7 @@ import * as Sharing from 'expo-sharing';
 import { Stack, useRouter } from 'expo-router';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { AppState, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import {
     Bed,
@@ -30,6 +31,7 @@ import {
     ChevronLeft,
     Archive,
     Download,
+    LayoutGrid,
 } from 'lucide-react-native';
 import { chooseAvatar, myPhotoAt, removeAvatar, useAvatar } from '@/src/profile/avatar';
 import { useMyGroupIds } from '@/src/groups/hooks';
@@ -239,6 +241,14 @@ export default function Settings() {
      */
     const [readingSince, setReadingSince] = useState<string | null>(null);
     const [notificationsOn, setNotificationsOn] = useState<boolean | null>(null);
+    // Read again on return, since adding it happens on the home screen.
+    const [widgetPlaced, setWidgetPlaced] = useState(false);
+    useEffect(() => {
+        const check = () => { isPracticesWidgetPlaced().then(setWidgetPlaced); };
+        check();
+        const sub = AppState.addEventListener('change', state => { if (state === 'active') check(); });
+        return () => sub.remove();
+    }, []);
     const [showProfileEditor, setShowProfileEditor] = useState(false);
 
     const handleSaveName = useCallback(async (next: string) => {
@@ -314,6 +324,15 @@ export default function Settings() {
     // One answer, not a readout: the first thing actually silencing
     // reminders, with the door that fixes it. A vendor auto-start list can't
     // be read back, so on those phones it is the last thing to check.
+    const handleAddWidget = async () => {
+        if (await pinPracticesWidget()) return;
+        showAlert({
+            title: 'Add it from your home screen',
+            message: 'Press and hold an empty space on your home screen, tap Widgets, find Àṣàrò, and drag "Àṣàrò practices" onto the screen.',
+            buttons: [{ text: 'Okay', style: 'cancel' }],
+        });
+    };
+
     const handleDeliveryCheck = async () => {
         const close = { text: 'Close', style: 'cancel' as const };
         try {
@@ -345,6 +364,19 @@ export default function Settings() {
             // Nothing blocking, but nothing queued: put the schedule back.
             if (d.scheduledCount === 0) {
                 await setupDailyNotifications(false, { force: true });
+            }
+            /*
+             * HiOS freezes an app seconds after it runs and deletes its alarms;
+             * auto-start and battery settings don't stop it. A placed widget
+             * does, and it's the only thing found that does.
+             */
+            if (detectOemFamily() === 'transsion' && !(await isPracticesWidgetPlaced())) {
+                showAlert({
+                    title: 'Your phone is freezing Àṣàrò',
+                    message: 'Tecno, Infinix and itel phones freeze apps in the background and delete their reminders. What stops it is an Àṣàrò widget on your home screen. Add the practices widget and leave it there.',
+                    buttons: [{ text: 'Add the widget', onPress: () => { void handleAddWidget(); } }, close],
+                });
+                return;
             }
             if (d.needsAutoStart) {
                 showAlert({
@@ -662,6 +694,15 @@ export default function Settings() {
                         onPress={handleDeliveryCheck}
                         colors={colors}
                     />
+                    {Platform.OS === 'android' && (
+                        <SettingsItem
+                            label="Practices widget"
+                            value={widgetPlaced ? 'On your home screen' : 'Add'}
+                            icon={LayoutGrid}
+                            onPress={handleAddWidget}
+                            colors={colors}
+                        />
+                    )}
 
                     <UIText variant="label" style={styles.clothSectionLabel}>Your data</UIText>
                     <View ref={coachTarget('settings-backup')} collapsable={false}>

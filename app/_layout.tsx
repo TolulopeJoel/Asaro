@@ -16,6 +16,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import { AppState, DeviceEventEmitter, View } from 'react-native';
 import { startGroups } from '@/src/groups/publish';
+import { refreshPracticesWidget } from '@/src/widget/refresh';
 
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '@/src/theme/ThemeContext';
@@ -68,6 +69,7 @@ function StackNavigator() {
       <Stack.Screen name="onboarding/character" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="onboarding/name" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="onboarding/tour" options={{ headerShown: false, gestureEnabled: false }} />
+      <Stack.Screen name="onboarding/plan-start" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="onboarding/sleep-time" options={{ headerShown: false, gestureEnabled: false }} />
     </Stack>
   );
@@ -128,6 +130,8 @@ export default function RootLayout() {
         }
         setDbInitialized(true);
         startGroups();
+        // A day may have turned since the widget last drew; its boxes are today's again.
+        refreshPracticesWidget();
 
         channelReady.current = initializeNotificationChannel()
           .catch(error => console.error('Failed to create the notification channel:', error));
@@ -146,6 +150,7 @@ export default function RootLayout() {
           await setOnboardingSteps([
             ...(name ? [] : ['character' as const]),
             'name',
+            'plan-start',
             'sleep-time',
             ...(perms ? [] : ['permissions' as const]),
             ...(batteryOk ? [] : ['battery-optimization' as const]),
@@ -180,6 +185,8 @@ export default function RootLayout() {
   useEffect(() => {
     if (!dbInitialized) return;
     const subscription = AppState.addEventListener('change', (nextState) => {
+      // Leaving is when the widget catches up with anything done here: new practices, edits, archives.
+      if (nextState === 'background') refreshPracticesWidget();
       if (nextState !== 'active') return;
       // The app coming back is also the first moment we can notice that the OS
       // threw the schedule away while we were gone.
@@ -228,9 +235,9 @@ export default function RootLayout() {
         return;
       }
 
-      // 3. Sleep time, after the tour when it's being shown.
+      // 3. Sleep time, after the tour and where they've reached when those are being shown.
       if (!sleep) {
-        if (currentSegment !== 'onboarding' || (segments[1] !== 'tour' && segments[1] !== 'sleep-time')) {
+        if (currentSegment !== 'onboarding' || !['tour', 'plan-start', 'sleep-time'].includes(segments[1] as string)) {
           router.replace('/onboarding/sleep-time');
         }
         return;

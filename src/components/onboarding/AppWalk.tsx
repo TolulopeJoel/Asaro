@@ -30,6 +30,8 @@ import { endTour, setTourStop, useTour } from '../../onboarding/tour';
 import { setFirstRun } from '../../onboarding/firstRun';
 import { DEMO_GROUP_ID } from '../../onboarding/demo';
 import { PRACTICE_BOOK, PRACTICE_CHAPTERS } from '../../onboarding/practiceEntry';
+import { getPlanStart } from '../../storage/planStart';
+import { READING_PLAN_DATA } from '../../data/readingPlanData';
 import { Text, ThemedButton, type AsaroAction, type AsaroMood } from '../ui';
 import { CoachLine } from './CoachLine';
 
@@ -50,11 +52,12 @@ const part = (name: string, list: Stop[]): Stop[] => list.map(s => ({ ...s, part
 /**
  * @param other the sibling they didn't pick
  * @param handle the kind of name people give themselves online, for their gender
+ * @param reached whether they said they'd already started the plan, somewhere past Genesis 1–3
  */
-function stops(other: string, handle: string): Stop[] {
+function stops(other: string, handle: string, reached: boolean): Stop[] {
     return [
         ...part('Home', [
-            { target: 'reading', action: 'point', then: { got: true }, line: 'This is today’s reading, from the plan. Go and read it in your Bible first, not in between scrolling your phone o. When you finish, come and tap Begin reflection.' },
+            { target: 'reading', action: 'point', then: { got: true }, line: `${reached ? 'This is where you said you’ve reached.' : 'This is today’s reading, from the plan.'} Go and read it in your Bible first, not in between scrolling your phone o. When you finish, come and tap Begin reflection.` },
             { target: 'add', action: 'nod', then: { got: true }, line: 'You read something that doesn’t follow the plan? It’s allowed. Tap the + and write about it, any day.' },
             { target: 'home-today', action: 'point', then: { event: 'today-kept', hint: 'Tap the box' }, line: 'Remember what you said you’ll do? It waits for you here every day. Once you’ve done it, tap the box. Oya, I’m waiting.' },
             { target: 'home-today', action: 'thumbsUp', then: { got: true }, line: 'Ticked. Every tick waters its tree. Tomorrow, same thing. If you tick the wrong one, just tap it again.' },
@@ -246,7 +249,15 @@ export function AppWalk() {
     const pathname = usePathname();
     const look = useAsaroLook();
     const tour = useTour();
-    const all = useMemo(() => look === 'female' ? stops('brother', 'Prettygirl') : stops('sister', 'Handsomeboy'), [look]);
+    // Read once: it was answered in onboarding, well before the walk starts.
+    const [reached, setReached] = useState(false);
+    useEffect(() => {
+        getPlanStart().then(start => setReached(!!start && start.id !== READING_PLAN_DATA[0].id)).catch(() => { });
+    }, []);
+    const all = useMemo(
+        () => look === 'female' ? stops('brother', 'Prettygirl', reached) : stops('sister', 'Handsomeboy', reached),
+        [look, reached],
+    );
     const [index, setIndex] = useState(0);
     const [rect, setRect] = useState<Rect | null>(null);
     const [bubbleH, setBubbleH] = useState(BUBBLE_GUESS);

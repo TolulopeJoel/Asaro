@@ -47,7 +47,7 @@ const refs = (text: string) => (text.match(/\[\[.+?\]\]/g) ?? []).length;
 
 export const COACH = {
     chapter: [
-        { kind: 'tell', action: 'wave', line: 'Before you start, we do one together. It’s practice, nothing is saved, so relax. Today’s reading is Genesis 1–3, Reading 1 of the plan. I’ve already picked it for you.' },
+        { kind: 'tell', action: 'wave', line: 'Before you start, we do one together. It’s practice, nothing is saved, so relax. We’ll practise on Genesis 1–3, the first reading of the plan. I’ve already picked it for you.' },
         { kind: 'end', action: 'smug', line: 'Another day, read something else? Tap a chapter, or drag across a few. Only some verses? Turn on I read verses. For now, leave it on Genesis 1–3 and tap the button.' },
     ] as Beat[],
     /** One sequence per reflection page: the five questions, then notes. */

@@ -4,6 +4,7 @@ import { STORAGE_KEYS } from '../storage/storageKeys';
 import { withDatabase, withTransaction } from './db';
 import { attachActionItems } from './journalRepository';
 import { JournalEntry } from './types';
+import { getPlanStart, setPlanStart } from '../storage/planStart';
 
 /**
  * v5 nests each action item's completions under it and adds named themes, whose
@@ -159,6 +160,7 @@ export const exportJournalEntriesToJson = async (): Promise<string> => {
                 evidence: evidenceByObservation.get(id!) ?? [],
             })),
             grove,
+            planStart: await getPlanStart(),
         };
 
         return JSON.stringify(payload, null, 2);
@@ -419,8 +421,20 @@ export const importJournalEntriesFromJson = async (json: string): Promise<{
     });
 
     await importGrove(parsed.grove, actionIds);
+    await importPlanStart(parsed.planStart);
     return counts;
 };
+
+/** Where they said they are in the plan, unless this phone already has an answer of its own. */
+async function importPlanStart(saved: unknown): Promise<void> {
+    const start = saved as { id?: unknown; setAt?: unknown } | null | undefined;
+    if (typeof start?.id !== 'number' || typeof start.setAt !== 'string') return;
+    try {
+        if (!(await getPlanStart())) await setPlanStart(start.id, start.setAt);
+    } catch (error) {
+        console.error('Failed to restore the plan start:', error);
+    }
+}
 
 /** Each practice keeps its tree and its marked anniversaries; a tree this phone already gave stands. */
 async function importGrove(grove: Partial<BackupGrove> | undefined, actionIds: Map<number, number>): Promise<void> {

@@ -33,6 +33,7 @@ import { wateredNote } from '../data/wateredNotes';
 import { getTodayDateString } from '../utils/dateUtils';
 import { useLocalDay } from './useLocalDay';
 import { practiceChanged } from '../groups/publish';
+import { refreshPracticesWidget } from '../widget/refresh';
 
 const DAY_MS = 86_400_000;
 
@@ -207,6 +208,7 @@ export function useToday(enabled: boolean): Today {
                 return;
             }
             void practiceChanged(item.id!);
+            refreshPracticesWidget();
             try {
                 const moment = await momentOnKeep(item);
                 if (moment) momentsHere.current.set(item.id!, moment);
@@ -232,6 +234,7 @@ export function useToday(enabled: boolean): Today {
             if (moment?.key) await forgetMoment(moment.key).catch(() => { });
             await unmarkPracticeDone(item.id!).catch(() => { });
             void practiceChanged(item.id!);
+            refreshPracticesWidget();
             load();
         },
         [load, showKept],

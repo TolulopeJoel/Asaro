@@ -358,10 +358,18 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: PlanProgress)
         const completedSet = new Set(progressIds);
         setCompletedItems(completedSet);
         updateProgress(completedSet);
-        setNextId(position?.item.id ?? null);
+        const nextItem = position?.item;
+        const moved = !isInitialLoad && nextItem && nextItem.id !== shownNextId.current;
+        shownNextId.current = nextItem?.id ?? null;
+        setNextId(nextItem?.id ?? null);
 
-        if (isInitialLoad) {
-            const nextItem = position?.item;
+        // Opening, or coming back to a reading that moved while away (they changed where they are):
+        // open its group and land on it.
+        if (isInitialLoad || moved) {
+            if (moved) {
+                landed.current = false;
+                retries.current = 0;
+            }
             if (nextItem) {
                 const collapsed = new Set(PLAN_SECTIONS.filter(s => s !== nextItem.section));
                 setCollapsedSections(collapsed);
@@ -369,6 +377,7 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: PlanProgress)
             setIsInitialLoad(false);
         }
     }, [isInitialLoad, updateProgress]);
+    const shownNextId = useRef<number | null>(null);
 
     useFocusEffect(useCallback(() => { loadProgress(); }, [loadProgress]));
 
@@ -488,10 +497,27 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: PlanProgress)
         );
     }, [sectionData, collapsedSections, completedItems, queueIndexById, handleToggle, toggleSection]);
 
+    const changeWhereYouAre = useCallback(
+        () => router.push({ pathname: '/onboarding/plan-start', params: { change: '1' } }),
+        [router],
+    );
+
     const renderHeader = useCallback(() => {
-        if (progress > 0) return null;
+        const change = (
+            <ScalePressable
+                onPress={changeWhereYouAre}
+                hitSlop={Spacing.md}
+                accessibilityRole="button"
+                style={styles.changeStart}
+            >
+                <UIText variant="meta" tone="accent">Change where you are</UIText>
+            </ScalePressable>
+        );
+        if (progress > 0) return change;
 
         return (
+            <>
+            {change}
             <View
                 ref={coachTarget('plan-legend', { bottom: Spacing.md })}
                 collapsable={false}
@@ -510,8 +536,9 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: PlanProgress)
                     </UIText>
                 </View>
             </View>
+            </>
         );
-    }, [colors, progress]);
+    }, [colors, progress, changeWhereYouAre]);
 
     const renderFooter = useCallback(() => {
         const url = 'https://www.jw.org/en/library/series/more-topics/bible-reading-plan/';
@@ -855,6 +882,8 @@ const styles = StyleSheet.create({
         opacity: 0.45,
     },
     /** `.cl-panel` as a plan row: 18px, an 8px gap under it, markers at the head. */
+    /** Above the plan, on its own line, right-aligned like the rest of the list's small links. */
+    changeStart: { alignSelf: 'flex-end', marginBottom: Spacing.md },
     clothPlanRow: {
         flexDirection: 'row',
         alignItems: 'center',

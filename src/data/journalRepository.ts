@@ -44,7 +44,13 @@ export function planItemCoversBook(planBook: string, bookName: string): boolean 
 }
 
 /** An entry's passage, as far as the plan is concerned. */
-export interface EntryRange { book: string; start: number; end: number }
+export interface EntryRange {
+    book: string;
+    start: number;
+    end: number;
+    /** Written before the reader said where they are: it counts as written, but no longer says where they are. */
+    beforeStart?: boolean;
+}
 
 /**
  * The plan reading that comes up next, and the chapters of it still to write about.
@@ -53,7 +59,8 @@ export interface EntryRange { book: string; start: number; end: number }
  * who wrote on 1 John 1–3 is in 1 John, not back at Genesis. While that reading
  * isn't fully written about it stays up, narrowed to what's left (1 John 4–5);
  * once it is, the next reading after it that isn't done comes up. With no entry
- * in the plan, it's the first reading not done. Null when the plan is finished.
+ * in the plan, it's the first reading not done from where they said they are
+ * (`startId`), or from Genesis. Null when the plan is finished.
  *
  * `entries` newest first.
  */
@@ -61,6 +68,7 @@ export function planPosition(
     plan: readonly ReadingItem[],
     entries: readonly EntryRange[],
     ticked: ReadonlySet<number>,
+    startId?: number,
 ): { item: ReadingItem; chapters: string } | null {
     const written = new Map<string, Set<number>>();
     for (const entry of entries) {
@@ -92,6 +100,7 @@ export function planPosition(
     };
 
     for (const entry of entries) {
+        if (entry.beforeStart) continue;
         const touched = plan.filter(item => {
             if (!planItemCoversBook(item.book, entry.book)) return false;
             const range = planItemChapters(item.chapters);
@@ -106,7 +115,8 @@ export function planPosition(
         return next ? show(next) : null;
     }
 
-    const first = plan.find(item => !done(item));
+    const from = Math.max(0, plan.findIndex(item => item.id === startId));
+    const first = plan.slice(from).find(item => !done(item)) ?? plan.find(item => !done(item));
     return first ? show(first) : null;
 }
 

@@ -57,7 +57,30 @@
       ],
       "expo-font",
       "expo-web-browser",
-      "./plugins/withOnnxruntimePackage"
+      "./plugins/withOnnxruntimePackage",
+      [
+        "react-native-android-widget",
+        {
+          "fonts": [
+            "./node_modules/@expo-google-fonts/fraunces/700Bold/Fraunces_700Bold.ttf",
+            "./node_modules/@expo-google-fonts/work-sans/400Regular/WorkSans_400Regular.ttf",
+            "./node_modules/@expo-google-fonts/work-sans/600SemiBold/WorkSans_600SemiBold.ttf"
+          ],
+          "widgets": [
+            {
+              "name": "Practices",
+              "label": "Àṣàrò practices",
+              "description": "Tick today's practices from your home screen",
+              "minWidth": "250dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 3600000
+            }
+          ]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

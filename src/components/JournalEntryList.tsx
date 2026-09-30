@@ -42,6 +42,7 @@ import Animated from 'react-native-reanimated';
 import { Spacing } from '../theme/spacing';
 import { Asaro, Text, type AsaroAction } from './ui';
 import { practiceChanged } from '../groups/publish';
+import { refreshPracticesWidget } from '../widget/refresh';
 import { cancelStudyReminder, scheduleReminderNotification, studyReminderBody } from '../utils/notifications';
 
 type ViewMode = 'recent' | 'books' | 'bookDetail' | 'actions' | 'topics';
@@ -324,6 +325,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
                 if (current?.doneNow) await unmarkPracticeDone(item.id!);
                 else await markPracticeDone(item.id!);
                 void practiceChanged(item.id!);
+                refreshPracticesWidget();
             } else {
                 setActionsList(prev => prev.map(a => (a.id === item.id ? { ...a, is_completed: !item.is_completed } : a)));
                 await toggleActionItemCompletion(item.id!, !item.is_completed);
