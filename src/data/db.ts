@@ -39,10 +39,26 @@ function isLostConnection(error: any) {
 }
 
 /**
+ * Settles when the transaction holding the shared connection ends; null when none is open.
+ * Never rejects: waiting on it only means waiting for the connection to be free.
+ */
+let openTransaction: Promise<void> | null = null;
+
+/**
  * Runs `operation`, reopening once if the connection was lost. The reopen
  * bypasses expo-sqlite's cache, which would hand back the dead connection.
+ *
+ * It waits out an open transaction first. The connection is shared, so a
+ * statement run meanwhile would land inside somebody else's save, and be
+ * rolled back with it. Never call it from inside a `withTransaction`
+ * operation (use the `database` it hands you): it would wait for itself.
  */
 export const withDatabase = async <T>(operation: (database: SQLite.SQLiteDatabase) => Promise<T>): Promise<T> => {
+    while (openTransaction) await openTransaction;
+    return onConnection(operation);
+};
+
+async function onConnection<T>(operation: (database: SQLite.SQLiteDatabase) => Promise<T>): Promise<T> {
     const opening = getDb();
     try {
         return await operation(await opening);
@@ -55,7 +71,7 @@ export const withDatabase = async <T>(operation: (database: SQLite.SQLiteDatabas
         }
         return await operation(await getDb());
     }
-};
+}
 
 let transactions: Promise<unknown> = Promise.resolve();
 
@@ -65,18 +81,27 @@ let transactions: Promise<unknown> = Promise.resolve();
  * state. Never call it from inside another `withTransaction`: it would wait on itself.
  */
 export const withTransaction = <T>(operation: (database: SQLite.SQLiteDatabase) => Promise<T>): Promise<T> => {
-    const run = transactions.then(() => withDatabase(async database => {
-        await database.execAsync('BEGIN');
+    const run = transactions.then(async () => {
+        const body = onConnection(async database => {
+            await database.execAsync('BEGIN');
+            try {
+                const result = await operation(database);
+                await database.execAsync('COMMIT');
+                return result;
+            } catch (error) {
+                // A lost connection has already dropped the transaction.
+                await database.execAsync('ROLLBACK').catch(() => { });
+                throw error;
+            }
+        });
+        const held = body.then(() => { }, () => { });
+        openTransaction = held;
         try {
-            const result = await operation(database);
-            await database.execAsync('COMMIT');
-            return result;
-        } catch (error) {
-            // A lost connection has already dropped the transaction.
-            await database.execAsync('ROLLBACK').catch(() => { });
-            throw error;
+            return await body;
+        } finally {
+            if (openTransaction === held) openTransaction = null;
         }
-    }));
+    });
     transactions = run.catch(() => { });
     return run;
 };

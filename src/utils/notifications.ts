@@ -526,6 +526,22 @@ async function rebuildSchedule(startFromTomorrow: boolean, options: SetupNotific
     const todayKey = localDayKey(today);
     const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, dayStartMin);
 
+    /*
+     * Writing today's entry only ends today. When this launch armed a full
+     * schedule, the days after it are still right: drop what is left of
+     * today rather than cancelling and re-placing four weeks one call at a time.
+     */
+    if (startFromTomorrow && !options.force && hasArmedThisLaunch && looksFull) {
+      const todayPrefix = `${DAILY_ID_PREFIX}${todayKey}-`;
+      for (const request of daily) {
+        if (request.identifier.startsWith(todayPrefix)) {
+          await Notifications.cancelScheduledNotificationAsync(request.identifier);
+        }
+      }
+      await AsyncStorage.setItem(NOTIF_SKIP_DAY, todayKey);
+      return true;
+    }
+
     const skipToday = startFromTomorrow || (!options.includeToday && (
       await AsyncStorage.getItem(NOTIF_SKIP_DAY) === todayKey || await journalledSince(todayStart)
     ));

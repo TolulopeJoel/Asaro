@@ -223,6 +223,24 @@ export const retractUncoveredReadings = async (): Promise<number[]> => {
         );
         if (ticked.length === 0) return [];
 
+        // Every chapter written about, read once: the same rule as
+        // `checkRangeCovered`, without a query per ticked reading.
+        const rows = await database.getAllAsync<{ book_name: string; chapter_start: number; chapter_end: number | null }>(
+            `SELECT book_name, chapter_start, chapter_end FROM journal_entries WHERE chapter_start IS NOT NULL`
+        );
+        const written = new Map<string, Set<number>>();
+        for (const row of rows) {
+            const chapters = written.get(row.book_name) ?? new Set<number>();
+            for (let ch = row.chapter_start; ch <= (row.chapter_end ?? row.chapter_start); ch++) chapters.add(ch);
+            written.set(row.book_name, chapters);
+        }
+        const covers = (book: string, start: number, end: number) => {
+            const chapters = written.get(book);
+            if (!chapters) return false;
+            for (let ch = start; ch <= end; ch++) if (!chapters.has(ch)) return false;
+            return true;
+        };
+
         const byId = new Map(READING_PLAN_DATA.map(item => [item.id, item]));
         const dropped: number[] = [];
 
@@ -241,20 +259,15 @@ export const retractUncoveredReadings = async (): Promise<number[]> => {
             // A paired item ("Obadiah/Jonah") is covered if ANY of its books
             // covers the range — matching the joined string against a book
             // name unticks all eleven of them on the first run.
-            const books = item.book.split('/');
-            let covered = false;
-            for (const book of books) {
-                if (await checkRangeCovered(database, book.trim(), range.start, range.end)) {
-                    covered = true;
-                    break;
-                }
-            }
-
+            const covered = item.book.split('/').some(book => covers(book.trim(), range.start, range.end));
             if (!covered) dropped.push(item_id);
         }
 
-        for (const id of dropped) {
-            await database.runAsync(`DELETE FROM reading_progress WHERE item_id = ?`, [id]);
+        if (dropped.length > 0) {
+            await database.runAsync(
+                `DELETE FROM reading_progress WHERE item_id IN (${dropped.map(() => '?').join(',')})`,
+                dropped,
+            );
         }
         return dropped;
     });

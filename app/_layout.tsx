@@ -11,8 +11,9 @@ import {
   ensureNotificationsArmed
 } from '@/src/utils/notifications';
 import { Stack, useRouter, useSegments } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AppState, DeviceEventEmitter, View } from 'react-native';
 import { startGroups } from '@/src/groups/publish';
 
@@ -36,6 +37,12 @@ import {
   WorkSans_500Medium,
   WorkSans_600SemiBold,
 } from '@expo-google-fonts/work-sans';
+
+// Opening is one splash until the type and the journal are ready, not a splash and then spinners.
+SplashScreen.preventAutoHideAsync().catch(() => { });
+
+/** The splash never stays longer than this, whatever is still loading. */
+const SPLASH_MAX_MS = 5000;
 
 function StackNavigator() {
   const { colors } = useTheme();
@@ -92,6 +99,23 @@ export default function RootLayout() {
   const router = useRouter();
   const segments = useSegments();
 
+  const appReady = (fontsLoaded || !!fontError) && (dbInitialized || dbError);
+  useEffect(() => {
+    if (appReady) SplashScreen.hideAsync().catch(() => { });
+  }, [appReady]);
+  useEffect(() => {
+    const cap = setTimeout(() => SplashScreen.hideAsync().catch(() => { }), SPLASH_MAX_MS);
+    return () => clearTimeout(cap);
+  }, []);
+
+  // Arming reminders needs the channel; nothing else at startup does, so only arming waits for it.
+  const channelReady = useRef<Promise<unknown>>(Promise.resolve());
+  const armNotifications = () => {
+    channelReady.current
+      .then(() => ensureNotificationsArmed())
+      .catch(error => console.error('Failed to arm notifications:', error));
+  };
+
   // 1. One-time initialisation
   useEffect(() => {
     const init = async () => {
@@ -105,7 +129,8 @@ export default function RootLayout() {
         setDbInitialized(true);
         startGroups();
 
-        await initializeNotificationChannel();
+        channelReady.current = initializeNotificationChannel()
+          .catch(error => console.error('Failed to create the notification channel:', error));
 
         // Load all four requirement values in parallel — they're independent.
         const [name, sleep, perms, batteryOk, resumed] = await Promise.all([
@@ -140,9 +165,7 @@ export default function RootLayout() {
          * user who never satisfies the battery step still deserves reminders.
          * Not awaited — it must never hold up the splash.
          */
-        ensureNotificationsArmed().catch(error =>
-          console.error('Failed to arm notifications:', error)
-        );
+        armNotifications();
 
       } catch (error) {
         console.error('Initialization error:', error);
@@ -160,9 +183,7 @@ export default function RootLayout() {
       if (nextState !== 'active') return;
       // The app coming back is also the first moment we can notice that the OS
       // threw the schedule away while we were gone.
-      ensureNotificationsArmed().catch(error =>
-        console.error('Failed to arm notifications:', error)
-      );
+      armNotifications();
     });
     return () => subscription.remove();
   }, [dbInitialized]);
@@ -258,9 +279,7 @@ export default function RootLayout() {
       if (isOnboarding) {
         router.replace('/');
       }
-      ensureNotificationsArmed().catch(error =>
-        console.error('Failed to arm notifications:', error)
-      );
+      armNotifications();
     };
 
     checkRequirements();
