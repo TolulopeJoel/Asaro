@@ -5,6 +5,7 @@ import {
     TextInput,
     ScrollView,
 } from 'react-native';
+import { MAX_FONT_SCALE } from '@/src/theme/typography';
 import { useAuth } from '@/src/context/AuthContext';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { useAlert } from '@/src/context/AlertContext';
@@ -100,6 +101,7 @@ export default function JoinGroupScreen() {
                     <View>
                         <Text variant="label" style={styles.clothFieldLabel}>Group code</Text>
                         <TextInput
+                            maxFontSizeMultiplier={MAX_FONT_SCALE}
                             style={[
                                 styles.clothInput,
                                 textStyle(themeStyle, 'headline'),

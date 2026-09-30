@@ -6,6 +6,7 @@ import { Tabs, useRouter } from 'expo-router';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { useRef } from 'react';
 import { Spacing } from '@/src/theme/spacing';
+import { ONE_LINE } from '@/src/theme/typography';
 import { coachTarget } from '@/src/onboarding/coachTargets';
 
 export default function TabLayout() {
@@ -99,6 +100,7 @@ export default function TabLayout() {
                                       */}
                                     <Text
                                         variant="tab"
+                                        {...ONE_LINE}
                                         style={{ color: shouldHighlight ? colors.tabLabelActive : colors.tabLabel }}
                                     >
                                         {label}

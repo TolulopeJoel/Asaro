@@ -9,6 +9,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { MAX_FONT_SCALE } from '../theme/typography';
 import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
 import { ALL_BIBLE_BOOKS, BibleBook } from '../data/bibleBooks';
@@ -21,7 +22,7 @@ const CHIP_THRESHOLD = 30;
 /** The band follows the text's own gutter. */
 const PICKER_GUTTER_CLOTH = Spacing.layout.screenPadding;
 
-type Phase =
+export type PickerPhase =
     | 'book'
     | 'chapter'
     | 'suffix'
@@ -30,6 +31,7 @@ type Phase =
     | 'range-type'
     | 'end-chapter'
     | 'end-verse';
+type Phase = PickerPhase;
 
 interface BibleReferencePickerProps {
     visible: boolean;
@@ -39,6 +41,8 @@ interface BibleReferencePickerProps {
     onDismiss: () => void;
     onInteraction?: () => void;
     floating?: boolean;
+    /** The step the strip is on, or null once it closes: the practice entry's coach follows it. */
+    onPhaseChange?: (phase: PickerPhase | null) => void;
 }
 
 // ── Sub-components defined OUTSIDE BibleReferencePicker ───────────────────
@@ -114,6 +118,7 @@ const LiveNumberInput = ({
     return (
     <View style={styles.inputWrapper}>
         <TextInput
+            maxFontSizeMultiplier={MAX_FONT_SCALE}
             ref={inputRef}
             style={[styles.numberInput, textStyle(themeStyle, 'cell'), { color: colors.accent, borderColor: colors.accent }]}
             placeholder={placeholder}
@@ -238,6 +243,7 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
     onDismiss,
     onInteraction,
     floating = false,
+    onPhaseChange,
 }) => {
     const { colors } = useTheme();
 
@@ -276,6 +282,10 @@ export const BibleReferencePicker: React.FC<BibleReferencePickerProps> = ({
             setTimeout(() => { resetState(); fadeAnim.setValue(1); }, 200);
         }
     }, [visible, slideAnim, fadeAnim]);
+
+    useEffect(() => {
+        onPhaseChange?.(visible ? phase : null);
+    }, [visible, phase, onPhaseChange]);
 
     const filteredBooks = useMemo(() => {
         if (!query.trim()) return ALL_BIBLE_BOOKS;

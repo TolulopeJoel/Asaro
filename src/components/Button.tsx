@@ -10,7 +10,7 @@ import {
 import { LucideIcon } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
-import { Typography } from '../theme/typography';
+import { Typography, MAX_FONT_SCALE } from '../theme/typography';
 import { ScalePressable } from './ScalePressable';
 import { BouncingDots } from './BouncingDots';
 import { textStyle } from './ui/Text';
@@ -193,7 +193,7 @@ export const Button: React.FC<ButtonProps> = ({
                             })}
                         </View>
                     )}
-                    {label ? <Text style={combinedLabelStyle}>{label}</Text> : children}
+                    {label ? <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={combinedLabelStyle}>{label}</Text> : children}
                     {icon && iconPosition === 'right' && (
                         <View style={styles.rightIcon}>
                             {React.createElement(icon, {

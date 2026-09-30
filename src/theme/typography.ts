@@ -17,6 +17,16 @@ import { Platform } from 'react-native';
  * simulator's fallback chain is more forgiving than a real handset's.
  */
 
+/**
+ * How far the phone's text size setting may grow the app's type. Past this,
+ * on the largest settings, a question and its buttons filled the screen and
+ * the keyboard covered the answer being typed. Set on every Text and TextInput.
+ */
+export const MAX_FONT_SCALE = 1.3;
+
+/** For a label in a slot of fixed width (a tab, a button): shrink a little rather than wrap. */
+export const ONE_LINE = { numberOfLines: 1, adjustsFontSizeToFit: true, minimumFontScale: 0.7 } as const;
+
 export const FontFamily = {
     // Cloth
     display: 'Fraunces_700Bold',

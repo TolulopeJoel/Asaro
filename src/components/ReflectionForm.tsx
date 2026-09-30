@@ -23,6 +23,7 @@ import { Text as UIText, ThemedButton } from './ui';
 import { ClothMark } from './ui/Cloth';
 import { REFLECTION_QUESTIONS, ReflectionQuestion, isAnswered } from '../data/questions';
 import { useFootPadding } from '../hooks/useScreenInsets';
+import { useKeyboardShown } from './KeyboardSafe';
 
 export interface ReflectionAnswers {
   reflection1: string;
@@ -290,6 +291,9 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
 
   const gutter = Spacing.layout.screenPadding;
   const footPadding = useFootPadding();
+  // While typing, only the question, the answer and the buttons stay: on a small
+  // phone or large text, the rest left the answer no room above the keyboard.
+  const typingNow = useKeyboardShown();
 
   return (
     <View style={styles.container}>
@@ -311,13 +315,13 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
       {/* The practice entry's coach sits up here, where the keyboard can't cover it. */}
       {coach && <View style={[styles.coach, { paddingHorizontal: gutter }]}>{coach(page, answers)}</View>}
 
-      <View style={[styles.body, { paddingHorizontal: gutter }]}>
+      <View style={[styles.body, typingNow && styles.bodyTyping, { paddingHorizontal: gutter }]}>
         {/* ── the step you're on ─────────────────────────────────────────── */}
-        {isNotes ? null : (
+        {isNotes || typingNow ? null : (
           <UIText variant="label">{`Question ${page + 1} of ${REFLECTION_QUESTIONS.length}`}</UIText>
         )}
 
-        <UIText variant={isNotes ? 'display' : 'title'} style={styles.question}>
+        <UIText variant={isNotes ? 'display' : 'title'} style={typingNow ? styles.questionTyping : styles.question}>
           {isNotes ? 'Anything else?' : current.question}
         </UIText>
 
@@ -403,7 +407,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
         {/* The woven strip fills as you go — the motif doing a job rather
           * than decorating. Fills by `answeredCount`, not `page`: paging past a
           * skipped question should not read as ground covered. */}
-        <View
+        {!typingNow && <View
           style={[styles.clothProgress, { backgroundColor: colors.border }]}
           onLayout={e => setTrackWidth(e.nativeEvent.layout.width)}
         >
@@ -420,12 +424,12 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
               <ClothMark />
             </View>
           </View>
-        </View>
+        </View>}
       </View>
 
       {/* ── the two things you can do next ───────────────────────────────── */}
       {!disabled && (
-        <View style={[styles.footer, { paddingHorizontal: gutter, paddingBottom: footPadding }]}>
+        <View style={[styles.footer, typingNow && styles.footerTyping, { paddingHorizontal: gutter, paddingBottom: typingNow ? Spacing.md : footPadding }]}>
           <View style={styles.footerButtons}>
             {/* `block` as well as the flex: the flex sizes ThemedButton's
                 wrapper, `block` is what makes the button inside fill it. */}
@@ -456,7 +460,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
               />
             )}
           </View>
-          {onDiscard && (
+          {onDiscard && !typingNow && (
             <ScalePressable onPress={leaveTo(onDiscard)} style={styles.discard}>
               <UIText variant="meta" tone="tertiary">Discard draft</UIText>
             </ScalePressable>
@@ -489,7 +493,10 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.xl + 2,
   },
   question: { marginVertical: Spacing.xl },
-  answer: { flex: 1 },
+  questionTyping: { marginTop: 0, marginBottom: Spacing.md },
+  bodyTyping: { paddingTop: Spacing.md },
+  // Three ruled lines at least, so what's being typed always shows.
+  answer: { flex: 1, minHeight: 28 * 3 + Spacing.lg * 2 },
 
   /** One 10px band that fills as you go. */
   clothProgress: { height: 10, marginTop: Spacing.layout.cardPadding, overflow: 'hidden' },
@@ -499,6 +506,7 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.xl - 4,
     gap: Spacing.md,
   },
+  footerTyping: { paddingTop: Spacing.md },
   footerButtons: {
     flexDirection: 'row',
     gap: 10,

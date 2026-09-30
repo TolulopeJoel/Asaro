@@ -9,7 +9,7 @@ import { useRouter } from 'expo-router';
 
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
-import { Typography } from '@/src/theme/typography';
+import { Typography, MAX_FONT_SCALE } from '@/src/theme/typography';
 import { Asaro, Hero, Screen, Text, ThemedButton } from '@/src/components/ui';
 import { onboardingStepLabel } from '@/src/utils/onboardingSteps';
 import { useAsaroLook } from '@/src/storage/asaroLook';
@@ -73,6 +73,7 @@ export default function NameScreen() {
                             <Text variant="label" tone="secondary">What do your friends call you?</Text>
                             <View style={[styles.inputContainer, { backgroundColor: colors.backgroundSubtle }]}>
                                 <TextInput
+                                    maxFontSizeMultiplier={MAX_FONT_SCALE}
                                     style={[styles.input, { color: colors.textPrimary }]}
                                     placeholder="Your name"
                                     placeholderTextColor={colors.textMuted}

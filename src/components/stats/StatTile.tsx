@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { useTheme } from '../../theme/ThemeContext';
 import { Spacing } from '../../theme/spacing';
+import { ONE_LINE } from '../../theme/typography';
 import { Text } from '../ui';
 
 /**
@@ -19,7 +20,7 @@ export function StatTile({ value, label, accent = false }: {
 
     return (
         <View style={[styles.tile, { backgroundColor: colors.backgroundSubtle, borderBottomColor: colors.border }]}>
-            <Text variant="hero" tone={accent ? 'accent' : 'primary'}>{value.toLocaleString('en-GB')}</Text>
+            <Text variant="hero" tone={accent ? 'accent' : 'primary'} {...ONE_LINE}>{value.toLocaleString('en-GB')}</Text>
             <Text variant="caption" tone="secondary" style={styles.label}>{label}</Text>
         </View>
     );

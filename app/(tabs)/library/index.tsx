@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useState, useRef, useEffect } from 'react';
 import { StyleSheet, View, FlatList, TouchableOpacity, Platform, LayoutAnimation, TextInput } from 'react-native';
+import { MAX_FONT_SCALE } from '@/src/theme/typography';
 import {
     Clock,
     Library,
@@ -643,6 +644,7 @@ export default function LibraryScreen() {
         <>
             <View ref={coachTarget('library-search')} collapsable={false} style={styles.walkFill}>
             <TextInput
+                maxFontSizeMultiplier={MAX_FONT_SCALE}
                 style={[
                     styles.searchInput,
                     textStyle(themeStyle, 'body'),

@@ -518,7 +518,18 @@ export default function Index() {
                         onResumeDraft={() =>
                             router.push({ pathname: '/addEntry', params: { resuming: 'true' } })
                         }
-                        onAddEntry={() => router.push('/addEntry')}
+                        onAddEntry={draft ? () => showAlert({
+                            title: 'Finish this one first',
+                            message: `Your entry on ${draft.passage} is still open. One at a time o.`,
+                            face: { action: 'point' },
+                            buttons: [
+                                { text: 'Not now', style: 'cancel' },
+                                {
+                                    text: 'Pick it up',
+                                    onPress: () => router.push({ pathname: '/addEntry', params: { resuming: 'true' } }),
+                                },
+                            ],
+                        }) : () => router.push('/addEntry')}
                     />
                 )}
             </ScrollView>

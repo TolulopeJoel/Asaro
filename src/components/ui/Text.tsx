@@ -12,7 +12,7 @@ import { Text as RNText, StyleSheet, TextProps as RNTextProps, TextStyle } from 
 
 import { ThemeStyle, useTheme } from '../../theme/ThemeContext';
 import { ThemeColors } from '../../theme/colors';
-import { FontFamily, TextVariant, Typography } from '../../theme/typography';
+import { FontFamily, MAX_FONT_SCALE, TextVariant, Typography } from '../../theme/typography';
 
 export interface TextProps extends RNTextProps {
     variant?: TextVariant;
@@ -219,6 +219,7 @@ export function Text({ variant = 'body', tone, style, children, ...rest }: TextP
     return (
         <RNText
             style={[VARIANTS[themeStyle][variant], { color: toneColor(resolved, colors) }, style]}
+            maxFontSizeMultiplier={MAX_FONT_SCALE}
             {...rest}
         >
             {children}

@@ -2,7 +2,7 @@
  * The walk around the whole app after the practice entry. The user does the
  * using: the screen dims except one real element, the ring lands on it, and
  * then the chosen sibling's bubble opens beside it, pointing at it. A stop that
- * explains moves on with Got it or a tap on the element; a stop that asks for
+ * explains moves on with Got it alone; a stop that asks for
  * something says so on the element and waits until it's done (the screen they
  * tapped into has opened, the tree has opened, the tick is in). Where a real
  * tap would change something real, it is only explained. Screens show example
@@ -11,7 +11,7 @@
  * skip, by decision.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { BackHandler, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { BackHandler, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, {
     Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withSequence, withSpring, withTiming,
 } from 'react-native-reanimated';
@@ -370,8 +370,8 @@ export function AppWalk() {
     const where = !stop.part ? null
         : inPart.length > 1 ? `${stop.part} · ${inPart.indexOf(stop) + 1} of ${inPart.length}` : stop.part;
 
-    // An explanation moves on with a tap on the element, same as Got it; a doing stop lets the tap
-    // through to the real element, and says so on it.
+    // An explanation moves on with Got it only: a tap on the element is held, so a stray tap
+    // never skips a line. A doing stop lets the tap through to the real element, and says so on it.
     const explains = 'got' in then || 'end' in then;
     const hint = 'event' in then ? then.hint : 'path' in then || 'shows' in then ? 'Tap it' : null;
     const block = () => true;
@@ -397,10 +397,8 @@ export function AppWalk() {
                     <View onStartShouldSetResponder={block} style={[styles.dim, { top: hole.y, left: 0, width: hole.x, height: hole.h }]} />
                     <View onStartShouldSetResponder={block} style={[styles.dim, { top: hole.y, left: hole.x + hole.w, right: 0, height: hole.h }]} />
                     {explains && (
-                        <Pressable
-                            onPress={shown && 'got' in then ? next : undefined}
-                            accessibilityRole="button"
-                            accessibilityLabel="Got it"
+                        <View
+                            onStartShouldSetResponder={block}
                             style={[styles.hole, { top: hole.y, left: hole.x, width: hole.w, height: hole.h }]}
                         />
                     )}

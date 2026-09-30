@@ -1,15 +1,15 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, Modal, ScrollView, StatusBar, StyleSheet, TextInput, View } from 'react-native';
+import { AppState, Modal, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { Button } from './Button';
 import { ScalePressable } from './ScalePressable';
 import { XCircle, X, Plus, Maximize } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
-import { Typography } from '../theme/typography';
+import { Typography, MAX_FONT_SCALE } from '../theme/typography';
 import { BibleReferencePicker } from './BibleReferencePicker';
 import { couldBeBookName, findAtTrigger, getBibleStyledParts, pickerQuery, resolveTypedReference, typedSince } from '../utils/bibleUtils';
 import { useRefPicker } from '../context/RefPickerContext';
-import { Screen, Text } from './ui';
+import { Screen, Text, ThemedButton } from './ui';
 import { KindChips } from './journal/KindChips';
 import { hasReason, isBlank } from '../data/actionValidation';
 import { KeyboardSafe } from './KeyboardSafe';
@@ -327,6 +327,7 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                             )}
                         </View>
                         <TextInput
+                            maxFontSizeMultiplier={MAX_FONT_SCALE}
                             inputAccessoryViewID="bible-picker"
                             ref={(ref) => { actionRefs.current[index] = ref; }}
                             style={[
@@ -393,6 +394,7 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                             )}
                         </View>
                         <TextInput
+                            maxFontSizeMultiplier={MAX_FONT_SCALE}
                             inputAccessoryViewID="bible-picker"
                             ref={(ref) => { motivationRefs.current[index] = ref; }}
                             style={[
@@ -478,25 +480,20 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                 statusBarTranslucent={true}
                 onRequestClose={handleSaveExpansion}
             >
-                <StatusBar hidden={true} />
-                <Screen edges={['top', 'bottom', 'left', 'right']} style={fullScreenStyles.container}>
+                <Screen edges={['top', 'bottom', 'left', 'right']}>
                     <KeyboardSafe
                         style={fullScreenStyles.keyboardView}>
-                        <View style={[fullScreenStyles.header, { borderBottomColor: colors.border }]}>
-                            <View style={fullScreenStyles.headerLeft}>
-                                {label && (
-                                    <Text style={[fullScreenStyles.label, { color: colors.textSecondary }]}>{label}</Text>
-                                )}
-                            </View>
-
-                            <View style={fullScreenStyles.headerRight}>
-                                <ScalePressable
-                                    onPress={handleSaveExpansion}
-                                    style={[fullScreenStyles.iconBtn, { backgroundColor: colors.backgroundSubtle }]}
-                                >
-                                    <X size={20} color={colors.textSecondary} />
-                                </ScalePressable>
-                            </View>
+                        {/* The question page's top row, as in TextArea's expanded view. */}
+                        <View style={fullScreenStyles.header}>
+                            <Text variant="title" style={fullScreenStyles.label}>{label}</Text>
+                            <ScalePressable
+                                onPress={handleSaveExpansion}
+                                accessibilityRole="button"
+                                accessibilityLabel="Close"
+                                hitSlop={Spacing.md}
+                            >
+                                <X size={19} color={colors.textTertiary} strokeWidth={1.9} />
+                            </ScalePressable>
                         </View>
 
                         <ScrollView
@@ -515,16 +512,11 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                                 icon={Plus}
                                 style={[styles.addButton, { marginBottom: Spacing.xl }]}
                             />
-
-                            <View style={fullScreenStyles.footer}>
-                                <ScalePressable
-                                    onPress={handleSaveExpansion}
-                                    style={[fullScreenStyles.saveButton, { backgroundColor: colors.accent }]}
-                                >
-                                    <Text style={[fullScreenStyles.saveText, { color: colors.buttonPrimaryText }]}>Save</Text>
-                                </ScalePressable>
-                            </View>
                         </ScrollView>
+
+                        <View style={fullScreenStyles.footer}>
+                            <ThemedButton label="Done" onPress={handleSaveExpansion} block />
+                        </View>
 
                         {/* Bible Reference Picker for Modal mode */}
                         <BibleReferencePicker
@@ -614,52 +606,25 @@ const styles = StyleSheet.create({
 });
 
 const fullScreenStyles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
     keyboardView: {
         flex: 1,
     },
     header: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingVertical: 10,
-        borderBottomWidth: StyleSheet.hairlineWidth,
+        alignItems: 'flex-start',
+        gap: Spacing.md,
+        paddingHorizontal: Spacing.layout.screenPadding,
+        paddingTop: Spacing.lg,
+        paddingBottom: Spacing.xl,
     },
-    headerLeft: { flex: 1 },
-    headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    iconBtn: {
-        width: 36, height: 36, borderRadius: Spacing.borderRadius.round,
-        justifyContent: 'center', alignItems: 'center',
-    },
-    labelContainer: {
-        paddingBottom: 24,
-    },
-    label: {
-        fontSize: 16,
-        fontWeight: '800',
-        letterSpacing: -0.5,
-    },
+    label: { flex: 1 },
     content: {
         flex: 1,
-        paddingHorizontal: 24,
-        paddingVertical: 12,
+        paddingHorizontal: Spacing.layout.screenPadding,
     },
     footer: {
-        gap: 8,
-        marginTop: Spacing.lg,
-        marginBottom: Spacing.xxl,
-    },
-    saveButton: {
-        paddingVertical: 14,
-        borderRadius: Spacing.borderRadius.lg,
-        width: '100%',
-        alignItems: 'center',
-    },
-    saveText: {
-        fontSize: 16,
-        fontWeight: '700',
+        paddingHorizontal: Spacing.layout.screenPadding,
+        paddingTop: Spacing.xl - 4,
+        paddingBottom: Spacing.lg,
     },
 });

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode, useCallback, useRef } from 'react';
 import { Platform, StyleSheet, KeyboardAvoidingView } from 'react-native';
-import { BibleReferencePicker } from '../components/BibleReferencePicker';
+import { BibleReferencePicker, type PickerPhase } from '../components/BibleReferencePicker';
 
 interface RefPickerConfig {
     query?: string;
@@ -17,6 +17,8 @@ interface RefPickerContextType {
     hidePicker: (owner?: number) => void;
     updateQuery: (query: string, owner?: number) => void;
     isVisible: boolean;
+    /** The step the open picker is on; null while it is closed. */
+    phase: PickerPhase | null;
 }
 
 const RefPickerContext = createContext<RefPickerContextType>({
@@ -24,6 +26,7 @@ const RefPickerContext = createContext<RefPickerContextType>({
     hidePicker: () => { },
     updateQuery: () => { },
     isVisible: false,
+    phase: null,
 });
 
 export const useRefPicker = () => useContext(RefPickerContext);
@@ -31,6 +34,7 @@ export const useRefPicker = () => useContext(RefPickerContext);
 export const RefPickerProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [config, setConfig] = useState<RefPickerConfig | null>(null);
     const [visible, setVisible] = useState(false);
+    const [phase, setPhase] = useState<PickerPhase | null>(null);
 
     const owner = useRef(0);
     const lastToken = useRef(0);
@@ -67,7 +71,7 @@ export const RefPickerProvider: React.FC<{ children: ReactNode }> = ({ children 
     }, [config]);
 
     return (
-        <RefPickerContext.Provider value={{ showPicker, hidePicker, updateQuery, isVisible: visible }}>
+        <RefPickerContext.Provider value={{ showPicker, hidePicker, updateQuery, isVisible: visible, phase }}>
             {children}
 
             {/*
@@ -95,6 +99,7 @@ export const RefPickerProvider: React.FC<{ children: ReactNode }> = ({ children 
                     onDismiss={handleDismiss}
                     onInteraction={config?.onInteraction}
                     floating={true}
+                    onPhaseChange={setPhase}
                 />
             </KeyboardAvoidingView>
         </RefPickerContext.Provider>

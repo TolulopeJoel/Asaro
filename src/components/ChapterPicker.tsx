@@ -12,6 +12,7 @@
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
+import { MAX_FONT_SCALE } from '../theme/typography';
 import Svg, { Path } from 'react-native-svg';
 
 import { useTheme } from '../theme/ThemeContext';
@@ -212,6 +213,7 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = React.memo(({
             {readVerses && (
                 <View style={styles.verseRow}>
                     <TextInput
+                        maxFontSizeMultiplier={MAX_FONT_SCALE}
                         style={[
                             styles.verseInput,
                             textStyle(themeStyle, 'subtitle'),
@@ -226,6 +228,7 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = React.memo(({
                     />
                     <Text variant="body" tone="tertiary">–</Text>
                     <TextInput
+                        maxFontSizeMultiplier={MAX_FONT_SCALE}
                         style={[
                             styles.verseInput,
                             textStyle(themeStyle, 'subtitle'),

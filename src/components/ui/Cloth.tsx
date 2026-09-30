@@ -150,23 +150,30 @@ export function ClothZigzag({ style, force = false }: { style?: ViewStyle; force
  * The woven mark — today, a selected chapter, a completed day.
  *
  * Fills its parent, so give the parent a size and `overflow: 'hidden'`.
+ * Measured, not `100%`, for ClothGround's reason: a chapter cell drawn before
+ * the grid is measured grows afterwards, and kept its weave in one corner.
  */
 export function ClothMark({ style }: { style?: ViewStyle }) {
     const { colors } = useTheme();
     const pid = `mark-${useId()}`;
+    const [size, setSize] = useState({ width: 0, height: 0 });
+    const onLayout = useCallback((e: LayoutChangeEvent) => {
+        const { width, height } = e.nativeEvent.layout;
+        setSize(prev => (prev.width === width && prev.height === height ? prev : { width, height }));
+    }, []);
 
     const { spacing, strokeWidth } = Motif.mark;
 
     return (
-        <View style={[StyleSheet.absoluteFill, style]} pointerEvents="none">
-            <Svg width="100%" height="100%">
+        <View style={[StyleSheet.absoluteFill, style]} pointerEvents="none" onLayout={onLayout}>
+            <Svg width={size.width} height={size.height}>
                 <Defs>
                     <Pattern id={pid} width={spacing} height={spacing} patternUnits="userSpaceOnUse">
                         <Line x1={0} y1={spacing} x2={spacing} y2={0} stroke={colors.markInk} strokeWidth={strokeWidth} />
                         <Line x1={0} y1={0} x2={spacing} y2={spacing} stroke={colors.markInk} strokeWidth={strokeWidth} />
                     </Pattern>
                 </Defs>
-                <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${pid})`} />
+                <Rect x="0" y="0" width={size.width} height={size.height} fill={`url(#${pid})`} />
             </Svg>
         </View>
     );

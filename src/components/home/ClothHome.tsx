@@ -155,18 +155,17 @@ export function ClothHome({
                         {greeting}
                     </Text>
                     <View style={styles.heroActions}>
-                        {/* Held, not hidden, while a draft is live. There is
-                          * one draft slot, so a fresh entry lets the autosave
-                          * write across it — and a control that dims says
-                          * finish this first, where one that vanishes teaches
-                          * nothing. */}
+                        {/* Dimmed while a draft is live: there is one draft
+                          * slot, and a fresh entry would write across it. It
+                          * still answers a tap, with why (`onAddEntry`), since
+                          * a button that does nothing reads as broken. */}
                         <View ref={coachTarget('add')} collapsable={false}>
                             <ScalePressable
                                 onPress={onAddEntry}
-                                disabled={!onAddEntry || !!draft}
+                                disabled={!onAddEntry}
                                 accessibilityRole="button"
                                 accessibilityLabel="Write an entry"
-                                accessibilityState={{ disabled: !!draft }}
+                                accessibilityHint={draft ? 'Your unfinished entry comes first' : undefined}
                                 hitSlop={Spacing.md}
                                 style={draft ? styles.held : undefined}
                             >

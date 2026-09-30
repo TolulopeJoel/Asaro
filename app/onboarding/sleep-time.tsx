@@ -9,7 +9,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { Spacing } from '@/src/theme/spacing';
-import { Typography } from '@/src/theme/typography';
+import { Typography, MAX_FONT_SCALE } from '@/src/theme/typography';
 import {
     Asaro, Hero, Screen, START_DELAY_MS, Text, ThemedButton, textStyle,
     type AsaroAction, type AsaroHandle,
@@ -201,6 +201,7 @@ export default function SleepTimeScreen() {
 
                         <View style={[styles.clothPanel, { backgroundColor: colors.backgroundSubtle }]}>
                             <TextInput
+                                maxFontSizeMultiplier={MAX_FONT_SCALE}
                                 style={[
                                     styles.clothTimeInput,
                                     textStyle(themeStyle, 'display'),
@@ -219,6 +220,7 @@ export default function SleepTimeScreen() {
                             />
                             <Text variant="display" tone="accent">:</Text>
                             <TextInput
+                                maxFontSizeMultiplier={MAX_FONT_SCALE}
                                 ref={minuteInputRef}
                                 style={[
                                     styles.clothTimeInput,

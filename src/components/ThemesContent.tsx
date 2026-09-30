@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, FlatList, StyleSheet, TextInput, View } from 'react-native';
+import { MAX_FONT_SCALE } from '../theme/typography';
 import { Check, X } from 'lucide-react-native';
 
 import { useTheme } from '../theme/ThemeContext';
@@ -508,6 +509,7 @@ export function ThemesContent({ onPatternCountChange, searchQuery = '' }: Themes
                         {naming ? (
                             <View style={styles.nameRow}>
                                 <TextInput
+                                    maxFontSizeMultiplier={MAX_FONT_SCALE}
                                     style={[
                                         styles.nameInput,
                                         textStyle(themeStyle, 'body'),

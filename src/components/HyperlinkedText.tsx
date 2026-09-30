@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Text, TextProps, StyleSheet, TextStyle } from 'react-native';
+import { MAX_FONT_SCALE } from '../theme/typography';
 import { useTheme } from '../theme/ThemeContext';
 import { openBibleReferenceFromTag } from '../utils/bibleUtils';
 
@@ -57,11 +58,12 @@ export const HyperlinkedText: React.FC<HyperlinkedTextProps> = ({
     if (!text) return null;
 
     return (
-        <Text style={style} {...props}>
+        <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={style} {...props}>
             {parts.map((part, index) => {
                 if (part.isLink) {
                     return (
                         <Text
+                            maxFontSizeMultiplier={MAX_FONT_SCALE}
                             key={index}
                             style={[
                                 styles.link,

@@ -33,6 +33,17 @@ export function useKeyboardInset(): number {
     return inset;
 }
 
+/** Whether the keyboard is up, however the window made room for it. */
+export function useKeyboardShown(): boolean {
+    const [shown, setShown] = useState(false);
+    useEffect(() => {
+        const show = Keyboard.addListener('keyboardDidShow', () => setShown(true));
+        const hide = Keyboard.addListener('keyboardDidHide', () => setShown(false));
+        return () => { show.remove(); hide.remove(); };
+    }, []);
+    return shown;
+}
+
 export function KeyboardSafe({ style, children }: { style?: StyleProp<ViewStyle>; children: React.ReactNode }) {
     const inset = useKeyboardInset();
     if (Platform.OS === 'ios') {

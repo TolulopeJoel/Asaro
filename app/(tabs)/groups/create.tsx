@@ -5,6 +5,7 @@
  */
 import React, { useRef, useState } from 'react';
 import { ScrollView, Share, StyleSheet, TextInput, View } from 'react-native';
+import { MAX_FONT_SCALE } from '@/src/theme/typography';
 import { useRouter } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 
@@ -183,6 +184,7 @@ export default function CreateGroupScreen() {
                 <View>
                     <Text variant="label" style={styles.label}>Name</Text>
                     <TextInput
+                        maxFontSizeMultiplier={MAX_FONT_SCALE}
                         style={input}
                         value={name}
                         onChangeText={setName}
@@ -196,6 +198,7 @@ export default function CreateGroupScreen() {
                 <View>
                     <Text variant="label" style={styles.label}>About it · optional</Text>
                     <TextInput
+                        maxFontSizeMultiplier={MAX_FONT_SCALE}
                         style={input}
                         value={about}
                         onChangeText={setAbout}

@@ -8,6 +8,7 @@ import { StyleSheet } from 'react-native';
 
 import type { ReflectionAnswers } from '../ReflectionForm';
 import type { Beat } from '../../onboarding/practiceEntry';
+import { useRefPicker } from '../../context/RefPickerContext';
 import { ScalePressable } from '../ScalePressable';
 import { Text } from '../ui';
 import { CoachLine } from './CoachLine';
@@ -21,13 +22,15 @@ export function CoachSequence({ beats, at, onAdvance, answers }: {
 }) {
     const beat = beats[Math.min(at, beats.length - 1)];
     const doneNow = beat.kind === 'do' && !!answers && beat.done(answers);
+    const { phase } = useRefPicker();
+    const line = (beat.kind === 'do' && phase && beat.picking?.[phase]) || beat.line;
 
     useEffect(() => {
         if (doneNow) onAdvance();
     }, [doneNow, onAdvance]);
 
     return (
-        <CoachLine line={beat.line} action={beat.action}>
+        <CoachLine line={line} action={beat.action}>
             {beat.kind === 'tell' && (
                 <ScalePressable onPress={onAdvance} accessibilityRole="button" style={styles.gotIt} hitSlop={8}>
                     <Text variant="label" tone="accent">Got it</Text>

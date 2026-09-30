@@ -3,13 +3,12 @@ import {
     Animated,
     AppState,
     Modal,
-    StatusBar,
     StyleSheet,
     Text,
     TextInput,
     View,
-    ScrollView
 } from 'react-native';
+import { MAX_FONT_SCALE } from '../theme/typography';
 import { Maximize, X } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { BibleReferencePicker } from './BibleReferencePicker';
@@ -17,7 +16,7 @@ import { getBibleStyledParts } from '../utils/bibleUtils';
 import { useBibleRefPicker } from '../hooks/useBibleRefPicker';
 import { ScalePressable } from './ScalePressable';
 import { Spacing } from '../theme/spacing';
-import { Screen, textStyle } from './ui';
+import { Screen, Text as UIText, ThemedButton, textStyle } from './ui';
 import Svg, { Defs, Line, Pattern, Rect } from 'react-native-svg';
 import { KeyboardSafe } from './KeyboardSafe';
 
@@ -79,10 +78,10 @@ const TextArea: React.FC<{
         const [isExpanded, setIsExpanded] = useState(false);
         const [tempValue, setTempValue] = useState('');
         const [, setContentHeight] = useState(0);
-        const [contentHeightModal, setContentHeightModal] = useState(0);
         const regularTextInputRef = useRef<TextInput>(null);
         const expandedTextInputRef = useRef<TextInput>(null);
         const ruleShift = useRef(new Animated.Value(0)).current;
+        const modalRuleShift = useRef(new Animated.Value(0)).current;
 
         // Inline (non-expanded) picker — uses the root RefPickerContext.
         const inlinePicker = useBibleRefPicker({
@@ -154,6 +153,7 @@ const TextArea: React.FC<{
                     ]}>
                         {bare && <RuledPaper color={colors.border} shift={ruleShift} />}
                         <TextInput
+                            maxFontSizeMultiplier={MAX_FONT_SCALE}
                             ref={regularTextInputRef}
                             inputAccessoryViewID="bible-picker"
                             style={[
@@ -177,12 +177,12 @@ const TextArea: React.FC<{
                                 : undefined}
                         >
                             {getBibleStyledParts(value).map((part, index) => (
-                                <Text key={index} style={part.isReference ? { color: colors.accent, fontWeight: '600' } : {}}>
+                                <Text maxFontSizeMultiplier={MAX_FONT_SCALE} key={index} style={part.isReference ? { color: colors.accent, fontWeight: '600' } : {}}>
                                     {part.isReference ? (
                                         <Text>
-                                            <Text style={{ color: colors.accent, opacity: 0.3, fontWeight: '400' }}>[[</Text>
+                                            <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={{ color: colors.accent, opacity: 0.3, fontWeight: '400' }}>[[</Text>
                                             {part.refContent}
-                                            <Text style={{ color: colors.accent, opacity: 0.3, fontWeight: '400' }}>]]</Text>
+                                            <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={{ color: colors.accent, opacity: 0.3, fontWeight: '400' }}>]]</Text>
                                         </Text>
                                     ) : (
                                         part.text
@@ -203,7 +203,9 @@ const TextArea: React.FC<{
                     </View>
                 </View>
 
-                {/* ── Full-screen expand modal ── */}
+                {/* ── Full-screen expand modal ──
+                  * The question page, bigger: the same top row, ruled band
+                  * and button the entry itself uses. */}
                 <Modal
                     visible={isExpanded}
                     animationType="slide"
@@ -211,75 +213,59 @@ const TextArea: React.FC<{
                     statusBarTranslucent={true}
                     onRequestClose={handleSave}
                 >
-                    <StatusBar hidden={true} />
-                    <Screen edges={['top', 'bottom', 'left', 'right']} style={fullScreenStyles.container}>
-                        <KeyboardSafe
-                            style={fullScreenStyles.keyboardView}>
-                            {/* ── Header ── */}
-                            <View style={[fullScreenStyles.header, { borderBottomColor: colors.border }]}>
-                                <View style={fullScreenStyles.headerLeft}>
-                                    {label && (
-                                        <Text style={[fullScreenStyles.label, { color: colors.textSecondary }]}>{label}</Text>
-                                    )}
-                                </View>
-
-                                <View style={fullScreenStyles.headerRight}>
-                                    <ScalePressable
-                                        onPress={handleSave}
-                                        style={[fullScreenStyles.iconBtn, { backgroundColor: colors.backgroundSubtle }]}
-                                    >
-                                        <X size={20} color={colors.textSecondary} />
-                                    </ScalePressable>
-                                </View>
+                    <Screen edges={['top', 'bottom', 'left', 'right']}>
+                        <KeyboardSafe style={fullScreenStyles.keyboardView}>
+                            <View style={fullScreenStyles.header}>
+                                <UIText variant="title" style={fullScreenStyles.label}>{label}</UIText>
+                                <ScalePressable
+                                    onPress={handleSave}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Close"
+                                    hitSlop={Spacing.md}
+                                >
+                                    <X size={19} color={colors.textTertiary} strokeWidth={1.9} />
+                                </ScalePressable>
                             </View>
 
-                            <View style={fullScreenStyles.content}>
-
-                                <ScrollView
-                                    style={{ flex: 1 }}
-                                    keyboardShouldPersistTaps="always"
-                                    showsVerticalScrollIndicator={false}
+                            <View style={[textAreaStyles.inputContainerBare, { backgroundColor: colors.backgroundSubtle }]}>
+                                <RuledPaper color={colors.border} shift={modalRuleShift} />
+                                <TextInput
+                                    maxFontSizeMultiplier={MAX_FONT_SCALE}
+                                    ref={expandedTextInputRef}
+                                    style={[
+                                        textAreaStyles.inputBare,
+                                        textStyle(themeStyle, 'body'),
+                                        { color: colors.text },
+                                    ]}
+                                    placeholder={placeholder || '...'}
+                                    placeholderTextColor={colors.textTertiary}
+                                    onChangeText={modalPicker.handleTextChange}
+                                    multiline={true}
+                                    textAlignVertical="top"
+                                    autoFocus={true}
+                                    blurOnSubmit={false}
+                                    scrollEnabled={true}
+                                    onScroll={e => modalRuleShift.setValue(-(e.nativeEvent.contentOffset.y % RULE_STEP))}
+                                    returnKeyType="default"
                                 >
-                                    <TextInput
-                                        ref={expandedTextInputRef}
-                                        style={[
-                                            fullScreenStyles.textInput,
-                                            textStyle(themeStyle, 'body'),
-                                            { color: colors.text, minHeight: Math.max(220, contentHeightModal) }
-                                        ]}
-                                        placeholder={placeholder || "..."}
-                                        placeholderTextColor={colors.textTertiary}
-                                        onChangeText={modalPicker.handleTextChange}
-                                        onContentSizeChange={(e) => setContentHeightModal(e.nativeEvent.contentSize.height)}
-                                        multiline={true}
-                                        textAlignVertical="top"
-                                        autoFocus={true}
-                                        blurOnSubmit={false}
-                                        scrollEnabled={false}
-                                        returnKeyType="default"
-                                    >
-                                        {getBibleStyledParts(tempValue).map((part, index) => (
-                                            <Text key={index} style={part.isReference ? { color: colors.accent, fontWeight: '600' } : {}}>
-                                                {part.isReference ? (
-                                                    <Text>
-                                                        <Text style={{ color: colors.accent, opacity: 0.3, fontWeight: '400' }}>[[</Text>
-                                                        {part.refContent}
-                                                        <Text style={{ color: colors.accent, opacity: 0.3, fontWeight: '400' }}>]]</Text>
-                                                    </Text>
-                                                ) : (
-                                                    part.text
-                                                )}
-                                            </Text>
-                                        ))}
-                                    </TextInput>
-                                </ScrollView>
+                                    {getBibleStyledParts(tempValue).map((part, index) => (
+                                        <Text maxFontSizeMultiplier={MAX_FONT_SCALE} key={index} style={part.isReference ? { color: colors.accent, fontWeight: '600' } : {}}>
+                                            {part.isReference ? (
+                                                <Text>
+                                                    <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={{ color: colors.accent, opacity: 0.3, fontWeight: '400' }}>[[</Text>
+                                                    {part.refContent}
+                                                    <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={{ color: colors.accent, opacity: 0.3, fontWeight: '400' }}>]]</Text>
+                                                </Text>
+                                            ) : (
+                                                part.text
+                                            )}
+                                        </Text>
+                                    ))}
+                                </TextInput>
+                            </View>
 
-                                <ScalePressable
-                                    style={[fullScreenStyles.saveButton, { backgroundColor: colors.accent }]}
-                                    onPress={handleSave}
-                                >
-                                    <Text style={[fullScreenStyles.saveText, { color: colors.buttonPrimaryText }]}>Save</Text>
-                                </ScalePressable>
+                            <View style={fullScreenStyles.footer}>
+                                <ThemedButton label="Done" onPress={handleSave} block />
                             </View>
 
                             <BibleReferencePicker {...modalPicker.pickerProps} />
@@ -347,53 +333,21 @@ const textAreaStyles = StyleSheet.create({
 });
 
 const fullScreenStyles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    keyboardView: {
-        flex: 1,
-        position: 'relative',
-    },
+    keyboardView: { flex: 1 },
+    /** ReflectionForm's top row and question, in one line: what you're answering, and the way out. */
     header: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingVertical: 10,
-        borderBottomWidth: StyleSheet.hairlineWidth,
+        alignItems: 'flex-start',
+        gap: Spacing.md,
+        paddingHorizontal: Spacing.layout.screenPadding,
+        paddingTop: Spacing.lg,
+        paddingBottom: Spacing.xl,
     },
-    headerLeft: { flex: 1 },
-    headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    iconBtn: {
-        width: 36, height: 36, borderRadius: Spacing.borderRadius.round,
-        justifyContent: 'center', alignItems: 'center',
-    },
-    saveButton: {
-        paddingVertical: 14,
-        borderRadius: Spacing.borderRadius.lg,
-        width: '100%',
-        alignItems: 'center',
-        marginTop: 8,
-    },
-    saveText: {
-        fontSize: 16,
-        fontWeight: '700',
-    },
-    label: {
-        fontSize: 16,
-        fontWeight: '800',
-        letterSpacing: -0.5,
-    },
-    content: {
-        flex: 1,
-        paddingHorizontal: 24,
-        paddingVertical: 12,
-        gap: 8,
-    },
-    textInput: {
-        backgroundColor: 'transparent',
-        textAlignVertical: 'top',
-        paddingTop: Spacing.sm,
+    label: { flex: 1 },
+    footer: {
+        paddingHorizontal: Spacing.layout.screenPadding,
+        paddingTop: Spacing.xl - 4,
+        paddingBottom: Spacing.lg,
     },
 });
 

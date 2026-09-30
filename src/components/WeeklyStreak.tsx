@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { MAX_FONT_SCALE } from '../theme/typography';
 import Animated, { FadeInDown, useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence } from 'react-native-reanimated';
 import { ScalePressable } from './ScalePressable';
 import { Spacing } from '../theme/spacing';
@@ -130,7 +131,7 @@ export const WeeklyStreak = React.memo(({
                             entering={hasAnimated.current ? undefined : FadeInDown.delay(index * 60).duration(400)}
                             style={styles.dayItem}
                         >
-                            <Text style={[
+                            <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[
                                 styles.dayName,
                                 {
                                     color: isFullWeek ? dayColor : (day.isToday ? colors.textPrimary : colors.textTertiary),
@@ -181,7 +182,7 @@ export const WeeklyStreak = React.memo(({
                                     {day.hasEntry ? (
                                         <View style={[styles.dot, { backgroundColor: colors.cardBackground }]} />
                                     ) : (
-                                        <Text style={[
+                                        <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={[
                                             styles.dayNumber,
                                             {
                                                 color: day.isToday

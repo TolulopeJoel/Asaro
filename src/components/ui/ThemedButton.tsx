@@ -12,6 +12,7 @@ import { ActivityIndicator, Animated, Pressable, StyleSheet, ViewStyle } from 'r
 
 import { useTheme } from '../../theme/ThemeContext';
 import { Spacing } from '../../theme/spacing';
+import { ONE_LINE } from '../../theme/typography';
 import { Text } from './Text';
 
 export interface ThemedButtonProps {
@@ -93,6 +94,7 @@ export function ThemedButton({
                     : (
                         <Text
                             variant="button"
+                            {...ONE_LINE}
                             style={{ color: inactive ? colors.textTertiary : labelColor }}
                         >
                             {label}

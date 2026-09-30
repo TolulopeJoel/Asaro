@@ -4,6 +4,7 @@
  */
 import type { AsaroAction } from '../theme/asaroRig';
 import type { ReflectionAnswers } from '../components/ReflectionForm';
+import type { PickerPhase } from '../components/BibleReferencePicker';
 
 export const PRACTICE_BOOK = 'Genesis';
 export const PRACTICE_CHAPTERS = { start: 1, end: 3 };
@@ -28,11 +29,15 @@ export const PRACTICE_ANSWERS: ReflectionAnswers = {
  * What the sibling says on a practice page, one beat at a time.
  * - `tell` explains something; the user taps Got it to hear the next.
  * - `do` asks them to do it; it moves on by itself once `done` is true.
+ *   `picking` swaps its line while the reference strip is open, one per step.
  * - `end` closes the page and unlocks its button.
  */
 export type Beat =
     | { kind: 'tell'; action?: AsaroAction; line: string }
-    | { kind: 'do'; action?: AsaroAction; line: string; done: (answers: ReflectionAnswers) => boolean }
+    | {
+        kind: 'do'; action?: AsaroAction; line: string; done: (answers: ReflectionAnswers) => boolean;
+        picking?: Partial<Record<PickerPhase, string>>;
+    }
     | { kind: 'end'; action?: AsaroAction; line: string };
 
 /** Also the face and line of a single remark, like the saved screen's. */
@@ -56,14 +61,24 @@ export const COACH = {
             { kind: 'end', action: 'thumbsUp', line: 'Not bad for day one. Don’t let it enter your head, there are four more. In a real entry, stopping halfway is fine: it waits for you on Home.' },
         ],
         [
-            { kind: 'tell', action: 'think', line: 'How does it fit the Bible’s big story? Watch the end of mine: I’m referencing a verse.' },
+            { kind: 'tell', action: 'think', line: 'How does it fit the Bible’s big story? Look at the end of mine: Genesis 3:15, in colour. That’s me referencing a verse.' },
             {
-                kind: 'do', action: 'point', line: 'You can reference one in any answer. At the end, type @ and start typing a book, like John. Then pick the chapter and the verse.',
+                kind: 'do', action: 'point', line: 'Your turn. Tap at the very end of the answer and type @. It’s with the symbols on your keyboard.',
                 // One added to mine, or their own answer with one in it, whatever verse. Mine still typing is a prefix of mine.
                 done: (a) => refs(a.reflection2) > refs(PRACTICE_ANSWERS.reflection2)
                     || (refs(a.reflection2) > 0 && !PRACTICE_ANSWERS.reflection2.startsWith(a.reflection2)),
+                picking: {
+                    book: 'See the strip above your keyboard? Tap the book. Type a few letters, like Jo, and John comes forward.',
+                    chapter: 'Now the chapter. Tap its number.',
+                    suffix: 'Tap Verse to point at one verse. Done stops at the whole chapter.',
+                    verse: 'Type the verse number, then tap the tick.',
+                    'verse-suffix': 'Now tap Done. To is for a few verses in a row, like 16 to 18.',
+                    'range-type': 'A few verses, abi? Pick where it stops: another chapter, or a verse in this one.',
+                    'end-chapter': 'Tap the chapter it stops on.',
+                    'end-verse': 'Type the verse it stops on, then tap the tick.',
+                },
             },
-            { kind: 'end', action: 'celebrate', line: 'Ehen, like that. Later, tap any verse you’ve referenced and it opens in JW Library. Every one also helps me find what connects your entries.' },
+            { kind: 'end', action: 'celebrate', line: 'Ehen, like that. Type @ in any answer, any time. Later, tap a verse you’ve referenced and it opens in JW Library.' },
         ],
         [
             { kind: 'tell', action: 'point', line: 'This is the one I care about most: something you’ll actually do because of what you read. Action is what you’ll do, Motivated by is why. The why is the part you forget in a month, so I make you write it.' },

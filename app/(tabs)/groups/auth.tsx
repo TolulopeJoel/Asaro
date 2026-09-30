@@ -8,7 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/src/theme/ThemeContext';
 import { useAlert } from '@/src/context/AlertContext';
 import { Spacing } from '@/src/theme/spacing';
-import { Typography } from '@/src/theme/typography';
+import { Typography, MAX_FONT_SCALE } from '@/src/theme/typography';
 import { ScalePressable } from '@/src/components/ScalePressable';
 import { ClothMark, Hero, Screen, Text, ThemedButton } from '@/src/components/ui';
 import { useFootPadding } from '@/src/hooks/useScreenInsets';
@@ -158,6 +158,7 @@ export default function AuthScreen() {
                             <View style={[styles.inputContainer, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
                                 <Mail size={20} color={colors.textPrimary} style={styles.inputIcon} />
                                 <TextInput
+                                    maxFontSizeMultiplier={MAX_FONT_SCALE}
                                     style={[styles.input, { color: colors.textPrimary }]}
                                     placeholder="Email address"
                                     placeholderTextColor={colors.textMuted}
@@ -171,6 +172,7 @@ export default function AuthScreen() {
                             <View style={[styles.inputContainer, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
                                 <Lock size={20} color={colors.textPrimary} style={styles.inputIcon} />
                                 <TextInput
+                                    maxFontSizeMultiplier={MAX_FONT_SCALE}
                                     style={[styles.input, { color: colors.textPrimary }]}
                                     placeholder="Password"
                                     placeholderTextColor={colors.textMuted}
@@ -200,6 +202,7 @@ export default function AuthScreen() {
                                     <View style={[styles.inputContainer, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
                                         <Lock size={20} color={colors.textPrimary} style={styles.inputIcon} />
                                         <TextInput
+                                            maxFontSizeMultiplier={MAX_FONT_SCALE}
                                             style={[styles.input, { color: colors.textPrimary }]}
                                             placeholder="Confirm password"
                                             placeholderTextColor={colors.textMuted}

@@ -13,6 +13,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { MAX_FONT_SCALE } from '../../theme/typography';
 import { Archive, ArchiveRestore, Users, X } from 'lucide-react-native';
 
 import { useTheme } from '../../theme/ThemeContext';
@@ -158,6 +159,7 @@ export function ActionEditor({ item, onClose, onSave, onArchive }: Props) {
                 {wanting ? `${label} — needed` : label}
             </Text>
             <TextInput
+                maxFontSizeMultiplier={MAX_FONT_SCALE}
                 style={[
                     styles.input,
                     textStyle(themeStyle, 'body'),

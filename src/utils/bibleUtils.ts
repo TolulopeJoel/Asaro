@@ -107,9 +107,12 @@ export const resolveTypedReference = (typed: string): string | null => {
     return match[2] ? `${book} ${match[2]}` : book;
 };
 
-/** An `@` that starts a word, followed by the word being typed, at the end of the text. */
+/**
+ * An `@` at the end of the text, not inside a word, and whatever has been typed
+ * after it. A bare `@` opens the picker too, so typing it visibly does something.
+ */
 export const findAtTrigger = (text: string): { startIndex: number; query: string } | null => {
-    const match = text.match(/(?:^|\s)@(\w+)$/);
+    const match = text.match(/(?:^|[^\w@])@(\w*)$/);
     if (!match) return null;
     return { startIndex: text.length - match[1].length - 1, query: match[1] };
 };

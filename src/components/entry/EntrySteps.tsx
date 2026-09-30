@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { MAX_FONT_SCALE } from '../../theme/typography';
 import { ChevronLeft, X } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { Spacing } from '../../theme/spacing';
@@ -36,6 +37,7 @@ export const BookStep = React.memo(({ selectedBook, onBookSelect, onExit }: Book
 
     const filterField = (
         <TextInput
+            maxFontSizeMultiplier={MAX_FONT_SCALE}
             style={[
                 styles.input,
                 textStyle(themeStyle, 'body'),

@@ -12,6 +12,7 @@ import { Pressable, ScrollView, StyleSheet, View, ViewProps, ViewStyle } from 'r
 import { useScreenInsets } from '../../hooks/useScreenInsets';
 import { useTheme } from '../../theme/ThemeContext';
 import { Motif, Spacing } from '../../theme/spacing';
+import { ONE_LINE } from '../../theme/typography';
 import { ClothGround, ClothStrip } from './Cloth';
 import { Text } from './Text';
 
@@ -185,7 +186,7 @@ export function Segments({ items, value, onChange, scrollable = false, itemRef }
                     active && { borderBottomColor: colors.accent },
                 ]}
             >
-                <Text variant="tab" tone={active ? 'primary' : 'tertiary'}>
+                <Text variant="tab" tone={active ? 'primary' : 'tertiary'} {...ONE_LINE}>
                     {item.label}
                 </Text>
             </Pressable>

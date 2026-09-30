@@ -1,6 +1,7 @@
 /** Editing a group's name, what it's about, and the time zone its window opens in. Admins and the creator. */
 import React, { useEffect, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { MAX_FONT_SCALE } from '../../theme/typography';
 import { Minus, Plus, X } from 'lucide-react-native';
 
 import { useTheme } from '../../theme/ThemeContext';
@@ -77,11 +78,12 @@ export function EditGroupSheet({ visible, group, onClose }: { visible: boolean; 
 
                     <View style={styles.field}>
                         <Text variant="label">Name</Text>
-                        <TextInput style={input} value={name} onChangeText={setName} maxLength={50} accessibilityLabel="Name" />
+                        <TextInput maxFontSizeMultiplier={MAX_FONT_SCALE} style={input} value={name} onChangeText={setName} maxLength={50} accessibilityLabel="Name" />
                     </View>
                     <View style={styles.field}>
                         <Text variant="label">About it · optional</Text>
                         <TextInput
+                            maxFontSizeMultiplier={MAX_FONT_SCALE}
                             style={input}
                             value={about}
                             onChangeText={setAbout}
