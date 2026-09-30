@@ -142,7 +142,8 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
     const entriesRef = useRef<JournalEntry[]>([]);
     const PAGE_SIZE = 30;
 
-    const loadEntries = useCallback(async (reset = true) => {
+    /** `refresh` reloads what is already on screen, however many pages, so the list keeps its place. */
+    const loadEntries = useCallback(async (reset = true, refresh = false) => {
         if (demoRef.current) {
             entriesRef.current = DEMO_ENTRIES;
             setEntries(DEMO_ENTRIES);
@@ -154,16 +155,17 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
             setIsLoading(false);
             return;
         }
-        if (reset) setIsLoading(true);
+        if (reset && !refresh) setIsLoading(true);
         try {
             const offset = reset ? 0 : entriesRef.current.length;
-            const dbEntries = await getJournalEntries(PAGE_SIZE, offset);
+            const limit = refresh ? Math.max(PAGE_SIZE, entriesRef.current.length) : PAGE_SIZE;
+            const dbEntries = await getJournalEntries(limit, offset);
 
             const updated = reset ? dbEntries : [...entriesRef.current, ...dbEntries];
             // Keep ref and state in sync
             entriesRef.current = updated;
             setEntries(updated);
-            setHasMore(dbEntries.length === PAGE_SIZE);
+            setHasMore(dbEntries.length === limit);
 
             // Paging doesn't change the totals, and refetching them mid-scroll
             // costs two queries and a re-render.
@@ -313,29 +315,36 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
         try {
             // A practice is done for a day, not for ever: ticking writes today
             // into the completion log. Only an action flips the row's boolean.
+            // Either way the box changes on the tap, and the write follows.
             if (actionKindOf(item) === 'practice') {
                 const current = practiceProgressRef.current.get(item.id!);
+                if (current) {
+                    setPracticeProgress(prev => new Map(prev).set(item.id!, { ...current, doneNow: !current.doneNow }));
+                }
                 if (current?.doneNow) await unmarkPracticeDone(item.id!);
                 else await markPracticeDone(item.id!);
                 void practiceChanged(item.id!);
             } else {
+                setActionsList(prev => prev.map(a => (a.id === item.id ? { ...a, is_completed: !item.is_completed } : a)));
                 await toggleActionItemCompletion(item.id!, !item.is_completed);
             }
-            loadActions();
         } catch (error) {
             console.error('Error toggling action:', error);
         }
+        // Also what puts a failed write back.
+        loadActions();
     }, [loadActions]);
 
     const handleTogglePin = useCallback(async (item: EnhancedActionItem) => {
         // The walk's examples never reach the database.
         if (demoRef.current) return;
+        setActionsList(prev => prev.map(a => (a.id === item.id ? { ...a, is_pinned: !item.is_pinned } : a)));
         try {
             await toggleActionItemPin(item.id!, !item.is_pinned);
-            loadActions();
         } catch (error) {
             console.error('Error toggling pin:', error);
         }
+        loadActions();
     }, [loadActions]);
 
     const filterEntries = useCallback(async () => {
@@ -375,15 +384,19 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
     // Refresh entries when screen comes into focus (e.g., after edit/delete)
     // The only reload path. Entries open as a route (`/library/[id]`), not a
     // modal, so returning from one pops the stack and focus comes back here.
+    // Through a ref: the book loader changes with every search pause, and that is no reason to reload everything.
+    const loadBookEntriesRef = useRef(loadBookEntries);
+    loadBookEntriesRef.current = loadBookEntries;
     useFocusEffect(
         useCallback(() => {
-            loadEntries(true);
+            // In place once something is showing, so coming back from an entry keeps your place in the list.
+            loadEntries(true, entriesRef.current.length > 0);
             if (viewMode === 'bookDetail' && selectedBook) {
-                loadBookEntries();
+                loadBookEntriesRef.current();
             }
             if (viewMode === 'actions') loadActions();
             if (viewMode === 'topics') loadTopics();
-        }, [viewMode, selectedBook, loadBookEntries, loadActions, loadTopics])
+        }, [viewMode, selectedBook, loadEntries, loadActions, loadTopics])
     );
 
 
@@ -710,7 +723,11 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
     }, [viewMode, selectedBook, completedPlanIds]);
 
     // The walk starting or ending swaps the whole journal, so everything reloads.
+    // Not on mount, which the focus load above already covers.
+    const demoShown = useRef(demo);
     useEffect(() => {
+        if (demoShown.current === demo) return;
+        demoShown.current = demo;
         loadEntries(true);
         loadActions();
         loadTopics();

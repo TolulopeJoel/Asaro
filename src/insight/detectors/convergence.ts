@@ -29,7 +29,7 @@ async function settledHubs(): Promise<Set<VerseId>> {
     );
     return new Set(rows.map(row => Number(row.dedupe_key.replace('hub:', ''))));
 }
-import { BibleGraph, loadGraph } from '../../bible/graph';
+import { BibleGraph, loadGraph, unloadGraph } from '../../bible/graph';
 import {
     CitedRange,
     VerseId,
@@ -409,17 +409,21 @@ export async function detectConvergence(options: ConvergenceOptions = {}): Promi
      * Everything still unvisited is kept, not just this run's top candidates:
      * the retraction is about truth, not placing.
      */
-    const stillUnwritten = findConvergence(entries, graph, {
+    const all = findConvergence(entries, graph, {
         ...options,
         maxCandidates: Number.MAX_SAFE_INTEGER,
-    }).map(candidate => `hub:${candidate.hubVerseId}`);
+    });
+    // The graph is only needed for that; it is 3MB to keep for a pass that runs once a day.
+    unloadGraph();
+    const stillUnwritten = all.map(candidate => `hub:${candidate.hubVerseId}`);
     await retractObservations('convergence', stillUnwritten);
 
     // A hub with any engagement behind it is never offered again, even if the
     // claim still holds. "That's not it" counts too: they looked and decided.
     const settled = await settledHubs();
 
-    const candidates = findConvergence(entries, graph, options);
+    // The limit is only a cut at the end of `findConvergence`, so this is the run above, cut.
+    const candidates = all.slice(0, options.maxCandidates ?? DEFAULTS.maxCandidates);
 
     const ids: number[] = [];
     for (const candidate of candidates) {

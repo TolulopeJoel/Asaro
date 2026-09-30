@@ -29,4 +29,6 @@ export const STORAGE_KEYS = {
     ONBOARDING_STEPS: 'onboarding_steps',
     /** The cloth of the thinking cap the chosen sibling wears, from its screen until the walk ends. */
     THINKING_CAP: 'thinking_cap',
+    /** The last theme clustering, by which answers it grouped, so a restart with nothing new skips the slow part. */
+    THEME_CLUSTERS: 'theme_clusters',
 } as const;

@@ -103,7 +103,7 @@ export function centerWithinFields<T extends Embedded>(items: T[]): T[] {
     return out;
 }
 
-function similarityMatrix(items: Embedded[]): Float64Array {
+function* similarityMatrix(items: Embedded[]): Generator<void, Float64Array, void> {
     const n = items.length;
     const sims = new Float64Array(n * n);
     for (let i = 0; i < n; i++) {
@@ -112,6 +112,7 @@ function similarityMatrix(items: Embedded[]): Float64Array {
             sims[i * n + j] = value;
             sims[j * n + i] = value;
         }
+        yield;
     }
     return sims;
 }
@@ -148,16 +149,51 @@ export interface ClusterOptions {
  * similarities are updated by the Lance–Williams rule and each row caches its
  * best neighbour. For 1,400 answers it takes ~1 s on V8 and ~20 s on Hermes,
  * almost all of it the n²·384 similarity matrix; the merge loop is under 1 s.
+ * On the phone, run it through `clusterThemesAsync`.
  */
 export function clusterThemes<T extends Embedded>(
     items: T[],
     options: ClusterOptions = {},
 ): Cluster<T>[] {
+    const steps = clusterSteps(items, options);
+    let step = steps.next();
+    while (!step.done) step = steps.next();
+    return step.value;
+}
+
+/**
+ * `clusterThemes` without holding the JS thread: it hands the thread back
+ * every `sliceMs`, so taps, scrolling and Back still answer while it runs.
+ * Same arithmetic in the same order, so the same clusters.
+ */
+export async function clusterThemesAsync<T extends Embedded>(
+    items: T[],
+    options: ClusterOptions = {},
+    sliceMs = 24,
+): Promise<Cluster<T>[]> {
+    const steps = clusterSteps(items, options);
+    let sliceStart = Date.now();
+    let step = steps.next();
+    while (!step.done) {
+        if (Date.now() - sliceStart > sliceMs) {
+            await new Promise(resolve => setTimeout(resolve, 0));
+            sliceStart = Date.now();
+        }
+        step = steps.next();
+    }
+    return step.value;
+}
+
+/** The clustering, pausing (`yield`) after each row, merge and cluster so a caller can split it up. */
+function* clusterSteps<T extends Embedded>(
+    items: T[],
+    options: ClusterOptions,
+): Generator<void, Cluster<T>[], void> {
     const { grain = 85, minEntries = 3 } = options;
     const n = items.length;
     if (n < 2) return [];
 
-    const sims = similarityMatrix(items);
+    const sims = yield* similarityMatrix(items);
     const threshold = percentileOfPairs(sims, n, grain);
 
     // Upper triangle holds group-to-group similarity as merges happen; the
@@ -186,7 +222,10 @@ export function clusterThemes<T extends Embedded>(
         bestS[i] = score;
         bestJ[i] = j;
     };
-    for (let p = 0; p < n; p++) rescan(p);
+    for (let p = 0; p < n; p++) {
+        rescan(p);
+        if (p % 64 === 63) yield;
+    }
 
     while (alive.length > 1) {
         let best = -Infinity;
@@ -224,6 +263,7 @@ export function clusterThemes<T extends Embedded>(
                 }
             }
         }
+        yield;
     }
 
     const clusters: Cluster<T>[] = [];
@@ -250,6 +290,7 @@ export function clusterThemes<T extends Embedded>(
         }
 
         clusters.push({ members, cohesion: pairs ? total / pairs : 0, entryCount });
+        yield;
     }
 
     clusters.sort((a, b) => b.entryCount - a.entryCount || b.cohesion - a.cohesion);

@@ -39,6 +39,8 @@ const LAST_SHOWN_KEY = 'insight_last_shown';
 const DAY_MS = 86_400_000;
 /** How often the detectors re-walk the journal. */
 const DETECT_EVERY_MS = DAY_MS;
+/** Home's daily pass waits this long after Home is ready, so it never lands on the first taps. */
+const SETTLE_MS = 1500;
 /** How long a shown card's silence lasts before another may appear. */
 const QUIET_PERIOD_MS = 3 * DAY_MS;
 
@@ -113,6 +115,8 @@ export function useObservation(enabled: boolean, surface: Surface = 'home'): Obs
         (async () => {
             try {
                 if (surface === 'home' && (await millisSince(LAST_RUN_KEY)) > DETECT_EVERY_MS) {
+                    await new Promise(resolve => setTimeout(resolve, SETTLE_MS));
+                    if (!mounted.current) return;
                     // Sequential, not parallel: they share one SQLite
                     // connection and the whole pass is a few hundred ms.
                     await detectConvergence();

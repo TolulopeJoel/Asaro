@@ -8,9 +8,9 @@
 import React, {
     forwardRef, useCallback, useEffect, useId, useImperativeHandle, useRef, useState,
 } from 'react';
-import { AccessibilityInfo } from 'react-native';
+import { AccessibilityInfo, AppState } from 'react-native';
 import Animated, {
-    Easing, ReduceMotion, cancelAnimation, useAnimatedProps, useSharedValue, withRepeat,
+    Easing, ReduceMotion, cancelAnimation, useAnimatedProps, useAnimatedStyle, useSharedValue, withRepeat,
     withDelay, withSequence, withTiming,
 } from 'react-native-reanimated';
 import Svg, {
@@ -384,14 +384,21 @@ function AsaroBase(
         sincerity.value = reduceMotion ? to : withTiming(to, { duration: 420 });
     }, [mood, reduceMotion, sincerity]);
 
-    // Breath — a slow sine the whole face rides on.
+    // Breath — a slow sine the whole face rides on. Held while the app is in the background.
     useEffect(() => {
         if (reduceMotion) { cancelAnimation(breath); breath.value = 0; return; }
-        breath.value = 0;
-        breath.value = withRepeat(
-            withTiming(1, { duration: 3000, easing: Easing.linear }), -1, false,
-        );
-        return () => cancelAnimation(breath);
+        const start = () => {
+            breath.value = 0;
+            breath.value = withRepeat(
+                withTiming(1, { duration: 3000, easing: Easing.linear }), -1, false,
+            );
+        };
+        start();
+        const sub = AppState.addEventListener('change', state => {
+            if (state === 'active') start();
+            else cancelAnimation(breath);
+        });
+        return () => { sub.remove(); cancelAnimation(breath); };
     }, [reduceMotion, breath]);
 
     // Blink, on an irregular schedule. Kept under reduced motion: it travels
@@ -549,16 +556,15 @@ function AsaroBase(
         opacity: Math.min(1, (1 - capDrop.value) * 3),
     }));
 
+    // The actions move the head inside the drawing; the breath is `breathStyle`, on the view round it.
     const headProps = useAnimatedProps(() => {
-        const br = Math.sin(breath.value * Math.PI * 2);
-        const sway = Math.sin(breath.value * Math.PI * 2 * 0.37);
         const i = act.value;
         const p = prog.value;
-        const sq = (1 + br * 0.016) * ch(i, p, C_SQ, REST.sq);
+        const sq = ch(i, p, C_SQ, REST.sq);
         return mat(
             dir.value * ch(i, p, C_LEAN, REST.lean),
-            br * 2.2 + ch(i, p, C_BOB, REST.bob),
-            sway * 1.2 + ch(i, p, C_TIP, REST.tip),
+            ch(i, p, C_BOB, REST.bob),
+            ch(i, p, C_TIP, REST.tip),
             // Squash preserves area: as it flattens it also widens.
             2 - sq,
             sq,
@@ -567,18 +573,38 @@ function AsaroBase(
         );
     });
 
+    /*
+     * The breath moves the finished picture rather than the drawing: on
+     * Android any change to an SVG prop repaints the whole face, so a breath
+     * inside it redrew him every frame, idle or not. As a transform on the view
+     * the picture is only moved. Same bob, sway and squash about the same pivot.
+     */
+    const unit = size / vw;
+    const breathStyle = useAnimatedStyle(() => {
+        const br = Math.sin(breath.value * Math.PI * 2);
+        const sway = Math.sin(breath.value * Math.PI * 2 * 0.37);
+        const sq = 1 + br * 0.016;
+        return {
+            transform: [
+                { translateY: br * 2.2 * unit },
+                { rotate: `${sway * 1.2}deg` },
+                { scaleX: 2 - sq },
+                { scaleY: sq },
+            ],
+        };
+    }, [unit]);
+
     const hairPx = hair.px;
     const hairPy = hair.py;
 
+    // The hair sways with his actions only: an idle sway would repaint the face every frame (see `breathStyle`).
     const hairBackProps = useAnimatedProps(() => {
-        const sway = Math.sin(breath.value * Math.PI * 2 * 0.37);
-        const rot = (sway * 1.8 + ch(act.value, prog.value, C_CREST, REST.crest)) * swayBack;
+        const rot = ch(act.value, prog.value, C_CREST, REST.crest) * swayBack;
         return { ...mat(0, 0, rot, 1, 1, hairPx, hairPy), opacity: capHidesHair ? capDrop.value : 1 };
     }, [swayBack, hairPx, hairPy, capHidesHair]);
 
     const hairFrontProps = useAnimatedProps(() => {
-        const sway = Math.sin(breath.value * Math.PI * 2 * 0.37);
-        const rot = (sway * 1.8 + ch(act.value, prog.value, C_CREST, REST.crest)) * swayFront;
+        const rot = ch(act.value, prog.value, C_CREST, REST.crest) * swayFront;
         return { ...mat(0, 0, rot, 1, 1, hairPx, hairPy), opacity: capHidesHair ? capDrop.value : 1 };
     }, [swayFront, hairPx, hairPy, capHidesHair]);
 
@@ -821,10 +847,19 @@ function AsaroBase(
         </React.Fragment>
     );
 
+    const [bx, by] = box.split(' ').map(Number);
+    const height = Math.round((size * vh) / vw);
+
     return (
+        <Animated.View
+            style={[
+                { width: size, height, transformOrigin: `${((R.pivotX - bx) / vw) * 100}% ${((R.pivotY - by) / vh) * 100}%` },
+                breathStyle,
+            ]}
+        >
         <Svg
             width={size}
-            height={Math.round((size * vh) / vw)}
+            height={height}
             viewBox={box}
             accessibilityRole="image"
             accessibilityLabel={label ?? 'Àṣàrò'}
@@ -1083,8 +1118,20 @@ function AsaroBase(
                 )}
             </AG>
         </Svg>
+        </Animated.View>
     );
 }
 
-export const Asaro = forwardRef<AsaroHandle, AsaroProps>(AsaroBase);
+/** Same face, same props: `lookAt` is compared by value, since callers build it inline. */
+function sameProps(a: AsaroProps, b: AsaroProps) {
+    const keys = new Set([...Object.keys(a), ...Object.keys(b)] as (keyof AsaroProps)[]);
+    for (const key of keys) {
+        if (key === 'lookAt') {
+            if (a.lookAt?.x !== b.lookAt?.x || a.lookAt?.y !== b.lookAt?.y) return false;
+        } else if (a[key] !== b[key]) return false;
+    }
+    return true;
+}
+
+export const Asaro = React.memo(forwardRef<AsaroHandle, AsaroProps>(AsaroBase), sameProps);
 Asaro.displayName = 'Asaro';

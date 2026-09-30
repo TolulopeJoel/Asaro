@@ -9,7 +9,9 @@ import { Spacing } from '../theme/spacing';
 import { ScalePressable } from './ScalePressable';
 import { Button } from './Button';
 import { HyperlinkedText } from './HyperlinkedText';
-import { Cluster, centerWithinFields, clusterThemes, representatives } from '../ml/clustering';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Cluster, centerWithinFields, clusterThemesAsync, representatives } from '../ml/clustering';
+import { STORAGE_KEYS } from '../storage/storageKeys';
 import { suggestNames } from '../ml/themeNames';
 import { RankedTheme, rankThemes, spanLabel } from '../ml/themeQuality';
 import {
@@ -53,6 +55,16 @@ const MIN_ENTRIES = 15;
  */
 const PREVIEW_SNIPPETS = [2, 1];
 
+/** A theme's most central answers, worked out once per theme rather than on every render. */
+const centralCache = new WeakMap<Cluster<StoredEmbedding>, Map<number, StoredEmbedding[]>>();
+function centralOf(cluster: Cluster<StoredEmbedding>, count: number): StoredEmbedding[] {
+    let byCount = centralCache.get(cluster);
+    if (!byCount) centralCache.set(cluster, (byCount = new Map()));
+    let reps = byCount.get(count);
+    if (!reps) byCount.set(count, (reps = representatives(cluster, count)));
+    return reps;
+}
+
 type Phase = 'checking' | 'needsModel' | 'downloading' | 'working' | 'ready' | 'tooEarly' | 'error';
 
 function reference(item: StoredEmbedding): string {
@@ -85,12 +97,68 @@ function fingerprint(items: StoredEmbedding[]): string {
     return `${items.length}:${a >>> 0}:${b >>> 0}`;
 }
 
+type Clustered = { centered: StoredEmbedding[]; found: Cluster<StoredEmbedding>[] };
+
 /** The last clustering, so reopening Themes with nothing changed skips the slow part. */
-let clustered: {
+let clustered: { key: string; done: Promise<Clustered> } | null = null;
+
+/** An answer, as the saved clustering names it: one per entry and field. */
+const memberKey = (item: StoredEmbedding) => `${item.entryId}|${item.field}`;
+
+interface SavedClusters {
     key: string;
-    centered: StoredEmbedding[];
-    found: Cluster<StoredEmbedding>[];
-} | null = null;
+    clusters: { members: string[]; cohesion: number; entryCount: number }[];
+}
+
+/** The clustering saved for exactly these answers, rebuilt on them; null if anything differs. */
+async function readSavedClusters(key: string, centered: StoredEmbedding[]): Promise<Cluster<StoredEmbedding>[] | null> {
+    try {
+        const saved: SavedClusters | null = JSON.parse((await AsyncStorage.getItem(STORAGE_KEYS.THEME_CLUSTERS)) ?? 'null');
+        if (saved?.key !== key) return null;
+        const byKey = new Map(centered.map(item => [memberKey(item), item]));
+        const found: Cluster<StoredEmbedding>[] = [];
+        for (const cluster of saved.clusters) {
+            const members = cluster.members.map(k => byKey.get(k));
+            if (members.some(m => !m)) return null;
+            found.push({ members: members as StoredEmbedding[], cohesion: cluster.cohesion, entryCount: cluster.entryCount });
+        }
+        return found;
+    } catch {
+        return null;
+    }
+}
+
+async function saveClusters(key: string, found: Cluster<StoredEmbedding>[]): Promise<void> {
+    const saved: SavedClusters = {
+        key,
+        clusters: found.map(c => ({ members: c.members.map(memberKey), cohesion: c.cohesion, entryCount: c.entryCount })),
+    };
+    try {
+        await AsyncStorage.setItem(STORAGE_KEYS.THEME_CLUSTERS, JSON.stringify(saved));
+    } catch (error) {
+        console.error('Failed to save themes:', error);
+    }
+}
+
+/**
+ * The clusters for these answers: from memory, from the phone, or worked out
+ * in slices that leave the app answering taps. It runs to the end even if
+ * Themes closes, and is saved, so a long first run is never thrown away.
+ */
+function clusterFor(key: string, items: StoredEmbedding[]): Promise<Clustered> {
+    if (clustered?.key === key) return clustered.done;
+    const done = (async () => {
+        const centered = centerWithinFields(items);
+        const saved = await readSavedClusters(key, centered);
+        if (saved) return { centered, found: saved };
+        const found = await clusterThemesAsync(centered, { grain: 85, minEntries: 3 });
+        void saveClusters(key, found);
+        return { centered, found };
+    })();
+    clustered = { key, done };
+    done.catch(() => { if (clustered?.done === done) clustered = null; });
+    return done;
+}
 
 /** The one compute running, shared so a second caller never embeds the same texts again. */
 let inFlight: Promise<ThemesResult | null> | null = null;
@@ -115,12 +183,9 @@ async function runThemes(
         // groups are worth showing, and reruns each time so recency stays
         // current. The centered vectors go with it because the cohesion floor
         // is measured against this corpus.
-        const key = fingerprint(items);
-        if (clustered?.key !== key) {
-            const centered = centerWithinFields(items);
-            clustered = { key, centered, found: clusterThemes(centered, { grain: 85, minEntries: 3 }) };
-        }
-        return { entryCount, ranked: rankThemes(clustered.found, clustered.centered) };
+        const { centered, found } = await clusterFor(fingerprint(items), items);
+        if (isCancelled()) return null;
+        return { entryCount, ranked: rankThemes(found, centered) };
     } catch (error) {
         if (isCancelled() || isUnloadedError(error)) return null;
         throw error;
@@ -441,7 +506,7 @@ export function ThemesContent({ onPatternCountChange, searchQuery = '' }: Themes
                         ? []
                         : matches.length > 0
                           ? matches.slice(0, previewCount)
-                          : representatives(item, previewCount);
+                          : centralOf(item, previewCount);
                 const books = [...new Set(item.members.map(m => m.bookName))].filter(Boolean);
                 /*
                  * The span leads, not the count. "5 entries" is a fact about

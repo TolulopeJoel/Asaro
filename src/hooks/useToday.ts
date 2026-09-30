@@ -189,10 +189,23 @@ export function useToday(enabled: boolean): Today {
         load();
     }, [day, load]);
 
+    // The box changes on the tap; the write, the tree and the reload follow behind it.
+    const showKept = useCallback((id: number, kept: boolean) => {
+        setItems(prev => prev.map(row => (row.item.id === id ? { ...row, kept } : row)));
+    }, []);
+
     const keep = useCallback(
         async (item: EnhancedActionItem) => {
             keptHere.current.add(item.id!);
-            await markPracticeDone(item.id!);
+            showKept(item.id!, true);
+            try {
+                await markPracticeDone(item.id!);
+            } catch {
+                // Not saved, so not ticked: back to what the database says.
+                keptHere.current.delete(item.id!);
+                load();
+                return;
+            }
             void practiceChanged(item.id!);
             try {
                 const moment = await momentOnKeep(item);
@@ -202,7 +215,7 @@ export function useToday(enabled: boolean): Today {
             }
             load();
         },
-        [load],
+        [load, showKept],
     );
 
     /*
@@ -213,14 +226,15 @@ export function useToday(enabled: boolean): Today {
     const undo = useCallback(
         async (item: EnhancedActionItem) => {
             keptHere.current.delete(item.id!);
+            showKept(item.id!, false);
             const moment = momentsHere.current.get(item.id!);
             momentsHere.current.delete(item.id!);
             if (moment?.key) await forgetMoment(moment.key).catch(() => { });
-            await unmarkPracticeDone(item.id!);
+            await unmarkPracticeDone(item.id!).catch(() => { });
             void practiceChanged(item.id!);
             load();
         },
-        [load],
+        [load, showKept],
     );
 
     return { items, watered, keep, undo, reload: load };
