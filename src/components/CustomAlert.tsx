@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View, Modal, Pressable, ScrollView, useWindowDimensions } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
-import { useAlert } from '../context/AlertContext';
+import { useAlert, useAlertState } from '../context/AlertContext';
 import { ScalePressable } from './ScalePressable';
 import { Spacing } from '../theme/spacing';
 import { Typography } from '../theme/typography';
@@ -9,7 +9,8 @@ import { Asaro, Text } from './ui';
 
 export const CustomAlert: React.FC = () => {
     const { colors } = useTheme();
-    const { visible, alertOptions, hideAlert } = useAlert();
+    const { hideAlert } = useAlert();
+    const { visible, alertOptions } = useAlertState();
     const { height } = useWindowDimensions();
 
     if (!alertOptions || !visible) return null;

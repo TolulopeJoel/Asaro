@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import { LucideIcon } from 'lucide-react-native';
 import type { AsaroAction, AsaroLook } from '../components/ui';
 
@@ -24,14 +24,23 @@ export interface AlertOptions {
     face?: { look?: AsaroLook; action?: AsaroAction };
 }
 
-interface AlertContextType {
+interface AlertActions {
     showAlert: (options: AlertOptions) => void;
     hideAlert: () => void;
+}
+
+interface AlertState {
     visible: boolean;
     alertOptions: AlertOptions | null;
 }
 
-const AlertContext = createContext<AlertContextType | undefined>(undefined);
+/*
+ * Two contexts: screens only ever ask for the functions, which never change,
+ * so opening or closing an alert re-renders the alert alone rather than every
+ * screen that can show one.
+ */
+const AlertActionsContext = createContext<AlertActions | undefined>(undefined);
+const AlertStateContext = createContext<AlertState | undefined>(undefined);
 
 export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [visible, setVisible] = useState(false);
@@ -46,29 +55,31 @@ export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setVisible(false);
     }, []);
 
+    const actions = useMemo(() => ({ showAlert, hideAlert }), [showAlert, hideAlert]);
+    const state = useMemo(() => ({ visible, alertOptions }), [visible, alertOptions]);
+
     return (
-        <AlertContext.Provider value={{ showAlert, hideAlert, visible, alertOptions }}>
-            {children}
-        </AlertContext.Provider>
+        <AlertActionsContext.Provider value={actions}>
+            <AlertStateContext.Provider value={state}>
+                {children}
+            </AlertStateContext.Provider>
+        </AlertActionsContext.Provider>
     );
 };
 
 export const useAlert = () => {
-    const context = useContext(AlertContext);
+    const context = useContext(AlertActionsContext);
     if (!context) {
         throw new Error('useAlert must be used within an AlertProvider');
     }
     return context;
 };
 
-// For rendering purposes, we need a way for the Provider to expose its state
-export const useAlertInternal = () => {
-    const context = useContext(AlertContext);
+/** What the alert shows, for CustomAlert alone. */
+export const useAlertState = () => {
+    const context = useContext(AlertStateContext);
     if (!context) {
-        throw new Error('useAlertInternal must be used within an AlertProvider');
+        throw new Error('useAlertState must be used within an AlertProvider');
     }
-    // This is a bit of a hack to let the CustomAlert component see the state
-    // without circular imports or putting everything in one file.
-    // In a real app, you might use a more robust state management.
     return context;
 };

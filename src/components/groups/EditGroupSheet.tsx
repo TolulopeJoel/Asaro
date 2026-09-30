@@ -118,7 +118,7 @@ export function EditGroupSheet({ visible, group, onClose }: { visible: boolean; 
                             </ScalePressable>
                         </View>
                         {offset !== mine && isOffset(mine) && (
-                            <ScalePressable onPress={() => setOffset(mine)} accessibilityRole="button" hitSlop={Spacing.sm}>
+                            <ScalePressable onPress={() => setOffset(mine)} accessibilityRole="button" hitSlop={Spacing.md}>
                                 <Text variant="meta" tone="accent">{`Use my time zone (${offsetLabel(mine)})`}</Text>
                             </ScalePressable>
                         )}

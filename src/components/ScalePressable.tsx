@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, PressableProps, StyleProp, ViewStyle } from 'react-native';
+import { Pressable, PressableProps, StyleProp, StyleSheet, ViewStyle } from 'react-native';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -28,13 +28,16 @@ export const ScalePressable: React.FC<ScalePressableProps> = ({
 }) => {
     const progress = useSharedValue(0);
     const config = { damping: 15, stiffness: 300 };
+    // The caller's own opacity (a dimmed, held button) is the rest state the press fades from.
+    const own = StyleSheet.flatten(style)?.opacity;
+    const rest = typeof own === 'number' ? own : 1;
 
     const animatedStyle = useAnimatedStyle(() => {
         return {
             transform: [{ scale: interpolate(progress.value, [0, 1], [1, scaleTo]) }],
-            opacity: interpolate(progress.value, [0, 1], [1, activeOpacity]),
+            opacity: rest * interpolate(progress.value, [0, 1], [1, activeOpacity]),
         };
-    });
+    }, [rest, scaleTo, activeOpacity]);
 
     const handlePressIn = (e: any) => {
         if (!disabled) progress.value = withSpring(1, config);

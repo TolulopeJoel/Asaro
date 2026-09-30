@@ -794,6 +794,8 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
                 </View>
             ) : (
                 <Animated.FlatList
+                    // A result tapped straight after searching opens, rather than only closing the keyboard.
+                    keyboardShouldPersistTaps="handled"
                     data={getFlatListData}
                     renderItem={renderListItem}
                     keyExtractor={(item) => item.id.toString()}

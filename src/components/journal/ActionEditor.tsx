@@ -195,6 +195,7 @@ export function ActionEditor({ item, onClose, onSave, onArchive }: Props) {
             <KeyboardSafe
                 style={styles.fill}>
                 <ScrollView
+                    keyboardShouldPersistTaps="handled"
                     contentContainerStyle={[
                         styles.content,
                         {

@@ -13,6 +13,12 @@ const cache = globalThis as { __journalDb?: Promise<SQLite.SQLiteDatabase> | nul
 
 function open(fresh: boolean) {
     const opening = SQLite.openDatabaseAsync(DB_NAME, fresh ? { useNewConnection: true } : undefined)
+        .then(async database => {
+            // Writes go to a log rather than rewriting pages, and reads don't wait on them.
+            // `synchronous` stays at its default FULL: a saved entry survives a power cut.
+            await database.execAsync('PRAGMA journal_mode = WAL');
+            return database;
+        })
         .catch(error => {
             // Never cache a failed open, or nothing can recover.
             cache.__journalDb = null;

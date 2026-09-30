@@ -461,7 +461,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
             )}
           </View>
           {onDiscard && !typingNow && (
-            <ScalePressable onPress={leaveTo(onDiscard)} style={styles.discard}>
+            <ScalePressable onPress={leaveTo(onDiscard)} style={styles.discard} hitSlop={Spacing.md} accessibilityRole="button">
               <UIText variant="meta" tone="tertiary">Discard draft</UIText>
             </ScalePressable>
           )}

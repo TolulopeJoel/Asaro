@@ -133,7 +133,7 @@ export const ActionCard = React.memo(({ item, onEntryPress, handleTogglePin, han
                         />
                     ) : null}
                     <View style={styles.metaRow}>
-                        <ScalePressable onPress={openEntry} accessibilityRole="button" accessibilityLabel={`Open ${reference(item)}`}>
+                        <ScalePressable onPress={openEntry} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Open ${reference(item)}`}>
                             <Text variant="meta" style={styles.clothRef}>{reference(item)}</Text>
                         </ScalePressable>
                         {streak && <Text variant="meta" tone="accent">{streak}</Text>}

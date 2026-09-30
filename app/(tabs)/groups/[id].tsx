@@ -117,7 +117,7 @@ function ReadingList({ readings }: { readings: Reading[] }) {
                 </View>
             ))}
             {shown.length < readings.length && (
-                <ScalePressable onPress={() => setAll(true)} accessibilityRole="button" hitSlop={Spacing.sm}>
+                <ScalePressable onPress={() => setAll(true)} accessibilityRole="button" hitSlop={Spacing.md}>
                     <Text variant="meta" tone="accent">{`Show all ${readings.length} readings`}</Text>
                 </ScalePressable>
             )}
@@ -401,7 +401,7 @@ export default function GroupScreen() {
                         <Text variant="body">
                             Here, your reflections stay yours. Each week you can bring one answer to share, and everyone sees each other’s week on Sunday.
                         </Text>
-                        <ScalePressable onPress={dismissIntro} accessibilityRole="button" hitSlop={Spacing.sm} style={styles.introDismiss}>
+                        <ScalePressable onPress={dismissIntro} accessibilityRole="button" hitSlop={Spacing.md} style={styles.introDismiss}>
                             <Text variant="meta" tone="accent">Got it</Text>
                         </ScalePressable>
                     </View>
@@ -477,7 +477,7 @@ export default function GroupScreen() {
                                         </Text>
                                         <Text variant="quote">{unwrapReferences(person.share.text)}</Text>
                                         {person.member.uid === uid && (
-                                            <ScalePressable onPress={() => setBringing(true)} accessibilityRole="button" hitSlop={Spacing.sm} style={styles.change}>
+                                            <ScalePressable onPress={() => setBringing(true)} accessibilityRole="button" hitSlop={Spacing.md} style={styles.change}>
                                                 <Text variant="meta" tone="accent">Change or take back</Text>
                                             </ScalePressable>
                                         )}

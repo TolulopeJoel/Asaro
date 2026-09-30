@@ -548,6 +548,7 @@ export default function Settings() {
             <Stack.Screen options={{ headerShown: false }} />
             <ScrollView
                 ref={scrollViewRef}
+                keyboardShouldPersistTaps="handled"
                 onScroll={onCoachScroll}
                 scrollEventThrottle={32}
                 style={styles.scrollView}

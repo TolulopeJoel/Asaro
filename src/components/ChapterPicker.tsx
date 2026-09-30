@@ -202,6 +202,7 @@ export const ChapterPicker: React.FC<ChapterPickerProps> = React.memo(({
                     <ScalePressable
                         onPress={() => onChapterSelect({ start: 0 })}
                         style={styles.clear}
+                        hitSlop={Spacing.md}
                         accessibilityRole="button"
                         accessibilityLabel="Clear chapter selection"
                     >

@@ -24,6 +24,8 @@ export default function TabLayout() {
             }}
             tabBar={(props) => {
                 const colors = themeColors;
+                // The mockup's 30px foot, or the home indicator if it is taller.
+                const foot = Math.max(insets.bottom, Spacing.layout.tabBarPadding);
 
                 return (
                 <View style={[
@@ -34,9 +36,6 @@ export default function TabLayout() {
                         borderTopWidth: 0,
                         borderTopColor: colors.border,
                         paddingHorizontal: Spacing.layout.screenPadding,
-                        paddingTop: 15,
-                        // The mockup's 30px foot, or the home indicator if it is taller.
-                        paddingBottom: Math.max(insets.bottom, Spacing.layout.tabBarPadding),
                     },
                 ]}>
                     {props.state.routes.map((route, index) => {
@@ -81,15 +80,18 @@ export default function TabLayout() {
                         else if (route.name === 'groups') label = 'Groups';
 
                         return (
-                            /* The first-run walk points at each tab by name, and boxes the whole tab. */
+                            /* The first-run walk points at each tab by name, and boxes the word, not the padding round it. */
                             <View
                                 key={route.key}
-                                ref={route.name === 'library' ? coachTarget('tab-library') : route.name === 'groups' ? coachTarget('tab-groups') : route.name === 'index' ? coachTarget('tab-home') : undefined}
+                                ref={route.name === 'library' ? coachTarget('tab-library', { top: BAR_TOP, bottom: foot })
+                                    : route.name === 'groups' ? coachTarget('tab-groups', { top: BAR_TOP, bottom: foot })
+                                        : route.name === 'index' ? coachTarget('tab-home', { top: BAR_TOP, bottom: foot }) : undefined}
                                 collapsable={false}
                                 style={styles.flex}
                             >
+                                {/* The bar's padding is inside the press, so the whole bar answers a tap, not just the word. */}
                                 <ScalePressable
-                                    style={styles.tabFill}
+                                    style={[styles.tabFill, { paddingTop: BAR_TOP, paddingBottom: foot }]}
                                     onPress={onPress}
                                 >
                                     {/*
@@ -120,12 +122,15 @@ export default function TabLayout() {
     );
 }
 
+/** The bar's padding above the labels. */
+const BAR_TOP = 15;
+
 const styles = StyleSheet.create({
     tabBar: {
         flexDirection: 'row',
     },
     flex: { flex: 1 },
-    /** Fills its tab's width; its height is the label's, never squashed by a flex basis of 0. */
+    /** Fills its tab's width; its height is the label's plus the bar's padding, never squashed by a flex basis of 0. */
     tabFill: {
         alignItems: 'center',
         justifyContent: 'center',

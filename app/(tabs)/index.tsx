@@ -93,6 +93,9 @@ async function handleNextReadingPress(
     }
 }
 
+/** How long Home's first load may take before a spinner shows. */
+const SPINNER_AFTER_MS = 300;
+
 const formatHomeDate = () =>
     new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
 
@@ -320,19 +323,22 @@ export default function Index() {
         }
     }, []);
 
+    // Home is ready when its data is; it never waits longer, and loads once per focus.
     useFocusEffect(
         useCallback(() => {
-            loadHomeData();
+            void loadHomeData().finally(() => setIsLoading(false));
             checkDraft();
             void checkFirstRun();
-
-            // Simulate initial load if it's very fast
-            if (isLoading) {
-                const timer = setTimeout(() => setIsLoading(false), 400);
-                return () => clearTimeout(timer);
-            }
-        }, [loadHomeData, checkDraft, checkFirstRun, isLoading])
+        }, [loadHomeData, checkDraft, checkFirstRun])
     );
+
+    // A load that finishes quickly shows no spinner at all, rather than flashing one.
+    const [slowLoad, setSlowLoad] = useState(false);
+    useEffect(() => {
+        if (!isLoading) return;
+        const timer = setTimeout(() => setSlowLoad(true), SPINNER_AFTER_MS);
+        return () => clearTimeout(timer);
+    }, [isLoading]);
 
     // Home stays mounted, so a new day or a return from the background reloads it too.
     const day = useLocalDay();
@@ -470,7 +476,7 @@ export default function Index() {
             >
                 {isLoading ? (
                     <View style={{ height: 400, justifyContent: 'center' }}>
-                        <LoadingView size={48} />
+                        {slowLoad && <LoadingView size={48} />}
                     </View>
                 ) : (
                     /*

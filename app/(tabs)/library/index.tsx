@@ -551,9 +551,10 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: PlanProgress)
     const keyExtractor = useCallback((item: PlanListDataItem) => item.id, []);
 
     /*
-     * Opening the plan lands on the reading Home shows, once. Rows vary in
-     * height, so a row not rendered yet can't be scrolled to directly: the
-     * list jumps near it by the average height, then tries again.
+     * Opening the plan lands on the reading Home shows, once. The first render
+     * reaches that row (`initialNumToRender`), so the scroll lands directly; if
+     * it ever isn't drawn yet, the list jumps near it by the average height and
+     * tries again.
      */
     const landed = useRef(false);
     const retries = useRef(0);
@@ -593,7 +594,8 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: PlanProgress)
                     ListHeaderComponent={renderHeader}
                     ListFooterComponent={renderFooter}
                     showsVerticalScrollIndicator={false}
-                    initialNumToRender={15}
+                    // Drawn down to the reading Home shows, so opening lands on it in one step.
+                    initialNumToRender={Math.max(15, nextIndex + 8)}
                     maxToRenderPerBatch={15}
                     windowSize={7}
                     removeClippedSubviews={Platform.OS === 'android'}
@@ -701,7 +703,7 @@ export default function LibraryScreen() {
             />
             </View>
             {journalSearch.length > 0 && (
-                <ScalePressable style={styles.clearSearch} onPress={() => setJournalSearch('')}>
+                <ScalePressable style={styles.clearSearch} onPress={() => setJournalSearch('')} hitSlop={6} accessibilityRole="button" accessibilityLabel="Clear search">
                     <UIText variant="title" tone="inverse">×</UIText>
                 </ScalePressable>
             )}

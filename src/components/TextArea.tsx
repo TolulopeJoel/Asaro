@@ -196,6 +196,9 @@ const TextArea: React.FC<{
                             <ScalePressable
                                 style={[textAreaStyles.expandButton, { backgroundColor: colors.backgroundSubtle }]}
                                 onPress={handleExpand}
+                                hitSlop={6}
+                                accessibilityRole="button"
+                                accessibilityLabel="Expand"
                             >
                                 <Maximize size={14} color={colors.textSecondary} />
                             </ScalePressable>

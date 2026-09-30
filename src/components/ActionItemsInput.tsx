@@ -321,6 +321,9 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                             {!disabled && item.action.length > 0 && (
                                 <ScalePressable
                                     onPress={() => clearField(index, 'action', isModal)}
+                                    hitSlop={14}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Clear the action"
                                 >
                                     <XCircle size={16} color={colors.textTertiary} />
                                 </ScalePressable>
@@ -388,6 +391,9 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                             {!disabled && item.motivation.length > 0 && (
                                 <ScalePressable
                                     onPress={() => clearField(index, 'motivation', isModal)}
+                                    hitSlop={14}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Clear the reason"
                                 >
                                     <XCircle size={16} color={colors.textTertiary} />
                                 </ScalePressable>
@@ -455,6 +461,9 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                     <ScalePressable
                         style={[styles.expandButton, { backgroundColor: colors.backgroundSubtle }]}
                         onPress={handleExpand}
+                        hitSlop={6}
+                        accessibilityRole="button"
+                        accessibilityLabel="Expand"
                     >
                         <Maximize size={14} color={colors.textSecondary} />
                     </ScalePressable>
