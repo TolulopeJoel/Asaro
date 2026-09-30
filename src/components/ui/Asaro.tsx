@@ -579,20 +579,28 @@ function AsaroBase(
      * inside it redrew him every frame, idle or not. As a transform on the view
      * the picture is only moved. Same bob, sway and squash about the same pivot.
      */
+    const [bx, by] = box.split(' ').map(Number);
+    const height = Math.round((size * vh) / vw);
     const unit = size / vw;
+    // The pivot's offset from the view's centre, which is where a view transforms about.
+    const pivotDx = (R.pivotX - bx) * unit - size / 2;
+    const pivotDy = (R.pivotY - by) * unit - height / 2;
     const breathStyle = useAnimatedStyle(() => {
         const br = Math.sin(breath.value * Math.PI * 2);
         const sway = Math.sin(breath.value * Math.PI * 2 * 0.37);
         const sq = 1 + br * 0.016;
         return {
             transform: [
-                { translateY: br * 2.2 * unit },
+                { translateX: pivotDx },
+                { translateY: pivotDy + br * 2.2 * unit },
                 { rotate: `${sway * 1.2}deg` },
                 { scaleX: 2 - sq },
                 { scaleY: sq },
+                { translateX: -pivotDx },
+                { translateY: -pivotDy },
             ],
         };
-    }, [unit]);
+    }, [unit, pivotDx, pivotDy]);
 
     const hairPx = hair.px;
     const hairPy = hair.py;
@@ -847,16 +855,8 @@ function AsaroBase(
         </React.Fragment>
     );
 
-    const [bx, by] = box.split(' ').map(Number);
-    const height = Math.round((size * vh) / vw);
-
     return (
-        <Animated.View
-            style={[
-                { width: size, height, transformOrigin: `${((R.pivotX - bx) / vw) * 100}% ${((R.pivotY - by) / vh) * 100}%` },
-                breathStyle,
-            ]}
-        >
+        <Animated.View style={[{ width: size, height }, breathStyle]}>
         <Svg
             width={size}
             height={height}

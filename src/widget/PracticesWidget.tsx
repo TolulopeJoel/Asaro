@@ -55,8 +55,6 @@ function Row({ practice }: { practice: WidgetPractice }) {
             <FlexWidget style={{ flex: 1 }}>
                 <TextWidget
                     text={practice.action}
-                    maxLines={2}
-                    truncate="END"
                     style={{ fontFamily: BODY, fontSize: 14, color: practice.kept ? C.textTertiary : C.textPrimary }}
                 />
             </FlexWidget>

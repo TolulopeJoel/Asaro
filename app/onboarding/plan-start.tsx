@@ -1,8 +1,9 @@
 /**
  * Where the reader has reached in the plan. Asked after the tour, which has
- * just said "one reading a day, through the whole Bible", and opened from the
- * Plan tab (`?change=1`) by anyone who wants to move. It only decides which
- * reading comes up next: see src/storage/planStart.ts.
+ * just said "one reading a day, through the whole Bible", and asked once
+ * (`?once=1`, from the root layout) of anyone who got past onboarding without
+ * answering it. It only decides which reading comes up next: see
+ * src/storage/planStart.ts.
  *
  * "From the start" is an answer, not a skip, so the page stays a wall.
  */
@@ -34,8 +35,9 @@ const passage = (item: ReadingItem) =>
 
 export default function PlanStartScreen() {
     const router = useRouter();
-    const { change } = useLocalSearchParams<{ change?: string }>();
-    const changing = change === '1';
+    const { once } = useLocalSearchParams<{ once?: string }>();
+    // Outside onboarding: no step count, and Home comes next instead of the sleep time.
+    const asking = once === '1';
     const { colors } = useTheme();
     const look = useAsaroLook();
     const footPadding = useFootPadding(Spacing.layout.screenPadding);
@@ -80,9 +82,7 @@ export default function PlanStartScreen() {
                 : { action: 'think', line: `And where in ${book?.name}? Tap the reading you’re on.` };
         }
         if (started === false) return { action: 'thumbsUp', line: `${passage(FIRST)} then. We start together.` };
-        return changing
-            ? { action: 'think', line: 'You’ve moved? Tell me where you are now.' }
-            : { action: 'think', line: 'Some people start with me from Genesis. Some have been reading on their own for a while. Which one are you?' };
+        return { action: 'think', line: 'Some people start with me from Genesis. Some have been reading on their own for a while. Which one are you?' };
     })();
 
     const canFinish = started === false || (step === 'reading' && !!reading);
@@ -95,7 +95,7 @@ export default function PlanStartScreen() {
         } catch (error) {
             console.error('Failed to save the plan start:', error);
         }
-        if (changing) router.back();
+        if (asking) router.replace('/');
         else router.push('/onboarding/sleep-time');
     };
 
@@ -115,7 +115,7 @@ export default function PlanStartScreen() {
         </ScalePressable>
     );
 
-    const eyebrow = changing ? 'Your plan' : onboardingStepLabel('plan-start');
+    const eyebrow = asking ? 'Your plan' : onboardingStepLabel('plan-start');
 
     return (
         <Screen edges={[]}>
@@ -168,7 +168,7 @@ export default function PlanStartScreen() {
 
                 {step !== 'book' && (
                     <View style={styles.foot}>
-                        <ThemedButton label={changing ? 'Save' : 'Continue'} block disabled={!canFinish} onPress={finish} />
+                        <ThemedButton label={asking ? 'Save' : 'Continue'} block disabled={!canFinish} onPress={finish} />
                     </View>
                 )}
             </View>

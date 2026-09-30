@@ -497,27 +497,10 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: PlanProgress)
         );
     }, [sectionData, collapsedSections, completedItems, queueIndexById, handleToggle, toggleSection]);
 
-    const changeWhereYouAre = useCallback(
-        () => router.push({ pathname: '/onboarding/plan-start', params: { change: '1' } }),
-        [router],
-    );
-
     const renderHeader = useCallback(() => {
-        const change = (
-            <ScalePressable
-                onPress={changeWhereYouAre}
-                hitSlop={Spacing.md}
-                accessibilityRole="button"
-                style={styles.changeStart}
-            >
-                <UIText variant="meta" tone="accent">Change where you are</UIText>
-            </ScalePressable>
-        );
-        if (progress > 0) return change;
+        if (progress > 0) return null;
 
         return (
-            <>
-            {change}
             <View
                 ref={coachTarget('plan-legend', { bottom: Spacing.md })}
                 collapsable={false}
@@ -536,9 +519,8 @@ function PlanContent({ onProgressChange }: { onProgressChange: (p: PlanProgress)
                     </UIText>
                 </View>
             </View>
-            </>
         );
-    }, [colors, progress, changeWhereYouAre]);
+    }, [colors, progress]);
 
     const renderFooter = useCallback(() => {
         const url = 'https://www.jw.org/en/library/series/more-topics/bible-reading-plan/';
@@ -883,7 +865,6 @@ const styles = StyleSheet.create({
     },
     /** `.cl-panel` as a plan row: 18px, an 8px gap under it, markers at the head. */
     /** Above the plan, on its own line, right-aligned like the rest of the list's small links. */
-    changeStart: { alignSelf: 'flex-end', marginBottom: Spacing.md },
     clothPlanRow: {
         flexDirection: 'row',
         alignItems: 'center',

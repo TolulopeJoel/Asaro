@@ -1,6 +1,6 @@
 /**
- * Where the reader said they are in the plan, asked in onboarding and changed
- * from the Plan tab. It only moves which reading comes up next: the readings
+ * Where the reader said they are in the plan, asked in onboarding after the tour,
+ * or once of anyone who never answered it. It only moves which reading comes up next: the readings
  * before it are not done, because people read out of order and saying where
  * you are says nothing about what you have read.
  */

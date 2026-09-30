@@ -5,6 +5,7 @@ import { formatDateToLocalString, getTodayDateString, parseLocalDateString } fro
 import { READING_PLAN_DATA, type ReadingItem } from './readingPlanData';
 import { CoverageRow } from '../land/cloth';
 import { retractCiting, retractKeys } from '../insight/observation';
+import { tellDpcEntrySaved } from '@/modules/dpc-bridge';
 
 type ActionItemInput = NonNullable<JournalEntryInput['actionItems']>[number];
 
@@ -362,7 +363,7 @@ async function saveActionItems(database: SQLite.SQLiteDatabase, entryId: number,
 export const createJournalEntry = async (data: JournalEntryInput) => {
     const reflections = [...data.reflections, '', '', '', ''].slice(0, 4);
 
-    return await withTransaction(async (database) => {
+    const newId = await withTransaction(async (database) => {
         const result = await database.runAsync(
             `INSERT INTO journal_entries (book_name, chapter_start, chapter_end, verse_start, verse_end, reflection_1, reflection_2, reflection_3, reflection_4, notes, study_further, study_further_reminder)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -379,6 +380,10 @@ export const createJournalEntry = async (data: JournalEntryInput) => {
         await tickCoveredReadings(database, data);
         return entryId;
     });
+
+    // Only once the entry is committed: this is what opens the phone in the morning.
+    tellDpcEntrySaved();
+    return newId;
 };
 
 export const updateJournalEntry = async (id: number, data: JournalEntryInput) => {

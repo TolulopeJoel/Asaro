@@ -40,5 +40,13 @@
         <data android:scheme="exp+asaro"/>
       </intent-filter>
     </activity>
+    <service android:name="com.reactnativeandroidwidget.RNWidgetCollectionService" android:permission="android.permission.BIND_REMOTEVIEWS"/>
+    <receiver android:name=".widget.Practices" android:exported="false" android:label="Àṣàrò practices">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+        <action android:name="com.asaro.meditation.WIDGET_CLICK"/>
+      </intent-filter>
+      <meta-data android:name="android.appwidget.provider" android:resource="@xml/widgetprovider_practices"/>
+    </receiver>
   </application>
 </manifest>

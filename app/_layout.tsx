@@ -27,6 +27,7 @@ import { LoadingView } from '@/src/components/LoadingView';
 import { CustomAlert } from '@/src/components/CustomAlert';
 import { AppWalk } from '@/src/components/onboarding/AppWalk';
 import { coachRoot } from '@/src/onboarding/coachTargets';
+import { getPlanStart } from '@/src/storage/planStart';
 import { useFonts } from 'expo-font';
 import {
   Fraunces_700Bold,
@@ -269,6 +270,16 @@ export default function RootLayout() {
         router.replace('/battery-optimization');
         return;
       }
+
+      // 6. Where they are in the plan. New users answer it after the tour; anyone who got here without answering it is asked once.
+      if (!(await getPlanStart())) {
+        if (cancelled) return;
+        if (currentSegment !== 'onboarding' || segments[1] !== 'plan-start') {
+          router.replace({ pathname: '/onboarding/plan-start', params: { once: '1' } });
+        }
+        return;
+      }
+      if (cancelled) return;
 
       // A new user goes on to the thinking cap, the practice entry and the walk; Home picks it up from the flag.
       if (isOnboardingRun()) {
