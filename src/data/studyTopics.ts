@@ -17,8 +17,9 @@ export const isBlankTopic = (topic: { topic?: string | null }) => !topic.topic?.
  */
 export function topicsFromLegacy(text: string | null | undefined, reminder?: string | null, completed = false): StudyTopicDraft[] {
     if (!text?.trim()) return [];
-    const { blocks, points } = answerBlocks(text);
-    return (points ? blocks : [text.trim()]).map((topic, i) => ({
+    const blocks = answerBlocks(text);
+    const parts = blocks.some(block => block.point) ? blocks.map(block => block.text) : [text.trim()];
+    return parts.map((topic, i) => ({
         topic,
         reminder: i === 0 ? reminder ?? null : null,
         completed,

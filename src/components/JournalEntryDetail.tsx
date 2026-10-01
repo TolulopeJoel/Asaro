@@ -332,16 +332,17 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
         const actualReflection = questionIndex === 5 ? entry.notes : reflection;
         if (!actualReflection || !actualReflection.trim()) return null;
 
-        const { blocks, points } = answerBlocks(actualReflection);
+        const blocks = answerBlocks(actualReflection);
+        const points = blocks.some(block => block.point);
 
         return (
             <View key={questionIndex} style={[styles.block, rule]}>
                 {blockHead(questionIndex, QUESTION_AT[questionIndex] ? () => handleShareReflection(actualReflection, questionIndex) : undefined)}
                 <View style={points ? styles.points : styles.answer}>
-                    {blocks.map((block, pIndex) => (
+                    {blocks.map((block, bIndex) => (
                         // Points are separated the way several commitments are: a hairline, no markers.
-                        <View key={pIndex} style={points && pIndex > 0 ? [styles.nextAction, { borderTopColor: colors.border }] : undefined}>
-                            <HyperlinkedText style={bodyFace} text={block} />
+                        <View key={bIndex} style={points && bIndex > 0 ? [styles.nextAction, { borderTopColor: colors.border }] : undefined}>
+                            <HyperlinkedText style={bodyFace} text={block.text} />
                         </View>
                     ))}
                 </View>

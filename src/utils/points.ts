@@ -25,33 +25,39 @@ export function continuePoint(prev: string, at: number): string | null {
     return `${prev.slice(0, at)}\n${marker[1]} ${prev.slice(at)}`;
 }
 
+/** The prose before the first point, or one point with whatever was written after it. */
+export interface AnswerBlock {
+    text: string;
+    point: boolean;
+}
+
 /**
- * An answer as it reads back. With no points it is its paragraphs, as written. With points,
- * every point is a block and so is each paragraph of prose around them, markers left out.
+ * An answer as it reads back, markers left out. Prose before the first point is one block;
+ * after that, every point starts a block and prose written after it belongs to it, as its
+ * next paragraph. With no points, the blocks are the answer's paragraphs.
  */
-export function answerBlocks(text: string): { blocks: string[]; points: boolean } {
-    const trimmed = text.trim();
-    const lines = trimmed.split('\n');
+export function answerBlocks(text: string): AnswerBlock[] {
+    const lines = text.trim().split('\n');
     if (!lines.some(line => POINT.test(line))) {
-        return { blocks: trimmed.split('\n\n').map(p => p.trim()).filter(Boolean), points: false };
+        return text.trim().split('\n\n').map(p => p.trim()).filter(Boolean).map(p => ({ text: p, point: false }));
     }
-    const blocks: string[] = [];
-    let prose: string[] = [];
-    const flush = () => {
-        if (prose.length) blocks.push(prose.join('\n'));
-        prose = [];
-    };
+    const blocks: { paragraphs: string[][]; point: boolean }[] = [];
+    let paragraph: string[] | null = null;
     for (const line of lines) {
         if (POINT.test(line)) {
-            flush();
             const point = line.replace(POINT, '').trim();
-            if (point) blocks.push(point);
+            paragraph = point ? [point] : null;
+            if (paragraph) blocks.push({ paragraphs: [paragraph], point: true });
         } else if (!line.trim()) {
-            flush();
+            paragraph = null;
+        } else if (paragraph) {
+            paragraph.push(line.trim());
         } else {
-            prose.push(line.trim());
+            paragraph = [line.trim()];
+            const last = blocks[blocks.length - 1];
+            if (last) last.paragraphs.push(paragraph);
+            else blocks.push({ paragraphs: [paragraph], point: false });
         }
     }
-    flush();
-    return { blocks, points: true };
+    return blocks.map(block => ({ text: block.paragraphs.map(p => p.join('\n')).join('\n\n'), point: block.point }));
 }
