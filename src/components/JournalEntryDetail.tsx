@@ -28,7 +28,7 @@ import { QuestionId } from '@/src/data/questions';
 import { getDaysDifference, getLocalMidnight } from '@/src/utils/dateUtils';
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { Share2, Bell, X } from 'lucide-react-native';
+import { Users, Bell, X } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { useAlert } from '../context/AlertContext';
 import { Spacing } from '../theme/spacing';
@@ -245,7 +245,8 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                     accessibilityRole="button"
                     accessibilityLabel={isBrought(questionIndex) ? 'You brought this answer to your groups' : 'Bring this answer to your groups'}
                 >
-                    <Share2 size={16} color={isBrought(questionIndex) ? colors.accent : colors.textTertiary} strokeWidth={1.9} />
+                    {/* Groups, not the share symbol: that one is the bottom bar's, which sends the entry out of the app. */}
+                    <Users size={16} color={isBrought(questionIndex) ? colors.accent : colors.textTertiary} strokeWidth={1.9} />
                 </ScalePressable>
             )}
         </View>
