@@ -27,10 +27,11 @@ function segments(text: string, pendingFrom: number): Segment[] {
 }
 
 /**
- * Keeps references whole: an edit that cuts into one removes all of it, and typing
- * inside one lands after it. Returns the text to keep and where the cursor goes, or null.
+ * Keeps references whole: an edit that cuts into one removes all of it, and typing inside
+ * one lands after it. Returns the text to keep, where the cursor belongs and where the raw
+ * edit left it, or null when no reference was touched.
  */
-function keepReferencesWhole(prev: string, next: string): { text: string; cursor: number } | null {
+function keepReferencesWhole(prev: string, next: string): { text: string; cursor: number; nativeCursor: number } | null {
     let p = 0;
     while (p < prev.length && p < next.length && prev[p] === next[p]) p++;
     let q = 0;
@@ -44,7 +45,7 @@ function keepReferencesWhole(prev: string, next: string): { text: string; cursor
         if (!cut.length) return null;
         const start = Math.min(removed.start, cut[0].start);
         const end = Math.max(removed.end, cut[cut.length - 1].end);
-        return { text: prev.slice(0, start) + prev.slice(end), cursor: start };
+        return { text: prev.slice(0, start) + prev.slice(end), cursor: start, nativeCursor: p };
     }
     if (removed.end === removed.start && inserted) {
         const inside = spans.find(s => p > s.start && p < s.end);
@@ -52,6 +53,7 @@ function keepReferencesWhole(prev: string, next: string): { text: string; cursor
         return {
             text: prev.slice(0, inside.end) + inserted + prev.slice(inside.end),
             cursor: inside.end + inserted.length,
+            nativeCursor: p + inserted.length,
         };
     }
     return null;
@@ -76,13 +78,12 @@ export function ReferenceInput({
     };
     const latest = useRef(text);
     latest.current = text;
-    // A correction is on its way to the native text; selection events until then describe the old text.
-    const correcting = useRef(false);
-    const moveCursor = (at: number) => setTimeout(() => {
-        correcting.current = false;
+    // Selection events right after a correction still describe the uncorrected text.
+    const correcting = useRef(0);
+    const moveCursor = (at: number, after = 0) => setTimeout(() => {
         const to = Math.min(at, latest.current.length);
         input.current?.setSelection(to, to);
-    }, 30);
+    }, after);
 
     // Android keeps stale lines when styled text is replaced mid-composition and draws from the
     // wrong offset; changing letter spacing in the same update makes it lay the text out afresh.
@@ -95,23 +96,24 @@ export function ReferenceInput({
     const handleChange = (next: string) => {
         const kept = keepReferencesWhole(text, next);
         onChangeText?.(kept ? kept.text : next);
-        if (kept) {
-            correcting.current = true;
-            moveCursor(kept.cursor);
-        }
+        if (!kept) return;
+        correcting.current = Date.now();
+        // Native keeps the cursor's distance from the end; move it only when that lands it wrong.
+        if (kept.text.length - (next.length - kept.nativeCursor) !== kept.cursor) moveCursor(kept.cursor, 150);
     };
 
     const handleSelection = (e: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
         onSelectionChange?.(e);
         const { start, end } = e.nativeEvent.selection;
-        if (start !== end || correcting.current) return;
+        if (start !== end || Date.now() - correcting.current < 200) return;
         const inside = referenceSpans(text).find(s => start > s.start && start < s.end);
         if (inside) moveCursor(start - inside.start < inside.end - start ? inside.start : inside.end);
     };
 
     const tag = { color: colors.accentDark, backgroundColor: `${colors.accent}2e` };
     const picking = { color: colors.textPrimary, backgroundColor: colors.accent };
-    const hidden = { color: 'transparent' };
+    // Fully transparent counts as no colour on Android and falls back to the ink; 1/255 draws nothing.
+    const hidden = { color: `${colors.accent}01`, letterSpacing: -2.5 };
 
     return (
         <TextInput
@@ -130,13 +132,11 @@ export function ReferenceInput({
                     return <Text maxFontSizeMultiplier={MAX_FONT_SCALE} key={index} style={picking}>{part.text}</Text>;
                 }
                 // The brackets stay in the text but draw nothing: they are the tag's padding.
-                return (
-                    <Text maxFontSizeMultiplier={MAX_FONT_SCALE} key={index} style={tag}>
-                        <Text style={hidden}>[[</Text>
-                        {part.text.slice(2, -2)}
-                        <Text style={hidden}>]]</Text>
-                    </Text>
-                );
+                return [
+                    <Text maxFontSizeMultiplier={MAX_FONT_SCALE} key={`${index}[`} style={[tag, hidden]}>[[</Text>,
+                    <Text maxFontSizeMultiplier={MAX_FONT_SCALE} key={index} style={tag}>{part.text.slice(2, -2)}</Text>,
+                    <Text maxFontSizeMultiplier={MAX_FONT_SCALE} key={`${index}]`} style={[tag, hidden]}>]]</Text>,
+                ];
             })}
         </TextInput>
     );
