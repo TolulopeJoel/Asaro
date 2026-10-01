@@ -4,15 +4,13 @@ import {
     AppState,
     Modal,
     StyleSheet,
-    Text,
     TextInput,
     View,
 } from 'react-native';
-import { MAX_FONT_SCALE } from '../theme/typography';
 import { Maximize, X } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { BibleReferencePicker } from './BibleReferencePicker';
-import { getBibleStyledParts } from '../utils/bibleUtils';
+import { ReferenceInput } from './ReferenceInput';
 import { useBibleRefPicker } from '../hooks/useBibleRefPicker';
 import { ScalePressable } from './ScalePressable';
 import { Spacing } from '../theme/spacing';
@@ -152,8 +150,8 @@ const TextArea: React.FC<{
                         disabled && { backgroundColor: colors.background },
                     ]}>
                         {bare && <RuledPaper color={colors.border} shift={ruleShift} />}
-                        <TextInput
-                            maxFontSizeMultiplier={MAX_FONT_SCALE}
+                        <ReferenceInput
+                            text={value}
                             ref={regularTextInputRef}
                             inputAccessoryViewID="bible-picker"
                             style={[
@@ -175,21 +173,7 @@ const TextArea: React.FC<{
                             onScroll={bare
                                 ? e => ruleShift.setValue(-(e.nativeEvent.contentOffset.y % RULE_STEP))
                                 : undefined}
-                        >
-                            {getBibleStyledParts(value).map((part, index) => (
-                                <Text maxFontSizeMultiplier={MAX_FONT_SCALE} key={index} style={part.isReference ? { color: colors.accent, fontWeight: '600' } : {}}>
-                                    {part.isReference ? (
-                                        <Text>
-                                            <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={{ color: colors.accent, opacity: 0.3, fontWeight: '400' }}>[[</Text>
-                                            {part.refContent}
-                                            <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={{ color: colors.accent, opacity: 0.3, fontWeight: '400' }}>]]</Text>
-                                        </Text>
-                                    ) : (
-                                        part.text
-                                    )}
-                                </Text>
-                            ))}
-                        </TextInput>
+                        />
                         {isAnswered && <View style={[textAreaStyles.answeredIndicator, { backgroundColor: colors.accent }]} />}
 
                         {!disabled && (
@@ -232,8 +216,8 @@ const TextArea: React.FC<{
 
                             <View style={[textAreaStyles.inputContainerBare, { backgroundColor: colors.backgroundSubtle }]}>
                                 <RuledPaper color={colors.border} shift={modalRuleShift} />
-                                <TextInput
-                                    maxFontSizeMultiplier={MAX_FONT_SCALE}
+                                <ReferenceInput
+                                    text={tempValue}
                                     ref={expandedTextInputRef}
                                     style={[
                                         textAreaStyles.inputBare,
@@ -250,21 +234,7 @@ const TextArea: React.FC<{
                                     scrollEnabled={true}
                                     onScroll={e => modalRuleShift.setValue(-(e.nativeEvent.contentOffset.y % RULE_STEP))}
                                     returnKeyType="default"
-                                >
-                                    {getBibleStyledParts(tempValue).map((part, index) => (
-                                        <Text maxFontSizeMultiplier={MAX_FONT_SCALE} key={index} style={part.isReference ? { color: colors.accent, fontWeight: '600' } : {}}>
-                                            {part.isReference ? (
-                                                <Text>
-                                                    <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={{ color: colors.accent, opacity: 0.3, fontWeight: '400' }}>[[</Text>
-                                                    {part.refContent}
-                                                    <Text maxFontSizeMultiplier={MAX_FONT_SCALE} style={{ color: colors.accent, opacity: 0.3, fontWeight: '400' }}>]]</Text>
-                                                </Text>
-                                            ) : (
-                                                part.text
-                                            )}
-                                        </Text>
-                                    ))}
-                                </TextInput>
+                                />
                             </View>
 
                             <View style={fullScreenStyles.footer}>

@@ -5,9 +5,10 @@ import { ScalePressable } from './ScalePressable';
 import { XCircle, X, Plus, Maximize } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { Spacing } from '../theme/spacing';
-import { Typography, MAX_FONT_SCALE } from '../theme/typography';
+import { Typography } from '../theme/typography';
 import { BibleReferencePicker } from './BibleReferencePicker';
-import { couldBeBookName, findAtTrigger, getBibleStyledParts, pickerQuery, resolveTypedReference, typedSince } from '../utils/bibleUtils';
+import { couldBeBookName, findAtTrigger, pickerQuery, resolveTypedReference, typedSince } from '../utils/bibleUtils';
+import { ReferenceInput } from './ReferenceInput';
 import { useRefPicker } from '../context/RefPickerContext';
 import { Screen, Text, ThemedButton } from './ui';
 import { KindChips } from './journal/KindChips';
@@ -329,8 +330,8 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                                 </ScalePressable>
                             )}
                         </View>
-                        <TextInput
-                            maxFontSizeMultiplier={MAX_FONT_SCALE}
+                        <ReferenceInput
+                            text={item.action}
                             inputAccessoryViewID="bible-picker"
                             ref={(ref) => { actionRefs.current[index] = ref; }}
                             style={[
@@ -351,21 +352,7 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                             blurOnSubmit={false}
                             multiline={true}
                             scrollEnabled={false}
-                        >
-                            {getBibleStyledParts(item.action).map((part, index) => (
-                                <Text key={index} style={part.isReference ? { color: colors.accent, fontWeight: '600' } : {}}>
-                                    {part.isReference ? (
-                                        <Text>
-                                            <Text style={{ color: colors.accent, opacity: 0.3, fontWeight: '400' }}>[[</Text>
-                                            {part.refContent}
-                                            <Text style={{ color: colors.accent, opacity: 0.3, fontWeight: '400' }}>]]</Text>
-                                        </Text>
-                                    ) : (
-                                        part.text
-                                    )}
-                                </Text>
-                            ))}
-                        </TextInput>
+                        />
                     </View>
 
                     {/* Dashed divider between action and motivation */}
@@ -399,8 +386,8 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                                 </ScalePressable>
                             )}
                         </View>
-                        <TextInput
-                            maxFontSizeMultiplier={MAX_FONT_SCALE}
+                        <ReferenceInput
+                            text={item.motivation}
                             inputAccessoryViewID="bible-picker"
                             ref={(ref) => { motivationRefs.current[index] = ref; }}
                             style={[
@@ -421,21 +408,7 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
                             blurOnSubmit={false}
                             multiline={true}
                             scrollEnabled={false}
-                        >
-                            {getBibleStyledParts(item.motivation).map((part, index) => (
-                                <Text key={index} style={part.isReference ? { color: colors.accent, fontWeight: '600' } : {}}>
-                                    {part.isReference ? (
-                                        <Text>
-                                            <Text style={{ color: colors.accent, opacity: 0.3, fontWeight: '400' }}>[[</Text>
-                                            {part.refContent}
-                                            <Text style={{ color: colors.accent, opacity: 0.3, fontWeight: '400' }}>]]</Text>
-                                        </Text>
-                                    ) : (
-                                        part.text
-                                    )}
-                                </Text>
-                            ))}
-                        </TextInput>
+                        />
                     </View>
                 </View>
 
