@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '@/src/storage/storageKeys';
 import { useLocalSearchParams, useNavigation, useRouter, Stack } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, BackHandler, Share, StyleSheet, View } from 'react-native';
+import { Animated, BackHandler, StyleSheet, View } from 'react-native';
 import { ReflectionAnswers } from '../src/components/ReflectionForm';
 import { LoadingView } from '../src/components/LoadingView';
 import { BibleBook, getBookByName } from '../src/data/bibleBooks';
@@ -28,6 +28,7 @@ import { CoachSequence } from '@/src/components/onboarding/CoachSequence';
 import { setFirstRun } from '@/src/onboarding/firstRun';
 import { KeyboardSafe } from '../src/components/KeyboardSafe';
 import { unwrapReferences } from '@/src/utils/reference';
+import { shareEntry } from '@/src/utils/shareEntry';
 
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -404,20 +405,16 @@ export default function MeditationSessionScreen() {
         router.replace({ pathname: '/(tabs)/library' });
     }, [practice, router]);
 
+    // The summary shares what was saved, the whole entry, as everywhere else.
     const handleShare = useCallback(async () => {
-        if (!selectedBook || !selectedChapters) return;
-        const reference = `${selectedBook.name} ${selectedChapters.start}${selectedChapters.end && selectedChapters.end !== selectedChapters.start ? '–' + selectedChapters.end : ''}${verseRange?.start ? ':' + verseRange.start : ''}`;
-
-        let content = `Reflection on ${reference}\n\n`;
-        if (reflectionAnswers?.reflection1) content += `${reflectionAnswers.reflection1}\n\n`;
-        content += `🫶 Created with Àṣàrò`;
-
+        if (!savedEntryId) return;
         try {
-            await Share.share({ message: content, title: reference });
+            const entry = await getEntryById(savedEntryId);
+            if (entry) await shareEntry(entry);
         } catch (error) {
             console.error('Error sharing entry:', error);
         }
-    }, [selectedBook, selectedChapters, verseRange, reflectionAnswers]);
+    }, [savedEntryId]);
 
     const handleDiscardDraft = useCallback(() => {
         showAlert({

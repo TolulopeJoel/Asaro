@@ -7,23 +7,10 @@ import { JournalEntry, getEntryById, deleteJournalEntry } from '@/src/data/datab
 import { emitMilestones, unpublishReading } from '@/src/groups/publish';
 import { syncStudyReminders } from '@/src/utils/notifications';
 import { LoadingView } from '@/src/components/LoadingView';
-import { Share } from 'react-native';
+import { shareEntry } from '@/src/utils/shareEntry';
 import { useAlert } from '@/src/context/AlertContext';
 import { useTour } from '@/src/onboarding/tour';
 import { DEMO_ENTRIES } from '@/src/onboarding/demo';
-
-/** "John 3:16–21", "Genesis 12–15", "Genesis 12:4–13:2" — the passage as the entry records it. */
-function entryReference(entry: JournalEntry): string {
-    const { book_name, chapter_start: c1, verse_start: v1, verse_end: v2 } = entry;
-    const c2 = entry.chapter_end && entry.chapter_end !== c1 ? entry.chapter_end : undefined;
-    if (c2) {
-        return v1 || v2
-            ? `${book_name} ${c1}${v1 ? `:${v1}` : ''}–${c2}${v2 ? `:${v2}` : ''}`
-            : `${book_name} ${c1}–${c2}`;
-    }
-    if (!v1) return `${book_name} ${c1}`;
-    return `${book_name} ${c1}:${v1}${v2 && v2 !== v1 ? `–${v2}` : ''}`;
-}
 
 export default function JournalEntryDetailScreen() {
     const { id } = useLocalSearchParams();
@@ -104,15 +91,7 @@ export default function JournalEntryDetailScreen() {
     const handleShare = async (entry: JournalEntry) => {
         setIsSharing(true);
         try {
-            const reference = entryReference(entry);
-            let content = `Reflection on ${reference}\n\n`;
-            if (entry.reflection_1) content += `${entry.reflection_1}\n\n`;
-            content += `🫶 Created with Àṣàrò`;
-
-            await Share.share({
-                message: content,
-                title: reference,
-            });
+            await shareEntry(entry);
         } catch (error) {
             console.error("Error sharing entry:", error);
         } finally {

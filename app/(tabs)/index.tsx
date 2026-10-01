@@ -21,7 +21,7 @@ import { useCoachScroller } from '@/src/onboarding/useCoachScroller';
 import { DEMO_OBSERVATION, demoToday } from '@/src/onboarding/demo';
 import { JournalEntryDetail } from '@/src/components/JournalEntryDetail';
 import { LoadingView } from '@/src/components/LoadingView';
-import { Share } from 'react-native';
+import { shareEntry } from '@/src/utils/shareEntry';
 import { useAlert } from '@/src/context/AlertContext';
 import { deleteJournalEntry } from '@/src/data/database';
 import { emitMilestones, unpublishReading } from '@/src/groups/publish';
@@ -353,15 +353,7 @@ export default function Index() {
     const handleShare = async (entry: JournalEntry) => {
         setIsSharing(true);
         try {
-            const reference = `${entry.book_name} ${entry.chapter_start}${entry.verse_start ? ':' + entry.verse_start : ''}`;
-            let content = `Reflection on ${reference}\n\n`;
-            if (entry.reflection_1) content += `${entry.reflection_1}\n\n`;
-            content += `🫶 Created with Àṣàrò`;
-
-            await Share.share({
-                message: content,
-                title: reference,
-            });
+            await shareEntry(entry);
         } catch (error) {
             console.error("Error sharing entry:", error);
         } finally {
