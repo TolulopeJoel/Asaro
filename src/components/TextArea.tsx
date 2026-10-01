@@ -152,6 +152,7 @@ const TextArea: React.FC<{
                         {bare && <RuledPaper color={colors.border} shift={ruleShift} />}
                         <ReferenceInput
                             text={value}
+                            pendingFrom={inlinePicker.refStartIndex}
                             ref={regularTextInputRef}
                             inputAccessoryViewID="bible-picker"
                             style={[
@@ -218,6 +219,7 @@ const TextArea: React.FC<{
                                 <RuledPaper color={colors.border} shift={modalRuleShift} />
                                 <ReferenceInput
                                     text={tempValue}
+                                    pendingFrom={modalPicker.refStartIndex}
                                     ref={expandedTextInputRef}
                                     style={[
                                         textAreaStyles.inputBare,
