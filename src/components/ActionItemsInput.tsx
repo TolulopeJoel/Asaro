@@ -201,7 +201,7 @@ export const ActionItemsInput: React.FC<ActionItemsInputProps> = ({
         const updated = [...currentItems];
         const currentText = updated[index][field];
 
-        const taggedRef = `[[${ref}]]`;
+        const taggedRef = `[[${ref}]] `;
         const insertAt = startIndex >= 0 ? startIndex : currentText.lastIndexOf('@');
         updated[index] = { ...updated[index], [field]: currentText.slice(0, insertAt >= 0 ? insertAt : 0) + taggedRef };
 

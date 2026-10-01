@@ -79,7 +79,7 @@ export function useBibleRefPicker({
                 onSelect: (ref) => {
                     const si = refStartIndexRef.current;
                     setValueRef.current(
-                        getValueRef.current().slice(0, si >= 0 ? si : 0) + `[[${ref}]]`
+                        getValueRef.current().slice(0, si >= 0 ? si : 0) + `[[${ref}]] `
                     );
                     refStartIndexRef.current = -1;
                     setRefStartIndex(-1);
@@ -175,7 +175,7 @@ export function useBibleRefPicker({
     const handleSelect = useCallback((ref: string) => {
         const si = refStartIndexRef.current;
         setValueRef.current(
-            getValueRef.current().slice(0, si >= 0 ? si : 0) + `[[${ref}]]`
+            getValueRef.current().slice(0, si >= 0 ? si : 0) + `[[${ref}]] `
         );
         refStartIndexRef.current = -1;
         setRefStartIndex(-1);
