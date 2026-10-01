@@ -26,6 +26,7 @@ import { beatsFinished, COACH, PRACTICE_ANSWERS, PRACTICE_BOOK, PRACTICE_CHAPTER
 import { CoachSequence } from '@/src/components/onboarding/CoachSequence';
 import { setFirstRun } from '@/src/onboarding/firstRun';
 import { KeyboardSafe } from '../src/components/KeyboardSafe';
+import { unwrapReferences } from '@/src/utils/reference';
 
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -325,7 +326,7 @@ export default function MeditationSessionScreen() {
         if (unreasoned) {
             showAlert({
                 title: 'Why does this matter?',
-                message: `You wrote "${unreasoned.action.trim()}" — add what moves you to it. Months from now that reason is the part you will have forgotten.`,
+                message: `You wrote "${unwrapReferences(unreasoned.action)}" — add what moves you to it. Months from now that reason is the part you will have forgotten.`,
             });
             return;
         }

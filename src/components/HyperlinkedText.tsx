@@ -3,16 +3,20 @@ import { Text, TextProps, StyleSheet, TextStyle } from 'react-native';
 import { MAX_FONT_SCALE } from '../theme/typography';
 import { useTheme } from '../theme/ThemeContext';
 import { openBibleReferenceFromTag } from '../utils/bibleUtils';
+import { referenceTag } from './ReferenceInput';
 
 interface HyperlinkedTextProps extends TextProps {
     text: string;
     linkStyle?: TextStyle;
+    /** Show references as tags, as the writing box does. Off where a reference is already its own chip. */
+    asTags?: boolean;
 }
 
 export const HyperlinkedText: React.FC<HyperlinkedTextProps> = ({
     text,
     style,
     linkStyle,
+    asTags = true,
     ...props
 }) => {
     const { colors } = useTheme();
@@ -66,14 +70,14 @@ export const HyperlinkedText: React.FC<HyperlinkedTextProps> = ({
                             maxFontSizeMultiplier={MAX_FONT_SCALE}
                             key={index}
                             style={[
-                                styles.link,
-                                { color: colors.accent },
+                                asTags ? referenceTag(colors) : [styles.link, { color: colors.accent }],
                                 linkStyle
                             ]}
                             onPress={() => openBibleReferenceFromTag(part.text)}
                             suppressHighlighting={true}
                         >
-                            {part.text}
+                            {/* Narrow no-break spaces pad the tag, and a no-break space keeps it on one line. */}
+                            {asTags ? `\u202F${part.text.replace(/ /g, '\u00A0')}\u202F` : part.text}
                         </Text>
                     );
                 }

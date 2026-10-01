@@ -7,6 +7,11 @@ type Segment = { text: string; kind: 'plain' | 'reference' | 'pending' };
 type Span = { start: number; end: number };
 
 const REFERENCE = /\[\[(.+?)\]\]/g;
+const CLOSING = /^[,.;:!?)]$/;
+
+/** A reference tag's colours, shared by the writing box and the read-back. */
+export const referenceTag = (colors: { accent: string; accentDark: string }) =>
+    ({ color: colors.accentDark, backgroundColor: `${colors.accent}2e` });
 
 const referenceSpans = (text: string): Span[] =>
     Array.from(text.matchAll(REFERENCE), m => ({ start: m.index!, end: m.index! + m[0].length }));
@@ -27,11 +32,11 @@ function segments(text: string, pendingFrom: number): Segment[] {
 }
 
 /**
- * Keeps references whole: an edit that cuts into one removes all of it, and typing inside
- * one lands after it. Returns the text to keep, where the cursor belongs and where the raw
- * edit left it, or null when no reference was touched.
+ * Keeps references whole: an edit that cuts into one removes all of it, typing inside one
+ * lands after it, and punctuation typed after one takes the place of the space that follows it.
+ * Returns the text to keep, where the cursor belongs and where the raw edit left it, or null.
  */
-function keepReferencesWhole(prev: string, next: string): { text: string; cursor: number; nativeCursor: number } | null {
+function adjustForReferences(prev: string, next: string): { text: string; cursor: number; nativeCursor: number } | null {
     let p = 0;
     while (p < prev.length && p < next.length && prev[p] === next[p]) p++;
     let q = 0;
@@ -48,6 +53,9 @@ function keepReferencesWhole(prev: string, next: string): { text: string; cursor
         return { text: prev.slice(0, start) + prev.slice(end), cursor: start, nativeCursor: p };
     }
     if (removed.end === removed.start && inserted) {
+        if (CLOSING.test(inserted) && prev[p - 1] === ' ' && spans.some(s => s.end === p - 1)) {
+            return { text: prev.slice(0, p - 1) + inserted + prev.slice(p), cursor: p, nativeCursor: p + 1 };
+        }
         const inside = spans.find(s => p > s.start && p < s.end);
         if (!inside) return null;
         return {
@@ -94,7 +102,7 @@ export function ReferenceInput({
     const letterSpacing = (StyleSheet.flatten(style)?.letterSpacing ?? 0) + (shown.current.flip ? 0.01 : 0);
 
     const handleChange = (next: string) => {
-        const kept = keepReferencesWhole(text, next);
+        const kept = adjustForReferences(text, next);
         onChangeText?.(kept ? kept.text : next);
         if (!kept) return;
         correcting.current = Date.now();
@@ -110,7 +118,7 @@ export function ReferenceInput({
         if (inside) moveCursor(start - inside.start < inside.end - start ? inside.start : inside.end);
     };
 
-    const tag = { color: colors.accentDark, backgroundColor: `${colors.accent}2e` };
+    const tag = referenceTag(colors);
     const picking = { color: colors.textPrimary, backgroundColor: colors.accent };
     // Fully transparent counts as no colour on Android and falls back to the ink; 1/255 draws nothing.
     const hidden = { color: `${colors.accent}01`, letterSpacing: -2.5 };

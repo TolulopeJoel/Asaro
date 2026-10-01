@@ -150,6 +150,7 @@ export function ThemeDetail({ cluster, name, onClose, onRename, onOpenEntry }: P
                     <HyperlinkedText
                         style={[textStyle(themeStyle, 'caption'), { color: colors.accent }]}
                         text={`[[${verse}]]`}
+                        asTags={false}
                     />
                 </View>
             ))}
