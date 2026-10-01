@@ -1,113 +1,51 @@
 import { withDatabase } from './db';
 import { retractKeys } from '../insight/observation';
-import { JournalEntry } from './types';
+import { JournalEntry, StudyItem } from './types';
 
-/**
- * Fetch study further topics from the last X days.
- * Used for the "Reminders" section on the home screen.
- */
-export const getRecentStudyTopics = async (days: number = 7, includeCompleted: boolean = false): Promise<JournalEntry[]> => {
-    return await withDatabase(async (database) => {
-        const daysParam = `-${days} days`;
-        const completedFilter = includeCompleted ? '' : 'AND study_completed = 0';
+/** A topic with the entry it was written in, as the Questions tab lists it. */
+export interface StudyTopic extends StudyItem {
+    entry: JournalEntry;
+}
 
-        // 1. Get the 3 OLDEST uncompleted topics
-        const oldestUncompletedQuery = `
-            SELECT 
-                *,
-                datetime(created_at, 'localtime') as created_at
-            FROM journal_entries
-            WHERE study_further IS NOT NULL AND study_further != ''
-            ${completedFilter}
-            ORDER BY created_at ASC
-            LIMIT 3
-        `;
-        const oldestList = await database.getAllAsync<JournalEntry>(oldestUncompletedQuery);
-
-        // 2. Get the NEWEST topics from the last X days
-        const newestQuery = `
-            SELECT 
-                *,
-                datetime(created_at, 'localtime') as created_at
-            FROM journal_entries
-            WHERE DATE(created_at, 'localtime') >= DATE('now', 'localtime', ?)
-            AND study_further IS NOT NULL AND study_further != ''
-            ${completedFilter}
-            ORDER BY created_at DESC
-            LIMIT 6
-        `;
-        const newestList = await database.getAllAsync<JournalEntry>(newestQuery, [daysParam]);
-
-        // Combine them, ensuring no duplicates by ID
-        const combined = new Map<number, JournalEntry>();
-
-        // Add newest first so they appear at the top
-        for (const item of newestList) {
-            if (item.id) combined.set(item.id, item);
-        }
-
-        // Add oldest
-        for (const item of oldestList) {
-            if (item.id && !combined.has(item.id)) {
-                combined.set(item.id, item);
-            }
-        }
-
-        // Backfill up to 6 if needed
-        if (combined.size < 6) {
-            const idsToExclude = Array.from(combined.keys()).join(',');
-            const extraCount = 6 - combined.size;
-
-            let backfillQuery = `
-                SELECT 
-                    *,
-                    datetime(created_at, 'localtime') as created_at
-                FROM journal_entries
-                WHERE study_further IS NOT NULL AND study_further != ''
-                ${completedFilter}
-            `;
-            if (idsToExclude.length > 0) {
-                backfillQuery += ` AND id NOT IN (${idsToExclude})`;
-            }
-            backfillQuery += ` ORDER BY created_at DESC LIMIT ${extraCount}`;
-
-            const backfillList = await database.getAllAsync<JournalEntry>(backfillQuery);
-            for (const item of backfillList) {
-                if (item.id) combined.set(item.id, item);
-            }
-        }
-
-        // Return the combined array, sorted newest first
-        return Array.from(combined.values()).sort((a, b) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
-    });
-};
-
-export const toggleStudyTopicCompletion = async (entryId: number, completed: boolean): Promise<void> => {
+export const toggleStudyTopicCompletion = async (topicId: number, completed: boolean): Promise<void> => {
     await withDatabase(async (database) => {
-        await database.runAsync(
-            `UPDATE journal_entries SET study_completed = ? WHERE id = ?`,
-            [completed ? 1 : 0, entryId]
-        );
-        if (completed) await retractKeys(database, 'study', [`entry:${entryId}`]);
+        await database.runAsync(`UPDATE study_items SET completed = ? WHERE id = ?`, [completed ? 1 : 0, topicId]);
+        if (completed) await retractKeys(database, 'study', [`topic:${topicId}`]);
     });
 };
 
-/**
- * Fetch all study further topics.
- * Used for the "Topics" tab on the Past Entries screen.
- */
-export const getAllStudyTopics = async (): Promise<JournalEntry[]> => {
+/** Every topic, newest entry first and in written order within an entry. Feeds Library → Questions. */
+export const getAllStudyTopics = async (): Promise<StudyTopic[]> => {
     return await withDatabase(async (database) => {
-        const query = `
-            SELECT 
-                *,
-                datetime(created_at, 'localtime') as created_at
-            FROM journal_entries
-            WHERE study_further IS NOT NULL AND study_further != ''
-            ORDER BY created_at DESC
-        `;
-        return await database.getAllAsync<JournalEntry>(query);
+        const rows = await database.getAllAsync<{
+            id: number; entry_id: number; topic: string; reminder: string | null; completed: number; sort_order: number;
+            book_name: string; chapter_start: number; chapter_end: number | null;
+            verse_start: string | null; verse_end: string | null; created_at: string;
+        }>(`
+            SELECT si.id, si.entry_id, si.topic, si.reminder, si.completed, si.sort_order,
+                   je.book_name, je.chapter_start, je.chapter_end, je.verse_start, je.verse_end,
+                   datetime(je.created_at, 'localtime') AS created_at
+            FROM study_items si
+            JOIN journal_entries je ON je.id = si.entry_id
+            WHERE TRIM(si.topic) != ''
+            ORDER BY je.created_at DESC, si.sort_order ASC
+        `);
+        return rows.map(row => ({
+            id: row.id,
+            entry_id: row.entry_id,
+            topic: row.topic,
+            reminder: row.reminder,
+            completed: !!row.completed,
+            sort_order: row.sort_order,
+            entry: {
+                id: row.entry_id,
+                book_name: row.book_name,
+                chapter_start: row.chapter_start,
+                chapter_end: row.chapter_end ?? undefined,
+                verse_start: row.verse_start ?? undefined,
+                verse_end: row.verse_end ?? undefined,
+                created_at: row.created_at,
+            },
+        }));
     });
 };

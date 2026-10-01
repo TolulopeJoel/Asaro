@@ -1,9 +1,9 @@
 /**
  * Something you said you would look into.
  *
- * `journal_entries.study_further` is written during the entry flow and then,
- * unless the writer set a date, never surfaces again — it sits two taps deep in
- * the Library under Topics.
+ * Each `study_items` row is written during the entry flow and then, unless the
+ * writer set a date, never surfaces again — it sits two taps deep in the
+ * Library under Questions.
  *
  * This is NOT a list of things owed. Handing a topic back is returning an
  * interest, not chasing a task, so the framing is what they wondered and
@@ -22,6 +22,7 @@ import { recordObservation, retractObservations } from '../observation';
 const DAY_MS = 86_400_000;
 
 export interface OpenTopic {
+    topicId: number;
     entryId: number;
     topic: string;
     /** Days since the entry it was written in. */
@@ -110,13 +111,14 @@ export function rankTopics(open: OpenTopic[], options: StudyOptions = {}): OpenT
 export async function loadTopics(now: number = Date.now()): Promise<OpenTopic[]> {
     return withDatabase(async database => {
         const rows = await database.getAllAsync<any>(
-            `SELECT id, book_name, chapter_start, chapter_end,
-                    study_further, study_further_reminder,
-                    datetime(created_at, 'localtime') AS created_at
-             FROM journal_entries
-             WHERE TRIM(COALESCE(study_further, '')) != ''
+            `SELECT si.id, si.entry_id, si.topic, si.reminder,
+                    je.book_name, je.chapter_start, je.chapter_end,
+                    datetime(je.created_at, 'localtime') AS created_at
+             FROM study_items si
+             JOIN journal_entries je ON je.id = si.entry_id
+             WHERE TRIM(si.topic) != ''
                -- Marked studied: the reader has said this one is finished with.
-               AND COALESCE(study_completed, 0) = 0`,
+               AND si.completed = 0`,
         );
 
         return rows
@@ -126,13 +128,12 @@ export async function loadTopics(now: number = Date.now()): Promise<OpenTopic[]>
                         ? `${row.chapter_start}–${row.chapter_end}`
                         : `${row.chapter_start}`;
                 const written = Date.parse(row.created_at);
-                const reminder = row.study_further_reminder
-                    ? Date.parse(row.study_further_reminder)
-                    : NaN;
+                const reminder = row.reminder ? Date.parse(row.reminder) : NaN;
 
                 return {
-                    entryId: row.id,
-                    topic: (row.study_further ?? '').trim(),
+                    topicId: row.id,
+                    entryId: row.entry_id,
+                    topic: (row.topic ?? '').trim(),
                     ageDays: Number.isFinite(written) ? Math.max(0, (now - written) / DAY_MS) : 0,
                     passage: `${row.book_name} ${range}`,
                     writtenAt: row.created_at,
@@ -150,7 +151,7 @@ export async function loadTopics(now: number = Date.now()): Promise<OpenTopic[]>
 /**
  * Find a topic worth handing back, and record it.
  *
- * Keyed on the entry, so one topic is offered once however many times the
+ * Keyed on the topic, so one topic is offered once however many times the
  * detector runs — and a reader who says "not that one" is not asked again.
  */
 export async function detectStudy(options: StudyOptions = {}): Promise<number[]> {
@@ -160,7 +161,7 @@ export async function detectStudy(options: StudyOptions = {}): Promise<number[]>
     // whatever it stops returning is exactly what should stop being queued.
     await retractObservations(
         'study',
-        qualifyingTopics(open, options).map(topic => `entry:${topic.entryId}`),
+        qualifyingTopics(open, options).map(topic => `topic:${topic.topicId}`),
     );
 
     const chosen = rankTopics(open, options);
@@ -170,7 +171,7 @@ export async function detectStudy(options: StudyOptions = {}): Promise<number[]>
         ids.push(
             await recordObservation({
                 detector: 'study',
-                dedupeKey: `entry:${topic.entryId}`,
+                dedupeKey: `topic:${topic.topicId}`,
                 claim: {
                     topic: topic.topic,
                     passage: topic.passage,

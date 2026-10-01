@@ -43,7 +43,11 @@ type Batch = FirebaseFirestoreTypes.WriteBatch;
 const ENTRY_SELECT = `
     SELECT je.id, je.book_name, je.chapter_start, je.chapter_end,
            datetime(je.created_at, 'localtime') AS created_local,
-           je.reflection_1, je.reflection_2, je.reflection_4, je.study_further,
+           je.reflection_1, je.reflection_2, je.reflection_4,
+           -- An entry's topics travel as one answer, the way its commitments do.
+           (SELECT group_concat(topic, char(10) || char(10)) FROM
+               (SELECT topic FROM study_items si WHERE si.entry_id = je.id AND TRIM(si.topic) != '' ORDER BY si.sort_order)
+           ) AS study_further,
            EXISTS (SELECT 1 FROM action_items ai WHERE ai.entry_id = je.id AND TRIM(ai.action) != '') AS has_action
       FROM journal_entries je`;
 

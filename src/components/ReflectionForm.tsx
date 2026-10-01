@@ -8,8 +8,7 @@
  * itself carries the page.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, BackHandler, Platform, ScrollView, StyleSheet, View } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { AppState, BackHandler, ScrollView, StyleSheet, View } from 'react-native';
 import { X } from 'lucide-react-native';
 
 import { useTheme } from '../theme/ThemeContext';
@@ -17,7 +16,8 @@ import { useAlert } from '../context/AlertContext';
 import { Spacing } from '../theme/spacing';
 import { TextArea } from './TextArea';
 import { ActionItemPair, ActionItemsInput } from './ActionItemsInput';
-import { Button } from './Button';
+import { StudyTopicsInput } from './StudyTopicsInput';
+import type { StudyTopicDraft } from '../data/studyTopics';
 import { ScalePressable } from './ScalePressable';
 import { Text as UIText, ThemedButton } from './ui';
 import { ClothMark } from './ui/Cloth';
@@ -30,8 +30,7 @@ export interface ReflectionAnswers {
   reflection2: string;
   actionItems: ActionItemPair[];
   reflection4: string;
-  studyFurther?: string;
-  studyFurtherReminder?: string;
+  studyTopics: StudyTopicDraft[];
   notes: string;
 }
 
@@ -86,8 +85,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
     reflection2: initialAnswers?.reflection2 || '',
     actionItems: initialAnswers?.actionItems || [{ action: '', motivation: '' }],
     reflection4: initialAnswers?.reflection4 || '',
-    studyFurther: initialAnswers?.studyFurther || '',
-    studyFurtherReminder: initialAnswers?.studyFurtherReminder || undefined,
+    studyTopics: initialAnswers?.studyTopics?.length ? initialAnswers.studyTopics : [{ topic: '' }],
     notes: initialAnswers?.notes || '',
   });
 
@@ -101,8 +99,6 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
   const current = REFLECTION_QUESTIONS[page];
 
   const [trackWidth, setTrackWidth] = useState(0);
-  const [showAndroidPicker, setShowAndroidPicker] = useState(false);
-  const [androidPickerMode, setAndroidPickerMode] = useState<'date' | 'time'>('date');
 
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Answers not yet handed to the parent, for the flush below.
@@ -158,7 +154,7 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
     typing.current = null;
   };
 
-  const updateAnswer = (questionId: keyof ReflectionAnswers, value: string) => {
+  const updateAnswer = (questionId: 'reflection1' | 'reflection2' | 'reflection4' | 'notes', value: string) => {
     stopTyping();
     setAnswers(prev => ({
       ...prev,
@@ -271,6 +267,10 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
         typeText(sample.action, t => setAnswers(p => ({ ...p, actionItems: [{ ...p.actionItems[0], action: t }] }))),
         typeText(sample.motivation, t => setAnswers(p => ({ ...p, actionItems: [{ ...p.actionItems[0], motivation: t }] }))),
       ];
+    } else if (q.id === 'studyFurther') {
+      const sample = samples.studyTopics[0];
+      if (!sample || now.studyTopics.some(item => item.topic.trim())) return;
+      steps = [typeText(sample.topic, t => setAnswers(p => ({ ...p, studyTopics: [{ ...p.studyTopics[0], topic: t }] })))];
     } else {
       const id = q.id as keyof ReflectionAnswers;
       const text = samples[id];
@@ -336,6 +336,14 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
                 disabled={disabled}
               />
             </ScrollView>
+          ) : !isNotes && current.id === 'studyFurther' ? (
+            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              <StudyTopicsInput
+                topics={answers.studyTopics}
+                onChange={(topics) => { stopTyping(); setAnswers(prev => ({ ...prev, studyTopics: topics })); }}
+                disabled={disabled}
+              />
+            </ScrollView>
           ) : (
             <TextArea
               // One field per question, not one reused: without the key React
@@ -350,58 +358,13 @@ export const ReflectionForm: React.FC<ReflectionFormProps> = React.memo(({
               placeholder={isNotes
                 ? 'Any other insights, questions, or reflections...'
                 : current.placeholder}
-              onChange={(text) => updateAnswer(isNotes ? 'notes' : (current.id as keyof ReflectionAnswers), text)}
+              onChange={(text) => updateAnswer(isNotes ? 'notes' : (current.id as 'reflection1' | 'reflection2' | 'reflection4'), text)}
               disabled={disabled}
               isAnswered={answeredHere}
+              lists={!isNotes}
             />
           )}
         </View>
-
-        {/* The study-further reminder belongs to its own question only. */}
-        {!isNotes && current.id === 'studyFurther' && answeredHere && !disabled && (
-          <View style={styles.reminderContainer}>
-            <UIText variant="bodySmall" tone="secondary">Remind me at:</UIText>
-            {Platform.OS === 'ios' ? (
-              <DateTimePicker
-                value={answers.studyFurtherReminder ? new Date(answers.studyFurtherReminder) : new Date(Date.now() + 24 * 60 * 60 * 1000)}
-                mode="datetime"
-                display="default"
-                onChange={(event, selectedDate) => {
-                  if (selectedDate) updateAnswer('studyFurtherReminder', selectedDate.toISOString());
-                }}
-              />
-            ) : (
-              <View style={styles.androidPickerRow}>
-                <Button
-                  variant="secondary"
-                  label={answers.studyFurtherReminder ? new Date(answers.studyFurtherReminder).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : "Set Reminder"}
-                  onPress={() => { setAndroidPickerMode('date'); setShowAndroidPicker(true); }}
-                  fullWidth={false}
-                />
-                {showAndroidPicker && (
-                  <DateTimePicker
-                    value={answers.studyFurtherReminder ? new Date(answers.studyFurtherReminder) : new Date(Date.now() + 24 * 60 * 60 * 1000)}
-                    mode={androidPickerMode}
-                    is24Hour={false}
-                    display="default"
-                    onChange={(event, selectedDate) => {
-                      setShowAndroidPicker(false);
-                      if (event.type === 'dismissed') return;
-
-                      if (selectedDate) {
-                        updateAnswer('studyFurtherReminder', selectedDate.toISOString());
-                        if (androidPickerMode === 'date') {
-                          setAndroidPickerMode('time');
-                          setShowAndroidPicker(true);
-                        }
-                      }
-                    }}
-                  />
-                )}
-              </View>
-            )}
-          </View>
-        )}
 
         {/* ── where you are ──────────────────────────────────────────────── */}
         {/* The woven strip fills as you go — the motif doing a job rather
@@ -513,15 +476,4 @@ const styles = StyleSheet.create({
   },
   grow: { flex: 1 },
   discard: { alignItems: 'center', paddingVertical: Spacing.xs },
-
-  reminderContainer: {
-    marginTop: Spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  androidPickerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
 });

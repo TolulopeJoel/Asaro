@@ -34,6 +34,7 @@ import { useAlert } from '../context/AlertContext';
 import { Spacing } from '../theme/spacing';
 import { ScalePressable } from './ScalePressable';
 import { HyperlinkedText } from './HyperlinkedText';
+import { answerBlocks } from '../utils/points';
 import { CardFAB } from './CardFAB';
 import { Hero, Screen, Text, textStyle } from './ui';
 
@@ -154,6 +155,10 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
         myShare().then(setBrought).catch(() => setBrought(null));
     }, []);
     useEffect(refreshBrought, [refreshBrought, groupIds.length]);
+
+    const topics = (entry.study_items ?? []).filter(item => item.topic.trim());
+    // Shared and counted as one answer, the way several commitments are.
+    const studyText = topics.map(item => item.topic.trim()).join('\n\n');
 
     const isBrought = (questionIndex: number) =>
         !!brought && brought.entryId === entry.id && brought.questionId === QUESTION_AT[questionIndex];
@@ -294,32 +299,32 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
         }
 
         if (questionIndex === STUDY_FURTHER_INDEX) {
-            if (!entry.study_further || !entry.study_further.trim()) return null;
-
-            const paragraphs = entry.study_further.trim().split('\n\n').filter(p => p.trim());
-            const reminder = entry.study_further_reminder;
+            if (topics.length === 0) return null;
 
             return (
                 <View key={questionIndex} style={[styles.block, rule]}>
-                    {blockHead(questionIndex, () => handleShareReflection(entry.study_further ?? '', questionIndex))}
-                    <View style={styles.answer}>
-                        {paragraphs.map((paragraph, pIndex) => (
-                            <HyperlinkedText key={pIndex} style={bodyFace} text={paragraph.trim()} />
+                    {blockHead(questionIndex, () => handleShareReflection(studyText, questionIndex))}
+                    <View style={styles.points}>
+                        {topics.map((item, i) => (
+                            // Several topics are separated the way several commitments are: a hairline.
+                            <View key={item.id} style={i > 0 ? [styles.nextAction, { borderTopColor: colors.border }] : undefined}>
+                                <HyperlinkedText style={bodyFace} text={item.topic.trim()} />
+                                {item.reminder && !item.completed && new Date(item.reminder) > new Date() && (
+                                    <View
+                                        style={[
+                                            styles.reminder,
+                                            { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder },
+                                        ]}
+                                    >
+                                        <Bell size={13} color={colors.textSecondary} strokeWidth={1.9} />
+                                        <Text variant="label" tone="secondary">
+                                            {`Reminder set for ${new Date(item.reminder).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}`}
+                                        </Text>
+                                    </View>
+                                )}
+                            </View>
                         ))}
                     </View>
-                    {reminder && new Date(reminder) > new Date() && (
-                        <View
-                            style={[
-                                styles.reminder,
-                                { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder },
-                            ]}
-                        >
-                            <Bell size={13} color={colors.textSecondary} strokeWidth={1.9} />
-                            <Text variant="label" tone="secondary">
-                                {`Reminder set for ${new Date(reminder).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}`}
-                            </Text>
-                        </View>
-                    )}
                 </View>
             );
         }
@@ -327,14 +332,17 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
         const actualReflection = questionIndex === 5 ? entry.notes : reflection;
         if (!actualReflection || !actualReflection.trim()) return null;
 
-        const paragraphs = actualReflection.trim().split('\n\n').filter(p => p.trim());
+        const { blocks, points } = answerBlocks(actualReflection);
 
         return (
             <View key={questionIndex} style={[styles.block, rule]}>
                 {blockHead(questionIndex, QUESTION_AT[questionIndex] ? () => handleShareReflection(actualReflection, questionIndex) : undefined)}
-                <View style={styles.answer}>
-                    {paragraphs.map((paragraph, pIndex) => (
-                        <HyperlinkedText key={pIndex} style={bodyFace} text={paragraph.trim()} />
+                <View style={points ? styles.points : styles.answer}>
+                    {blocks.map((block, pIndex) => (
+                        // Points are separated the way several commitments are: a hairline, no markers.
+                        <View key={pIndex} style={points && pIndex > 0 ? [styles.nextAction, { borderTopColor: colors.border }] : undefined}>
+                            <HyperlinkedText style={bodyFace} text={block} />
+                        </View>
                     ))}
                 </View>
             </View>
@@ -346,14 +354,14 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
             entry.reflection_1,
             entry.reflection_2,
             entry.reflection_4,
-            entry.study_further,
+            studyText,
             entry.notes,
         ].filter(r => r && r.trim().length > 0);
         const hasActions = entry.action_items?.some(
             item => item.action.trim() || item.motivation.trim()
         );
         return textReflections.length > 0 || !!hasActions;
-    }, [entry.reflection_1, entry.reflection_2, entry.reflection_4, entry.study_further, entry.action_items, entry.notes]);
+    }, [entry.reflection_1, entry.reflection_2, entry.reflection_4, studyText, entry.action_items, entry.notes]);
 
     const reference = `${entry.book_name} ${formatChapterAndVerses()}`.trim();
     const when = formatDate(entry.created_at);
@@ -399,7 +407,7 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
                         entry.reflection_2,
                         entry.reflection_3,
                         entry.reflection_4,
-                        entry.study_further,
+                        studyText,
                         entry.notes,
                     ].map((reflection, index) => renderReflection(reflection, index))
                 ) : (
@@ -445,6 +453,7 @@ const styles = StyleSheet.create({
     blockHead: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.md },
     question: { flex: 1 },
     answer: { marginTop: Spacing.md - 1, gap: Spacing.md },
+    points: { marginTop: Spacing.md - 1 },
     nextAction: { marginTop: Spacing.md, paddingTop: Spacing.md, borderTopWidth: Spacing.border.hairline },
     motivation: { marginTop: Spacing.sm - 1 },
     /** A square box on a hairline, not a rounded chip. */

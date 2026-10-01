@@ -9,6 +9,7 @@ import { BRAND_ACCENT } from '../theme/colors';
 import { withDatabase } from '../data/db';
 import { STORAGE_KEYS } from '../storage/storageKeys';
 import { detectOemFamily, needsOemAutoStartStep } from './oemRestrictions';
+import { unwrapReferences } from './reference';
 
 export const REMINDER_CHANNEL_ID = 'asaro-reminders';
 
@@ -22,8 +23,9 @@ const STUDY_TITLE = 'Remember this one?';
 /** What study reminders were titled before; ones already scheduled still carry it. */
 const OLD_STUDY_TITLE = '📖 Study Reminder';
 
-const studyReminderId = (entryId: number) => `${STUDY_ID_PREFIX}${entryId}`;
-export const studyReminderBody = (topic?: string | null) => `You said you’d study it: ${topic || 'your question'}. Today’s the day.`;
+/** One reminder per topic. The `t` keeps a topic id from colliding with the entry ids reminders used before. */
+const studyReminderId = (topicId: number) => `${STUDY_ID_PREFIX}t${topicId}`;
+const studyReminderBody = (topic: string) => `You said you’d study it: ${unwrapReferences(topic)}. Today’s the day.`;
 
 // Every schedule change runs through this chain, one at a time, so none is dropped or interleaved.
 let scheduleQueue: Promise<unknown> = Promise.resolve();
@@ -261,46 +263,45 @@ export async function openNotificationSettings() {
 
 
 
-function scheduleStudyReminder(entryId: number, time: Date, title: string, body: string): Promise<string> {
+function scheduleStudyReminder(reminder: StudyReminder): Promise<string> {
   return Notifications.scheduleNotificationAsync({
-    identifier: studyReminderId(entryId),
+    identifier: studyReminderId(reminder.topicId),
     content: {
-      ...createNotificationContent(title, body),
-      data: { timestamp: Date.now(), kind: 'study', entryId },
+      ...createNotificationContent(STUDY_TITLE, studyReminderBody(reminder.topic)),
+      data: { timestamp: Date.now(), kind: 'study', entryId: reminder.entryId, topicId: reminder.topicId },
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DATE,
-      date: time,
+      date: reminder.at,
       channelId: Platform.OS === 'android' ? REMINDER_CHANNEL_ID : undefined,
     },
   });
 }
 
-/** An entry's study-further reminder. One per entry: this replaces any earlier one, and a past time cancels it. */
-export function scheduleReminderNotification(
-  entryId: number,
-  time: Date,
-  title: string = STUDY_TITLE,
-  body: string = studyReminderBody()
-): Promise<string | null> {
-  return enqueue(async () => {
-    if (time.getTime() <= Date.now()) {
-      await Notifications.cancelScheduledNotificationAsync(studyReminderId(entryId));
-      return null;
+/**
+ * Make the scheduled study reminders match the journal: one for each open topic with a
+ * reminder still ahead, nothing else. Leaves everything alone if the journal can't be read.
+ */
+async function armStudyReminders(scheduled: Notifications.NotificationRequest[], now: Date): Promise<void> {
+  const due = await dueStudyReminders(now);
+  if (!due) return;
+  const wanted = new Set(due.map(r => studyReminderId(r.topicId)));
+  for (const request of scheduled) {
+    if (isStudyRequest(request) && !wanted.has(request.identifier)) {
+      await Notifications.cancelScheduledNotificationAsync(request.identifier);
     }
-    if (!await hasNotificationPermissions()) {
-      return null;
-    }
-    return await scheduleStudyReminder(entryId, time, title, body);
-  });
+  }
+  for (const reminder of due) await scheduleStudyReminder(reminder);
 }
 
-export function cancelStudyReminder(entryId: number): Promise<void> {
+/** Call after anything that changes topics: saving or deleting an entry, ticking a topic off. */
+export function syncStudyReminders(): Promise<void> {
   return enqueue(async () => {
     try {
-      await Notifications.cancelScheduledNotificationAsync(studyReminderId(entryId));
+      if (!await hasNotificationPermissions()) return;
+      await armStudyReminders(await getAllScheduledNotifications(), new Date());
     } catch (error) {
-      console.error('Failed to cancel study reminder:', error);
+      console.error('Failed to sync study reminders:', error);
     }
   });
 }
@@ -437,25 +438,26 @@ function isDailyRequest(request: Notifications.NotificationRequest): boolean {
   return request.content.categoryIdentifier === 'reminder' || data.timeSlot !== undefined;
 }
 
-/** A study reminder, including ones scheduled under a random identifier before they were keyed by entry. */
+/** A study reminder, including ones keyed by entry or by a random identifier from before topics. */
 function isStudyRequest(request: Notifications.NotificationRequest): boolean {
   if (request.identifier.startsWith(STUDY_ID_PREFIX)) return true;
   const title = request.content.title;
   return !isDailyRequest(request) && (title === STUDY_TITLE || title === OLD_STUDY_TITLE);
 }
 
+type StudyReminder = { topicId: number; entryId: number; at: Date; topic: string };
+
 /** Future study reminders the journal still asks for, or null if it can't be read. */
-async function dueStudyReminders(now: Date): Promise<{ entryId: number; at: Date; topic: string | null }[] | null> {
+async function dueStudyReminders(now: Date): Promise<StudyReminder[] | null> {
   try {
     const rows = await withDatabase(database => database.getAllAsync<{
-      id: number; study_further: string | null; study_further_reminder: string;
+      id: number; entry_id: number; topic: string; reminder: string;
     }>(
-      `SELECT id, study_further, study_further_reminder FROM journal_entries
-       WHERE study_further_reminder IS NOT NULL AND study_further_reminder != ''
-       AND COALESCE(study_completed, 0) = 0`
+      `SELECT id, entry_id, topic, reminder FROM study_items
+       WHERE reminder IS NOT NULL AND reminder != '' AND completed = 0 AND TRIM(topic) != ''`
     ));
     return rows
-      .map(row => ({ entryId: row.id, at: new Date(row.study_further_reminder), topic: row.study_further }))
+      .map(row => ({ topicId: row.id, entryId: row.entry_id, at: new Date(row.reminder), topic: row.topic }))
       .filter(row => row.at.getTime() > now.getTime());
   } catch (error) {
     console.error('Failed to read study reminders:', error);
@@ -584,19 +586,8 @@ async function rebuildSchedule(startFromTomorrow: boolean, options: SetupNotific
       }
     }
 
-    // A force-stop takes study alarms too. Only touched once the journal is read, so a failed read loses nothing.
-    const due = await dueStudyReminders(now);
-    if (due) {
-      const wanted = new Set(due.map(r => studyReminderId(r.entryId)));
-      for (const request of scheduled) {
-        if (isStudyRequest(request) && !wanted.has(request.identifier)) {
-          await Notifications.cancelScheduledNotificationAsync(request.identifier);
-        }
-      }
-      for (const reminder of due) {
-        await scheduleStudyReminder(reminder.entryId, reminder.at, STUDY_TITLE, studyReminderBody(reminder.topic));
-      }
-    }
+    // A force-stop takes study alarms too.
+    await armStudyReminders(scheduled, now);
 
     hasArmedThisLaunch = true;
     await AsyncStorage.setItem(NOTIF_LAST_ARMED_AT, String(Date.now()));

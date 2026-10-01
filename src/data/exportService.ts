@@ -2,16 +2,19 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { STORAGE_KEYS } from '../storage/storageKeys';
 import { withDatabase, withTransaction } from './db';
-import { attachActionItems } from './journalRepository';
+import { attachItems } from './journalRepository';
 import { JournalEntry } from './types';
 import { getPlanStart, setPlanStart } from '../storage/planStart';
+import { topicsFromLegacy } from './studyTopics';
 
 /**
  * v5 nests each action item's completions under it and adds named themes, whose
  * members point at entries by their id in this backup. v6 adds the findings the
  * reader has seen or answered, and which tree each practice grows, by the same ids.
+ * v7 nests study topics under their entry as `study_items`, replacing the flat
+ * `study_further` fields, which older backups still carry.
  */
-const BACKUP_VERSION = 6;
+const BACKUP_VERSION = 7;
 
 interface Completion { completed_on: string; completed_at?: string | null }
 interface BackupTheme {
@@ -77,16 +80,13 @@ export const exportJournalEntriesToJson = async (): Promise<string> => {
                 reflection_3,
                 reflection_4,
                 notes,
-                study_further,
-                study_further_reminder,
-                study_completed,
                 created_at,
                 updated_at
             FROM journal_entries
             ORDER BY created_at ASC
         `);
 
-        const entriesWithItems = await attachActionItems(database, entries);
+        const entriesWithItems = await attachItems(database, entries);
 
         const completions = await database.getAllAsync<Completion & { action_item_id: number }>(
             `SELECT action_item_id, completed_on, completed_at FROM action_item_completions ORDER BY completed_on ASC`
@@ -188,7 +188,14 @@ export const importJournalEntriesFromJson = async (json: string): Promise<{
         throw new Error('Invalid backup format');
     }
 
-    const entries = parsed.entries as (Partial<JournalEntry> & { action_items?: any[] })[];
+    const entries = parsed.entries as (Partial<JournalEntry> & {
+        action_items?: any[];
+        study_items?: { id?: number; topic?: string; reminder?: string | null; completed?: boolean | number; sort_order?: number }[];
+        // Backups before v7.
+        study_further?: string | null;
+        study_further_reminder?: string | null;
+        study_completed?: boolean | number;
+    })[];
 
     const { counts, actionIds } = await withTransaction(async (database) => {
         let importedEntries = 0;
@@ -200,6 +207,8 @@ export const importJournalEntriesFromJson = async (json: string): Promise<{
         const entryIds = new Map<number, number>();
         // Backup action item id → id on this device, for findings and trees.
         const actionIds = new Map<number, number>();
+        // Backup study topic id → id on this device, for findings.
+        const topicIds = new Map<number, number>();
 
         const importCompletions = async (actionItemId: number, completions: unknown) => {
             if (!Array.isArray(completions)) return;
@@ -228,6 +237,13 @@ export const importJournalEntriesFromJson = async (json: string): Promise<{
 
             if (existing) {
                 if (entry.id != null) entryIds.set(entry.id, existing.id);
+                for (const topic of entry.study_items ?? []) {
+                    const match = await database.getFirstAsync<{ id: number }>(
+                        `SELECT id FROM study_items WHERE entry_id = ? AND topic = ?`,
+                        [existing.id, topic.topic ?? '']
+                    );
+                    if (match && topic.id != null) topicIds.set(topic.id, match.id);
+                }
                 // Completions logged since that backup still merge into the item they belong to.
                 for (const item of entry.action_items ?? []) {
                     const match = await database.getFirstAsync<{ id: number }>(
@@ -249,8 +265,8 @@ export const importJournalEntriesFromJson = async (json: string): Promise<{
                 `INSERT INTO journal_entries (
                     book_name, chapter_start, chapter_end, verse_start, verse_end,
                     reflection_1, reflection_2, reflection_3, reflection_4, notes,
-                    study_further, study_further_reminder, created_at, updated_at, study_completed
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [
                     entry.book_name,
                     entry.chapter_start ?? null,
@@ -262,16 +278,26 @@ export const importJournalEntriesFromJson = async (json: string): Promise<{
                     entry.reflection_3 ?? '',
                     entry.reflection_4 ?? '',
                     entry.notes ?? null,
-                    entry.study_further ?? null,
-                    entry.study_further_reminder ?? null,
                     createdAt,
                     updatedAt,
-                    entry.study_completed ? 1 : 0,
                 ]
             );
 
             const newEntryId = result.lastInsertRowId;
             if (entry.id != null) entryIds.set(entry.id, newEntryId);
+
+            const topics = Array.isArray(entry.study_items)
+                ? entry.study_items
+                : topicsFromLegacy(entry.study_further, entry.study_further_reminder, !!entry.study_completed);
+            for (let i = 0; i < topics.length; i++) {
+                const topic = topics[i] as { id?: number; topic?: string; reminder?: string | null; completed?: boolean | number; sort_order?: number };
+                if (!topic.topic?.trim()) continue;
+                const inserted = await database.runAsync(
+                    `INSERT INTO study_items (entry_id, topic, reminder, completed, sort_order) VALUES (?, ?, ?, ?, ?)`,
+                    [newEntryId, topic.topic, topic.reminder ?? null, topic.completed ? 1 : 0, topic.sort_order ?? i]
+                );
+                if (topic.id != null) topicIds.set(topic.id, inserted.lastInsertRowId);
+            }
 
             const items = entry.action_items ?? [];
             for (let i = 0; i < items.length; i++) {
@@ -349,7 +375,7 @@ export const importJournalEntriesFromJson = async (json: string): Promise<{
         // 4. The reader's history with findings (v6). One whose entry or practice didn't come across is dropped.
         const localKey = (key: string): string | null => {
             const [kind, id] = key.split(':');
-            const map = kind === 'entry' ? entryIds : kind === 'action' ? actionIds : null;
+            const map = kind === 'entry' ? entryIds : kind === 'action' ? actionIds : kind === 'topic' ? topicIds : null;
             if (!map) return key;
             const local = map.get(Number(id));
             return local === undefined ? null : `${kind}:${local}`;

@@ -30,11 +30,16 @@ export function stripReferences(text: string): string {
 /**
  * Keep the reference, lose the brackets: `[[Exodus 20:12]]` becomes
  * `Exodus 20:12`. For plain-text display, where a citation is the opposite of
- * noise and the brackets are the only part nobody meant to write.
+ * noise and the brackets are the only part nobody meant to write. Points lose
+ * their markers the same way and run on with a middle dot between them.
  * `HyperlinkedText` renders the markup properly and needs neither.
  */
 export function unwrapReferences(text: string): string {
-    return text.replace(/\[\[(.+?)\]\]/g, '$1').replace(/\s+/g, ' ').trim();
+    return text
+        .replace(/\[\[(.+?)\]\]/g, '$1')
+        .replace(/(^|\n)[ \t]*[-*•–—] /g, (_, newline: string) => (newline ? ' · ' : ''))
+        .replace(/\s+/g, ' ')
+        .trim();
 }
 
 /**

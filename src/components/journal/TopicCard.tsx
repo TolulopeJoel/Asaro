@@ -23,7 +23,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { useTheme } from '../../theme/ThemeContext';
 import { Spacing } from '../../theme/spacing';
-import { JournalEntry } from '../../data/database';
+import { JournalEntry, type StudyTopic } from '../../data/database';
 import { ScalePressable } from '../ScalePressable';
 import { HyperlinkedText } from '../HyperlinkedText';
 import { Text, textStyle } from '../ui';
@@ -31,9 +31,9 @@ import { Checkbox } from './Checkbox';
 import { formatDate } from './JournalCardHelpers';
 
 interface TopicCardProps {
-    item: JournalEntry;
+    item: StudyTopic;
     onEntryPress: (entry: JournalEntry) => void;
-    handleToggleTopic: (item: JournalEntry) => void;
+    handleToggleTopic: (item: StudyTopic) => void;
 }
 
 /** "Genesis 12" / "Genesis 12–15", the way every other row writes it. */
@@ -55,8 +55,8 @@ function reminderLabel(raw?: string | null): string | null {
 
 export const TopicCard = React.memo(({ item, onEntryPress, handleToggleTopic }: TopicCardProps) => {
     const { colors, style: themeStyle } = useTheme();
-    const done = !!item.study_completed;
-    const reminder = reminderLabel(item.study_further_reminder);
+    const done = item.completed;
+    const reminder = reminderLabel(item.reminder);
 
     return (
         <View
@@ -74,7 +74,7 @@ export const TopicCard = React.memo(({ item, onEntryPress, handleToggleTopic }: 
                 />
                 <ScalePressable
                     style={styles.rowMain}
-                    onPress={() => onEntryPress(item)}
+                    onPress={() => onEntryPress(item.entry)}
                     accessibilityRole="button"
                     accessibilityHint="Opens the entry that raised this"
                 >
@@ -84,7 +84,7 @@ export const TopicCard = React.memo(({ item, onEntryPress, handleToggleTopic }: 
                             { color: colors.textPrimary },
                             done && styles.struck,
                         ]}
-                        text={item.study_further || ''}
+                        text={item.topic}
                     />
                     {/*
                       * The reference and the reminder sit where a commitment
@@ -93,8 +93,8 @@ export const TopicCard = React.memo(({ item, onEntryPress, handleToggleTopic }: 
                       * question look like it carried two controls it does not.
                       */}
                     <View style={styles.metaRow}>
-                        <Text variant="meta">{reference(item)}</Text>
-                        <Text variant="meta">{formatDate(item.created_at)}</Text>
+                        <Text variant="meta">{reference(item.entry)}</Text>
+                        <Text variant="meta">{formatDate(item.entry.created_at)}</Text>
                         {reminder && <Text variant="meta" tone="accent">{reminder}</Text>}
                     </View>
                 </ScalePressable>

@@ -54,6 +54,8 @@ const TextArea: React.FC<{
     multiline?: boolean;
     disabled?: boolean;
     isAnswered?: boolean;
+    /** Lines starting with - or * are points (see ReferenceInput). */
+    lists?: boolean;
     /**
      * Drop the box.
      *
@@ -71,6 +73,7 @@ const TextArea: React.FC<{
     disabled = false,
     isAnswered = false,
     bare = false,
+    lists = false,
 }) => {
         const { colors, style: themeStyle } = useTheme();
         const [isExpanded, setIsExpanded] = useState(false);
@@ -153,6 +156,7 @@ const TextArea: React.FC<{
                         <ReferenceInput
                             text={value}
                             pendingFrom={inlinePicker.refStartIndex}
+                            lists={lists}
                             ref={regularTextInputRef}
                             inputAccessoryViewID="bible-picker"
                             style={[
@@ -220,6 +224,7 @@ const TextArea: React.FC<{
                                 <ReferenceInput
                                     text={tempValue}
                                     pendingFrom={modalPicker.refStartIndex}
+                                    lists={lists}
                                     ref={expandedTextInputRef}
                                     style={[
                                         textAreaStyles.inputBare,

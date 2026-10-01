@@ -78,7 +78,7 @@ export function readingOf(row: EntryRow, uid: string) {
                 reflection1: row.reflection_1,
                 reflection2: row.reflection_2,
                 reflection4: row.reflection_4,
-                studyFurther: row.study_further,
+                studyTopics: row.study_further ? [{ topic: row.study_further }] : [],
                 actionItems: row.has_action ? [{ action: 'x' }] : [],
             }),
             day: dayKey(readAt),

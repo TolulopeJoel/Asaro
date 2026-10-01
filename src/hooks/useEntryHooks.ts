@@ -6,6 +6,7 @@ import { BibleBook } from '../data/bibleBooks';
 import { ReflectionAnswers } from '../components/ReflectionForm';
 import { formatRange, spell } from '../utils/reference';
 import { QUESTION_COUNT, answeredCount } from '../data/questions';
+import { topicsFromLegacy } from '../data/studyTopics';
 
 export type Step = 'book' | 'chapter' | 'reflection' | 'summary';
 
@@ -61,6 +62,15 @@ export function draftProgress(draft: DraftSummary): string {
 }
 
 /**
+ * A draft's answers as the form takes them now. Drafts written before topics hold one
+ * `studyFurther` string and reminder; they become topics the way saved entries did.
+ */
+export function restoreAnswers(answers: ReflectionAnswers & { studyFurther?: string; studyFurtherReminder?: string }): ReflectionAnswers {
+    const { studyFurther, studyFurtherReminder, ...rest } = answers;
+    return { ...rest, studyTopics: rest.studyTopics ?? topicsFromLegacy(studyFurther, studyFurtherReminder) };
+}
+
+/**
  * Read a stored draft the way Home wants it. design/all-screens.html #draft:
  * the passage and the progress are both in the payload, and naming them is
  * what turns a nag into a way back in.
@@ -83,7 +93,7 @@ export function summariseDraft(json: string | null): DraftSummary | null {
         ? `${chapters.start}-${chapters.end}`
         : `${chapters.start}`;
 
-    const answered = answeredCount(draft.reflectionAnswers);
+    const answered = answeredCount(draft.reflectionAnswers && restoreAnswers(draft.reflectionAnswers));
 
     return {
         passage: formatRange(`${book} ${range}`),

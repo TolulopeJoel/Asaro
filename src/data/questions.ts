@@ -10,16 +10,19 @@ export interface ReflectionQuestion {
     isActionList?: boolean;
 }
 
+/** Shown in an empty answer box on the questions that take points. */
+const LIST_HINT = 'Start a line with - or * for a list';
+
 export const REFLECTION_QUESTIONS: ReflectionQuestion[] = [
     {
         id: 'reflection1',
         question: 'What does this tell me about Jehovah?',
-        placeholder: '',
+        placeholder: LIST_HINT,
     },
     {
         id: 'reflection2',
         question: 'How does this section of the Scriptures contribute to the Bible’s message?',
-        placeholder: '',
+        placeholder: LIST_HINT,
     },
     {
         id: 'reflection3',
@@ -30,7 +33,7 @@ export const REFLECTION_QUESTIONS: ReflectionQuestion[] = [
     {
         id: 'reflection4',
         question: 'How can I use these verses to help others?',
-        placeholder: '',
+        placeholder: LIST_HINT,
     },
     {
         id: 'studyFurther',
@@ -58,15 +61,16 @@ export interface AnswerFields {
     reflection1?: string | null;
     reflection2?: string | null;
     reflection4?: string | null;
-    studyFurther?: string | null;
+    studyTopics?: { topic?: string | null }[] | null;
     actionItems?: { action?: string | null }[] | null;
 }
 
 const filled = (text: string | null | undefined) => !!text?.trim();
 
-/** Whether one question has an answer; the action question needs an action, not just a reason. */
+/** Whether one question has an answer; the action question needs an action, not just a reason, and study further a topic. */
 export function isAnswered(answers: AnswerFields, id: QuestionId): boolean {
     if (id === 'reflection3') return !!answers.actionItems?.some(item => filled(item.action));
+    if (id === 'studyFurther') return !!answers.studyTopics?.some(item => filled(item.topic));
     return filled(answers[id]);
 }
 

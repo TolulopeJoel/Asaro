@@ -2,8 +2,9 @@ import React, { useRef } from 'react';
 import { StyleSheet, Text, TextInput, type NativeSyntheticEvent, type TextInputProps, type TextInputSelectionChangeEventData } from 'react-native';
 import { MAX_FONT_SCALE } from '../theme/typography';
 import { useTheme } from '../theme/ThemeContext';
+import { continuePoint, markerPositions } from '../utils/points';
 
-type Segment = { text: string; kind: 'plain' | 'reference' | 'pending' };
+type Segment = { text: string; kind: 'plain' | 'reference' | 'pending' | 'marker' };
 type Span = { start: number; end: number };
 
 const REFERENCE = /\[\[(.+?)\]\]/g;
@@ -16,19 +17,37 @@ export const referenceTag = (colors: { accent: string; accentDark: string }) =>
 const referenceSpans = (text: string): Span[] =>
     Array.from(text.matchAll(REFERENCE), m => ({ start: m.index!, end: m.index! + m[0].length }));
 
-/** Plain runs, whole `[[references]]`, and the reference still being picked (`pendingFrom` to the end). */
-function segments(text: string, pendingFrom: number): Segment[] {
+/**
+ * Plain runs, whole `[[references]]`, point markers when `lists` is on, and the reference
+ * still being picked (`pendingFrom` to the end).
+ */
+function segments(text: string, pendingFrom: number, lists: boolean): Segment[] {
     const end = pendingFrom >= 0 && pendingFrom < text.length ? pendingFrom : text.length;
+    const head = text.slice(0, end);
+    const marks: (Span & { kind: Segment['kind'] })[] = [
+        ...referenceSpans(head).map(span => ({ ...span, kind: 'reference' as const })),
+        ...(lists ? markerPositions(head).map(at => ({ start: at, end: at + 1, kind: 'marker' as const })) : []),
+    ].sort((x, y) => x.start - y.start);
     const out: Segment[] = [];
     let at = 0;
-    for (const span of referenceSpans(text.slice(0, end))) {
-        if (span.start > at) out.push({ text: text.slice(at, span.start), kind: 'plain' });
-        out.push({ text: text.slice(span.start, span.end), kind: 'reference' });
-        at = span.end;
+    for (const mark of marks) {
+        if (mark.start < at) continue;
+        if (mark.start > at) out.push({ text: text.slice(at, mark.start), kind: 'plain' });
+        out.push({ text: text.slice(mark.start, mark.end), kind: mark.kind });
+        at = mark.end;
     }
     if (end > at) out.push({ text: text.slice(at, end), kind: 'plain' });
     if (end < text.length) out.push({ text: text.slice(end), kind: 'pending' });
     return out;
+}
+
+/** Where `next` first differs from `prev`, and what was removed and typed there. */
+function editBetween(prev: string, next: string) {
+    let p = 0;
+    while (p < prev.length && p < next.length && prev[p] === next[p]) p++;
+    let q = 0;
+    while (q < prev.length - p && q < next.length - p && prev[prev.length - 1 - q] === next[next.length - 1 - q]) q++;
+    return { at: p, removedEnd: prev.length - q, inserted: next.slice(p, next.length - q) };
 }
 
 /**
@@ -37,12 +56,8 @@ function segments(text: string, pendingFrom: number): Segment[] {
  * Returns the text to keep, where the cursor belongs and where the raw edit left it, or null.
  */
 function adjustForReferences(prev: string, next: string): { text: string; cursor: number; nativeCursor: number } | null {
-    let p = 0;
-    while (p < prev.length && p < next.length && prev[p] === next[p]) p++;
-    let q = 0;
-    while (q < prev.length - p && q < next.length - p && prev[prev.length - 1 - q] === next[next.length - 1 - q]) q++;
-    const removed = { start: p, end: prev.length - q };
-    const inserted = next.slice(p, next.length - q);
+    const { at: p, removedEnd, inserted } = editBetween(prev, next);
+    const removed = { start: p, end: removedEnd };
     const spans = referenceSpans(prev);
 
     if (removed.end > removed.start && !inserted) {
@@ -67,16 +82,20 @@ function adjustForReferences(prev: string, next: string): { text: string; cursor
     return null;
 }
 
-/** A TextInput that shows `[[references]]` as tags the cursor can't get inside. */
+/**
+ * A TextInput that shows `[[references]]` as tags the cursor can't get inside. With `lists`,
+ * a line starting with a marker is a point and Return carries the marker on.
+ */
 export function ReferenceInput({
     text,
     pendingFrom = -1,
+    lists = false,
     style,
     ref,
     onChangeText,
     onSelectionChange,
     ...props
-}: TextInputProps & { text: string; pendingFrom?: number; ref?: React.Ref<TextInput> }) {
+}: TextInputProps & { text: string; pendingFrom?: number; lists?: boolean; ref?: React.Ref<TextInput> }) {
     const { colors } = useTheme();
     const input = useRef<TextInput | null>(null);
     const setInput = (node: TextInput | null) => {
@@ -102,6 +121,15 @@ export function ReferenceInput({
     const letterSpacing = (StyleSheet.flatten(style)?.letterSpacing ?? 0) + (shown.current.flip ? 0.01 : 0);
 
     const handleChange = (next: string) => {
+        if (lists) {
+            const edit = editBetween(text, next);
+            const carried = edit.inserted === '\n' && edit.removedEnd === edit.at ? continuePoint(text, edit.at) : null;
+            // The cursor already lands right: native keeps its distance from the end.
+            if (carried !== null) {
+                onChangeText?.(carried);
+                return;
+            }
+        }
         const kept = adjustForReferences(text, next);
         onChangeText?.(kept ? kept.text : next);
         if (!kept) return;
@@ -120,6 +148,7 @@ export function ReferenceInput({
 
     const tag = referenceTag(colors);
     const picking = { color: colors.textPrimary, backgroundColor: colors.accent };
+    const marker = { color: colors.accent };
     // Fully transparent counts as no colour on Android and falls back to the ink; 1/255 draws nothing.
     const hidden = { color: `${colors.accent}01`, letterSpacing: -2.5 };
 
@@ -132,12 +161,15 @@ export function ReferenceInput({
             onChangeText={handleChange}
             onSelectionChange={handleSelection}
         >
-            {segments(text, pendingFrom).map((part, index) => {
+            {segments(text, pendingFrom, lists).map((part, index) => {
                 if (part.kind === 'plain') {
                     return <Text maxFontSizeMultiplier={MAX_FONT_SCALE} key={index}>{part.text}</Text>;
                 }
                 if (part.kind === 'pending') {
                     return <Text maxFontSizeMultiplier={MAX_FONT_SCALE} key={index} style={picking}>{part.text}</Text>;
+                }
+                if (part.kind === 'marker') {
+                    return <Text maxFontSizeMultiplier={MAX_FONT_SCALE} key={index} style={marker}>{part.text}</Text>;
                 }
                 // The brackets stay in the text but draw nothing: they are the tag's padding.
                 return [

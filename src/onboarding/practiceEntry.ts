@@ -20,8 +20,7 @@ export const PRACTICE_ANSWERS: ReflectionAnswers = {
         cadence: null,
     }],
     reflection4: 'My sister worries about the state of the world. [[Genesis 3:15]] shows it was always going to be fixed.',
-    studyFurther: 'What “watery deep” means in [[Genesis 1:2]]',
-    studyFurtherReminder: undefined,
+    studyTopics: [{ topic: 'What “watery deep” means in [[Genesis 1:2]]' }],
     notes: '',
 };
 
@@ -93,7 +92,7 @@ export const COACH = {
             { kind: 'end', action: 'smug', line: 'Who could this help? Think of one person, and how you’ll bring it up. Nothing to say on a question? Leave it empty and Next becomes Skip. I won’t vex.' },
         ],
         [
-            { kind: 'end', action: 'think', line: 'Something to dig into later. Write it down before it’s gone. In a real entry, Set Reminder brings it back on the day you pick, and it waits in Library until you’ve studied it.' },
+            { kind: 'end', action: 'think', line: 'Something to dig into later. Write it down before it’s gone. In a real entry, Remind me brings it back on the day you pick, and it waits in Library until you’ve studied it. More than one? Tap add topic.' },
         ],
         [
             { kind: 'end', action: 'nod', line: 'Anything else: a thought, something you noticed. Or nothing. Then tap Record it. It’s practice, so nothing counts.' },

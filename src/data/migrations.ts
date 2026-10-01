@@ -1,6 +1,7 @@
 import { withDatabase, getDbVersion, setDbVersion } from './db';
+import { topicsFromLegacy } from './studyTopics';
 
-const CURRENT_DB_VERSION = 5;
+const CURRENT_DB_VERSION = 6;
 
 /**
  * The migration run, shared by everyone who asks for it.
@@ -181,6 +182,31 @@ const runMigrations = async (): Promise<boolean> => {
                 `);
             });
 
+            if (currentVersion < 6) await step(6, async () => {
+                // v6: study topics as their own rows, seeded from the single study_further answer.
+                await database.execAsync(STUDY_SCHEMA);
+                const answers = await database.getAllAsync<{
+                    id: number; study_further: string; study_further_reminder: string | null; study_completed: number | null;
+                }>(
+                    `SELECT id, study_further, study_further_reminder, study_completed FROM journal_entries
+                     WHERE TRIM(COALESCE(study_further, '')) != ''`
+                );
+                for (const answer of answers) {
+                    const topics = topicsFromLegacy(answer.study_further, answer.study_further_reminder, !!answer.study_completed);
+                    for (let i = 0; i < topics.length; i++) {
+                        await database.runAsync(
+                            `INSERT INTO study_items (entry_id, topic, reminder, completed, sort_order) VALUES (?, ?, ?, ?, ?)`,
+                            [answer.id, topics[i].topic, topics[i].reminder ?? null, topics[i].completed ? 1 : 0, i]
+                        );
+                    }
+                }
+                // study_items is the only home for topics now; leaving the copy would keep it searchable after edits.
+                await database.execAsync(`
+                    UPDATE journal_entries SET study_further = NULL, study_further_reminder = NULL, study_completed = 0
+                    WHERE study_further IS NOT NULL OR study_further_reminder IS NOT NULL;
+                `);
+            });
+
             await setDbVersion(database, CURRENT_DB_VERSION);
 
             return true;
@@ -253,6 +279,40 @@ const ENTRY_SEARCH_FILL = `
 const ACTION_SEARCH_FILL = `
     INSERT INTO action_items_fts(rowid, action, motivation)
     SELECT id, action, motivation FROM action_items;
+`;
+
+/**
+ * Study topics, one row each, with their own reminder and done flag. Not `study_topics`:
+ * v5 drops that name. Searchable through study_items_fts, kept in step by triggers.
+ */
+const STUDY_SCHEMA = `
+    CREATE TABLE IF NOT EXISTS study_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        entry_id INTEGER NOT NULL REFERENCES journal_entries(id) ON DELETE CASCADE,
+        topic TEXT NOT NULL DEFAULT '',
+        reminder DATETIME,
+        completed INTEGER NOT NULL DEFAULT 0,
+        sort_order INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE INDEX IF NOT EXISTS idx_study_items_entry ON study_items(entry_id);
+
+    CREATE VIRTUAL TABLE IF NOT EXISTS study_items_fts USING fts5(
+        topic,
+        content='study_items', content_rowid='id'
+    );
+
+    CREATE TRIGGER IF NOT EXISTS study_items_ai AFTER INSERT ON study_items BEGIN
+      INSERT INTO study_items_fts(rowid, topic) VALUES (new.id, new.topic);
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS study_items_ad AFTER DELETE ON study_items BEGIN
+      INSERT INTO study_items_fts(study_items_fts, rowid, topic) VALUES('delete', old.id, old.topic);
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS study_items_au AFTER UPDATE ON study_items BEGIN
+      INSERT INTO study_items_fts(study_items_fts, rowid, topic) VALUES('delete', old.id, old.topic);
+      INSERT INTO study_items_fts(rowid, topic) VALUES (new.id, new.topic);
+    END;
 `;
 
 /**

@@ -25,6 +25,16 @@ export interface ActionItem {
     archived_at?: string | null;
 }
 
+/** One thing to study further, with its own reminder and done flag. */
+export interface StudyItem {
+    id: number;
+    entry_id: number;
+    topic: string;
+    reminder: string | null;
+    completed: boolean;
+    sort_order: number;
+}
+
 export interface JournalEntry {
     id?: number;
     book_name: string;
@@ -37,12 +47,10 @@ export interface JournalEntry {
     reflection_3?: string;
     reflection_4?: string;
     notes?: string;
-    study_further?: string;
-    study_further_reminder?: string;
-    study_completed?: boolean;
     created_at: string;
     updated_at?: string;
     action_items?: ActionItem[];
+    study_items?: StudyItem[];
 }
 
 export interface JournalEntryInput {
@@ -53,8 +61,12 @@ export interface JournalEntryInput {
     verseEnd?: string;
     reflections: string[];
     notes?: string;
-    studyFurther?: string;
-    studyFurtherReminder?: string;
+    studyTopics?: {
+        /** The row being edited; absent for a new topic. */
+        id?: number;
+        topic: string;
+        reminder?: string | null;
+    }[];
     actionItems?: {
         /** The row being edited; absent for a new item. */
         id?: number;

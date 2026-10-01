@@ -5,7 +5,7 @@ import { useTheme } from '@/src/theme/ThemeContext';
 import { JournalEntryDetail } from '@/src/components/JournalEntryDetail';
 import { JournalEntry, getEntryById, deleteJournalEntry } from '@/src/data/database';
 import { emitMilestones, unpublishReading } from '@/src/groups/publish';
-import { cancelStudyReminder } from '@/src/utils/notifications';
+import { syncStudyReminders } from '@/src/utils/notifications';
 import { LoadingView } from '@/src/components/LoadingView';
 import { Share } from 'react-native';
 import { useAlert } from '@/src/context/AlertContext';
@@ -83,7 +83,7 @@ export default function JournalEntryDetailScreen() {
                             await deleteJournalEntry(entry.id!);
                             void unpublishReading(entry.id!);
                             void emitMilestones();
-                            void cancelStudyReminder(entry.id!).catch(() => {});
+                            void syncStudyReminders();
                             router.replace('/library');
                         } catch (error) {
                             console.error("Error deleting entry:", error);

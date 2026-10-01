@@ -8,7 +8,7 @@ import { Animated, BackHandler, Share, StyleSheet, View } from 'react-native';
 import { ReflectionAnswers } from '../src/components/ReflectionForm';
 import { LoadingView } from '../src/components/LoadingView';
 import { BibleBook, getBookByName } from '../src/data/bibleBooks';
-import { cancelStudyReminder, setupDailyNotifications, scheduleReminderNotification, studyReminderBody } from '../src/utils/notifications';
+import { setupDailyNotifications, syncStudyReminders } from '../src/utils/notifications';
 import { emitMilestones, publishReading } from '@/src/groups/publish';
 import { useAlert } from '@/src/context/AlertContext';
 import { firstWithoutReason, isBlank } from '@/src/data/actionValidation';
@@ -17,7 +17,8 @@ import { ObservationCard } from '@/src/components/insight/ObservationCard';
 import { ObservationReceipts } from '@/src/components/insight/ObservationReceipts';
 import { AnimatedModal } from '@/src/components/AnimatedModal';
 import { planItemChapters, setActionItemArchived } from '@/src/data/journalRepository';
-import { useAutoSave, useStepFade, Step, DraftData, ChapterRange, VerseRange, summariseDraft } from '../src/hooks/useEntryHooks';
+import { useAutoSave, useStepFade, Step, DraftData, ChapterRange, VerseRange, summariseDraft, restoreAnswers } from '../src/hooks/useEntryHooks';
+import { isBlankTopic } from '@/src/data/studyTopics';
 import { answeredCount } from '@/src/data/questions';
 import { BookStep, ChapterStep, ReflectionStep, SummaryStep } from '../src/components/entry/EntrySteps';
 import { Screen } from '@/src/components/ui';
@@ -193,8 +194,12 @@ export default function MeditationSessionScreen() {
                             }))
                             : [{ action: '', motivation: '' }],
                         reflection4: entry.reflection_4 || '',
-                        studyFurther: entry.study_further || '',
-                        studyFurtherReminder: entry.study_further_reminder || undefined,
+                        studyTopics: (entry.study_items ?? []).map(item => ({
+                            id: item.id,
+                            topic: item.topic,
+                            reminder: item.reminder,
+                            completed: item.completed,
+                        })),
                         notes: entry.notes || '',
                     });
                     setCurrentStep('reflection');
@@ -221,7 +226,7 @@ export default function MeditationSessionScreen() {
                     if (chapters) setSelectedChapters(chapters);
                     if (draft && draft.readingItemId === rId) {
                         if (draft.verseRange) setVerseRange(draft.verseRange);
-                        if (draft.reflectionAnswers) setReflectionAnswers(draft.reflectionAnswers);
+                        if (draft.reflectionAnswers) setReflectionAnswers(restoreAnswers(draft.reflectionAnswers));
                     }
                     setCurrentStep(chapters ? 'reflection' : 'chapter');
                 } else if (isResuming) {
@@ -232,7 +237,7 @@ export default function MeditationSessionScreen() {
                         if (draft.selectedBook) setSelectedBook(draft.selectedBook);
                         if (draft.selectedChapters) setSelectedChapters(draft.selectedChapters);
                         if (draft.verseRange) setVerseRange(draft.verseRange);
-                        if (draft.reflectionAnswers) setReflectionAnswers(draft.reflectionAnswers);
+                        if (draft.reflectionAnswers) setReflectionAnswers(restoreAnswers(draft.reflectionAnswers));
                         if (draft.readingItemId) setReadingItemId(draft.readingItemId);
                         setCurrentStep('reflection');
                     }
@@ -260,25 +265,11 @@ export default function MeditationSessionScreen() {
         setSavedEntryId(undefined);
     }, []);
 
-    // Rebuilds the daily reminders and replaces this entry's study-further reminder.
-    const runPostSaveNotifications = useCallback(async (
-        savedId: number,
-        isNewEntry: boolean,
-        studyFurtherReminder?: string,
-        studyFurther?: string,
-    ) => {
+    // Rebuilds the daily reminders and brings the study reminders in line with the saved topics.
+    const runPostSaveNotifications = useCallback(async (isNewEntry: boolean) => {
         try {
             await setupDailyNotifications(isNewEntry);
-            if (studyFurtherReminder && new Date(studyFurtherReminder) > new Date()) {
-                await scheduleReminderNotification(
-                    savedId,
-                    new Date(studyFurtherReminder),
-                    undefined,
-                    studyReminderBody(studyFurther),
-                );
-            } else {
-                await cancelStudyReminder(savedId);
-            }
+            await syncStudyReminders();
         } catch (error) {
             console.error('Failed to schedule notifications after save:', error);
         }
@@ -352,8 +343,9 @@ export default function MeditationSessionScreen() {
                 verseEnd: verseRange?.end || undefined,
                 reflections: [answers.reflection1, answers.reflection2, '', answers.reflection4],
                 notes: answers.notes,
-                studyFurther: answers.studyFurther,
-                studyFurtherReminder: answers.studyFurtherReminder,
+                studyTopics: answers.studyTopics
+                    .filter(item => !isBlankTopic(item))
+                    .map(({ id, topic, reminder }) => ({ id, topic, reminder })),
                 actionItems: answers.actionItems.filter(item => !isBlank(item)),
                 readingItemId,
             };
@@ -366,14 +358,14 @@ export default function MeditationSessionScreen() {
                 void publishReading(targetId);
                 void emitMilestones();
                 if (isEditMode) {
-                    void runPostSaveNotifications(targetId, false, answers.studyFurtherReminder, answers.studyFurther);
+                    void runPostSaveNotifications(false);
                     showAlert({ title: 'Updated', message: 'Your entry is saved.' });
                     router.back();
                 } else {
                     await AsyncStorage.removeItem(STORAGE_KEYS.REFLECTION_DRAFT);
                     setReflectionAnswers(answers);
                     setCurrentStep('summary');
-                    void runPostSaveNotifications(targetId, true, answers.studyFurtherReminder, answers.studyFurther);
+                    void runPostSaveNotifications(true);
                 }
             } else {
                 const newId = await createJournalEntry(entryData);
@@ -386,7 +378,7 @@ export default function MeditationSessionScreen() {
                 await AsyncStorage.removeItem(STORAGE_KEYS.REFLECTION_DRAFT);
                 setReflectionAnswers(answers);
                 setCurrentStep('summary');
-                void runPostSaveNotifications(newId, true, answers.studyFurtherReminder, answers.studyFurther);
+                void runPostSaveNotifications(true);
             }
         } catch (error) {
             console.error('Error saving entry:', error);

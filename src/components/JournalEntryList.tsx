@@ -32,6 +32,7 @@ import {
     getAllActionItems,
     getAllStudyTopics,
     EnhancedActionItem,
+    type StudyTopic,
     toggleStudyTopicCompletion,
     toggleActionItemPin,
     toggleActionItemCompletion,
@@ -43,7 +44,7 @@ import { Spacing } from '../theme/spacing';
 import { Asaro, Text, type AsaroAction } from './ui';
 import { practiceChanged } from '../groups/publish';
 import { refreshPracticesWidget } from '../widget/refresh';
-import { cancelStudyReminder, scheduleReminderNotification, studyReminderBody } from '../utils/notifications';
+import { syncStudyReminders } from '../utils/notifications';
 
 type ViewMode = 'recent' | 'books' | 'bookDetail' | 'actions' | 'topics';
 
@@ -54,7 +55,7 @@ type ListItem =
     | { type: 'book'; book: BookWithCount; id: string }
     | { type: 'action'; action: EnhancedActionItem; id: string }
     | { type: 'actionHeader'; title: string; accent: boolean; id: string }
-    | { type: 'topic'; topic: JournalEntry; id: string }
+    | { type: 'topic'; topic: StudyTopic; id: string }
     | { type: 'emptyState'; id: string }
     | { type: 'searchSpacer'; id: string };
 
@@ -115,7 +116,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
     /** Which commitment is open for editing, if any. */
     const [editingAction, setEditingAction] = useState<EnhancedActionItem | null>(null);
     practiceProgressRef.current = practiceProgressMap;
-    const [topicsList, setTopicsList] = useState<JournalEntry[]>([]);
+    const [topicsList, setTopicsList] = useState<StudyTopic[]>([]);
 
 /*
      * Questions just answered, still on screen. A ticked question leaves the
@@ -262,23 +263,15 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
         }
     }, []);
 
-    const handleToggleTopic = useCallback(async (item: JournalEntry) => {
+    const handleToggleTopic = useCallback(async (item: StudyTopic) => {
         // The walk's examples never reach the database.
         if (demoRef.current) return;
-        const id = item.id!;
-        const answering = !item.study_completed;
+        const id = item.id;
+        const answering = !item.completed;
         try {
             await toggleStudyTopicCompletion(id, answering);
             // A topic ticked done stops reminding; undone, its reminder comes back if it's still ahead.
-            if (answering) void cancelStudyReminder(id).catch(() => { });
-            else if (item.study_further_reminder) {
-                void scheduleReminderNotification(
-                    id,
-                    new Date(item.study_further_reminder),
-                    undefined,
-                    studyReminderBody(item.study_further),
-                ).catch(() => { });
-            }
+            void syncStudyReminders();
 
             const existing = lingerTimers.current.get(id);
             if (existing) {
@@ -359,7 +352,8 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
         if (demoRef.current) {
             const q = debouncedSearchQuery.trim().toLowerCase();
             const found = DEMO_ENTRIES.filter(entry => [
-                entry.book_name, entry.reflection_1, entry.reflection_2, entry.reflection_4, entry.notes, entry.study_further,
+                entry.book_name, entry.reflection_1, entry.reflection_2, entry.reflection_4, entry.notes,
+                ...(entry.study_items ?? []).map(item => item.topic),
             ].some(text => text?.toLowerCase().includes(q)));
             setFilteredEntries(found);
             if (found.length > 0 && q.length >= 3) coachEvent('library-searched');
@@ -557,7 +551,7 @@ export const JournalEntryList: React.FC<JournalEntryListProps> = ({
             // Open questions, plus any just answered and still inside their
             // undo window. No "completed" section: this place says what you are
             // carrying, not what you are not.
-            const shown = topicsList.filter(t => !t.study_completed || lingering.has(t.id!));
+            const shown = topicsList.filter(t => !t.completed || lingering.has(t.id));
 
             if (shown.length === 0) {
                 return [{ type: 'emptyState' as const, id: 'empty-topics' }];

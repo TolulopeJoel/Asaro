@@ -1,6 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 import { withDatabase, withTransaction } from './db';
-import { ActionItem, JournalEntry, JournalEntryInput, EnhancedActionItem } from './types';
+import { ActionItem, JournalEntry, JournalEntryInput, EnhancedActionItem, StudyItem } from './types';
 import { formatDateToLocalString, getTodayDateString, parseLocalDateString } from '../utils/dateUtils';
 import { READING_PLAN_DATA, type ReadingItem } from './readingPlanData';
 import { CoverageRow } from '../land/cloth';
@@ -8,6 +8,7 @@ import { retractCiting, retractKeys } from '../insight/observation';
 import { tellDpcEntrySaved } from '@/modules/dpc-bridge';
 
 type ActionItemInput = NonNullable<JournalEntryInput['actionItems']>[number];
+type StudyTopicInput = NonNullable<JournalEntryInput['studyTopics']>[number];
 
 /**
  * The chapters a plan item covers, ignoring verse suffixes.
@@ -181,10 +182,13 @@ export const checkRangeCovered = async (
     return (result?.coveredCount ?? 0) === rangeSize;
 };
 
-/**
- * Helper: fetch action items for a list of entries and attach them
- */
-export const attachActionItems = async (
+/** Study topics as rows come back from SQLite, with `completed` as a real boolean. */
+const STUDY_ITEM_COLUMNS = `id, entry_id, topic, reminder, completed, sort_order`;
+const toStudyItem = (row: Omit<StudyItem, 'completed'> & { completed: number }): StudyItem =>
+    ({ ...row, completed: !!row.completed });
+
+/** Attach each entry's action items and study topics, in two queries for the whole list. */
+export const attachItems = async (
     database: SQLite.SQLiteDatabase,
     entries: JournalEntry[]
 ): Promise<JournalEntry[]> => {
@@ -198,6 +202,10 @@ export const attachActionItems = async (
         `SELECT * FROM action_items WHERE entry_id IN (${placeholders}) ORDER BY sort_order ASC`,
         ids
     );
+    const studyItems = await database.getAllAsync<Omit<StudyItem, 'completed'> & { completed: number }>(
+        `SELECT ${STUDY_ITEM_COLUMNS} FROM study_items WHERE entry_id IN (${placeholders}) ORDER BY sort_order ASC`,
+        ids
+    );
 
     const itemsByEntry = new Map<number, ActionItem[]>();
     for (const item of actionItems) {
@@ -205,10 +213,17 @@ export const attachActionItems = async (
         list.push(item);
         itemsByEntry.set(item.entry_id!, list);
     }
+    const topicsByEntry = new Map<number, StudyItem[]>();
+    for (const row of studyItems) {
+        const list = topicsByEntry.get(row.entry_id) || [];
+        list.push(toStudyItem(row));
+        topicsByEntry.set(row.entry_id, list);
+    }
 
     return entries.map(entry => ({
         ...entry,
         action_items: itemsByEntry.get(entry.id!) || [],
+        study_items: topicsByEntry.get(entry.id!) || [],
     }));
 };
 
@@ -360,6 +375,43 @@ async function saveActionItems(database: SQLite.SQLiteDatabase, entryId: number,
     await deleteActionItems(database, existing.map(row => row.id).filter(id => !kept.has(id)));
 }
 
+/** Delete study topics and the findings keyed on them. Their reminders are re-synced by the caller. */
+async function deleteStudyItems(database: SQLite.SQLiteDatabase, ids: number[]) {
+    if (ids.length === 0) return;
+    await retractKeys(database, 'study', ids.map(id => `topic:${id}`));
+    await database.runAsync(`DELETE FROM study_items WHERE id IN (${ids.map(() => '?').join(',')})`, ids);
+}
+
+/**
+ * Bring an entry's study topics in line with an edit. Rows are matched by id so a topic
+ * keeps its done flag when its words change; blank topics are dropped, and so are rows
+ * the edit removed.
+ */
+async function saveStudyItems(database: SQLite.SQLiteDatabase, entryId: number, topics: StudyTopicInput[]) {
+    const existing = await database.getAllAsync<{ id: number }>(`SELECT id FROM study_items WHERE entry_id = ?`, [entryId]);
+    const known = new Set(existing.map(row => row.id));
+    const kept = new Set<number>();
+    let order = 0;
+
+    for (const topic of topics) {
+        if (!topic.topic.trim()) continue;
+        if (topic.id != null && known.has(topic.id) && !kept.has(topic.id)) {
+            kept.add(topic.id);
+            await database.runAsync(
+                `UPDATE study_items SET topic = ?, reminder = ?, sort_order = ? WHERE id = ?`,
+                [topic.topic.trim(), topic.reminder ?? null, order++, topic.id]
+            );
+        } else {
+            await database.runAsync(
+                `INSERT INTO study_items (entry_id, topic, reminder, sort_order) VALUES (?, ?, ?, ?)`,
+                [entryId, topic.topic.trim(), topic.reminder ?? null, order++]
+            );
+        }
+    }
+
+    await deleteStudyItems(database, existing.map(row => row.id).filter(id => !kept.has(id)));
+}
+
 /**
  * Tolu's DPC opens the phone in the morning only for a real entry: at least two of the questions answered.
  * A one-line entry saves as usual but doesn't count.
@@ -373,9 +425,9 @@ export const createJournalEntry = async (data: JournalEntryInput) => {
 
     const newId = await withTransaction(async (database) => {
         const result = await database.runAsync(
-            `INSERT INTO journal_entries (book_name, chapter_start, chapter_end, verse_start, verse_end, reflection_1, reflection_2, reflection_3, reflection_4, notes, study_further, study_further_reminder)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [data.bookName, data.chapterStart ?? null, data.chapterEnd ?? null, data.verseStart ?? null, data.verseEnd ?? null, ...reflections, data.notes ?? null, data.studyFurther ?? null, data.studyFurtherReminder ?? null]
+            `INSERT INTO journal_entries (book_name, chapter_start, chapter_end, verse_start, verse_end, reflection_1, reflection_2, reflection_3, reflection_4, notes)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [data.bookName, data.chapterStart ?? null, data.chapterEnd ?? null, data.verseStart ?? null, data.verseEnd ?? null, ...reflections, data.notes ?? null]
         );
 
         const entryId = result.lastInsertRowId;
@@ -384,6 +436,7 @@ export const createJournalEntry = async (data: JournalEntryInput) => {
         for (let i = 0; i < items.length; i++) {
             if (!isBlankItem(items[i])) await insertActionItem(database, entryId, items[i], i);
         }
+        await saveStudyItems(database, entryId, data.studyTopics ?? []);
 
         await tickCoveredReadings(database, data);
         return entryId;
@@ -400,15 +453,13 @@ export const updateJournalEntry = async (id: number, data: JournalEntryInput) =>
     await withTransaction(async (database) => {
         await database.runAsync(
             `UPDATE journal_entries SET book_name = ?, chapter_start = ?, chapter_end = ?, verse_start = ?, verse_end = ?, 
-             reflection_1 = ?, reflection_2 = ?, reflection_3 = ?, reflection_4 = ?, notes = ?, study_further = ?, study_further_reminder = ?, updated_at = CURRENT_TIMESTAMP
+             reflection_1 = ?, reflection_2 = ?, reflection_3 = ?, reflection_4 = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
              WHERE id = ?`,
-            [data.bookName, data.chapterStart ?? null, data.chapterEnd ?? null, data.verseStart ?? null, data.verseEnd ?? null, ...reflections, data.notes ?? null, data.studyFurther ?? null, data.studyFurtherReminder ?? null, id]
+            [data.bookName, data.chapterStart ?? null, data.chapterEnd ?? null, data.verseStart ?? null, data.verseEnd ?? null, ...reflections, data.notes ?? null, id]
         );
 
         await saveActionItems(database, id, data.actionItems ?? []);
-
-        // An emptied topic is a deleted one.
-        if (!data.studyFurther?.trim()) await retractKeys(database, 'study', [`entry:${id}`]);
+        await saveStudyItems(database, id, data.studyTopics ?? []);
 
         await tickCoveredReadings(database, data);
     });
@@ -436,7 +487,7 @@ export const getJournalEntries = async (limit = 50, offset = 0): Promise<Journal
             ORDER BY created_at DESC 
             LIMIT ? OFFSET ?
         `, [limit, offset]);
-        return await attachActionItems(database, entries);
+        return await attachItems(database, entries);
     });
 };
 
@@ -445,7 +496,7 @@ export const getEntriesByBook = async (bookName: string): Promise<JournalEntry[]
         const entries = await database.getAllAsync<JournalEntry>(
             `SELECT *, datetime(created_at, 'localtime') as created_at, datetime(updated_at, 'localtime') as updated_at FROM journal_entries WHERE book_name = ? ORDER BY chapter_start ASC`, [bookName]
         );
-        return await attachActionItems(database, entries);
+        return await attachItems(database, entries);
     });
 };
 
@@ -479,14 +530,18 @@ export const searchEntries = async (term: string): Promise<JournalEntry[]> => {
                 SELECT entry_id FROM action_items WHERE id IN (
                     SELECT rowid FROM action_items_fts WHERE action_items_fts MATCH ?
                 )
+                UNION
+                SELECT entry_id FROM study_items WHERE id IN (
+                    SELECT rowid FROM study_items_fts WHERE study_items_fts MATCH ?
+                )
             )
             OR je.book_name LIKE ? ESCAPE '\\'
             ORDER BY je.created_at DESC 
             LIMIT 100
         `;
 
-        const entries = await database.getAllAsync<JournalEntry>(query, [match, match, bookLike]);
-        return await attachActionItems(database, entries);
+        const entries = await database.getAllAsync<JournalEntry>(query, [match, match, match, bookLike]);
+        return await attachItems(database, entries);
     });
 };
 
@@ -497,10 +552,8 @@ export const getEntryById = async (id: number): Promise<JournalEntry | null> => 
         ) ?? null;
         if (!entry) return null;
 
-        const items = await database.getAllAsync<ActionItem>(
-            `SELECT * FROM action_items WHERE entry_id = ? ORDER BY sort_order ASC`, [id]
-        );
-        return { ...entry, action_items: items };
+        const [withItems] = await attachItems(database, [entry]);
+        return withItems;
     });
 };
 
@@ -508,8 +561,10 @@ export const getEntryById = async (id: number): Promise<JournalEntry | null> => 
 export const deleteJournalEntry = async (id: number) => {
     await withTransaction(async (database) => {
         const items = await database.getAllAsync<{ id: number }>(`SELECT id FROM action_items WHERE entry_id = ?`, [id]);
+        const topics = await database.getAllAsync<{ id: number }>(`SELECT id FROM study_items WHERE entry_id = ?`, [id]);
         await retractCiting(database, { entryIds: [id] });
         await deleteActionItems(database, items.map(item => item.id));
+        await deleteStudyItems(database, topics.map(topic => topic.id));
         await database.runAsync(`DELETE FROM theme_members WHERE entry_id = ?`, [id]);
         await database.runAsync(`DELETE FROM entry_embeddings WHERE entry_id = ?`, [id]);
         await database.runAsync(`DELETE FROM journal_entries WHERE id = ?`, [id]);
@@ -717,7 +772,7 @@ export const getFlashbackEntry = async (excludeIds: number[] = []): Promise<{ en
         `, [oneYearStr]);
 
         if (yearEntry) {
-            const [withItems] = await attachActionItems(database, [yearEntry]);
+            const [withItems] = await attachItems(database, [yearEntry]);
             return { entry: withItems, type: 'year' };
         }
 
@@ -734,7 +789,7 @@ export const getFlashbackEntry = async (excludeIds: number[] = []): Promise<{ en
         `, [oneMonthStr]);
 
         if (monthEntry) {
-            const [withItems] = await attachActionItems(database, [monthEntry]);
+            const [withItems] = await attachItems(database, [monthEntry]);
             return { entry: withItems, type: 'month' };
         }
 
@@ -756,7 +811,7 @@ export const getFlashbackEntry = async (excludeIds: number[] = []): Promise<{ en
             `, [thirtyDaysStr, ...excludeIds]);
 
             if (randomEntry) {
-                const [withItems] = await attachActionItems(database, [randomEntry]);
+                const [withItems] = await attachItems(database, [randomEntry]);
                 return { entry: withItems, type: 'random' };
             }
         }
@@ -769,7 +824,7 @@ export const getFlashbackEntry = async (excludeIds: number[] = []): Promise<{ en
         `, [thirtyDaysStr]);
 
         if (randomEntry) {
-            const [withItems] = await attachActionItems(database, [randomEntry]);
+            const [withItems] = await attachItems(database, [randomEntry]);
             return { entry: withItems, type: 'random' };
         }
 

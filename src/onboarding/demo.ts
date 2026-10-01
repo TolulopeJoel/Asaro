@@ -4,7 +4,7 @@
  * so every date, week and calendar is current. Shown only while the walk runs,
  * and only by the screens — never written anywhere.
  */
-import type { EnhancedActionItem, JournalEntry } from '../data/database';
+import type { EnhancedActionItem, JournalEntry, StudyTopic } from '../data/database';
 import type { PracticeProgress } from '../data/practiceRepository';
 import { streakOf } from '../data/practiceStreak';
 import { growthOf, rootedSeries } from '../grove/grove';
@@ -55,7 +55,7 @@ const ENTRY_SPECS: { book: string; start: number; end?: number; ago: number; r1:
         r1: PRACTICE_ANSWERS.reflection1,
         r2: PRACTICE_ANSWERS.reflection2,
         r4: PRACTICE_ANSWERS.reflection4,
-        study: PRACTICE_ANSWERS.studyFurther,
+        study: PRACTICE_ANSWERS.studyTopics[0].topic,
     },
 ];
 
@@ -68,8 +68,9 @@ export const DEMO_ENTRIES: JournalEntry[] = ENTRY_SPECS.map((e, i) => ({
     reflection_2: e.r2,
     reflection_3: '',
     reflection_4: e.r4,
-    study_further: e.study,
-    study_completed: false,
+    study_items: e.study
+        ? [{ id: -(i + 1), entry_id: -(i + 1), topic: e.study, reminder: null, completed: false, sort_order: 0 }]
+        : [],
     created_at: sqlLocal(daysAgo(e.ago)),
 }));
 
@@ -78,7 +79,7 @@ export const DEMO_BOOK_COUNTS = DEMO_ENTRIES.reduce<Record<string, number>>((cou
     return counts;
 }, {});
 
-export const DEMO_TOPICS: JournalEntry[] = DEMO_ENTRIES.filter(e => e.study_further);
+export const DEMO_TOPICS: StudyTopic[] = DEMO_ENTRIES.flatMap(entry => (entry.study_items ?? []).map(item => ({ ...item, entry })));
 
 // ─── Practices ───────────────────────────────────────────────────────────────
 
