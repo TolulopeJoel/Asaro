@@ -360,6 +360,14 @@ async function saveActionItems(database: SQLite.SQLiteDatabase, entryId: number,
     await deleteActionItems(database, existing.map(row => row.id).filter(id => !kept.has(id)));
 }
 
+/**
+ * Tolu's DPC opens the phone in the morning only for a real entry: at least two of the questions answered.
+ * A one-line entry saves as usual but doesn't count.
+ */
+const DPC_MIN_ANSWERS = 2;
+
+const answered = (reflections: string[]) => reflections.filter(r => r.trim().length > 0).length;
+
 export const createJournalEntry = async (data: JournalEntryInput) => {
     const reflections = [...data.reflections, '', '', '', ''].slice(0, 4);
 
@@ -381,8 +389,8 @@ export const createJournalEntry = async (data: JournalEntryInput) => {
         return entryId;
     });
 
-    // Only once the entry is committed: this is what opens the phone in the morning.
-    tellDpcEntrySaved();
+    // Only once the entry is committed, and only with two answers: this is what opens the phone in the morning.
+    if (answered(reflections) >= DPC_MIN_ANSWERS) tellDpcEntrySaved();
     return newId;
 };
 
@@ -407,6 +415,14 @@ export const updateJournalEntry = async (id: number, data: JournalEntryInput) =>
 
     // An edit can widen a range (ticked above) or shrink it (unticked here).
     await retractUncoveredReadings();
+
+    // Finishing today's entry later counts too: once it has two answers, the phone opens. An old entry doesn't.
+    if (answered(reflections) >= DPC_MIN_ANSWERS) {
+        const row = await withDatabase(database => database.getFirstAsync<{ today: number }>(
+            `SELECT date(created_at, 'localtime') = date('now', 'localtime') AS today FROM journal_entries WHERE id = ?`, [id]
+        ));
+        if (row?.today) tellDpcEntrySaved();
+    }
 };
 
 export const getJournalEntries = async (limit = 50, offset = 0): Promise<JournalEntry[]> => {
