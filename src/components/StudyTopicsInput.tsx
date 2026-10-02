@@ -110,6 +110,9 @@ function TopicField({
 }) {
     const { colors, style: themeStyle } = useTheme();
     const input = useRef<TextInput | null>(null);
+    const body = textStyle(themeStyle, 'body');
+    // Four lines to start, growing to eight; past that it scrolls inside.
+    const line = body.lineHeight ?? 24;
     const picker = useBibleRefPicker({
         getValue: () => value,
         setValue: onChange,
@@ -124,14 +127,13 @@ function TopicField({
                 pendingFrom={picker.refStartIndex}
                 ref={node => { input.current = node; inputRef(node); }}
                 inputAccessoryViewID="bible-picker"
-                style={[styles.input, textStyle(themeStyle, 'body'), { color: colors.text }]}
+                style={[styles.input, body, { color: colors.text, minHeight: line * 4, maxHeight: line * 8 }]}
                 onChangeText={picker.handleTextChange}
                 onSubmitEditing={onSubmit}
                 onKeyPress={e => { if (e.nativeEvent.key === 'Backspace' && !value) onRemove(); }}
                 submitBehavior="submit"
                 returnKeyType="next"
                 multiline
-                scrollEnabled={false}
                 editable={!disabled}
             />
             {!disabled && value.length > 0 && (
@@ -206,7 +208,7 @@ const styles = StyleSheet.create({
     topic: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md },
     nextTopic: { borderTopWidth: 1.5 },
     field: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm },
-    input: { flex: 1, padding: 0, minHeight: 28 },
+    input: { flex: 1, padding: 0, textAlignVertical: 'top' },
     clear: { paddingTop: 6 },
     reminderRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginTop: Spacing.sm },
     reminder: {

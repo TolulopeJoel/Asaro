@@ -11,7 +11,7 @@ export interface ReflectionQuestion {
 }
 
 /** Shown in an empty answer box on the questions that take points. */
-const LIST_HINT = 'Start a line with - or * for a list';
+const LIST_HINT = 'Start a line with - or * for a new point';
 
 export const REFLECTION_QUESTIONS: ReflectionQuestion[] = [
     {

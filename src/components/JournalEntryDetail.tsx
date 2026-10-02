@@ -85,7 +85,8 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
         const date = new Date(dateString.replace(' ', 'T'));
         const dateLocal = getLocalMidnight(date);
         const nowLocal = getLocalMidnight();
-        const diffDays = getDaysDifference(nowLocal, dateLocal);
+        // Days since it was written: yesterday is 1.
+        const diffDays = getDaysDifference(dateLocal, nowLocal);
 
         const timeString = date.toLocaleTimeString([], {
             hour: 'numeric',
@@ -94,10 +95,10 @@ export const JournalEntryDetail: React.FC<JournalEntryDetailProps> = ({
         });
 
         let datePart = '';
-        if (diffDays === 0) datePart = 'today';
+        if (diffDays <= 0) datePart = 'today';
         else if (diffDays === 1) datePart = 'yesterday';
         else if (diffDays === 2) datePart = 'the day before yesterday';
-        else if (diffDays < 7) datePart = `${Math.abs(diffDays)} days ago`;
+        else if (diffDays < 7) datePart = `${diffDays} days ago`;
         else {
             const day = dateLocal.getDate();
             const suffix = day === 1 || day === 21 || day === 31 ? 'st' :

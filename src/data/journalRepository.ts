@@ -6,6 +6,7 @@ import { READING_PLAN_DATA, type ReadingItem } from './readingPlanData';
 import { CoverageRow } from '../land/cloth';
 import { retractCiting, retractKeys } from '../insight/observation';
 import { tellDpcEntrySaved } from '@/modules/dpc-bridge';
+import { answeredCount } from './questions';
 
 type ActionItemInput = NonNullable<JournalEntryInput['actionItems']>[number];
 type StudyTopicInput = NonNullable<JournalEntryInput['studyTopics']>[number];
@@ -418,7 +419,14 @@ async function saveStudyItems(database: SQLite.SQLiteDatabase, entryId: number, 
  */
 const DPC_MIN_ANSWERS = 2;
 
-const answered = (reflections: string[]) => reflections.filter(r => r.trim().length > 0).length;
+/** Counted the way the app counts: "applying it" is answered by an action item and "study further" by a topic, not by a reflection. */
+const answered = (data: JournalEntryInput) => answeredCount({
+    reflection1: data.reflections[0],
+    reflection2: data.reflections[1],
+    reflection4: data.reflections[3],
+    actionItems: data.actionItems,
+    studyTopics: data.studyTopics,
+});
 
 export const createJournalEntry = async (data: JournalEntryInput) => {
     const reflections = [...data.reflections, '', '', '', ''].slice(0, 4);
@@ -443,7 +451,7 @@ export const createJournalEntry = async (data: JournalEntryInput) => {
     });
 
     // Only once the entry is committed, and only with two answers: this is what opens the phone in the morning.
-    if (answered(reflections) >= DPC_MIN_ANSWERS) tellDpcEntrySaved();
+    if (answered(data) >= DPC_MIN_ANSWERS) tellDpcEntrySaved();
     return newId;
 };
 
@@ -468,7 +476,7 @@ export const updateJournalEntry = async (id: number, data: JournalEntryInput) =>
     await retractUncoveredReadings();
 
     // Finishing today's entry later counts too: once it has two answers, the phone opens. An old entry doesn't.
-    if (answered(reflections) >= DPC_MIN_ANSWERS) {
+    if (answered(data) >= DPC_MIN_ANSWERS) {
         const row = await withDatabase(database => database.getFirstAsync<{ today: number }>(
             `SELECT date(created_at, 'localtime') = date('now', 'localtime') AS today FROM journal_entries WHERE id = ?`, [id]
         ));

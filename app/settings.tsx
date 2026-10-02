@@ -445,7 +445,7 @@ export default function Settings() {
                 showAlert({
                     face: { action: 'laugh' },
                     title: 'Patience o!',
-                    message: `Trying to change your sleep time already? That's suspicious. You still have ${daysLeft} days to suffer your current schedule. Àṣàrò sees everything.`
+                    message: `Trying to change your sleep time already? That's suspicious. You still have ${daysLeft} day${daysLeft === 1 ? '' : 's'} to suffer your current schedule. Àṣàrò sees everything.`
                 });
                 return;
             }
